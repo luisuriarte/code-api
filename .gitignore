@@ -1,0 +1,22 @@
+# Dependencias
+/vendor/
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Registros y temporales
+/var/
+*.log
+*.tmp
+
+# Script de carga generado por tools/php/generar_carga_snomed.php
+/tools/sql/snomed/02_carga.sql
+/sct_carga_*/
+
+# Herramientas
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db

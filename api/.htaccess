@@ -1,0 +1,21 @@
+# Origen Salud API - Apache
+# El DocumentRoot del virtual host debe apuntar a /api.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Nunca servir código interno directamente.
+    RewriteRule ^(?:config|controllers|http)(?:/|$) - [F,L]
+
+    # Front controller: todas las rutas pasan por index.php.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "no-referrer"
+</IfModule>

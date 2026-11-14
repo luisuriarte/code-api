@@ -1,0 +1,86 @@
+meta:
+    title: "Origen Salud | Terminología clínica interoperable"
+    description: "Plataforma B2B de Terminología-as-a-Service: SNOMED-CT bilingüe, CIE-10, ANMAT y catálogos de laboratorio, vacunas, odontología, prestaciones, programas e imágenes."
+
+nav:
+    label: "Navegación principal"
+    platform: "Plataforma"
+    snomed: "SNOMED-CT"
+    anmat: "ANMAT"
+    api: "API"
+    contact: "Contacto"
+    access: "Solicitar acceso"
+
+a11y:
+    skip: "Saltar al contenido"
+
+lang:
+    label: "Idioma"
+    es: "Español"
+    en: "English"
+
+hero:
+    badge: "Terminología-as-a-Service para América Latina"
+    title: "La terminología clínica que conecta sistemas, equipos y pacientes."
+    lead: "Origen Salud unifica SNOMED-CT, CIE-10, ANMAT y los catálogos clínicos argentinos en una API REST segura y bilingüe, diseñada para integrarse con historias clínicas, farmacias y plataformas de interoperabilidad."
+    primary: "Explorar la API"
+    secondary: "Conocer la plataforma"
+    note: "SNOMED-CT · CIE-10 · ANMAT · Laboratorio · Vacunas · Imágenes"
+    card_title: "Respuesta de la API"
+    card_subtitle: "Búsqueda clínica en tiempo real"
+    card_footer: "JSON · UTF-8 · SCTID como string"
+
+stats:
+    label: "Indicadores de la plataforma"
+    concepts_label: "Conceptos SNOMED-CT"
+    concepts_value: "350.000+"
+    languages_label: "Idiomas de búsqueda"
+    languages_value: "ES / EN"
+    anmat_label: "Catálogos locales"
+    anmat_value: "7 fuentes"
+    latency_label: "Latencia objetivo"
+    latency_value: "< 80 ms"
+
+services:
+    eyebrow: "Una plataforma, cuatro capacidades"
+    title: "Interoperabilidad clínica sin fricción"
+    lead: "La terminología correcta, en el idioma correcto y en el momento en que tu sistema la necesita."
+    tas_title: "Terminología-as-a-Service"
+    tas_text: "API REST de alto rendimiento con autenticación por API Key, paginación y respuestas JSON consistentes."
+    snomed_title: "SNOMED-CT bilingüe"
+    snomed_text: "Búsqueda difusa con trigramas sobre descripciones en español e inglés, jerarquías Is-A y estados de definición."
+    anmat_title: "Catálogos clínicos vinculados"
+    anmat_text: "ANMAT, laboratorio, vacunas, odontología, prestaciones, programas e imágenes, con códigos oficiales y vínculo al concepto SNOMED correspondiente."
+    security_title: "Seguridad B2B"
+    security_text: "Control de acceso por cliente, timeouts de consulta, CORS restringido y trazabilidad mediante request ID."
+
+api:
+    eyebrow: "API REST"
+    title: "Integrá terminología clínica en minutos"
+    lead: "Un único endpoint para buscar conceptos por texto, con ranking por relevancia, filtro por idioma y paginación por offset."
+    endpoint_label: "Endpoint de búsqueda"
+    auth_label: "Autenticación"
+    auth_text: "Enviá tu API Key en el header X-API-Key o como Bearer token."
+    docs: "Solicitar credenciales"
+    response_title: "Respuesta de ejemplo"
+    example_term: "Infarto agudo de miocardio"
+
+cta:
+    title: "¿Listo para conectar tu historia clínica?"
+    text: "Escribinos y coordinamos una prueba de integración con tu equipo técnico."
+    button: "Hablar con el equipo"
+
+footer:
+    tagline: "Terminología clínica interoperable para América Latina."
+    product: "Producto"
+    product_api: "API de terminología"
+    product_snomed: "SNOMED-CT"
+    product_anmat: "Catálogos clínicos"
+    company: "Compañía"
+    company_about: "Sobre Origen Salud"
+    company_contact: "Contacto"
+    legal: "Legal"
+    legal_terms: "Términos y condiciones"
+    legal_privacy: "Política de privacidad"
+    rights: "© %year% Origen Salud. Todos los derechos reservados."
+    disclaimer: "SNOMED CT® es una marca registrada de SNOMED International. Origen Salud no está afiliado ni respaldado por SNOMED International. Los datos ANMAT y de los catálogos locales se utilizan como fuente de referencia."

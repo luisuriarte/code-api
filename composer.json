@@ -1,0 +1,32 @@
+{
+    "name": "origen-salud/plataforma",
+    "description": "Plataforma B2B de Terminología-as-a-Service (SNOMED-CT, CIE-10, ANMAT y catálogos clínicos argentinos) de Origen Salud.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-pdo": "*",
+        "ext-pdo_pgsql": "*",
+        "symfony/translation": "^7.3",
+        "symfony/yaml": "^7.3",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "OrigenSalud\\Api\\Controllers\\": "api/controllers/",
+            "OrigenSalud\\Api\\Http\\": "api/http/",
+            "OrigenSalud\\Api\\Services\\": "api/services/",
+            "OrigenSalud\\Tools\\Php\\": "tools/php/"
+        },
+        "classmap": [
+            "api/config/database.php"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": false
+    }
+}

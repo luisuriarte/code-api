@@ -1,0 +1,20 @@
+# Protecciones para el caso de que el DocumentRoot apunte a la raíz del
+# proyecto (por ejemplo, en un entorno de desarrollo mal configurado).
+# En producción, apuntar siempre a /api o /web.
+
+Options -Indexes
+
+<FilesMatch "^(\.env.*|composer\.(json|lock)|bootstrap\.php)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(?:sql|vendor)/ - [F,L]
+</IfModule>
