@@ -758,8 +758,8 @@ INSERT INTO vacunas_catalogo (
 )
 SELECT DISTINCT ON (rs.referenced_component_id)
        CAST(rs.referenced_component_id AS VARCHAR(30)),
-       tp.term,
-       tp.term,
+       LEFT(tp.term, 150),
+       LEFT(tp.term, 150),
        NULL,
        rs.referenced_component_id,
        TRUE
