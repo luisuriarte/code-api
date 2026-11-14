@@ -111,13 +111,18 @@ COMMENT ON COLUMN sct2.map_gtin.rpcd_fsn IS
   \set ruta_gtin 'MAP_GTIN_a_RPCD_comercializadas_20260820.tsv'
 \endif
 
-TRUNCATE TABLE sct2.map_nbu;
+-- \copy es un meta-comando de psql y NO expande variables en sus argumentos
+-- directos (interpreta :'var' como el archivo literal ":"). Para pasar variables
+-- se construye el comando en una variable psql y se ejecuta en su propia línea.
+\set q ''''
+\set cmd_nbu '\\copy sct2.map_nbu (sctid, codigo_nbu, determinacion) FROM ' :q :ruta_nbu :q ' WITH (FORMAT csv, DELIMITER E''\t'', HEADER true, ENCODING ''UTF8'', FORCE_NOT_NULL (determinacion))'
+\set cmd_gtin '\\copy sct2.map_gtin (gtin, condicion, rpcd_id, rpcd_fsn) FROM ' :q :ruta_gtin :q ' WITH (FORMAT csv, DELIMITER E''\t'', HEADER true, ENCODING ''UTF8'', FORCE_NOT_NULL (condicion, rpcd_fsn))'
 
-\copy sct2.map_nbu (sctid, codigo_nbu, determinacion) FROM :'ruta_nbu' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, ENCODING 'UTF8', FORCE_NOT_NULL (determinacion))
+TRUNCATE TABLE sct2.map_nbu;
+:cmd_nbu
 
 TRUNCATE TABLE sct2.map_gtin;
-
-\copy sct2.map_gtin (gtin, condicion, rpcd_id, rpcd_fsn) FROM :'ruta_gtin' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, ENCODING 'UTF8', FORCE_NOT_NULL (condicion, rpcd_fsn))
+:cmd_gtin
 
 -- =============================================================================
 -- 3. Índices
