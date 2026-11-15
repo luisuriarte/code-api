@@ -2583,8 +2583,11 @@ final class TerminologySearchService
 
     private function integerQuery(Request $request, string $name, int $default, int $min, int $max): int
     {
-        $value = $request->query[$name] ?? null;
+        return $this->readIntParam($request->query[$name] ?? null, $default, $min, $max, $name);
+    }
 
+    private function readIntParam(mixed $value, int $default, int $min, int $max, string $name): int
+    {
         if ($value === null) {
             return $default;
         }
