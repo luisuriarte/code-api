@@ -206,18 +206,32 @@ CREATE INDEX idx_vacunas_msal ON vacunas_catalogo(codigo_vacuna_msal);
 
 
 -- ==========================================
--- 11. Nomenclador Odontológico (FDI / Anatómico / SNOMED)
+-- 11. Nomenclador Odontológico (FDI / Anatómico / CDT / SNOMED)
 -- ==========================================
 CREATE TABLE odontologia_prestaciones (
     id SERIAL PRIMARY KEY,
-    codigo_nomenclador VARCHAR(20) UNIQUE NOT NULL, -- Código local o de obra social
+    codigo_nomenclador VARCHAR(30) UNIQUE NOT NULL, -- Código local o de obra social
     descripcion TEXT NOT NULL,
+    capitulo VARCHAR(150),
+    cdt_code VARCHAR(20),
+    cdt_categoria VARCHAR(50),
+    cdt_categoria_es VARCHAR(150),
     snomed_concept_id BIGINT REFERENCES snomed_concepts(id) ON DELETE SET NULL,
+    requiere_pieza BOOLEAN DEFAULT FALSE,
     face_specification BOOLEAN DEFAULT FALSE, -- Requiere especificación de cara dentaria (vestibular, mesial, etc.)
+    requiere_rx_pre BOOLEAN DEFAULT FALSE,
+    requiere_rx_post BOOLEAN DEFAULT FALSE,
+    ficha_odontologica BOOLEAN DEFAULT FALSE,
+    ficha_periodontal BOOLEAN DEFAULT FALSE,
+    material VARCHAR(100),
+    maxilar VARCHAR(50),
+    norma_particular TEXT,
     activo BOOLEAN DEFAULT TRUE
 );
 
 CREATE INDEX idx_odontologia_trgm ON odontologia_prestaciones USING gin (descripcion gin_trgm_ops);
+CREATE INDEX idx_odontologia_codigo ON odontologia_prestaciones(codigo_nomenclador);
+CREATE INDEX idx_odontologia_cdt ON odontologia_prestaciones(cdt_code);
 
 
 -- ==========================================
