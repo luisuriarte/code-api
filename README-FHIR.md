@@ -178,11 +178,11 @@ Permite expandir conjuntos de valores para listas desplegables, búsqueda en tie
 #### `GET /fhir/ValueSet/$expand?url={valueset_url}&filter={termino}&count={n}`
 
 #### ValueSets Odontológicos Disponibles:
-- `https://origen.ar/fhir/ValueSet/dentar-procedures-all` (Todas las prestaciones)
-- `https://origen.ar/fhir/ValueSet/dentar-endodontics` (Capítulo Endodoncia)
-- `https://origen.ar/fhir/ValueSet/dentar-restorative` (Operatoria dental y restauradora)
-- `https://origen.ar/fhir/ValueSet/dentar-diagnoses-caries` (Diagnósticos de caries K02)
-- `https://origen.ar/fhir/ValueSet/dentar-diagnoses-perio` (Diagnósticos periodontales K05)
+- `https://api.origen.ar/fhir/ValueSet/dentar-procedures-all` (Todas las prestaciones)
+- `https://api.origen.ar/fhir/ValueSet/dentar-endodontics` (Capítulo Endodoncia)
+- `https://api.origen.ar/fhir/ValueSet/dentar-restorative` (Operatoria dental y restauradora)
+- `https://api.origen.ar/fhir/ValueSet/dentar-diagnoses-caries` (Diagnósticos de caries K02)
+- `https://api.origen.ar/fhir/ValueSet/dentar-diagnoses-perio` (Diagnósticos periodontales K05)
 
 #### Ejemplo de llamada:
 ```bash
