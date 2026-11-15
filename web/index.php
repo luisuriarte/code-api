@@ -99,6 +99,7 @@ $year = date('Y');
             <a href="#snomed"><?= e($t('nav.snomed')) ?></a>
             <a href="#anmat"><?= e($t('nav.anmat')) ?></a>
             <a href="#api"><?= e($t('nav.api')) ?></a>
+            <a href="/docs"><?= e($t('nav.docs')) ?></a>
             <a href="#contacto"><?= e($t('nav.contact')) ?></a>
         </nav>
 
@@ -288,6 +289,7 @@ $year = date('Y');
             <h3><?= e($t('footer.product')) ?></h3>
             <ul>
                 <li><a href="#api"><?= e($t('footer.product_api')) ?></a></li>
+                <li><a href="/docs"><?= e($t('nav.docs')) ?></a></li>
                 <li><a href="#snomed"><?= e($t('footer.product_snomed')) ?></a></li>
                 <li><a href="#anmat"><?= e($t('footer.product_anmat')) ?></a></li>
             </ul>

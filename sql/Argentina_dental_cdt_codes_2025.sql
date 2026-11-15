@@ -4640,7 +4640,7 @@ SELECT
     n.cdt_code_default,
     cat.codigo,
     cat.nombre_es,
-    n.snomed_concept_id,
+    CASE WHEN sc.id IS NOT NULL THEN n.snomed_concept_id ELSE NULL END,
     n.requiere_pieza,
     n.requiere_caras,
     n.requiere_rx_pre,
@@ -4654,6 +4654,7 @@ SELECT
 FROM odontologia_nomenclador n
 LEFT JOIN odontologia_cdt_catalogo cdt ON cdt.codigo_cdt = n.cdt_code_default
 LEFT JOIN odontologia_cdt_categorias cat ON cat.codigo = cdt.categoria_codigo
+LEFT JOIN snomed_concepts sc ON sc.id = n.snomed_concept_id
 ON CONFLICT (codigo_nomenclador) DO UPDATE SET
     descripcion = EXCLUDED.descripcion,
     capitulo = EXCLUDED.capitulo,

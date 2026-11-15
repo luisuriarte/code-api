@@ -4,10 +4,72 @@ Generador del catálogo odontológico interoperable:
 Nomenclador Odontológico Argentino + ADA CDT 2025 + SNOMED CT
 Genera el archivo: sql/Argentina_dental_cdt_codes_2025.sql (PostgreSQL 18)
 """
-import json
+import os, sys
 
-with open("parsed_odontologico.json", "r", encoding="utf-8") as f:
-    rows = json.load(f)
+def load_odontologico_rows():
+    sql_path = os.path.join(os.path.dirname(__file__), "..", "sql", "odontologico.sql")
+    with open(sql_path, "r", encoding="utf-8") as f:
+        sql = f.read()
+
+    start_idx = sql.find("INSERT INTO `odontologico` VALUES") + len("INSERT INTO `odontologico` VALUES")
+    end_idx = sql.find("/*!40000 ALTER TABLE `odontologico` ENABLE KEYS */")
+    values_str = sql[start_idx:end_idx].strip()
+    if values_str.endswith(";"):
+        values_str = values_str[:-1]
+
+    tuples = []
+    current_tuple = []
+    current_val = []
+    in_quotes = False
+    quote_char = None
+    in_tuple = False
+    escape = False
+
+    i = 0
+    n = len(values_str)
+    while i < n:
+        c = values_str[i]
+        if not in_tuple:
+            if c == "(":
+                in_tuple = True
+                current_tuple = []
+                current_val = []
+        else:
+            if in_quotes:
+                if escape:
+                    current_val.append(c)
+                    escape = False
+                elif c == "\\":
+                    escape = True
+                elif c == quote_char:
+                    if i + 1 < n and values_str[i+1] == quote_char:
+                        current_val.append(quote_char)
+                        i += 1
+                    else:
+                        in_quotes = False
+                else:
+                    current_val.append(c)
+            else:
+                if c in ("\x27", "\x22"):
+                    in_quotes = True
+                    quote_char = c
+                elif c == ",":
+                    val_str = "".join(current_val).strip()
+                    current_tuple.append(None if val_str == "NULL" else val_str)
+                    current_val = []
+                elif c == ")":
+                    val_str = "".join(current_val).strip()
+                    current_tuple.append(None if val_str == "NULL" else val_str)
+                    tuples.append(current_tuple)
+                    in_tuple = False
+                    current_tuple = []
+                    current_val = []
+                else:
+                    current_val.append(c)
+        i += 1
+    return tuples
+
+rows = load_odontologico_rows()
 
 # 12 Categorías Oficiales CDT adaptadas a Argentina
 categories = [
@@ -558,7 +620,7 @@ out.append("    n.capitulo,")
 out.append("    n.cdt_code_default,")
 out.append("    cat.codigo,")
 out.append("    cat.nombre_es,")
-out.append("    n.snomed_concept_id,")
+out.append("    CASE WHEN sc.id IS NOT NULL THEN n.snomed_concept_id ELSE NULL END,")
 out.append("    n.requiere_pieza,")
 out.append("    n.requiere_caras,")
 out.append("    n.requiere_rx_pre,")
@@ -572,6 +634,7 @@ out.append("    TRUE")
 out.append("FROM odontologia_nomenclador n")
 out.append("LEFT JOIN odontologia_cdt_catalogo cdt ON cdt.codigo_cdt = n.cdt_code_default")
 out.append("LEFT JOIN odontologia_cdt_categorias cat ON cat.codigo = cdt.categoria_codigo")
+out.append("LEFT JOIN snomed_concepts sc ON sc.id = n.snomed_concept_id")
 out.append("ON CONFLICT (codigo_nomenclador) DO UPDATE SET")
 out.append("    descripcion = EXCLUDED.descripcion,")
 out.append("    capitulo = EXCLUDED.capitulo,")

@@ -164,6 +164,68 @@ try {
         ], 200, ['X-Request-Id' => $request->requestId]);
     }
 
+    // Búsqueda integral odontológica por código SNOMED-CT (prácticas y diagnósticos).
+    if (preg_match('#^/v1/odontologia/snomed/([0-9]{6,18})$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->findDentalBySnomed($matches[1], $request);
+
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Catálogo de diagnósticos odontológicos DENTAR (CIE-10 / SNOMED CT).
+    if ($path === '/v1/odontologia/diagnosticos') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->searchDentalDiagnoses($request);
+
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Detalle de un diagnóstico odontológico y sus prestaciones indicadas.
+    // Admite SCTID de SNOMED-CT, código CIE-10 (K02), código DNT-DX o ID.
+    if (preg_match('#^/v1/odontologia/diagnosticos/([A-Za-z0-9\.\-]+)$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->findDentalDiagnosis($matches[1], $request);
+
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Diagnósticos asociados y justificación clínica de una prestación odontológica
+    // Admite ID numérico, código de nomenclador (01.01), código DNT (DNT-000001), CDT (D0150) o SCTID SNOMED-CT.
+    if (preg_match('#^/v1/odontologia/([A-Za-z0-9\.\-]+)/diagnosticos$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->findDentalDiagnoses($matches[1], $request);
+
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
     // Detalle de los catálogos locales (laboratorio, vacunas, odontología,
     // prestaciones, programas e imágenes), con vínculo SNOMED-CT opcional.
     if (preg_match('#^/v1/(laboratorio|vacunas|odontologia|prestaciones|programas|imagenes)/([0-9]{1,12})$#', $path, $matches) === 1) {

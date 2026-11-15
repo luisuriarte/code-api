@@ -8,6 +8,7 @@ nav:
     snomed: "SNOMED-CT"
     anmat: "ANMAT"
     api: "API"
+    docs: "Docs"
     contact: "Contacto"
     access: "Solicitar acceso"
 

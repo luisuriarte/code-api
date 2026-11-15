@@ -138,22 +138,128 @@ final class ConceptController
             ];
         }
 
+        $data = [
+            'concept_id' => (string) $concept['concept_id'],
+            'active' => $this->toBool($concept['active']),
+            'effective_time' => (string) $concept['effective_time'],
+            'module_id' => (string) $concept['module_id'],
+            'definition_status_id' => (string) $concept['definition_status_id'],
+            'descriptions' => $descriptions,
+            'parents' => $this->relatedConcepts($conceptId, $language, 'parents'),
+            'children' => $this->relatedConcepts($conceptId, $language, 'children'),
+            'cie10_codes' => $this->mappedCie10($conceptId, $language),
+        ];
+
+        $dental = $this->dentalMappings($conceptId, $language);
+        if ($dental !== null) {
+            $data['dental'] = $dental;
+        }
+
         return [
-            'data' => [
-                'concept_id' => (string) $concept['concept_id'],
-                'active' => $this->toBool($concept['active']),
-                'effective_time' => (string) $concept['effective_time'],
-                'module_id' => (string) $concept['module_id'],
-                'definition_status_id' => (string) $concept['definition_status_id'],
-                'descriptions' => $descriptions,
-                'parents' => $this->relatedConcepts($conceptId, $language, 'parents'),
-                'children' => $this->relatedConcepts($conceptId, $language, 'children'),
-                'cie10_codes' => $this->mappedCie10($conceptId, $language),
-            ],
+            'data' => $data,
             'meta' => [
                 'language' => $language,
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
             ],
+        ];
+    }
+
+    /**
+     * Obtiene los vínculos odontológicos (procedimientos DENTAR/Nomenclador/CDT y/o diagnósticos)
+     * vinculados al concepto SNOMED-CT, si existen.
+     *
+     * @return array{procedures: list<array<string, mixed>>, diagnoses: list<array<string, mixed>>}|null
+     */
+    private function dentalMappings(string $conceptId, string $language): ?array
+    {
+        $procedures = [];
+        $diagnoses = [];
+
+        // 1. Procedimientos odontológicos asociados al concepto
+        try {
+            $stmtProc = $this->db->prepare(
+                'SELECT DISTINCT
+                        p.id,
+                        p.codigo AS codigo_nomenclador,
+                        p.descripcion,
+                        p.capitulo,
+                        p.cdt_code,
+                        p.cdt_categoria,
+                        m_dnt.dentar_code
+                   FROM odontologia_prestaciones p
+                   LEFT JOIN (
+                       SELECT c.code AS dentar_code, m.external_code
+                         FROM dentar_concept c
+                         JOIN dentar_concept_version cv ON cv.concept_id = c.id
+                         JOIN dentar_concept_mapping m ON m.concept_version_id = cv.id AND m.system_code = \'NOMENCLADOR-AR\'
+                   ) m_dnt ON m_dnt.external_code = p.codigo
+                  WHERE p.snomed_concept_id = CAST(:id AS bigint)
+                     OR EXISTS (
+                         SELECT 1 FROM dentar_concept_mapping sm
+                          WHERE sm.system_code = \'SNOMED-CT\'
+                            AND sm.external_code = :id_str
+                            AND sm.concept_version_id IN (
+                                SELECT cv2.id FROM dentar_concept_version cv2
+                                  JOIN dentar_concept_mapping m2 ON m2.concept_version_id = cv2.id
+                                 WHERE m2.system_code = \'NOMENCLADOR-AR\' AND m2.external_code = p.codigo
+                            )
+                     )
+                  ORDER BY p.codigo ASC'
+            );
+            $stmtProc->execute([
+                ':id' => $conceptId,
+                ':id_str' => $conceptId,
+            ]);
+            foreach ($stmtProc->fetchAll() as $r) {
+                $procedures[] = [
+                    'id' => (string) $r['id'],
+                    'dentar_code' => $r['dentar_code'] !== null ? (string) $r['dentar_code'] : null,
+                    'nomenclator_code' => (string) $r['codigo_nomenclador'],
+                    'description' => (string) $r['descripcion'],
+                    'chapter' => $r['capitulo'] !== null ? (string) $r['capitulo'] : null,
+                    'cdt_code' => $r['cdt_code'] !== null ? (string) $r['cdt_code'] : null,
+                    'cdt_category' => $r['cdt_categoria'] !== null ? (string) $r['cdt_categoria'] : null,
+                ];
+            }
+        } catch (\Throwable) {
+            // Tablas opcionales si aún no migraron
+        }
+
+        // 2. Diagnósticos odontológicos asociados al concepto
+        try {
+            $stmtDiag = $this->db->prepare(
+                'SELECT d.code AS dentar_diagnosis_code,
+                        d.clinical_name,
+                        m_cie.external_code AS cie10_code,
+                        m_cie.external_display AS cie10_description
+                   FROM dentar_diagnosis d
+                   JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'
+                   LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
+                  WHERE m_sct.external_code = :id
+                  ORDER BY d.code ASC'
+            );
+            $stmtDiag->execute([':id' => $conceptId]);
+            foreach ($stmtDiag->fetchAll() as $r) {
+                $diagnoses[] = [
+                    'dentar_diagnosis_code' => (string) $r['dentar_diagnosis_code'],
+                    'clinical_name' => (string) $r['clinical_name'],
+                    'cie10' => $r['cie10_code'] !== null ? [
+                        'code' => (string) $r['cie10_code'],
+                        'description' => (string) $r['cie10_description'],
+                    ] : null,
+                ];
+            }
+        } catch (\Throwable) {
+            // Tablas opcionales si aún no migraron
+        }
+
+        if (empty($procedures) && empty($diagnoses)) {
+            return null;
+        }
+
+        return [
+            'procedures' => $procedures,
+            'diagnoses' => $diagnoses,
         ];
     }
 

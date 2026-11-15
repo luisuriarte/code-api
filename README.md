@@ -5,7 +5,11 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 | Frente | Dominio | Contenido |
 | --- | --- | --- |
 | Portal institucional | `med.origen.ar` | Sitio bilingüe ES/EN con selector de idioma persistente. |
-| API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, odontología, prestaciones, programas e imágenes. |
+| API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, odontología (DENTAR / ADA CDT 2025), prestaciones, programas e imágenes. |
+
+### Documentación de Acceso e Interoperabilidad
+- 📖 [Documentación de la API REST (v1)](README-API.md) — Autenticación, endpoints unificados, catálogos nacionales y módulo odontológico DENTAR / CDT / CIE-10.
+- 🏥 [Guía de Interoperabilidad HL7® FHIR® R4](README-FHIR.md) — Terminología FHIR R4 (`CodeSystem`, `ValueSet`, `ConceptMap`, `$lookup`, `$expand`, `$translate`) y modelado clínico (`Procedure`, `Condition`, `Claim`).
 
 ## Stack
 

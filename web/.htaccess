@@ -8,6 +8,9 @@ Options -Indexes
 
     # Las traducciones y los includes no se sirven por HTTP.
     RewriteRule ^(?:includes|translations)(?:/|$) - [F,L]
+
+    # Enrutamiento de documentación
+    RewriteRule ^docs/?$ docs.php [L,QSA]
 </IfModule>
 
 <IfModule mod_headers.c>

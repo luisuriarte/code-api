@@ -226,7 +226,7 @@ final class TerminologySearchService
             'term' => 't.descripcion',
             'subtitle' => 't.capitulo',
             'kind' => 'dental_procedure',
-            'filters' => ['t.descripcion', 't.codigo_nomenclador', 't.cdt_code'],
+            'filters' => ['t.descripcion', 't.codigo_nomenclador', 't.cdt_code', 'CAST(t.snomed_concept_id AS text)'],
             'metadata' => [
                 'nomenclator_code' => 't.codigo_nomenclador',
                 'cdt_code' => 't.cdt_code',
@@ -710,6 +710,448 @@ final class TerminologySearchService
                 'snomed_concept' => $snomedConcept,
             ],
             'meta' => [
+                'language' => $language,
+                'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Catálogo clínico de diagnósticos odontológicos DENTAR (CIE-10 / SNOMED-CT).
+     * Permite filtrar por texto general (q), código SNOMED-CT (snomed) o código CIE-10 (cie10).
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function searchDentalDiagnoses(Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $query = trim((string) ($request->query['q'] ?? ''));
+        $snomed = trim((string) ($request->query['snomed'] ?? $request->query['snomed_id'] ?? ''));
+        $cie10 = trim((string) ($request->query['cie10'] ?? $request->query['cie10_code'] ?? ''));
+
+        $sql = 'SELECT d.code AS dentar_diagnosis_code,
+                       d.clinical_name,
+                       m_cie.external_code AS cie10_code,
+                       m_cie.external_display AS cie10_description,
+                       m_sct.external_code AS snomed_concept_id,
+                       m_sct.external_display AS snomed_term
+                  FROM dentar_diagnosis d
+                  LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
+                  LEFT JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'';
+
+        $whereClauses = [];
+        $params = [];
+
+        if ($query !== '') {
+            $escaped = '%' . $this->escapeLike($query) . '%';
+            $whereClauses[] = '(d.clinical_name ILIKE :q
+                             OR d.code ILIKE :q
+                             OR m_cie.external_code ILIKE :q
+                             OR m_cie.external_display ILIKE :q
+                             OR m_sct.external_code ILIKE :q
+                             OR m_sct.external_display ILIKE :q)';
+            $params[':q'] = $escaped;
+        }
+
+        if ($snomed !== '') {
+            $whereClauses[] = 'm_sct.external_code = :snomed_filter';
+            $params[':snomed_filter'] = $snomed;
+        }
+
+        if ($cie10 !== '') {
+            $cieExact = strtoupper($cie10);
+            $cieNorm = $this->normalizeCode($cie10);
+            $whereClauses[] = '(upper(m_cie.external_code) = :cie_exact OR replace(upper(m_cie.external_code), \'.\', \'\') = :cie_norm)';
+            $params[':cie_exact'] = $cieExact;
+            $params[':cie_norm'] = $cieNorm;
+        }
+
+        if (!empty($whereClauses)) {
+            $sql .= ' WHERE ' . implode(' AND ', $whereClauses);
+        }
+
+        $sql .= ' ORDER BY d.id ASC';
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll();
+        } catch (\PDOException $e) {
+            throw ApiException::internalError(
+                'El módulo DENTAR / diagnósticos aún no ha sido inicializado en la base de datos.'
+            );
+        }
+
+        $results = [];
+        foreach ($rows as $r) {
+            $results[] = [
+                'code' => $r['dentar_diagnosis_code'],
+                'clinical_name' => $r['clinical_name'],
+                'cie10' => $r['cie10_code'] !== null ? [
+                    'code' => $r['cie10_code'],
+                    'description' => $r['cie10_description'],
+                ] : null,
+                'snomed_ct' => $r['snomed_concept_id'] !== null ? [
+                    'concept_id' => (string) $r['snomed_concept_id'],
+                    'term' => $r['snomed_term'],
+                ] : null,
+            ];
+        }
+
+        return [
+            'data' => $results,
+            'meta' => [
+                'total' => count($results),
+                'query' => $query !== '' ? $query : null,
+                'snomed' => $snomed !== '' ? $snomed : null,
+                'cie10' => $cie10 !== '' ? $cie10 : null,
+                'language' => $language,
+                'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Detalle de un diagnóstico odontológico DENTAR con sus prestaciones indicadas.
+     * Admite búsqueda por SCTID (SNOMED-CT), código CIE-10 (K02), código DENTAR (DNT-DX-0005) o ID.
+     *
+     * @return array{data: array<string, mixed>, meta: array<string, mixed>}
+     */
+    public function findDentalDiagnosis(string $identifier, Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $identifier = trim($identifier);
+
+        if ($identifier === '') {
+            throw ApiException::badRequest('El identificador del diagnóstico no puede estar vacío.');
+        }
+
+        $sql = 'SELECT d.id AS diagnosis_id,
+                       d.code AS dentar_diagnosis_code,
+                       d.clinical_name,
+                       m_cie.external_code AS cie10_code,
+                       m_cie.external_display AS cie10_description,
+                       m_sct.external_code AS snomed_concept_id,
+                       m_sct.external_display AS snomed_term,
+                       c.code AS dentar_procedure_code,
+                       t.term AS procedure_name,
+                       m_ar.external_code AS nomenclador_argentino,
+                       m_cdt.external_code AS cdt_code,
+                       m_sct_proc.external_code AS snomed_procedure_code,
+                       cd.relationship_type,
+                       cd.clinical_rationale
+                  FROM dentar_diagnosis d
+                  LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
+                  LEFT JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'
+                  LEFT JOIN dentar_concept_diagnosis cd ON cd.diagnosis_id = d.id
+                  LEFT JOIN dentar_concept c ON c.id = cd.concept_id
+                  LEFT JOIN dentar_concept_version cv ON cv.concept_id = c.id
+                  LEFT JOIN dentar_term t ON t.concept_version_id = cv.id AND t.term_type = \'preferred\' AND t.language = \'es-AR\'
+                  LEFT JOIN dentar_concept_mapping m_ar ON m_ar.concept_version_id = cv.id AND m_ar.system_code = \'NOMENCLADOR-AR\'
+                  LEFT JOIN dentar_concept_mapping m_cdt ON m_cdt.concept_version_id = cv.id AND m_cdt.system_code = \'CDT-2025\'
+                  LEFT JOIN dentar_concept_mapping m_sct_proc ON m_sct_proc.concept_version_id = cv.id AND m_sct_proc.system_code = \'SNOMED-CT\'
+                 WHERE d.code = :ident
+                    OR m_sct.external_code = :ident
+                    OR upper(m_cie.external_code) = upper(:ident)
+                    OR replace(upper(m_cie.external_code), \'.\', \'\') = :ident_clean
+                    OR d.id = :ident_int
+                 ORDER BY cd.relationship_type ASC, c.code ASC';
+
+        $identClean = $this->normalizeCode($identifier);
+        $identInt = ctype_digit($identifier) ? (int) $identifier : -1;
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':ident' => $identifier,
+                ':ident_clean' => $identClean,
+                ':ident_int' => $identInt,
+            ]);
+            $rows = $stmt->fetchAll();
+        } catch (\PDOException $e) {
+            throw ApiException::internalError(
+                'El módulo DENTAR / diagnósticos aún no ha sido inicializado en la base de datos.'
+            );
+        }
+
+        if (empty($rows)) {
+            throw ApiException::notFound(
+                "No se encontró el diagnóstico odontológico solicitado para '{$identifier}'."
+            );
+        }
+
+        $first = $rows[0];
+        $indicatedProcedures = [];
+
+        foreach ($rows as $r) {
+            if ($r['dentar_procedure_code'] !== null) {
+                $indicatedProcedures[] = [
+                    'dentar_code' => $r['dentar_procedure_code'],
+                    'name' => $r['procedure_name'],
+                    'nomenclador_argentino' => $r['nomenclador_argentino'],
+                    'cdt_code' => $r['cdt_code'],
+                    'snomed_concept_id' => $r['snomed_procedure_code'],
+                    'relationship_type' => $r['relationship_type'],
+                    'clinical_rationale' => $r['clinical_rationale'],
+                ];
+            }
+        }
+
+        return [
+            'data' => [
+                'diagnosis' => [
+                    'dentar_diagnosis_code' => $first['dentar_diagnosis_code'],
+                    'clinical_name' => $first['clinical_name'],
+                    'cie10' => $first['cie10_code'] !== null ? [
+                        'code' => $first['cie10_code'],
+                        'description' => $first['cie10_description'],
+                    ] : null,
+                    'snomed_ct' => $first['snomed_concept_id'] !== null ? [
+                        'concept_id' => (string) $first['snomed_concept_id'],
+                        'term' => $first['snomed_term'],
+                    ] : null,
+                ],
+                'indicated_procedures' => $indicatedProcedures,
+            ],
+            'meta' => [
+                'total_indicated_procedures' => count($indicatedProcedures),
+                'language' => $language,
+                'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Búsqueda integral odontológica por código SNOMED-CT (SCTID).
+     * Devuelve tanto procedimientos/prácticas como diagnósticos bucales vinculados a ese SCTID.
+     *
+     * @return array{data: array<string, mixed>, meta: array<string, mixed>}
+     */
+    public function findDentalBySnomed(string $snomedId, Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $snomedId = trim($snomedId);
+
+        if (preg_match('/^[0-9]{6,18}$/', $snomedId) !== 1) {
+            throw ApiException::badRequest('El identificador no es un SCTID de SNOMED-CT válido.');
+        }
+
+        // 1. Buscar si corresponde a una o más prácticas odontológicas
+        $procSql = 'SELECT DISTINCT
+                           c.code AS dentar_code,
+                           t.term AS prestacion_nombre,
+                           m_ar.external_code AS codigo_nomenclador_ar,
+                           m_cdt.external_code AS codigo_cdt,
+                           cat.name AS categoria
+                      FROM dentar_concept c
+                      JOIN dentar_concept_version cv ON cv.concept_id = c.id
+                      JOIN dentar_term t ON t.concept_version_id = cv.id AND t.term_type = \'preferred\' AND t.language = \'es-AR\'
+                      LEFT JOIN dentar_concept_category cc ON cc.concept_version_id = cv.id AND cc.is_primary = TRUE
+                      LEFT JOIN dentar_category_version cat ON cat.category_id = cc.category_id AND cat.language = \'es-AR\'
+                      LEFT JOIN dentar_concept_mapping m_ar ON m_ar.concept_version_id = cv.id AND m_ar.system_code = \'NOMENCLADOR-AR\'
+                      LEFT JOIN dentar_concept_mapping m_cdt ON m_cdt.concept_version_id = cv.id AND m_cdt.system_code = \'CDT-2025\'
+                      LEFT JOIN dentar_concept_mapping m_sct ON m_sct.concept_version_id = cv.id AND m_sct.system_code = \'SNOMED-CT\'
+                     WHERE m_sct.external_code = :sct
+                        OR EXISTS (
+                            SELECT 1 FROM odontologia_prestaciones op
+                             WHERE op.snomed_concept_id = CAST(:sct_num AS bigint)
+                               AND op.codigo = m_ar.external_code
+                        )
+                     ORDER BY c.code ASC';
+
+        // 2. Buscar si corresponde a uno o más diagnósticos odontológicos
+        $diagSql = 'SELECT d.code AS dentar_diagnosis_code,
+                           d.clinical_name,
+                           m_cie.external_code AS cie10_code,
+                           m_cie.external_display AS cie10_description,
+                           m_sct.external_code AS snomed_concept_id,
+                           m_sct.external_display AS snomed_term
+                      FROM dentar_diagnosis d
+                      JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'
+                      LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
+                     WHERE m_sct.external_code = :sct
+                     ORDER BY d.code ASC';
+
+        try {
+            $stmtProc = $this->db->prepare($procSql);
+            $stmtProc->execute([':sct' => $snomedId, ':sct_num' => $snomedId]);
+            $procedures = $stmtProc->fetchAll();
+
+            $stmtDiag = $this->db->prepare($diagSql);
+            $stmtDiag->execute([':sct' => $snomedId]);
+            $diagnoses = $stmtDiag->fetchAll();
+        } catch (\PDOException $e) {
+            throw ApiException::internalError(
+                'El módulo DENTAR / diagnósticos aún no ha sido inicializado en la base de datos.'
+            );
+        }
+
+        if (empty($procedures) && empty($diagnoses)) {
+            throw ApiException::notFound(
+                "No se encontraron prácticas ni diagnósticos odontológicos vinculados al concepto SNOMED-CT '{$snomedId}'."
+            );
+        }
+
+        $formattedProcedures = array_map(static fn (array $r): array => [
+            'dentar_code' => $r['dentar_code'],
+            'name' => $r['prestacion_nombre'],
+            'nomenclador_argentino' => $r['codigo_nomenclador_ar'],
+            'cdt_code' => $r['codigo_cdt'],
+            'category' => $r['categoria'],
+        ], $procedures);
+
+        $formattedDiagnoses = array_map(static fn (array $r): array => [
+            'dentar_diagnosis_code' => $r['dentar_diagnosis_code'],
+            'clinical_name' => $r['clinical_name'],
+            'cie10' => $r['cie10_code'] !== null ? [
+                'code' => $r['cie10_code'],
+                'description' => $r['cie10_description'],
+            ] : null,
+            'snomed_ct' => [
+                'concept_id' => (string) $r['snomed_concept_id'],
+                'term' => $r['snomed_term'],
+            ],
+        ], $diagnoses);
+
+        return [
+            'data' => [
+                'snomed_concept_id' => $snomedId,
+                'has_procedures' => !empty($formattedProcedures),
+                'has_diagnoses' => !empty($formattedDiagnoses),
+                'procedures' => $formattedProcedures,
+                'diagnoses' => $formattedDiagnoses,
+            ],
+            'meta' => [
+                'procedures_count' => count($formattedProcedures),
+                'diagnoses_count' => count($formattedDiagnoses),
+                'language' => $language,
+                'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Obtiene los diagnósticos CIE-10 / SNOMED-CT asociados y la justificación clínica
+     * de una prestación odontológica DENTAR / Nomenclador / CDT / SNOMED-CT.
+     *
+     * @return array{data: array<string, mixed>, meta: array<string, mixed>}
+     */
+    public function findDentalDiagnoses(string $identifier, Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $identifier = trim($identifier);
+
+        if ($identifier === '') {
+            throw ApiException::badRequest('El identificador de la prestación no puede estar vacío.');
+        }
+
+        // Buscar en la vista v_dentar_procedimiento_diagnostico por:
+        // 1. dentar_code (ej. DNT-000001)
+        // 2. codigo_nomenclador_ar (ej. 01.01)
+        // 3. codigo_cdt (ej. D0150)
+        // 4. snomed_ct_practica (ej. 424759004)
+        // 5. Si es numérico corto, verificar si coincide con odontologia_prestaciones.id para obtener su código
+        // 6. Si es numérico de 6 a 18 dígitos, verificar si coincide con odontologia_prestaciones.snomed_concept_id
+        $procedureCode = $identifier;
+        if (ctype_digit($identifier)) {
+            if (strlen($identifier) >= 6) {
+                $stmtSct = $this->db->prepare(
+                    'SELECT codigo FROM odontologia_prestaciones WHERE snomed_concept_id = CAST(:sct AS bigint) LIMIT 1'
+                );
+                $stmtSct->execute([':sct' => $identifier]);
+                $foundCode = $stmtSct->fetchColumn();
+                if ($foundCode !== false) {
+                    $procedureCode = (string) $foundCode;
+                }
+            } else {
+                $stmtId = $this->db->prepare(
+                    'SELECT codigo FROM odontologia_prestaciones WHERE id = :id LIMIT 1'
+                );
+                $stmtId->execute([':id' => (int) $identifier]);
+                $foundCode = $stmtId->fetchColumn();
+                if ($foundCode !== false) {
+                    $procedureCode = (string) $foundCode;
+                }
+            }
+        }
+
+        $statement = $this->db->prepare(
+            'SELECT dentar_code,
+                    prestacion_nombre,
+                    codigo_nomenclador_ar,
+                    codigo_cdt,
+                    categoria,
+                    codigo_diagnostico_dentar,
+                    diagnostico_nombre,
+                    cie10_codigo,
+                    cie10_descripcion,
+                    snomed_ct_codigo,
+                    tipo_relacion,
+                    justificacion_clinica
+               FROM v_dentar_procedimiento_diagnostico
+              WHERE dentar_code = :ident
+                 OR codigo_nomenclador_ar = :ident
+                 OR upper(codigo_cdt) = upper(:ident)
+                 OR snomed_ct_practica = :ident
+                 OR codigo_nomenclador_ar = :proc_code
+              ORDER BY tipo_relacion ASC, cie10_codigo ASC'
+        );
+
+        try {
+            $statement->execute([
+                ':ident' => $identifier,
+                ':proc_code' => $procedureCode,
+            ]);
+            $rows = $statement->fetchAll();
+        } catch (\PDOException $e) {
+            throw ApiException::internalError(
+                'El módulo DENTAR / diagnósticos aún no ha sido inicializado en la base de datos.'
+            );
+        }
+
+        if (empty($rows)) {
+            throw ApiException::notFound(
+                "No se encontraron prestaciones o diagnósticos odontológicos para el identificador '{$identifier}'."
+            );
+        }
+
+        $first = $rows[0];
+        $diagnoses = [];
+        foreach ($rows as $r) {
+            if ($r['codigo_diagnostico_dentar'] !== null) {
+                $diagnoses[] = [
+                    'dentar_diagnosis_code' => $r['codigo_diagnostico_dentar'],
+                    'name' => $r['diagnostico_nombre'],
+                    'cie10' => $r['cie10_codigo'] !== null ? [
+                        'code' => $r['cie10_codigo'],
+                        'description' => $r['cie10_descripcion'],
+                    ] : null,
+                    'snomed_ct' => $r['snomed_ct_codigo'] !== null ? [
+                        'concept_id' => (string) $r['snomed_ct_codigo'],
+                    ] : null,
+                    'relationship_type' => $r['tipo_relacion'],
+                    'clinical_rationale' => $r['justificacion_clinica'],
+                ];
+            }
+        }
+
+        return [
+            'data' => [
+                'procedure' => [
+                    'dentar_code' => $first['dentar_code'],
+                    'name' => $first['prestacion_nombre'],
+                    'nomenclador_argentino' => $first['codigo_nomenclador_ar'],
+                    'cdt_code' => $first['codigo_cdt'],
+                    'category' => $first['categoria'],
+                ],
+                'clinical_justifications' => $diagnoses,
+            ],
+            'meta' => [
+                'total_diagnoses' => count($diagnoses),
                 'language' => $language,
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
             ],
