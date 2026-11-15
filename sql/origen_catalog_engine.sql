@@ -1,29 +1,21 @@
 -- =============================================================================
--- Origen Salud · Origen Catalog Engine 1.0
--- origen_catalog_engine.sql
+-- Origen Salud · Origen Catalog Engine 1.0 (PostgreSQL 18 Architecture)
+-- Archivo unificado de esquemas, catálogos, aranceles, mapeos y vademécum
 -- =============================================================================
--- Arquitectura de interoperabilidad clínica, arancelaria y farmacéutica
---   1. os_catalog, release, category, item, version, term, identifier
---   2. os_terminology_system, os_concept_mapping (SNOMED CT, CIE-10, LOINC, CDT)
---   3. os_pricing_unit, os_fee_schedule, os_fee_item
---   4. os_substance, os_medicinal_product, os_product_package, os_product_identifier
---   5. Ingesta completa de DENTAR (138 procedimientos) + 6 Nomencladores Nacionales
--- =============================================================================
-
 SET client_encoding = 'UTF8';
 SET statement_timeout = 0;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- =============================================================================
--- 1. TABLAS DEL MOTOR DE CATÁLOGOS (os_catalog_*)
+-- 1. TABLAS NUCLEARES DE CATÁLOGOS (os_catalog_*)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS os_catalog (
     id SERIAL PRIMARY KEY,
     code VARCHAR(50) NOT NULL UNIQUE,
     name VARCHAR(150) NOT NULL,
     organization VARCHAR(150) NOT NULL,
-    country_code VARCHAR(5) NOT NULL DEFAULT 'AR',
-    domain_type VARCHAR(30) NOT NULL,
+    country_code VARCHAR(2) NOT NULL DEFAULT 'AR',
+    domain_type VARCHAR(30) NOT NULL CHECK (domain_type IN ('dental', 'medical', 'biochemical', 'rehabilitation', 'mental_health', 'pharma', 'terminology')),
     description TEXT,
     website_url VARCHAR(255),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -33,11 +25,11 @@ CREATE TABLE IF NOT EXISTS os_catalog (
 CREATE TABLE IF NOT EXISTS os_catalog_release (
     id SERIAL PRIMARY KEY,
     catalog_id INT NOT NULL REFERENCES os_catalog(id) ON DELETE CASCADE,
-    version_tag VARCHAR(30) NOT NULL,
+    version_tag VARCHAR(50) NOT NULL,
     valid_from DATE NOT NULL,
     valid_to DATE,
-    official_norm_reference VARCHAR(255),
-    status VARCHAR(20) NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'deprecated')),
+    official_norm_reference TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'review', 'published', 'deprecated')),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (catalog_id, version_tag)
 );
@@ -46,9 +38,8 @@ CREATE TABLE IF NOT EXISTS os_catalog_category (
     id SERIAL PRIMARY KEY,
     catalog_id INT NOT NULL REFERENCES os_catalog(id) ON DELETE CASCADE,
     code VARCHAR(50) NOT NULL,
-    name VARCHAR(200) NOT NULL,
-    parent_id INT REFERENCES os_catalog_category(id),
-    sort_order INT NOT NULL DEFAULT 0,
+    name VARCHAR(150) NOT NULL,
+    parent_category_id INT REFERENCES os_catalog_category(id) ON DELETE SET NULL,
     UNIQUE (catalog_id, code)
 );
 
@@ -56,7 +47,7 @@ CREATE TABLE IF NOT EXISTS os_catalog_item (
     id SERIAL PRIMARY KEY,
     catalog_id INT NOT NULL REFERENCES os_catalog(id) ON DELETE CASCADE,
     permanent_code VARCHAR(50) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'retired')),
+    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'retired', 'superseded')),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (catalog_id, permanent_code)
 );
@@ -147,7 +138,8 @@ CREATE TABLE IF NOT EXISTS os_fee_schedule (
     valid_to DATE,
     currency VARCHAR(5) NOT NULL DEFAULT 'ARS',
     unit_monetary_value NUMERIC(12, 4),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (catalog_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS os_fee_item (
@@ -180,7 +172,8 @@ CREATE TABLE IF NOT EXISTS os_medicinal_product (
     laboratory VARCHAR(150) NOT NULL,
     pharmacological_action VARCHAR(200),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (brand_name, laboratory)
 );
 
 CREATE TABLE IF NOT EXISTS os_product_package (
@@ -190,7 +183,8 @@ CREATE TABLE IF NOT EXISTS os_product_package (
     dosage_form VARCHAR(100),
     sale_type VARCHAR(50) NOT NULL DEFAULT 'Venta Bajo Receta'
         CHECK (sale_type IN ('Venta Libre', 'Venta Bajo Receta', 'Archivada', 'Decreto')),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (product_id, presentation_text)
 );
 
 CREATE TABLE IF NOT EXISTS os_product_identifier (
@@ -240,10 +234,39 @@ INSERT INTO os_catalog (code, name, organization, country_code, domain_type, des
 ('salud-mental', 'Nomenclador de Psicología y Salud Mental', 'Colegios de Psicólogos y Asociaciones de Psiquiatría', 'AR', 'mental_health', 'Prestaciones de psicoterapia individual, familiar, evaluaciones y peritajes.')
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
--- Releases 2026 oficiales
+-- Releases 2026 oficiales para todos los catálogos
 INSERT INTO os_catalog_release (catalog_id, version_tag, valid_from, official_norm_reference)
 SELECT id, '2026-v1', '2026-01-01', 'Vigencia oficial 2026' FROM os_catalog
 ON CONFLICT (catalog_id, version_tag) DO NOTHING;
+
+-- Cuadros Arancelarios 2026 para todos los catálogos
+INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
+SELECT id, 'Arancel Ético DENTAR 2026', '2026-01-01', 'ARS', 1.0 FROM os_catalog WHERE code = 'dentar'
+ON CONFLICT (catalog_id, name) DO NOTHING;
+
+INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
+SELECT id, 'Nomenclador Nacional Base 2026', '2026-01-01', 'ARS', 12000.0 FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, name) DO NOTHING;
+
+INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
+SELECT id, 'Arancel CUBRA NBU 2026', '2026-01-01', 'ARS', 3500.0 FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, name) DO NOTHING;
+
+INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
+SELECT id, 'Arancel NHPGD Resolución MSAL 2026', '2026-01-01', 'ARS', 1.0 FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, name) DO NOTHING;
+
+INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
+SELECT id, 'Nomenclador Arancelario ANDIS 2026', '2026-01-01', 'ARS', 1.0 FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, name) DO NOTHING;
+
+INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
+SELECT id, 'Arancel Colegiado Kinesiología 2026', '2026-01-01', 'ARS', 1.0 FROM os_catalog WHERE code = 'kinesiologia'
+ON CONFLICT (catalog_id, name) DO NOTHING;
+
+INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
+SELECT id, 'Arancel Referencial Psicología 2026', '2026-01-01', 'ARS', 1.0 FROM os_catalog WHERE code = 'salud-mental'
+ON CONFLICT (catalog_id, name) DO NOTHING;
 
 
 -- Categorías DENTAR
@@ -984,14 +1007,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D3330', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000021'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '73785006', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000021'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1018,14 +1041,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D3330', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000022'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '73785006', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000022'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1052,14 +1075,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D3330', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000023'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '73785006', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000023'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1086,14 +1109,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D3330', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000024'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '73785006', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000024'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1120,14 +1143,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D3330', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000025'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '73785006', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000025'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1154,14 +1177,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D3330', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000026'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '73785006', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000026'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1195,7 +1218,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000027'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1229,7 +1252,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000028'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1263,7 +1286,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000029'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1297,7 +1320,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000030'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1331,7 +1354,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000031'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1365,7 +1388,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000032'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1399,7 +1422,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000033'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1433,7 +1456,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000034'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1467,7 +1490,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000035'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1501,7 +1524,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000036'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1535,7 +1558,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000037'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1569,7 +1592,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000038'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1603,7 +1626,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000039'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1637,7 +1660,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000040'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1671,7 +1694,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000041'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1705,7 +1728,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000042'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1739,7 +1762,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000043'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1773,7 +1796,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000044'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1807,7 +1830,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000045'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1841,7 +1864,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000046'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1875,7 +1898,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000047'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1909,7 +1932,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000048'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1943,7 +1966,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000049'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -1977,7 +2000,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000050'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2011,7 +2034,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000051'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2045,7 +2068,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000052'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2079,7 +2102,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000053'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2113,7 +2136,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000054'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2147,7 +2170,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000055'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2181,7 +2204,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000056'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2215,7 +2238,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000057'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2249,7 +2272,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000058'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2283,7 +2306,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000059'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2317,7 +2340,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000060'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2351,7 +2374,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000061'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2385,7 +2408,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000062'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2419,7 +2442,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000063'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2453,7 +2476,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000064'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2487,7 +2510,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000065'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2521,7 +2544,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000066'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2555,7 +2578,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000067'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2589,7 +2612,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000068'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2623,7 +2646,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000069'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2657,7 +2680,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000070'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2691,7 +2714,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000071'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2718,14 +2741,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D5899', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000072'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '11210001', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000072'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2752,14 +2775,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D5899', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000073'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '11210001', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000073'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2786,14 +2809,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D5899', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000074'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '11210001', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000074'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2820,14 +2843,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D5899', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000075'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '11210001', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000075'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2854,14 +2877,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D5899', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000076'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '11210001', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000076'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2888,14 +2911,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D5899', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000077'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '11210001', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000077'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2922,14 +2945,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D5899', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000078'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '11210001', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000078'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2963,7 +2986,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '67270000', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000079'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -2997,7 +3020,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '67270000', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000080'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3031,7 +3054,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '67270000', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000081'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3065,7 +3088,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '67270000', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000082'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3099,7 +3122,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '67270000', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000083'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3133,7 +3156,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000084'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3167,7 +3190,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000085'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3201,7 +3224,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000086'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3235,7 +3258,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000087'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3269,7 +3292,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000088'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3303,7 +3326,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000089'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3337,7 +3360,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000090'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3371,7 +3394,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000091'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3405,7 +3428,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000092'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3439,7 +3462,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '38694004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000093'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3466,14 +3489,14 @@ ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 4, 'D8010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
+SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000094'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000094'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3507,7 +3530,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000095'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3541,7 +3564,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000096'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3575,7 +3598,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000097'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3609,7 +3632,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000098'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3643,7 +3666,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000099'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3677,7 +3700,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000100'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3711,7 +3734,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000101'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3745,7 +3768,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000102'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3779,7 +3802,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000103'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3813,7 +3836,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '8708008', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000104'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3847,7 +3870,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000105'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3881,7 +3904,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000106'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3915,7 +3938,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000107'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3949,7 +3972,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000108'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -3983,7 +4006,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000109'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4017,7 +4040,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000110'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4051,7 +4074,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000111'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4085,7 +4108,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000112'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4119,7 +4142,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000113'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4153,7 +4176,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000114'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4187,7 +4210,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000115'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4221,7 +4244,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '234737002', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000116'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4236,7 +4259,7 @@ SELECT i.id, r.id, c.id, E'Extracción dentaria', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000117'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4255,7 +4278,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000117'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4270,7 +4293,7 @@ SELECT i.id, r.id, c.id, E'Plástica de comunicación buco-sinusal como riesgo p
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000118'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4289,7 +4312,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000118'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4304,7 +4327,7 @@ SELECT i.id, r.id, c.id, E'Biopsia por punción o aspiración', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000119'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4323,7 +4346,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000119'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4338,7 +4361,7 @@ SELECT i.id, r.id, c.id, E'Alveolectomia estabilizadora ( 6 zonas ): por zona', 
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000120'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4357,7 +4380,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000120'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4372,7 +4395,7 @@ SELECT i.id, r.id, c.id, E'Reimplante dentario inmediato al traumatismo', 'es-AR
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000121'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4391,7 +4414,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000121'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4406,7 +4429,7 @@ SELECT i.id, r.id, c.id, E'Incisión y drenaje de abscesos por via intrabucal', 
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000122'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4425,7 +4448,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000122'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4440,7 +4463,7 @@ SELECT i.id, r.id, c.id, E'Biopsia por escisión', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000123'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4459,7 +4482,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000123'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4474,7 +4497,7 @@ SELECT i.id, r.id, c.id, E'Alargamiento quirúrgico de la corona clínica', 'es-
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000124'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4493,7 +4516,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000124'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4508,7 +4531,7 @@ SELECT i.id, r.id, c.id, E'Extracción de dientes retenidos o restos radiculares
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000125'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4527,7 +4550,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000125'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4542,7 +4565,7 @@ SELECT i.id, r.id, c.id, E'Germectomía', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000126'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4561,7 +4584,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000126'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4576,7 +4599,7 @@ SELECT i.id, r.id, c.id, E'Libreración de dientes retenidos', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000127'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4595,7 +4618,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000127'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4610,7 +4633,7 @@ SELECT i.id, r.id, c.id, E'Apicectomía', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000128'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4629,7 +4652,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000128'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4644,7 +4667,7 @@ SELECT i.id, r.id, c.id, E'Tratamiento de osteomielitis', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000129'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4663,7 +4686,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000129'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4678,7 +4701,7 @@ SELECT i.id, r.id, c.id, E'Extracción de cuerpo extraño', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000130'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4697,7 +4720,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000130'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4712,7 +4735,7 @@ SELECT i.id, r.id, c.id, E'Alveolectomía correctiva( 6 zonas ): por zona', 'es-
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000131'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4731,7 +4754,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000131'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4746,7 +4769,7 @@ SELECT i.id, r.id, c.id, E'Frenectomía', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000132'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4765,7 +4788,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000132'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4780,7 +4803,7 @@ SELECT i.id, r.id, c.id, E'Radectomía', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000133'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4799,7 +4822,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000133'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4814,7 +4837,7 @@ SELECT i.id, r.id, c.id, E'Extracción por alveolectomía externa (complicación
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000134'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4833,7 +4856,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000134'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4848,7 +4871,7 @@ SELECT i.id, r.id, c.id, E'Extracción de dientes en retención ósea.', 'es-AR'
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000135'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4867,7 +4890,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000135'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4882,7 +4905,7 @@ SELECT i.id, r.id, c.id, E'Sutura de encías como tratamiento de lesión traumá
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
+LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000136'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
@@ -4901,7 +4924,7 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '274154007', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000136'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
@@ -4996,161 +5019,2594 @@ FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'dentar' AND i.permanent_code IN ('DNT-000049', 'DNT-000050', 'DNT-000051')
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
-
 -- =============================================================================
--- 7. INGESTA: NOMENCLADOR NACIONAL MÉDICO / PMO (nn-pmo)
+-- 7. INGESTA: NOMENCLADOR NACIONAL MÉDICO / PMO (nn-pmo) (11 ITEMS)
 -- =============================================================================
-INSERT INTO os_catalog_item (catalog_id, permanent_code)
-SELECT id, 'NN-420101' FROM os_catalog WHERE code = 'nn-pmo' ON CONFLICT DO NOTHING;
 
-INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term)
-SELECT i.id, r.id, 'Consulta médica general o especializada en consultorio'
+-- Item NN-420101 (42.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-420101', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Consulta médica general o especializada en consultorio', 'es-AR'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420101'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'CÓDIGO_OFICIAL', '42.01.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420101'
-ON CONFLICT DO NOTHING;
-
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'SIN_PUNTOS', '420101', FALSE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420101'
-ON CONFLICT DO NOTHING;
-
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '185349003', 'Consulta médica ambulatoria (procedimiento)', 'equivalent', 'procedure_concept'
+SELECT i.id, 1, '185349003', E'Consulta médica ambulatoria (procedimiento)', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420101'
-ON CONFLICT DO NOTHING;
-
-
--- =============================================================================
--- 8. INGESTA: NOMENCLADOR BIOQUÍMICO ÚNICO (nbu)
--- =============================================================================
-INSERT INTO os_catalog_item (catalog_id, permanent_code)
-SELECT id, 'NBU-660475' FROM os_catalog WHERE code = 'nbu' ON CONFLICT DO NOTHING;
-
-INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term)
-SELECT i.id, r.id, 'Hemograma completo (recuento globular, fórmula leucocitaria, Hb y Hto)'
-FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
-WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
-SELECT i.id, 'CÓDIGO_CUBRA', '660475', TRUE
-FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475'
-ON CONFLICT DO NOTHING;
-
--- Mapeo NBU a LOINC y SNOMED CT
-INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 3, '58410-2', 'CBC panel - Blood by Automated count', 'equivalent', 'observation_concept'
-FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
-SELECT i.id, 1, '43789009', 'Recuento sanguíneo completo (procedimiento)', 'equivalent', 'procedure_concept'
-FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475'
-ON CONFLICT DO NOTHING;
-
--- Arancel NBU en UB
-INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount)
-SELECT f.id, i.id, u.id, 3.8000
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, NULL, 0.0000
 FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 CROSS JOIN os_fee_schedule f
 CROSS JOIN os_pricing_unit u
-WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475' AND f.name LIKE 'Arancel CUBRA%' AND u.code = 'UB'
-ON CONFLICT DO NOTHING;
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420101' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
 
+-- Item NN-420102 (42.01.02)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-420102', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Consulta médica general o especializada en domicilio', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420102'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '42.01.02', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '420102', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '308439007', E'Visita médica a domicilio (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420102'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.5000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-420102' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-430101 (43.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-430101', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Consulta de guardia / urgencia médica', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-430101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '43.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-430101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '430101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-430101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '50849002', E'Atención de urgencia médica (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-430101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.2000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-430101' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-340101 (34.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-340101', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Electrocardiograma de rutina (ECG) de 12 derivaciones con informe', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '34.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '340101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '268400002', E'Electrocardiograma de 12 derivaciones', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '11524-6', E'EKG study', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, NULL, 0.5000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340101' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-340105 (34.01.05)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-340105', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Ergometría computarizada de 12 derivaciones / prueba de esfuerzo', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340105'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '34.01.05', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340105'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '340105', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340105'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '44734002', E'Prueba de esfuerzo cardiovascular', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340105'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '73788-2', E'Cardiac stress test', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340105'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 3.5000, NULL, 2.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-340105' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-170101 (17.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-170101', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Apendicectomía por laparotomía o laparoscópica', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '17.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '170101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '80146002', E'Apendicectomía (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 18.0000, NULL, 12.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170101' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-170112 (17.01.12)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-170112', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Colecistectomía laparoscópica con colangiografía intraoperatoria', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170112'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '17.01.12', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170112'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '170112', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170112'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '45595009', E'Colecistectomía laparoscópica (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170112'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 24.0000, NULL, 16.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-170112' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-180101 (18.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-180101', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Atención del parto vaginal en quirófano o sala de partos institucional', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '18.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '180101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '236973005', E'Parto vaginal normal (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 20.0000, NULL, 10.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180101' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-180102 (18.01.02)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-180102', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Operación cesárea con o sin histerectomía', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180102'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '18.01.02', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '180102', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '11466000', E'Operación cesárea (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180102'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 22.0000, NULL, 14.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-180102' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'GALENO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-400101 (40.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-400101', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Día clínico de internación en sala general con atención de enfermería', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '40.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '400101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '32485007', E'Internación hospitalaria (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, NULL, 5.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400101' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'MODULO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NN-400103 (40.01.03)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NN-400103', 'active' FROM os_catalog WHERE code = 'nn-pmo'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Día de internación en Unidad de Terapia Intensiva (UTI) polivalente', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400103'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '40.01.03', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400103'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '400103', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400103'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '305351004', E'Cuidados intensivos en UTI (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400103'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, NULL, 18.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nn-pmo' AND i.permanent_code = 'NN-400103' AND f.name = 'Nomenclador Nacional Base 2026' AND u.code = 'MODULO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
 
 -- =============================================================================
--- 9. INGESTA: DISCAPACIDAD (andis)
+-- 8. INGESTA: NOMENCLADOR BIOQUÍMICO ÚNICO (nbu) (14 ITEMS)
 -- =============================================================================
-INSERT INTO os_catalog_item (catalog_id, permanent_code)
-SELECT id, 'ANDIS-250101' FROM os_catalog WHERE code = 'andis' ON CONFLICT DO NOTHING;
 
-INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term)
-SELECT i.id, r.id, 'Módulo de rehabilitación ambulatoria integral'
+-- Item NBU-660475 (660475)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660475', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Hemograma completo (recuento de hematíes, leucocitos, fórmula leucocitaria, Hb y Hto)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660475', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '43789009', E'Recuento sanguíneo completo (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '58410-2', E'CBC panel - Blood by Automated count', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 3.8000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660475' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660370 (660370)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660370', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Glucemia en ayunas (determinación enzimática)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660370'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660370', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660370'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '67079006', E'Medición de glucosa en suero (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660370'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '1558-6', E'Fasting glucose [Mass/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660370'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.8000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660370' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660855 (660855)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660855', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Uremia / urea en sangre por método cinético', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660855'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660855', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660855'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '26881000', E'Medición de urea en suero (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660855'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '3094-0', E'Urea nitrogen [Mass/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660855'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.8000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660855' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660230 (660230)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660230', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Creatinina en sangre (índice de filtrado glomerular)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660230'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660230', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660230'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '27171005', E'Medición de creatinina en suero (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660230'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '2160-0', E'Creatinine [Mass/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660230'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 2.0000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660230' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660180 (660180)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660180', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Colesterol total sérico enzimático', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660180'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660180', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660180'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '271062006', E'Medición de colesterol sérico total (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660180'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '2093-3', E'Cholesterol [Mass/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660180'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 2.0000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660180' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660181 (660181)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660181', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Colesterol HDL (alta densidad)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660181'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660181', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660181'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '28036006', E'Medición de colesterol HDL (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660181'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '2085-9', E'Cholesterol in HDL [Mass/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660181'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 2.5000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660181' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660182 (660182)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660182', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Colesterol LDL calculado o dosado', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660182'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660182', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660182'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '39689006', E'Medición de colesterol LDL (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660182'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '13457-7', E'Cholesterol in LDL [Mass/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660182'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 2.5000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660182' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660810 (660810)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660810', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Triglicéridos séricos', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660810'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660810', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660810'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '14740000', E'Medición de triglicéridos séricos (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660810'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '2571-8', E'Triglyceride [Mass/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660810'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 2.2000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660810' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660490 (660490)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660490', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Hepatograma completo (GOT, GPT, FAL, Bilirrubina total y fraccionada)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660490'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660490', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660490'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '24325000', E'Perfil hepático (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660490'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '24325-3', E'Hepatic function panel - Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660490'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 5.5000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660490' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660600 (660600)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660600', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Orina completa (examen físico, químico y sedimento urinario microscópico)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660600'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660600', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660600'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '27171005', E'Análisis de orina rutinario (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660600'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '24356-8', E'Urinalysis complete panel - Urine', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660600'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 2.2000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660600' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660835 (660835)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660835', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'TSH (Tirotrofina sérica por quimioluminiscencia ultrasensible)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660835'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660835', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660835'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '67174007', E'Medición de tirotropina sérica (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660835'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '3016-3', E'Thyrotropin [Units/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660835'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 6.0000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660835' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660825 (660825)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660825', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'T4 libre (Tiroxina libre sérica)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660825'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660825', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660825'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '69566008', E'Medición de tiroxina libre (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660825'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '3024-7', E'Thyroxine (T4) free [Mass/volume] in Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660825'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 6.0000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660825' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660485 (660485)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660485', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Hemoglobina glicosilada (HbA1c por HPLC)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660485'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660485', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660485'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '43396009', E'Medición de hemoglobina A1c (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660485'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '4548-4', E'Hemoglobin A1c/Hemoglobin.total in Blood', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660485'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 5.0000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660485' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NBU-660500 (660500)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NBU-660500', 'active' FROM os_catalog WHERE code = 'nbu'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Serología para VIH 1/2 (Anticuerpos + Antígeno p24 de 4ta generación)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660500'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '660500', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660500'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '104344004', E'Prueba de detección serológica de VIH (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660500'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 3, '56888-1', E'HIV 1 and 2 tests - Serum or Plasma', 'equivalent', 'observation_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660500'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 7.5000, NULL, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nbu' AND i.permanent_code = 'NBU-660500' AND f.name = 'Arancel CUBRA NBU 2026' AND u.code = 'UB'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- =============================================================================
+-- 9. INGESTA: HOSPITALES PÚBLICOS DE GESTIÓN DESCENTRALIZADA (nhpgd) (8 ITEMS)
+-- =============================================================================
+
+-- Item NHPGD-010101 (01.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NHPGD-010101', 'active' FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Consulta médica ambulatoria en hospital público (primer nivel / guardia)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '01.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '010101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '185349003', E'Consulta médica ambulatoria (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 6500.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010101' AND f.name = 'Arancel NHPGD Resolución MSAL 2026' AND u.code = 'PESOS'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NHPGD-010102 (01.01.02)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NHPGD-010102', 'active' FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Consulta médica de especialidad / interconsulta hospitalaria', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010102'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '01.01.02', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '010102', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '185349003', E'Consulta médica ambulatoria (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010102'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 8200.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-010102' AND f.name = 'Arancel NHPGD Resolución MSAL 2026' AND u.code = 'PESOS'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NHPGD-020101 (02.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NHPGD-020101', 'active' FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Consulta odontológica y atención de urgencia odontológica hospitalaria', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-020101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '02.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-020101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '020101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-020101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '424759004', E'Consulta odontológica (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-020101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 7800.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-020101' AND f.name = 'Arancel NHPGD Resolución MSAL 2026' AND u.code = 'PESOS'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NHPGD-030101 (03.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NHPGD-030101', 'active' FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Día cama en sala de cuidados generales / internación clínica hospitalaria', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '03.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '030101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '32485007', E'Internación hospitalaria (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 38000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030101' AND f.name = 'Arancel NHPGD Resolución MSAL 2026' AND u.code = 'PESOS'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NHPGD-030102 (03.01.02)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NHPGD-030102', 'active' FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Día cama en Unidad de Cuidados Intensivos Pediátricos o Adultos (UTI)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030102'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '03.01.02', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '030102', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '305351004', E'Cuidados intensivos en UTI (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030102'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 125000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-030102' AND f.name = 'Arancel NHPGD Resolución MSAL 2026' AND u.code = 'PESOS'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NHPGD-040101 (04.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NHPGD-040101', 'active' FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Atención integral del parto eutócico institucional y puerperio', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '04.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '040101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '236973005', E'Parto vaginal normal (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 145000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040101' AND f.name = 'Arancel NHPGD Resolución MSAL 2026' AND u.code = 'PESOS'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NHPGD-040102 (04.01.02)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NHPGD-040102', 'active' FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Operación cesárea programada o de urgencia y cuidados neonatales iniciales', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040102'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '04.01.02', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '040102', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '11466000', E'Operación cesárea (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040102'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 195000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-040102' AND f.name = 'Arancel NHPGD Resolución MSAL 2026' AND u.code = 'PESOS'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item NHPGD-050101 (05.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'NHPGD-050101', 'active' FROM os_catalog WHERE code = 'nhpgd'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Intervención quirúrgica en quirófano ambulatorio con anestesia local/regional', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-050101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '05.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-050101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '050101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-050101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '387713003', E'Procedimiento quirúrgico (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-050101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 62000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'nhpgd' AND i.permanent_code = 'NHPGD-050101' AND f.name = 'Arancel NHPGD Resolución MSAL 2026' AND u.code = 'PESOS'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- =============================================================================
+-- 10. INGESTA: PRESTACIONES PARA PERSONAS CON DISCAPACIDAD (andis) (9 ITEMS)
+-- =============================================================================
+
+-- Item ANDIS-250101 (250101)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250101', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Módulo de rehabilitación ambulatoria integral (kinesiología, terapia ocupacional, fonoaudiología)', 'es-AR'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250101'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
-SELECT i.id, 'CÓDIGO_ANDIS', '250101', TRUE
+SELECT i.id, 'CÓDIGO_OFICIAL', '250101', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
 WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250101'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '386053000', E'Rehabilitación ambulatoria integral (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 85000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250101' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'MODULO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
 
+-- Item ANDIS-250102 (250102)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250102', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión individual de estimulación fonoaudiológica y rehabilitación de deglución/lenguaje', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250102'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '250102', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '284478002', E'Terapia del habla y del lenguaje (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250102'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 9200.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250102' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item ANDIS-250103 (250103)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250103', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión individual de psicopedagogía y apoyo escolar especializado', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250103'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '250103', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250103'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '76168009', E'Terapia psicopedagógica (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250103'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 9200.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250103' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item ANDIS-250104 (250104)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250104', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión de terapia ocupacional para desarrollo de autonomía y vida diaria', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250104'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '250104', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250104'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '385805005', E'Terapia ocupacional (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250104'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 9200.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250104' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item ANDIS-250201 (250201)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250201', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Centro de Día - Jornada Simple (con alimentación y talleres adaptados)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250201'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '250201', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250201'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '310168007', E'Servicio de centro de día (régimen)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250201'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 210000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250201' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'MODULO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item ANDIS-250202 (250202)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250202', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Centro de Día - Jornada Doble (completa con talleres y actividades terapéuticas)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250202'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '250202', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250202'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '310168007', E'Servicio de centro de día (régimen)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250202'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 345000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250202' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'MODULO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item ANDIS-250301 (250301)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250301', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Módulo CET - Jornada Doble con abordaje multidisciplinario pedagógico y clínico', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250301'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '250301', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250301'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '386053000', E'Centro educativo terapéutico (régimen)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250301'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 380000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250301' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'MODULO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item ANDIS-250401 (250401)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250401', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Transporte especial para personas con discapacidad (arancel por kilómetro recorrido)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250401'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '250401', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250401'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '413294000', E'Transporte especial de paciente (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250401'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 520.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250401' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'KM'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item ANDIS-250501 (250501)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'ANDIS-250501', 'active' FROM os_catalog WHERE code = 'andis'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Acompañante de apoyo a la inclusión escolar (maestra/o de apoyo a la inclusión)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250501'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '250501', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250501'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '76168009', E'Apoyo a la inclusión educativa (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250501'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 190000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'andis' AND i.permanent_code = 'ANDIS-250501' AND f.name = 'Nomenclador Arancelario ANDIS 2026' AND u.code = 'MODULO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
 
 -- =============================================================================
--- 10. INGESTA: DOMINIO FARMACÉUTICO MULTICAPA
+-- 11. INGESTA: KINESIOLOGÍA Y FISIATRÍA (kinesiologia) (6 ITEMS)
 -- =============================================================================
-INSERT INTO os_substance (name, atc_code) VALUES
-('Amoxicilina', 'J01CA04'),
-('Amoxicilina + Ácido Clavulánico', 'J01CR02'),
-('Ibuprofeno', 'M01AE01'),
-('Paracetamol', 'N02BE01'),
-('Losartán Potásico', 'C09CA01')
+
+-- Item KIN-250101 (25.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'KIN-250101', 'active' FROM os_catalog WHERE code = 'kinesiologia'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión de fisioterapia y kinesiología motriz en consultorio (ejercicios, movilización)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '25.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '250101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '91251008', E'Terapia física (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 8500.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250101' AND f.name = 'Arancel Colegiado Kinesiología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item KIN-250102 (25.01.02)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'KIN-250102', 'active' FROM os_catalog WHERE code = 'kinesiologia'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión de fisioterapia y kinesiología motriz en domicilio del paciente', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250102'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '25.01.02', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '250102', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '91251008', E'Terapia física domiciliaria (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250102'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 12500.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250102' AND f.name = 'Arancel Colegiado Kinesiología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item KIN-250103 (25.01.03)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'KIN-250103', 'active' FROM os_catalog WHERE code = 'kinesiologia'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión de kinesiología respiratoria (drenaje postural, aspiración, ejercicios ventilatorios)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250103'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '25.01.03', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250103'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '250103', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250103'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '304526009', E'Terapia respiratoria (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250103'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 9500.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250103' AND f.name = 'Arancel Colegiado Kinesiología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item KIN-250104 (25.01.04)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'KIN-250104', 'active' FROM os_catalog WHERE code = 'kinesiologia'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Aplicación de aparatología fisioterapéutica (magnetoterapia, ultrasonido, electroestimulación TENS)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250104'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '25.01.04', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250104'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '250104', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250104'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '91251008', E'Fisioterapia instrumental (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250104'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 6800.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250104' AND f.name = 'Arancel Colegiado Kinesiología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item KIN-250105 (25.01.05)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'KIN-250105', 'active' FROM os_catalog WHERE code = 'kinesiologia'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Rehabilitación neuromuscular compleja (Bobath, Kabat, reeducación de la marcha)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250105'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '25.01.05', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250105'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '250105', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250105'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '91251008', E'Rehabilitación neuromuscular (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250105'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 14000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250105' AND f.name = 'Arancel Colegiado Kinesiología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item KIN-250106 (25.01.06)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'KIN-250106', 'active' FROM os_catalog WHERE code = 'kinesiologia'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Drenaje linfático manual por miembro afectado (postquirúrgico / oncológico)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250106'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '25.01.06', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250106'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '250106', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250106'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '229562008', E'Drenaje linfático manual (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250106'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 11000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'kinesiologia' AND i.permanent_code = 'KIN-250106' AND f.name = 'Arancel Colegiado Kinesiología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- =============================================================================
+-- 12. INGESTA: PSICOLOGÍA Y SALUD MENTAL (salud-mental) (6 ITEMS)
+-- =============================================================================
+
+-- Item SM-330101 (33.01.01)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'SM-330101', 'active' FROM os_catalog WHERE code = 'salud-mental'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión individual de psicoterapia en consultorio o teleconsulta (45-50 min)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330101'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '33.01.01', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '330101', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330101'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '84114007', E'Psicoterapia individual (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330101'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 11500.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330101' AND f.name = 'Arancel Referencial Psicología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item SM-330102 (33.01.02)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'SM-330102', 'active' FROM os_catalog WHERE code = 'salud-mental'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión de psicoterapia de pareja o grupo familiar', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330102'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '33.01.02', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '330102', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330102'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '108313002', E'Psicoterapia familiar (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330102'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 16000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330102' AND f.name = 'Arancel Referencial Psicología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item SM-330103 (33.01.03)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'SM-330103', 'active' FROM os_catalog WHERE code = 'salud-mental'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Sesión de psicoterapia grupal (hasta 8 pacientes)', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330103'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '33.01.03', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330103'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '330103', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330103'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '39716008', E'Psicoterapia de grupo (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330103'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 6500.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330103' AND f.name = 'Arancel Referencial Psicología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item SM-330104 (33.01.04)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'SM-330104', 'active' FROM os_catalog WHERE code = 'salud-mental'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Evaluación psicodiagnóstica completa con batería de tests y emisión de informe pericial', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330104'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '33.01.04', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330104'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '330104', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330104'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '85247002', E'Evaluación psicodiagnóstica (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330104'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 52000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330104' AND f.name = 'Arancel Referencial Psicología 2026' AND u.code = 'MODULO'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item SM-330105 (33.01.05)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'SM-330105', 'active' FROM os_catalog WHERE code = 'salud-mental'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Consulta psiquiátrica clínica, evaluación psicofarmacológica y ajuste de dosis', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330105'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '33.01.05', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330105'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '330105', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330105'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '185349003', E'Consulta psiquiátrica (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330105'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 14500.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330105' AND f.name = 'Arancel Referencial Psicología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- Item SM-330106 (33.01.06)
+INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
+SELECT id, 'SM-330106', 'active' FROM os_catalog WHERE code = 'salud-mental'
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+
+INSERT INTO os_catalog_item_version (item_id, release_id, preferred_term, language_code)
+SELECT i.id, r.id, E'Interconsulta institucional psicológica / psiquiátrica en sala de internación sanatorial', 'es-AR'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330106'
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
+
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'CÓDIGO_OFICIAL', '33.01.06', TRUE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330106'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
+SELECT i.id, 'SIN_PUNTOS', '330106', FALSE
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330106'
+ON CONFLICT (item_id, system_name, value) DO NOTHING;
+INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
+SELECT i.id, 1, '185349003', E'Interconsulta psiquiátrica hospitalaria (procedimiento)', 'equivalent', 'procedure_concept'
+FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330106'
+ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
+INSERT INTO os_fee_item (fee_schedule_id, item_id, pricing_unit_id, units_amount, fixed_price, expenses_amount)
+SELECT f.id, i.id, u.id, 1.0000, 13000.0000, 0.0000
+FROM os_catalog_item i
+JOIN os_catalog cat ON cat.id = i.catalog_id
+CROSS JOIN os_fee_schedule f
+CROSS JOIN os_pricing_unit u
+WHERE cat.code = 'salud-mental' AND i.permanent_code = 'SM-330106' AND f.name = 'Arancel Referencial Psicología 2026' AND u.code = 'SESION'
+ON CONFLICT (fee_schedule_id, item_id) DO UPDATE SET
+    units_amount = EXCLUDED.units_amount,
+    fixed_price = EXCLUDED.fixed_price,
+    expenses_amount = EXCLUDED.expenses_amount;
+
+-- =============================================================================
+-- 13. INGESTA: DOMINIO FARMACÉUTICO MULTICAPA (10 MEDICAMENTOS)
+-- =============================================================================
+
+-- Fármaco: AMOXIDAL 500 (Amoxicilina)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Amoxicilina', E'J01CA04')
 ON CONFLICT (name) DO NOTHING;
 
--- Amoxidal 500
 INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
-SELECT id, 'AMOXIDAL', 'Roemmers', 'Antibiótico betalactámico bactericida' FROM os_substance WHERE name = 'Amoxicilina'
-ON CONFLICT DO NOTHING;
+SELECT id, E'AMOXIDAL 500', E'Roemmers', E'Antibiótico betalactámico bactericida' FROM os_substance WHERE name = E'Amoxicilina'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
 
 INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
-SELECT id, '500 mg x 16 comprimidos recubiertos', 'Comprimidos', 'Venta Bajo Receta' FROM os_medicinal_product WHERE brand_name = 'AMOXIDAL'
-ON CONFLICT DO NOTHING;
+SELECT id, E'Envase con 16 comprimidos recubiertos', E'Comprimidos recubiertos', E'Venta Bajo Receta'
+FROM os_medicinal_product WHERE brand_name = E'AMOXIDAL 500' AND laboratory = E'Roemmers'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
 
--- Identificadores Troquel / AlfaBeta / Kairos / GTIN
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
 INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
 SELECT p.id, 'TROQUEL', '458921', TRUE FROM os_product_package p
-JOIN os_medicinal_product mp ON mp.id = p.product_id WHERE mp.brand_name = 'AMOXIDAL'
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'AMOXIDAL 500' AND p.presentation_text = E'Envase con 16 comprimidos recubiertos'
 ON CONFLICT (system_code, identifier_value) DO NOTHING;
 
 INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
 SELECT p.id, 'ALFABETA', '12045', FALSE FROM os_product_package p
-JOIN os_medicinal_product mp ON mp.id = p.product_id WHERE mp.brand_name = 'AMOXIDAL'
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'AMOXIDAL 500' AND p.presentation_text = E'Envase con 16 comprimidos recubiertos'
 ON CONFLICT (system_code, identifier_value) DO NOTHING;
 
 INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
 SELECT p.id, 'KAIROS', '30491', FALSE FROM os_product_package p
-JOIN os_medicinal_product mp ON mp.id = p.product_id WHERE mp.brand_name = 'AMOXIDAL'
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'AMOXIDAL 500' AND p.presentation_text = E'Envase con 16 comprimidos recubiertos'
 ON CONFLICT (system_code, identifier_value) DO NOTHING;
 
 INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
 SELECT p.id, 'GTIN', '7791234567890', FALSE FROM os_product_package p
-JOIN os_medicinal_product mp ON mp.id = p.product_id WHERE mp.brand_name = 'AMOXIDAL'
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'AMOXIDAL 500' AND p.presentation_text = E'Envase con 16 comprimidos recubiertos'
 ON CONFLICT (system_code, identifier_value) DO NOTHING;
 
--- Actron 600
+-- Fármaco: AMOXIDAL DUO (Amoxicilina + Ácido Clavulánico)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Amoxicilina + Ácido Clavulánico', E'J01CR02')
+ON CONFLICT (name) DO NOTHING;
+
 INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
-SELECT id, 'ACTRON 600', 'Bayer', 'Analgésico, antiinflamatorio no esteroide (AINE)' FROM os_substance WHERE name = 'Ibuprofeno'
-ON CONFLICT DO NOTHING;
+SELECT id, E'AMOXIDAL DUO', E'Roemmers', E'Antibiótico bactericida de amplio espectro' FROM os_substance WHERE name = E'Amoxicilina + Ácido Clavulánico'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
 
 INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
-SELECT id, '600 mg x 20 cápsulas blandas', 'Cápsulas blandas', 'Venta Bajo Receta' FROM os_medicinal_product WHERE brand_name = 'ACTRON 600'
-ON CONFLICT DO NOTHING;
+SELECT id, E'Envase con 14 comprimidos recubiertos', E'Comprimidos recubiertos', E'Venta Bajo Receta'
+FROM os_medicinal_product WHERE brand_name = E'AMOXIDAL DUO' AND laboratory = E'Roemmers'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
 
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
 INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
-SELECT p.id, 'TROQUEL', '324510', TRUE FROM os_product_package p
-JOIN os_medicinal_product mp ON mp.id = p.product_id WHERE mp.brand_name = 'ACTRON 600'
+SELECT p.id, 'TROQUEL', '458930', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'AMOXIDAL DUO' AND p.presentation_text = E'Envase con 14 comprimidos recubiertos'
 ON CONFLICT (system_code, identifier_value) DO NOTHING;
 
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '12046', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'AMOXIDAL DUO' AND p.presentation_text = E'Envase con 14 comprimidos recubiertos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '30492', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'AMOXIDAL DUO' AND p.presentation_text = E'Envase con 14 comprimidos recubiertos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7791234567891', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'AMOXIDAL DUO' AND p.presentation_text = E'Envase con 14 comprimidos recubiertos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+-- Fármaco: ACTRON 600 (Ibuprofeno)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Ibuprofeno', E'M01AE01')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
+SELECT id, E'ACTRON 600', E'Bayer', E'Analgésico, antiinflamatorio y antipirético no esteroide (AINE)' FROM os_substance WHERE name = E'Ibuprofeno'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
+
+INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
+SELECT id, E'Envase con 20 cápsulas blandas de rápida acción', E'Cápsulas blandas', E'Venta Bajo Receta'
+FROM os_medicinal_product WHERE brand_name = E'ACTRON 600' AND laboratory = E'Bayer'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
+
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'TROQUEL', '324510', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'ACTRON 600' AND p.presentation_text = E'Envase con 20 cápsulas blandas de rápida acción'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '11024', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'ACTRON 600' AND p.presentation_text = E'Envase con 20 cápsulas blandas de rápida acción'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '21904', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'ACTRON 600' AND p.presentation_text = E'Envase con 20 cápsulas blandas de rápida acción'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7798765432101', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'ACTRON 600' AND p.presentation_text = E'Envase con 20 cápsulas blandas de rápida acción'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+-- Fármaco: IBUPIRAC 400 (Ibuprofeno)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Ibuprofeno', E'M01AE01')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
+SELECT id, E'IBUPIRAC 400', E'Pfizer', E'Analgésico y antiinflamatorio no esteroide (AINE)' FROM os_substance WHERE name = E'Ibuprofeno'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
+
+INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
+SELECT id, E'Envase con 20 comprimidos', E'Comprimidos', E'Venta Libre'
+FROM os_medicinal_product WHERE brand_name = E'IBUPIRAC 400' AND laboratory = E'Pfizer'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
+
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'TROQUEL', '324515', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'IBUPIRAC 400' AND p.presentation_text = E'Envase con 20 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '11025', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'IBUPIRAC 400' AND p.presentation_text = E'Envase con 20 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '21905', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'IBUPIRAC 400' AND p.presentation_text = E'Envase con 20 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7798765432102', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'IBUPIRAC 400' AND p.presentation_text = E'Envase con 20 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+-- Fármaco: TERMOLGIN 1000 (Paracetamol)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Paracetamol', E'N02BE01')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
+SELECT id, E'TERMOLGIN 1000', E'Montpellier', E'Analgésico y antipirético de acción central' FROM os_substance WHERE name = E'Paracetamol'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
+
+INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
+SELECT id, E'Envase con 20 comprimidos', E'Comprimidos', E'Venta Libre'
+FROM os_medicinal_product WHERE brand_name = E'TERMOLGIN 1000' AND laboratory = E'Montpellier'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
+
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'TROQUEL', '512390', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'TERMOLGIN 1000' AND p.presentation_text = E'Envase con 20 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '14589', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'TERMOLGIN 1000' AND p.presentation_text = E'Envase con 20 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '33412', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'TERMOLGIN 1000' AND p.presentation_text = E'Envase con 20 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7795432109876', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'TERMOLGIN 1000' AND p.presentation_text = E'Envase con 20 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+-- Fármaco: LOTRIAL 50 (Losartán Potásico)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Losartán Potásico', E'C09CA01')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
+SELECT id, E'LOTRIAL 50', E'Roemmers', E'Antihipertensivo antagonista receptor AT1 de angiotensina II' FROM os_substance WHERE name = E'Losartán Potásico'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
+
+INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
+SELECT id, E'Envase con 30 comprimidos recubiertos', E'Comprimidos recubiertos', E'Venta Bajo Receta'
+FROM os_medicinal_product WHERE brand_name = E'LOTRIAL 50' AND laboratory = E'Roemmers'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
+
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'TROQUEL', '298412', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'LOTRIAL 50' AND p.presentation_text = E'Envase con 30 comprimidos recubiertos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '10340', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'LOTRIAL 50' AND p.presentation_text = E'Envase con 30 comprimidos recubiertos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '20115', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'LOTRIAL 50' AND p.presentation_text = E'Envase con 30 comprimidos recubiertos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7796543210987', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'LOTRIAL 50' AND p.presentation_text = E'Envase con 30 comprimidos recubiertos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+-- Fármaco: GLUCOPHAGE 850 (Metformina Clorhidrato)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Metformina Clorhidrato', E'A10BA02')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
+SELECT id, E'GLUCOPHAGE 850', E'Merck', E'Hipoglucemiante oral biguanida' FROM os_substance WHERE name = E'Metformina Clorhidrato'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
+
+INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
+SELECT id, E'Envase con 60 comprimidos', E'Comprimidos', E'Venta Bajo Receta'
+FROM os_medicinal_product WHERE brand_name = E'GLUCOPHAGE 850' AND laboratory = E'Merck'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
+
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'TROQUEL', '489012', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'GLUCOPHAGE 850' AND p.presentation_text = E'Envase con 60 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '13401', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'GLUCOPHAGE 850' AND p.presentation_text = E'Envase con 60 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '31502', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'GLUCOPHAGE 850' AND p.presentation_text = E'Envase con 60 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7797654321098', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'GLUCOPHAGE 850' AND p.presentation_text = E'Envase con 60 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+-- Fármaco: GASTROMAX 20 (Omeprazol)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Omeprazol', E'A02BC01')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
+SELECT id, E'GASTROMAX 20', E'Baliarda', E'Antiulceroso inhibidor de la bomba de protones (IBP)' FROM os_substance WHERE name = E'Omeprazol'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
+
+INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
+SELECT id, E'Envase con 28 cápsulas gastrorresistentes', E'Cápsulas', E'Venta Bajo Receta'
+FROM os_medicinal_product WHERE brand_name = E'GASTROMAX 20' AND laboratory = E'Baliarda'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
+
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'TROQUEL', '550123', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'GASTROMAX 20' AND p.presentation_text = E'Envase con 28 cápsulas gastrorresistentes'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '16021', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'GASTROMAX 20' AND p.presentation_text = E'Envase con 28 cápsulas gastrorresistentes'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '38104', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'GASTROMAX 20' AND p.presentation_text = E'Envase con 28 cápsulas gastrorresistentes'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7798901234567', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'GASTROMAX 20' AND p.presentation_text = E'Envase con 28 cápsulas gastrorresistentes'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+-- Fármaco: RIVOTRIL 0.5 (Clonazepam)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Clonazepam', E'N03AE01')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
+SELECT id, E'RIVOTRIL 0.5', E'Roche', E'Ansiolítico y anticonvulsivo benzodiazepínico' FROM os_substance WHERE name = E'Clonazepam'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
+
+INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
+SELECT id, E'Envase con 30 comprimidos ranurados', E'Comprimidos', E'Archivada'
+FROM os_medicinal_product WHERE brand_name = E'RIVOTRIL 0.5' AND laboratory = E'Roche'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
+
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'TROQUEL', '589124', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'RIVOTRIL 0.5' AND p.presentation_text = E'Envase con 30 comprimidos ranurados'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '17452', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'RIVOTRIL 0.5' AND p.presentation_text = E'Envase con 30 comprimidos ranurados'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '40192', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'RIVOTRIL 0.5' AND p.presentation_text = E'Envase con 30 comprimidos ranurados'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7799012345678', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'RIVOTRIL 0.5' AND p.presentation_text = E'Envase con 30 comprimidos ranurados'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+-- Fármaco: T4 MONTPELLIER 100 (Levotiroxina Sódica)
+INSERT INTO os_substance (name, atc_code) VALUES (E'Levotiroxina Sódica', E'H03AA01')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO os_medicinal_product (substance_id, brand_name, laboratory, pharmacological_action)
+SELECT id, E'T4 MONTPELLIER 100', E'Montpellier', E'Hormonoterapia tiroidea de reemplazo' FROM os_substance WHERE name = E'Levotiroxina Sódica'
+ON CONFLICT (brand_name, laboratory) DO NOTHING;
+
+INSERT INTO os_product_package (product_id, presentation_text, dosage_form, sale_type)
+SELECT id, E'Envase con 50 comprimidos', E'Comprimidos', E'Venta Bajo Receta'
+FROM os_medicinal_product WHERE brand_name = E'T4 MONTPELLIER 100' AND laboratory = E'Montpellier'
+ON CONFLICT (product_id, presentation_text) DO NOTHING;
+
+-- Identificadores Comerciales (Troquel, AlfaBeta, Kairos, GTIN)
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'TROQUEL', '601245', TRUE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'T4 MONTPELLIER 100' AND p.presentation_text = E'Envase con 50 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'ALFABETA', '18204', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'T4 MONTPELLIER 100' AND p.presentation_text = E'Envase con 50 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'KAIROS', '42015', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'T4 MONTPELLIER 100' AND p.presentation_text = E'Envase con 50 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
+
+INSERT INTO os_product_identifier (package_id, system_code, identifier_value, is_primary)
+SELECT p.id, 'GTIN', '7790123456789', FALSE FROM os_product_package p
+JOIN os_medicinal_product mp ON mp.id = p.product_id
+WHERE mp.brand_name = E'T4 MONTPELLIER 100' AND p.presentation_text = E'Envase con 50 comprimidos'
+ON CONFLICT (system_code, identifier_value) DO NOTHING;
 
 -- =============================================================================
--- 11. ANALYZE FINAL
+-- 14. TABLAS PLANAS AUXILIARES Y ANALYZE
 -- =============================================================================
+CREATE TABLE IF NOT EXISTS nomencladores_argentina (
+    id SERIAL PRIMARY KEY,
+    tipo_nomenclador VARCHAR(30) NOT NULL,
+    codigo VARCHAR(30) NOT NULL,
+    capitulo VARCHAR(100),
+    descripcion TEXT NOT NULL,
+    unidad_tipo VARCHAR(30),
+    unidad_valor NUMERIC(12, 4),
+    gastos_valor NUMERIC(12, 4),
+    snomed_concept_id BIGINT REFERENCES snomed_concepts(id) ON DELETE SET NULL,
+    codigo_loinc VARCHAR(20),
+    vigencia_desde DATE,
+    activo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (tipo_nomenclador, codigo)
+);
+
+CREATE INDEX IF NOT EXISTS idx_nom_arg_trgm ON nomencladores_argentina USING gin (descripcion gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_nom_arg_tipo_codigo ON nomencladores_argentina(tipo_nomenclador, codigo);
+
+CREATE TABLE IF NOT EXISTS vademecum_comercial (
+    id SERIAL PRIMARY KEY,
+    numero_troquel VARCHAR(20) UNIQUE,
+    codigo_alfabeta VARCHAR(20),
+    codigo_kairos VARCHAR(20),
+    codigo_barras_gtin VARCHAR(20),
+    monodroga VARCHAR(255) NOT NULL,
+    nombre_comercial VARCHAR(255) NOT NULL,
+    presentacion VARCHAR(255) NOT NULL,
+    laboratorio VARCHAR(150),
+    accion_farmacologica VARCHAR(150),
+    tipo_venta VARCHAR(50),
+    anmat_certificado VARCHAR(50),
+    snomed_concept_id BIGINT REFERENCES snomed_concepts(id) ON DELETE SET NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_vad_troquel ON vademecum_comercial(numero_troquel);
+CREATE INDEX IF NOT EXISTS idx_vad_alfabeta ON vademecum_comercial(codigo_alfabeta);
+CREATE INDEX IF NOT EXISTS idx_vad_kairos ON vademecum_comercial(codigo_kairos);
+CREATE INDEX IF NOT EXISTS idx_vad_comercial_trgm ON vademecum_comercial USING gin (nombre_comercial gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_vad_monodroga_trgm ON vademecum_comercial USING gin (monodroga gin_trgm_ops);
+
+-- Sincronización a tablas planas
+INSERT INTO nomencladores_argentina (tipo_nomenclador, codigo, descripcion, unidad_tipo, unidad_valor, gastos_valor)
+SELECT 'NN_PMO', ident.value, ver.preferred_term, u.code, f.units_amount, f.expenses_amount
+FROM os_catalog_item i
+JOIN os_catalog c ON c.id = i.catalog_id AND c.code = 'nn-pmo'
+JOIN os_catalog_item_version ver ON ver.item_id = i.id
+JOIN os_catalog_identifier ident ON ident.item_id = i.id AND ident.system_name = 'CÓDIGO_OFICIAL'
+LEFT JOIN os_fee_item f ON f.item_id = i.id
+LEFT JOIN os_pricing_unit u ON u.id = f.pricing_unit_id
+ON CONFLICT (tipo_nomenclador, codigo) DO NOTHING;
+
+INSERT INTO nomencladores_argentina (tipo_nomenclador, codigo, descripcion, unidad_tipo, unidad_valor)
+SELECT 'NBU', ident.value, ver.preferred_term, u.code, f.units_amount
+FROM os_catalog_item i
+JOIN os_catalog c ON c.id = i.catalog_id AND c.code = 'nbu'
+JOIN os_catalog_item_version ver ON ver.item_id = i.id
+JOIN os_catalog_identifier ident ON ident.item_id = i.id AND ident.system_name = 'CÓDIGO_OFICIAL'
+LEFT JOIN os_fee_item f ON f.item_id = i.id
+LEFT JOIN os_pricing_unit u ON u.id = f.pricing_unit_id
+ON CONFLICT (tipo_nomenclador, codigo) DO NOTHING;
+
+INSERT INTO nomencladores_argentina (tipo_nomenclador, codigo, descripcion, unidad_tipo, unidad_valor)
+SELECT 'NHPGD', ident.value, ver.preferred_term, u.code, f.fixed_price
+FROM os_catalog_item i
+JOIN os_catalog c ON c.id = i.catalog_id AND c.code = 'nhpgd'
+JOIN os_catalog_item_version ver ON ver.item_id = i.id
+JOIN os_catalog_identifier ident ON ident.item_id = i.id AND ident.system_name = 'CÓDIGO_OFICIAL'
+LEFT JOIN os_fee_item f ON f.item_id = i.id
+LEFT JOIN os_pricing_unit u ON u.id = f.pricing_unit_id
+ON CONFLICT (tipo_nomenclador, codigo) DO NOTHING;
+
+INSERT INTO nomencladores_argentina (tipo_nomenclador, codigo, descripcion, unidad_tipo, unidad_valor)
+SELECT 'ANDIS', ident.value, ver.preferred_term, u.code, f.fixed_price
+FROM os_catalog_item i
+JOIN os_catalog c ON c.id = i.catalog_id AND c.code = 'andis'
+JOIN os_catalog_item_version ver ON ver.item_id = i.id
+JOIN os_catalog_identifier ident ON ident.item_id = i.id AND ident.system_name = 'CÓDIGO_OFICIAL'
+LEFT JOIN os_fee_item f ON f.item_id = i.id
+LEFT JOIN os_pricing_unit u ON u.id = f.pricing_unit_id
+ON CONFLICT (tipo_nomenclador, codigo) DO NOTHING;
+
+INSERT INTO nomencladores_argentina (tipo_nomenclador, codigo, descripcion, unidad_tipo, unidad_valor)
+SELECT 'KINESIOLOGIA', ident.value, ver.preferred_term, u.code, f.fixed_price
+FROM os_catalog_item i
+JOIN os_catalog c ON c.id = i.catalog_id AND c.code = 'kinesiologia'
+JOIN os_catalog_item_version ver ON ver.item_id = i.id
+JOIN os_catalog_identifier ident ON ident.item_id = i.id AND ident.system_name = 'CÓDIGO_OFICIAL'
+LEFT JOIN os_fee_item f ON f.item_id = i.id
+LEFT JOIN os_pricing_unit u ON u.id = f.pricing_unit_id
+ON CONFLICT (tipo_nomenclador, codigo) DO NOTHING;
+
+INSERT INTO nomencladores_argentina (tipo_nomenclador, codigo, descripcion, unidad_tipo, unidad_valor)
+SELECT 'SALUD_MENTAL', ident.value, ver.preferred_term, u.code, f.fixed_price
+FROM os_catalog_item i
+JOIN os_catalog c ON c.id = i.catalog_id AND c.code = 'salud-mental'
+JOIN os_catalog_item_version ver ON ver.item_id = i.id
+JOIN os_catalog_identifier ident ON ident.item_id = i.id AND ident.system_name = 'CÓDIGO_OFICIAL'
+LEFT JOIN os_fee_item f ON f.item_id = i.id
+LEFT JOIN os_pricing_unit u ON u.id = f.pricing_unit_id
+ON CONFLICT (tipo_nomenclador, codigo) DO NOTHING;
+
+-- ANALYZE FINAL
 ANALYZE os_catalog;
 ANALYZE os_catalog_release;
 ANALYZE os_catalog_category;
@@ -5166,7 +7622,10 @@ ANALYZE os_substance;
 ANALYZE os_medicinal_product;
 ANALYZE os_product_package;
 ANALYZE os_product_identifier;
+ANALYZE nomencladores_argentina;
+ANALYZE vademecum_comercial;
 
+-- Resumen de Catálogos
 SELECT cat.code AS catalogo, count(i.id) AS total_items
   FROM os_catalog cat
   LEFT JOIN os_catalog_item i ON i.catalog_id = cat.id
