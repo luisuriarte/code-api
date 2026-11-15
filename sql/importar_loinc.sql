@@ -45,6 +45,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 \set f_map :dir_loinc '/MapTo.csv'
 \set f_mx :dir_loinc '/esMX28LinguisticVariant.csv'
 \set f_ar :dir_loinc '/esAR7LinguisticVariant.csv'
+\set f_consumer :dir_loinc '/ConsumerName.csv'
 
 -- Meta-comandos dinámicos \copy (con soporte para ConsumerName de LOINC 2.83)
 \set cmd_loinc '\\copy loinc (loinc, component, property, time_aspct, system_type, scale_type, method_type, class_type, version_last_changed, chng_type, definition_description, status, consumer_name, classtype, formula, exmpl_answers, survey_quest_text, survey_quest_src, unitsrequired, relatednames2, shortname, order_obs, hl7_field_subfield_id, external_copyright_notice, example_units, long_common_name, example_ucum_units, status_reason, status_text, change_reason_public, common_test_rank, common_order_rank, hl7_attachment_structure, external_copyright_link, panel_type, ask_at_order_entry, associated_observations, version_first_released, valid_hl7_attachment_request, display_name) FROM ' :q :f_loinc :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''', FORCE_NULL (classtype, common_test_rank, common_order_rank))'
@@ -54,6 +55,8 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 \set cmd_mx '\\copy temp_loinc_mx (loinc_num, component, property, time_aspct, system, scale_typ, method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name, consumer_name) FROM ' :q :f_mx :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''')'
 
 \set cmd_ar '\\copy temp_loinc_ar (loinc_num, component, property, time_aspct, system, scale_typ, method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name, consumer_name) FROM ' :q :f_ar :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''')'
+
+\set cmd_consumer '\\copy temp_consumer_name (loinc_num, consumer_name) FROM ' :q :f_consumer :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''')'
 
 \echo '-----------------------------------------------------------------------------'
 \echo 'Iniciando carga de LOINC 2.83 desde:' :dir_loinc
@@ -229,7 +232,28 @@ ON CONFLICT (loinc) DO UPDATE SET
 DROP TABLE IF EXISTS temp_loinc_ar;
 
 -- =============================================================================
--- 7. CREACIÓN DE ÍNDICES OPTIMIZADOS (B-Tree y GIN Trigram)
+-- 7. CAPA DE NOMBRES PARA PACIENTES: ConsumerName.csv (69.960 términos)
+-- =============================================================================
+\echo 'Cargando nombres para pacientes (ConsumerName.csv)...'
+DROP TABLE IF EXISTS temp_consumer_name;
+
+CREATE TEMP TABLE temp_consumer_name (
+    loinc_num VARCHAR(20) NOT NULL,
+    consumer_name TEXT
+);
+
+:cmd_consumer
+
+UPDATE loinc l
+   SET consumer_name = c.consumer_name
+  FROM temp_consumer_name c
+ WHERE l.loinc = c.loinc_num
+   AND NULLIF(c.consumer_name, '') IS NOT NULL;
+
+DROP TABLE IF EXISTS temp_consumer_name;
+
+-- =============================================================================
+-- 8. CREACIÓN DE ÍNDICES OPTIMIZADOS (B-Tree y GIN Trigram)
 -- =============================================================================
 \echo 'Creando índices B-Tree y GIN Trigram...'
 CREATE UNIQUE INDEX IF NOT EXISTS idx_loinc_code ON loinc(loinc);
@@ -242,12 +266,13 @@ CREATE INDEX IF NOT EXISTS idx_loinc_lcn_trgm ON loinc USING gin (long_common_na
 CREATE INDEX IF NOT EXISTS idx_loinc_display_trgm ON loinc USING gin (display_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_loinc_component_trgm ON loinc USING gin (component gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_loinc_shortname_trgm ON loinc USING gin (shortname gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_loinc_consumer_trgm ON loinc USING gin (consumer_name gin_trgm_ops);
 
 -- Índices para loinc_map
 CREATE INDEX IF NOT EXISTS idx_loinc_map_target ON loinc_map(map);
 
 -- =============================================================================
--- 8. ESTADÍSTICAS Y VERIFICACIÓN FINAL
+-- 9. ESTADÍSTICAS Y VERIFICACIÓN FINAL
 -- =============================================================================
 \echo 'Analizando tablas y verificando resultados...'
 ANALYZE loinc;

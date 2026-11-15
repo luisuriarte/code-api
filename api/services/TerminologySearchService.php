@@ -1512,7 +1512,8 @@ final class TerminologySearchService
                       OR t.long_common_name ILIKE :term
                       OR t.display_name ILIKE :term
                       OR t.component ILIKE :term
-                      OR t.shortname ILIKE :term)';
+                      OR t.shortname ILIKE :term
+                      OR t.consumer_name ILIKE :term)';
             $params[':exact'] = $query;
             $params[':prefix'] = $this->escapeLike($query) . '%';
             $params[':term'] = $escaped;
@@ -2027,7 +2028,7 @@ final class TerminologySearchService
         int $index
     ): array {
         $p = 'lo' . $index;
-        $trigramSql = $useTrigram ? " OR t.long_common_name % :{$p}_trgm OR t.component % :{$p}_trgm" : '';
+        $trigramSql = $useTrigram ? " OR t.long_common_name % :{$p}_trgm OR t.component % :{$p}_trgm OR t.consumer_name % :{$p}_trgm" : '';
 
         $sql = <<<SQL
             SELECT
@@ -2036,7 +2037,7 @@ final class TerminologySearchService
                 'loinc:' || t.loinc                                 AS result_key,
                 t.loinc                                             AS source_id,
                 t.loinc                                             AS code,
-                coalesce(nullif(t.long_common_name, ''), nullif(t.display_name, ''), t.component) AS term,
+                coalesce(nullif(t.long_common_name, ''), nullif(t.display_name, ''), nullif(t.consumer_name, ''), t.component) AS term,
                 t.component                                         AS subtitle,
                 'es'                                                AS language,
                 'loinc_observation'                                 AS kind,
@@ -2047,8 +2048,10 @@ final class TerminologySearchService
                     CASE WHEN t.long_common_name ILIKE :{$p}_prefix THEN CAST(0.90 AS float8) ELSE CAST(0.0 AS float8) END,
                     CASE WHEN t.display_name ILIKE :{$p}_prefix THEN CAST(0.88 AS float8) ELSE CAST(0.0 AS float8) END,
                     CASE WHEN t.component ILIKE :{$p}_prefix THEN CAST(0.86 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.consumer_name ILIKE :{$p}_prefix THEN CAST(0.84 AS float8) ELSE CAST(0.0 AS float8) END,
                     CASE WHEN t.long_common_name ILIKE :{$p}_contains THEN CAST(0.78 AS float8) ELSE CAST(0.0 AS float8) END,
                     CASE WHEN t.display_name ILIKE :{$p}_contains THEN CAST(0.76 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.consumer_name ILIKE :{$p}_contains THEN CAST(0.75 AS float8) ELSE CAST(0.0 AS float8) END,
                     CASE WHEN t.component ILIKE :{$p}_contains THEN CAST(0.74 AS float8) ELSE CAST(0.0 AS float8) END,
                     CAST(similarity(coalesce(nullif(t.long_common_name, ''), t.component), :{$p}_sim) AS float8)
                 ) AS float8)                                        AS score,
@@ -2059,6 +2062,7 @@ final class TerminologySearchService
                     'scale_type', t.scale_type,
                     'method_type', t.method_type,
                     'status', t.status,
+                    'consumer_name', t.consumer_name,
                     'example_ucum_units', t.example_ucum_units
                 ) AS text)                                          AS metadata
             FROM loinc t
@@ -2068,6 +2072,7 @@ final class TerminologySearchService
                  OR t.display_name ILIKE :{$p}_contains
                  OR t.component ILIKE :{$p}_contains
                  OR t.shortname ILIKE :{$p}_contains
+                 OR t.consumer_name ILIKE :{$p}_contains
                  {$trigramSql}
             )
             SQL;
