@@ -302,3 +302,70 @@ CREATE TABLE imagenes_estudios_pacs (
 CREATE INDEX idx_pacs_study_uid ON imagenes_estudios_pacs(study_instance_uid);
 CREATE INDEX idx_pacs_accession ON imagenes_estudios_pacs(accession_number);
 
+
+-- ==========================================
+-- 16. Catálogo Maestro de Nomencladores Prestacionales de Argentina
+--     (NN/PMO, NBU, NHPGD, ANDIS/Discapacidad, Kinesiología, Salud Mental)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS nomencladores_argentina (
+    id SERIAL PRIMARY KEY,
+    tipo_nomenclador VARCHAR(30) NOT NULL, -- 'NN_PMO', 'NBU', 'NHPGD', 'ANDIS', 'KINESIOLOGIA', 'SALUD_MENTAL'
+    codigo VARCHAR(30) NOT NULL,           -- Ej: '42.01.01', '660475', '25.01.01', '33.01.01'
+    capitulo VARCHAR(100),                 -- Ej: 'Cap. 25 - Rehabilitación', 'Cap. 33 - Psiquiatría'
+    descripcion TEXT NOT NULL,
+    
+    -- Unidades de valorización / arancelarias específicas de Argentina
+    unidad_tipo VARCHAR(30),               -- 'UB' (Bioquímica), 'GALENO', 'MODULO', 'SESION', 'PESOS'
+    unidad_valor NUMERIC(12, 4),           -- Ej: cantidad de UB en NBU o valor base NHPGD/ANDIS
+    gastos_valor NUMERIC(12, 4),           -- Para desglose Honorarios / Gastos en NN
+    
+    -- Interoperabilidad Clínica
+    snomed_concept_id BIGINT REFERENCES snomed_concepts(id) ON DELETE SET NULL,
+    codigo_loinc VARCHAR(20),              -- Útil para cruzar NBU con LOINC en laboratorios
+    
+    vigencia_desde DATE,
+    activo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Evita duplicados dentro del mismo nomenclador
+    UNIQUE (tipo_nomenclador, codigo)
+);
+
+-- Índices de alto rendimiento para búsquedas por código, dominio y texto difuso
+CREATE INDEX IF NOT EXISTS idx_nom_arg_trgm ON nomencladores_argentina USING gin (descripcion gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_nom_arg_tipo_codigo ON nomencladores_argentina(tipo_nomenclador, codigo);
+CREATE INDEX IF NOT EXISTS idx_nom_arg_snomed ON nomencladores_argentina(snomed_concept_id);
+
+
+-- ==========================================
+-- 17. Vademécum Farmacéutico Comercial (Troquel / AlfaBeta / Kairos)
+--     Complementa a anmat_medicamentos para receta electrónica y validación
+-- ==========================================
+CREATE TABLE IF NOT EXISTS vademecum_comercial (
+    id SERIAL PRIMARY KEY,
+    numero_troquel VARCHAR(20) UNIQUE,     -- Identificador clave para validación en farmacias/obras sociales
+    codigo_alfabeta VARCHAR(20),           -- ID interno AlfaBeta
+    codigo_kairos VARCHAR(20),             -- ID interno Kairos
+    codigo_barras_gtin VARCHAR(20),        -- EAN-13 / GTIN para trazabilidad
+    
+    monodroga VARCHAR(255) NOT NULL,       -- Principio activo (DCI)
+    nombre_comercial VARCHAR(255) NOT NULL,
+    presentacion VARCHAR(255) NOT NULL,
+    laboratorio VARCHAR(150),
+    accion_farmacologica VARCHAR(150),
+    tipo_venta VARCHAR(50),                -- 'Venta Libre', 'Venta Bajo Receta', 'Archivada', 'Decreto'
+    
+    -- Vínculos con estándares nacionales e internacionales
+    anmat_certificado VARCHAR(50),         -- Referencia lógica a anmat_medicamentos(certificado_number)
+    snomed_concept_id BIGINT REFERENCES snomed_concepts(id) ON DELETE SET NULL, -- Concepto SNOMED (Producto clínico / Sustancia)
+    
+    activo BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_vad_troquel ON vademecum_comercial(numero_troquel);
+CREATE INDEX IF NOT EXISTS idx_vad_alfabeta ON vademecum_comercial(codigo_alfabeta);
+CREATE INDEX IF NOT EXISTS idx_vad_kairos ON vademecum_comercial(codigo_kairos);
+CREATE INDEX IF NOT EXISTS idx_vad_comercial_trgm ON vademecum_comercial USING gin (nombre_comercial gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_vad_monodroga_trgm ON vademecum_comercial USING gin (monodroga gin_trgm_ops);
+

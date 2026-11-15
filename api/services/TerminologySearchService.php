@@ -41,6 +41,8 @@ final class TerminologySearchService
     public const DOMAIN_PRESTACIONES = 'prestaciones';
     public const DOMAIN_PROGRAMAS = 'programas';
     public const DOMAIN_IMAGENES = 'imagenes';
+    public const DOMAIN_NOMENCLADOR = 'nomenclador';
+    public const DOMAIN_VADEMECUM = 'vademecum';
 
     /** @var list<string> */
     public const DOMAINS = [
@@ -53,6 +55,8 @@ final class TerminologySearchService
         self::DOMAIN_PRESTACIONES,
         self::DOMAIN_PROGRAMAS,
         self::DOMAIN_IMAGENES,
+        self::DOMAIN_NOMENCLADOR,
+        self::DOMAIN_VADEMECUM,
     ];
 
     /**
@@ -173,6 +177,24 @@ final class TerminologySearchService
             'source' => 'imagenes',
             'mode' => 'catalog',
         ],
+        self::DOMAIN_NOMENCLADOR => [
+            'label' => ['es' => 'Nomencladores de Argentina', 'en' => 'Argentine Healthcare Nomenclators'],
+            'description' => [
+                'es' => 'Catálogo maestro de nomencladores argentinos: NN/PMO, NBU, NHPGD, ANDIS, Kinesiología y Salud Mental.',
+                'en' => 'Master catalog of Argentine healthcare nomenclators: NN/PMO, NBU, NHPGD, ANDIS, Kinesiology and Mental Health.',
+            ],
+            'source' => 'nomencladores_argentina',
+            'mode' => 'catalog',
+        ],
+        self::DOMAIN_VADEMECUM => [
+            'label' => ['es' => 'Vademécum Comercial', 'en' => 'Commercial Drug Formulary'],
+            'description' => [
+                'es' => 'Vademécum farmacéutico comercial argentino con Número de Troquel, AlfaBeta, Kairos y GTIN.',
+                'en' => 'Argentine commercial pharmaceutical formulary with Troquel, AlfaBeta, Kairos and GTIN.',
+            ],
+            'source' => 'vademecum_comercial',
+            'mode' => 'catalog',
+        ],
     ];
 
     /**
@@ -280,6 +302,44 @@ final class TerminologySearchService
                 'dicom_modality' => 't.modalidad_dicom',
                 'loinc_code' => 't.codigo_loinc',
                 'requires_contrast' => 't.requiere_contraste',
+            ],
+        ],
+        self::DOMAIN_NOMENCLADOR => [
+            'table' => 'nomencladores_argentina',
+            'code' => 't.codigo',
+            'term' => 't.descripcion',
+            'subtitle' => 't.tipo_nomenclador || \' · \' || coalesce(t.capitulo, \'\')',
+            'kind' => 'nomenclator_procedure',
+            'filters' => ['t.descripcion', 't.codigo', 't.tipo_nomenclador', 'coalesce(t.capitulo, \'\')', 'CAST(t.snomed_concept_id AS text)'],
+            'metadata' => [
+                'nomenclator_type' => 't.tipo_nomenclador',
+                'procedure_code' => 't.codigo',
+                'chapter' => 't.capitulo',
+                'unit_type' => 't.unidad_tipo',
+                'unit_value' => 'CAST(t.unidad_valor AS text)',
+                'expenses_value' => 'CAST(t.gastos_valor AS text)',
+                'loinc_code' => 't.codigo_loinc',
+            ],
+        ],
+        self::DOMAIN_VADEMECUM => [
+            'table' => 'vademecum_comercial',
+            'code' => 't.numero_troquel',
+            'term' => 't.nombre_comercial',
+            'subtitle' => 't.monodroga || \' · \' || coalesce(t.presentacion, \'\')',
+            'kind' => 'commercial_drug',
+            'filters' => ['t.nombre_comercial', 't.monodroga', 't.numero_troquel', 'coalesce(t.codigo_alfabeta, \'\')', 'coalesce(t.codigo_kairos, \'\')', 'coalesce(t.codigo_barras_gtin, \'\')', 'CAST(t.snomed_concept_id AS text)'],
+            'metadata' => [
+                'troquel_number' => 't.numero_troquel',
+                'alfabeta_code' => 't.codigo_alfabeta',
+                'kairos_code' => 't.codigo_kairos',
+                'gtin_code' => 't.codigo_barras_gtin',
+                'generic_name' => 't.monodroga',
+                'commercial_name' => 't.nombre_comercial',
+                'presentation' => 't.presentacion',
+                'laboratory' => 't.laboratorio',
+                'pharmacological_action' => 't.accion_farmacologica',
+                'sale_type' => 't.tipo_venta',
+                'anmat_certificate' => 't.anmat_certificado',
             ],
         ],
     ];
@@ -1152,6 +1212,230 @@ final class TerminologySearchService
             ],
             'meta' => [
                 'total_diagnoses' => count($diagnoses),
+                'language' => $language,
+                'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Búsqueda en Nomencladores Prestacionales de Argentina.
+     * Tipos válidos: NN_PMO, NBU, NHPGD, ANDIS, KINESIOLOGIA, SALUD_MENTAL (o null para buscar en todos).
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function searchNomencladorArgentina(Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $query = trim((string) ($request->query['q'] ?? ''));
+        $tipo = trim((string) ($request->query['type'] ?? $request->query['tipo'] ?? ''));
+        $limit = $this->readIntParam($request->query['limit'] ?? null, 20, 1, $this->maxLimit(), 'limit');
+
+        $sql = 'SELECT t.id,
+                       t.tipo_nomenclador,
+                       t.codigo,
+                       t.capitulo,
+                       t.descripcion,
+                       t.unidad_tipo,
+                       CAST(t.unidad_valor AS text) AS unidad_valor,
+                       CAST(t.gastos_valor AS text) AS gastos_valor,
+                       CAST(t.snomed_concept_id AS text) AS snomed_concept_id,
+                       t.codigo_loinc
+                  FROM nomencladores_argentina t
+                 WHERE t.activo = TRUE';
+
+        $params = [];
+        $where = [];
+
+        if ($query !== '') {
+            $escaped = '%' . $this->escapeLike($query) . '%';
+            $where[] = '(t.descripcion ILIKE :term OR t.codigo ILIKE :term OR CAST(t.snomed_concept_id AS text) = :exact_code)';
+            $params[':term'] = $escaped;
+            $params[':exact_code'] = $query;
+        }
+
+        if ($tipo !== '') {
+            $where[] = 'upper(t.tipo_nomenclador) = :tipo';
+            $params[':tipo'] = strtoupper($tipo);
+        }
+
+        if (!empty($where)) {
+            $sql .= ' AND ' . implode(' AND ', $where);
+        }
+
+        if ($query !== '') {
+            $sql .= ' ORDER BY (t.codigo ILIKE :code_prefix) DESC, similarity(t.descripcion, :sim) DESC, t.id ASC';
+            $params[':code_prefix'] = $this->escapeLike($query) . '%';
+            $params[':sim'] = $query;
+        } else {
+            $sql .= ' ORDER BY t.tipo_nomenclador ASC, t.codigo ASC';
+        }
+
+        $sql .= ' LIMIT :limit';
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v);
+            }
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
+        } catch (\PDOException $e) {
+            throw ApiException::internalError('Error al consultar nomencladores de Argentina.');
+        }
+
+        $results = [];
+        foreach ($rows as $r) {
+            $results[] = [
+                'id' => (string) $r['id'],
+                'nomenclator_type' => (string) $r['tipo_nomenclador'],
+                'code' => (string) $r['codigo'],
+                'chapter' => $r['capitulo'] !== null ? (string) $r['capitulo'] : null,
+                'description' => (string) $r['descripcion'],
+                'unit_type' => $r['unidad_tipo'] !== null ? (string) $r['unidad_tipo'] : null,
+                'unit_value' => $r['unidad_valor'] !== null ? (float) $r['unidad_valor'] : null,
+                'expenses_value' => $r['gastos_valor'] !== null ? (float) $r['gastos_valor'] : null,
+                'snomed_concept_id' => $r['snomed_concept_id'] !== null ? (string) $r['snomed_concept_id'] : null,
+                'loinc_code' => $r['codigo_loinc'] !== null ? (string) $r['codigo_loinc'] : null,
+            ];
+        }
+
+        return [
+            'data' => $results,
+            'meta' => [
+                'query' => $query !== '' ? $query : null,
+                'type' => $tipo !== '' ? strtoupper($tipo) : null,
+                'limit' => $limit,
+                'returned' => count($results),
+                'language' => $language,
+                'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Búsqueda en Vademécum Farmacéutico Comercial (Troquel, AlfaBeta, Kairos, GTIN, Monodroga o Marca).
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function searchVademecum(Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $query = trim((string) ($request->query['q'] ?? ''));
+        $troquel = trim((string) ($request->query['troquel'] ?? ''));
+        $alfabeta = trim((string) ($request->query['alfabeta'] ?? ''));
+        $kairos = trim((string) ($request->query['kairos'] ?? ''));
+        $gtin = trim((string) ($request->query['gtin'] ?? ''));
+        $limit = $this->readIntParam($request->query['limit'] ?? null, 20, 1, $this->maxLimit(), 'limit');
+
+        $sql = 'SELECT id,
+                       numero_troquel,
+                       codigo_alfabeta,
+                       codigo_kairos,
+                       codigo_barras_gtin,
+                       monodroga,
+                       nombre_comercial,
+                       presentacion,
+                       laboratorio,
+                       accion_farmacologica,
+                       tipo_venta,
+                       anmat_certificado,
+                       CAST(snomed_concept_id AS text) AS snomed_concept_id
+                  FROM vademecum_comercial
+                 WHERE activo = TRUE';
+
+        $where = [];
+        $params = [];
+
+        if ($troquel !== '') {
+            $where[] = 'numero_troquel = :troquel';
+            $params[':troquel'] = $troquel;
+        }
+
+        if ($alfabeta !== '') {
+            $where[] = 'codigo_alfabeta = :alfabeta';
+            $params[':alfabeta'] = $alfabeta;
+        }
+
+        if ($kairos !== '') {
+            $where[] = 'codigo_kairos = :kairos';
+            $params[':kairos'] = $kairos;
+        }
+
+        if ($gtin !== '') {
+            $where[] = 'codigo_barras_gtin = :gtin';
+            $params[':gtin'] = $gtin;
+        }
+
+        if ($query !== '') {
+            $escaped = '%' . $this->escapeLike($query) . '%';
+            $where[] = '(numero_troquel = :exact
+                      OR codigo_alfabeta = :exact
+                      OR codigo_kairos = :exact
+                      OR codigo_barras_gtin = :exact
+                      OR nombre_comercial ILIKE :term
+                      OR monodroga ILIKE :term
+                      OR laboratorio ILIKE :term)';
+            $params[':exact'] = $query;
+            $params[':term'] = $escaped;
+        }
+
+        if (!empty($where)) {
+            $sql .= ' AND ' . implode(' AND ', $where);
+        }
+
+        if ($query !== '') {
+            $sql .= ' ORDER BY (numero_troquel = :exact_order OR codigo_alfabeta = :exact_order OR codigo_kairos = :exact_order) DESC,
+                               similarity(nombre_comercial, :sim_order) DESC, id ASC';
+            $params[':exact_order'] = $query;
+            $params[':sim_order'] = $query;
+        } else {
+            $sql .= ' ORDER BY nombre_comercial ASC';
+        }
+
+        $sql .= ' LIMIT :limit';
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v);
+            }
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
+        } catch (\PDOException $e) {
+            throw ApiException::internalError('Error al consultar el vademécum comercial.');
+        }
+
+        $results = [];
+        foreach ($rows as $r) {
+            $results[] = [
+                'id' => (string) $r['id'],
+                'troquel' => (string) $r['numero_troquel'],
+                'alfabeta_code' => $r['codigo_alfabeta'] !== null ? (string) $r['codigo_alfabeta'] : null,
+                'kairos_code' => $r['codigo_kairos'] !== null ? (string) $r['codigo_kairos'] : null,
+                'gtin' => $r['codigo_barras_gtin'] !== null ? (string) $r['codigo_barras_gtin'] : null,
+                'generic_name' => (string) $r['monodroga'],
+                'brand_name' => (string) $r['nombre_comercial'],
+                'presentation' => (string) $r['presentacion'],
+                'laboratory' => $r['laboratorio'] !== null ? (string) $r['laboratorio'] : null,
+                'pharmacological_action' => $r['accion_farmacologica'] !== null ? (string) $r['accion_farmacologica'] : null,
+                'sale_type' => $r['tipo_venta'] !== null ? (string) $r['tipo_venta'] : null,
+                'anmat_certificate' => $r['anmat_certificado'] !== null ? (string) $r['anmat_certificado'] : null,
+                'snomed_concept_id' => $r['snomed_concept_id'] !== null ? (string) $r['snomed_concept_id'] : null,
+            ];
+        }
+
+        return [
+            'data' => $results,
+            'meta' => [
+                'query' => $query !== '' ? $query : null,
+                'troquel' => $troquel !== '' ? $troquel : null,
+                'limit' => $limit,
+                'returned' => count($results),
                 'language' => $language,
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
             ],

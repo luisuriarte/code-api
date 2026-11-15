@@ -33,7 +33,12 @@ Para garantizar la interoperabilidad semántica, cada vocabulario y catálogo cu
 | **DENTAR (Procedimientos Odontológicos)** | `https://origen.ar/fhir/CodeSystem/dentar-procedures` | Origen Salud |
 | **DENTAR (Diagnósticos Odontológicos)** | `https://origen.ar/fhir/CodeSystem/dentar-diagnoses` | Origen Salud |
 | **ADA CDT 2025 (American Dental Association)**| `http://www.ada.org/cdt` | ADA |
+| **Nomenclador Nacional Médico / PMO** | `https://origen.ar/fhir/CodeSystem/ar-nomenclador-nacional` | MSAL / PMO |
+| **Nomenclador Bioquímico Único (NBU)** | `https://origen.ar/fhir/CodeSystem/ar-nbu` | CUBRA |
+| **Nomenclador NHPGD (Hospitales Públicos)** | `https://origen.ar/fhir/CodeSystem/ar-nhpgd` | MSAL |
+| **Nomenclador Discapacidad (ANDIS)** | `https://origen.ar/fhir/CodeSystem/ar-andis` | ANDIS |
 | **Nomenclador Odontológico Argentino** | `https://origen.ar/fhir/CodeSystem/ar-nomenclador-odontologico` | C.O.R.A. / Obras Sociales |
+| **Vademécum Comercial (Troquel/GTIN)** | `https://origen.ar/fhir/CodeSystem/ar-vademecum` | AlfaBeta / Kairos / GS1 |
 | **LOINC (Laboratorio e Imágenes)** | `http://loinc.org` | `2.16.840.1.113883.6.1` |
 | **Medicamentos ANMAT** | `https://origen.ar/fhir/CodeSystem/anmat-medicamentos` | ANMAT Argentina |
 

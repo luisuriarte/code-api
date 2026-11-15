@@ -126,6 +126,84 @@ curl -s -X GET "https://api.origen.ar/v1/domains" \
 
 ---
 
+## 3. Origen Catalog Engine: Nomencladores Argentinos y DENTAR
+
+Origen Salud implementa el **Origen Catalog Engine 1.0**, una arquitectura desacoplada que separa la identidad de las prestaciones, los aranceles vigentes y las terminologías semánticas internacionales:
+
+| Grupo | Catálogo (`code`) | Función |
+|---|---|---|
+| **Propio** | `dentar` | Sistema DENTAR: Prestaciones odontológicas armonizadas con ADA CDT 2025 y CIE-10. |
+| **Argentina** | `nn-pmo` | Nomenclador Nacional de Prestaciones Médicas, Quirúrgicas y Sanatoriales (PMO). |
+| **Argentina** | `nbu` | Nomenclador Bioquímico Único de CUBRA (con Unidades Bioquímicas y LOINC). |
+| **Argentina** | `nhpgd` | Nomenclador de Hospitales Públicos de Gestión Descentralizada (recupero de costos). |
+| **Argentina** | `andis` | Nomenclador de Prestaciones Básicas para Personas con Discapacidad (rehabilitación/módulos). |
+| **Argentina** | `kinesiologia`| Nomenclador de Fisioterapia y Kinesiología (motriz, respiratoria, sesiones). |
+| **Argentina** | `salud-mental`| Nomenclador de Psicología y Salud Mental (psicoterapia, psicodiagnóstico). |
+| **Farmacia** | `vademecum` | Vademécum farmacéutico multicapa con Troquel, AlfaBeta, Kairos y GTIN. |
+
+### 3.1. Listar Catálogos Registrados
+#### `GET /v1/catalogs`
+```bash
+curl -s -X GET "https://api.origen.ar/v1/catalogs" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+```
+
+### 3.2. Consultar Prestaciones de un Catálogo
+#### `GET /v1/catalogs/{catalog_code}/items?q={query}&limit={n}`
+```bash
+# Buscar hemograma en NBU
+curl -s -X GET "https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+
+# Buscar consulta en Nomenclador Nacional
+curl -s -X GET "https://api.origen.ar/v1/catalogs/nn-pmo/items?q=consulta" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+
+# Buscar prestaciones en DENTAR
+curl -s -X GET "https://api.origen.ar/v1/catalogs/dentar/items?q=conducto" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+```
+
+### 3.3. Ficha Técnica de la Prestación con Aranceles y Mapeos
+#### `GET /v1/catalogs/{catalog_code}/items/{code}`
+Devuelve la identidad permanente, aranceles vigentes (UB, Galenos, Módulos o Pesos) y mapeos cruzados a **SNOMED-CT**, **CIE-10** y **LOINC**.
+
+```bash
+curl -s -X GET "https://api.origen.ar/v1/catalogs/nbu/items/660475" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+```
+
+### 3.4. Motor de Mapeos y Equivalencias Semánticas
+#### `GET /v1/mappings?system={system}&code={code}`
+Permite encontrar qué prestaciones nacionales corresponden a un concepto internacional (o viceversa):
+```bash
+# ¿Qué prácticas corresponden al código LOINC 58410-2?
+curl -s -X GET "https://api.origen.ar/v1/mappings?system=LOINC&code=58410-2" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+
+# ¿Qué prestaciones tratan el diagnóstico CIE-10 K02.1?
+curl -s -X GET "https://api.origen.ar/v1/mappings?system=CIE-10&code=K02.1" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+```
+
+### 3.5. Farmacia: Consulta Directa por Troquel, AlfaBeta, Kairos o GTIN
+#### `GET /v1/medicines/identifiers/{system}/{code}`
+```bash
+# Por Número de Troquel
+curl -s -X GET "https://api.origen.ar/v1/medicines/identifiers/troquel/458921" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+
+# Por Código AlfaBeta o Kairos
+curl -s -X GET "https://api.origen.ar/v1/medicines/identifiers/alfabeta/12045" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+
+# Por Código de Barras EAN-13 / GTIN
+curl -s -X GET "https://api.origen.ar/v1/medicines/identifiers/gtin/7791234567890" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+```
+
+---
+
 ## 4. Búsqueda Unificada Multimodelo
 
 ### `GET /v1/search`

@@ -366,6 +366,16 @@ $isEn = $locale === 'en';
             </div>
 
             <div class="docs-nav-group">
+                <h3><?= $isEn ? 'Catalog Engine (Argentina)' : 'Motor de Nomencladores' ?></h3>
+                <ul>
+                    <li><a href="#catalogs"><?= $isEn ? 'Catalogs (/v1/catalogs)' : 'Catálogos (/v1/catalogs)' ?></a></li>
+                    <li><a href="#catalogs-items"><?= $isEn ? 'Procedures (/v1/catalogs/{id}/items)' : 'Prestaciones e Ítems' ?></a></li>
+                    <li><a href="#catalogs-mappings"><?= $isEn ? 'Semantic Mappings (/v1/mappings)' : 'Mapeos y Equivalencias' ?></a></li>
+                    <li><a href="#catalogs-pharma"><?= $isEn ? 'Pharma Identifiers (Troquel/GTIN)' : 'Vademécum (Troquel/GTIN)' ?></a></li>
+                </ul>
+            </div>
+
+            <div class="docs-nav-group">
                 <h3><?= $isEn ? 'Unified Search' : 'Búsqueda Unificada' ?></h3>
                 <ul>
                     <li><a href="#search"><?= $isEn ? 'Multimodel Search (/v1/search)' : 'Búsqueda Multimodelo' ?></a></li>
@@ -475,6 +485,153 @@ $isEn = $locale === 'en';
                         ?>
                     </p>
                 </div>
+            </section>
+
+            <!-- CATALOG ENGINE -->
+            <section id="catalogs" class="docs-section">
+                <h2><?= $isEn ? '3. Origen Catalog Engine & Argentine Healthcare Catalogs' : '3. Motor de Catálogos y Nomencladores Argentinos' ?></h2>
+                <p>
+                    <?= $isEn
+                        ? 'Origen Catalog Engine 1.0 provides decoupled, versioned access to national healthcare nomenclators, proprietary catalogs (DENTAR), pricing schedules (UB, Galenos, Modules, Pesos), and pharmaceutical identifiers (Troquel, AlfaBeta, Kairos, GTIN).'
+                        : 'Origen Catalog Engine 1.0 ofrece acceso desacoplado y versionado a los nomencladores nacionales argentinos, catálogos propios (DENTAR), esquemas arancelarios (UB, Galenos, Módulos, Pesos) e identificadores farmacéuticos (Troquel, AlfaBeta, Kairos, GTIN).'
+                    ?>
+                </p>
+
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th><?= $isEn ? 'Scope' : 'Ámbito' ?></th>
+                            <th><?= $isEn ? 'Catalog Code' : 'Código de Catálogo' ?></th>
+                            <th><?= $isEn ? 'Description' : 'Descripción' ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong style="color:var(--teal-dark)">Propio</strong></td>
+                            <td><code>dentar</code></td>
+                            <td><?= $isEn ? 'DENTAR System: Dental procedures harmonized with ADA CDT 2025 and ICD-10.' : 'Sistema DENTAR: Prestaciones odontológicas armonizadas con ADA CDT 2025 y CIE-10.' ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Argentina</strong></td>
+                            <td><code>nn-pmo</code></td>
+                            <td><?= $isEn ? 'National Medical & Sanatorial Nomenclator (PMO) with Galenos.' : 'Nomenclador Nacional Médico y Quirúrgico (PMO) con Galenos.' ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Argentina</strong></td>
+                            <td><code>nbu</code></td>
+                            <td><?= $isEn ? 'CUBRA Single Biochemical Nomenclator with Biochemical Units (UB) & LOINC.' : 'Nomenclador Bioquímico Único de CUBRA con Unidades Bioquímicas (UB) y LOINC.' ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Argentina</strong></td>
+                            <td><code>nhpgd</code></td>
+                            <td><?= $isEn ? 'Decentralized Public Hospitals Nomenclator for cost recovery.' : 'Nomenclador de Hospitales Públicos Descentralizados (recupero hospitalario).' ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Argentina</strong></td>
+                            <td><code>andis</code></td>
+                            <td><?= $isEn ? 'Disability Basic Services Nomenclator with rehabilitation modules.' : 'Nomenclador de Prestaciones Básicas para Personas con Discapacidad (ANDIS).' ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Argentina</strong></td>
+                            <td><code>kinesiologia</code></td>
+                            <td><?= $isEn ? 'Kinesiology and Physical Therapy sessions.' : 'Nomenclador de Fisioterapia y Kinesiología motriz y respiratoria.' ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Argentina</strong></td>
+                            <td><code>salud-mental</code></td>
+                            <td><?= $isEn ? 'Psychology and Mental Health sessions and psychodiagnosis.' : 'Nomenclador de Psicología y Salud Mental (psicoterapias y peritajes).' ?></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="catalogs-items"><?= $isEn ? 'Browse Catalog Items & Procedures' : 'Consultar Prestaciones de un Catálogo' ?></h3>
+                <div class="endpoint-badge">
+                    <span class="method-get">GET</span>
+                    <code>/v1/catalogs/{catalog_code}/items?q={query}&amp;limit={n}</code>
+                </div>
+
+                <div class="code-container" data-container="cat-items">
+                    <div class="code-tabs-header">
+                        <div class="code-tabs-list">
+                            <button class="tab-btn is-active" data-lang="curl">cURL</button>
+                            <button class="tab-btn" data-lang="js">JavaScript</button>
+                            <button class="tab-btn" data-lang="python">Python</button>
+                            <button class="tab-btn" data-lang="php">PHP</button>
+                            <button class="tab-btn" data-lang="csharp">C# (.NET)</button>
+                            <button class="tab-btn" data-lang="java">Java</button>
+                            <button class="tab-btn" data-lang="go">Go</button>
+                        </div>
+                        <button class="copy-btn"><?= $isEn ? 'Copy' : 'Copiar' ?></button>
+                    </div>
+
+                    <pre class="code-pane is-active" data-lang="curl"><code># Consultar hemograma en NBU
+curl -s -X GET "https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma" \
+  -H "Authorization: Bearer TU_API_KEY"</code></pre>
+
+                    <pre class="code-pane" data-lang="js"><code>const res = await fetch('https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma', {
+  headers: { 'Authorization': 'Bearer TU_API_KEY' }
+});
+const items = await res.json();
+console.log(items.data);</code></pre>
+
+                    <pre class="code-pane" data-lang="python"><code>import requests
+
+res = requests.get(
+    "https://api.origen.ar/v1/catalogs/nbu/items",
+    headers={"Authorization": "Bearer TU_API_KEY"},
+    params={"q": "hemograma"}
+)
+print(res.json()["data"])</code></pre>
+
+                    <pre class="code-pane" data-lang="php"><code>&lt;?php
+$ch = curl_init('https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma');
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer TU_API_KEY', 'Accept: application/json']);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$data = json_decode(curl_exec($ch), true);
+curl_close($ch);
+print_r($data['data']);</code></pre>
+
+                    <pre class="code-pane" data-lang="csharp"><code>using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer TU_API_KEY");
+var json = await client.GetStringAsync("https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma");
+Console.WriteLine(json);</code></pre>
+
+                    <pre class="code-pane" data-lang="java"><code>HttpRequest req = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma"))
+    .header("Authorization", "Bearer TU_API_KEY").GET().build();
+HttpResponse&lt;String&gt; resp = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+System.out.println(resp.body());</code></pre>
+
+                    <pre class="code-pane" data-lang="go"><code>req, _ := http.NewRequest("GET", "https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma", nil)
+req.Header.Set("Authorization", "Bearer TU_API_KEY")
+resp, _ := http.DefaultClient.Do(req)
+body, _ := io.ReadAll(resp.Body)
+fmt.Println(string(body))</code></pre>
+                </div>
+
+                <h3 id="catalogs-mappings"><?= $isEn ? 'Cross-Terminology Mappings (SNOMED, CIE-10, LOINC)' : 'Mapeos Cruzados (SNOMED-CT, CIE-10, LOINC)' ?></h3>
+                <div class="endpoint-badge">
+                    <span class="method-get">GET</span>
+                    <code>/v1/mappings?system={system}&amp;code={code}</code>
+                </div>
+                <p>
+                    <?= $isEn
+                        ? 'Discover which procedures correspond to an international clinical concept (or vice-versa).'
+                        : 'Descubre qué prestaciones corresponden a un concepto clínico internacional (o viceversa).'
+                    ?>
+                </p>
+
+                <h3 id="catalogs-pharma"><?= $isEn ? 'Pharmacy: Commercial Identifiers (Troquel / AlfaBeta / Kairos / GTIN)' : 'Farmacia: Identificadores Comerciales (Troquel / AlfaBeta / Kairos / GTIN)' ?></h3>
+                <div class="endpoint-badge">
+                    <span class="method-get">GET</span>
+                    <code>/v1/medicines/identifiers/{system}/{code}</code>
+                </div>
+                <p>
+                    <?= $isEn
+                        ? 'Validate prescriptions and insurance coverage directly by Troquel number, AlfaBeta ID, Kairos ID, or GS1 GTIN barcode.'
+                        : 'Valida recetas electrónicas y coberturas de farmacia directamente por Número de Troquel, código AlfaBeta, código Kairos o código de barras GTIN.'
+                    ?>
+                </p>
             </section>
 
             <!-- 2. UNIFIED SEARCH -->

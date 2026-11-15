@@ -22,6 +22,7 @@ use OrigenSalud\Api\Http\ApiKeyAuthenticator;
 use OrigenSalud\Api\Http\Cors;
 use OrigenSalud\Api\Http\Request;
 use OrigenSalud\Api\Http\Response;
+use OrigenSalud\Api\Services\CatalogEngineService;
 use OrigenSalud\Api\Services\TerminologySearchService;
 
 require_once dirname(__DIR__) . '/bootstrap.php';
@@ -127,6 +128,129 @@ try {
 
         $result = (new TerminologySearchService($db))->search($request, $searchDomain);
 
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Origen Catalog Engine: Catálogos maestros (NN/PMO, NBU, NHPGD, ANDIS, Kinesiología, Salud Mental, DENTAR)
+    if ($path === '/v1/catalogs') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new CatalogEngineService($db))->listCatalogs();
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    if (preg_match('#^/v1/catalogs/([a-z0-9\-]+)/releases$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new CatalogEngineService($db))->listReleases($matches[1]);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    if (preg_match('#^/v1/catalogs/([a-z0-9\-]+)/items$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new CatalogEngineService($db))->listItems($matches[1], $request);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    if (preg_match('#^/v1/catalogs/([a-z0-9\-]+)/items/([A-Za-z0-9\.\-_]+)$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new CatalogEngineService($db))->getItem($matches[1], $matches[2]);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Mapeos e interoperabilidad cruzada
+    if ($path === '/v1/mappings') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new CatalogEngineService($db))->searchMappings($request);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Unidades de valorización arancelaria
+    if ($path === '/v1/pricing-units') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new CatalogEngineService($db))->listPricingUnits();
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Farmacia: Búsqueda por identificador comercial (Troquel, AlfaBeta, Kairos, GTIN)
+    if (preg_match('#^/v1/medicines/identifiers/([A-Za-z0-9_\-]+)/([A-Za-z0-9\.\-_]+)$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new CatalogEngineService($db))->findMedicineByIdentifier($matches[1], $matches[2]);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Consulta directa de Nomencladores Argentinos (con filtros ?type=NN_PMO&q=...)
+    if ($path === '/v1/nomenclador') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->searchNomencladorArgentina($request);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Consulta directa de Vademécum Comercial (con filtros ?troquel=...&q=...)
+    if ($path === '/v1/vademecum') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->searchVademecum($request);
         Response::json([
             'data' => $result['data'],
             'meta' => $result['meta'],
