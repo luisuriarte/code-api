@@ -286,6 +286,62 @@ try {
         ], 200, ['X-Request-Id' => $request->requestId]);
     }
 
+    // Búsqueda en el Programa Médico Obligatorio (PMO)
+    if ($path === '/v1/pmo/practicas') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->searchPmoPracticas($request);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Detalle de una práctica PMO por código (médica u odontológica)
+    if (preg_match('#^/v1/pmo/practicas/([0-9]{2,6}|[0-9]{1,2}\.[0-9]{1,2})$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->findPmoPractica($matches[1]);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Medicamentos y precios de referencia del PMO
+    if ($path === '/v1/pmo/medicamentos') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->searchPmoMedicamentos($request);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Textos normativos y resoluciones del PMO
+    if ($path === '/v1/pmo/normativa') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->searchPmoNormativa($request);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
     // Detalle CIE-10 con descripciones bilingües y mapeo a SNOMED-CT.
     if (preg_match('#^/v1/cie10/([A-Za-z][0-9]{2}(?:\.[0-9A-Za-z]{1,4}|[0-9A-Za-z]{0,3}))$#', $path, $matches) === 1) {
         if ($request->method !== 'GET') {

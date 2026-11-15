@@ -1667,6 +1667,289 @@ final class TerminologySearchService
     }
 
     /**
+     * Búsqueda en el Programa Médico Obligatorio (PMO - pmo_practicas).
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function searchPmoPracticas(Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $query = trim((string) ($request->query['q'] ?? ''));
+        $capitulo = trim((string) ($request->query['capitulo'] ?? $request->query['cap_cod'] ?? ''));
+        $condicionada = $request->query['cobertura_condicionada'] ?? null;
+        $limit = $this->readIntParam($request->query['limit'] ?? null, 20, 1, $this->maxLimit(), 'limit');
+        $offset = $this->readIntParam($request->query['offset'] ?? null, 0, 0, self::MAX_OFFSET, 'offset');
+
+        $sql = 'SELECT id, codigo, cap_cod, capitulo, subcapitulo, practica, notas, cobertura_condicionada, revisar
+                  FROM pmo_practicas';
+        $where = [];
+        $params = [];
+
+        if ($query !== '') {
+            $escaped = '%' . $this->escapeLike($query) . '%';
+            $where[] = '(codigo ILIKE :exact OR codigo ILIKE :prefix OR practica ILIKE :term OR capitulo ILIKE :term)';
+            $params[':exact'] = $query;
+            $params[':prefix'] = $this->escapeLike($query) . '%';
+            $params[':term'] = $escaped;
+        }
+
+        if ($capitulo !== '') {
+            $where[] = '(cap_cod = :cap_cod OR capitulo ILIKE :cap_term)';
+            $params[':cap_cod'] = $capitulo;
+            $params[':cap_term'] = '%' . $this->escapeLike($capitulo) . '%';
+        }
+
+        if ($condicionada !== null && $condicionada !== '') {
+            $where[] = 'cobertura_condicionada = :cond';
+            $params[':cond'] = filter_var($condicionada, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+        }
+
+        if (!empty($where)) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        if ($query !== '') {
+            $sql .= ' ORDER BY (codigo = :exact_order) DESC, (codigo ILIKE :prefix_order) DESC, similarity(practica, :sim_order) DESC, id ASC';
+            $params[':exact_order'] = $query;
+            $params[':prefix_order'] = $this->escapeLike($query) . '%';
+            $params[':sim_order'] = $query;
+        } else {
+            $sql .= ' ORDER BY codigo ASC';
+        }
+
+        $sql .= ' LIMIT :limit OFFSET :offset';
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+
+        $results = [];
+        foreach ($rows as $r) {
+            $results[] = [
+                'code' => (string) $r['codigo'],
+                'chapter_code' => $r['cap_cod'] !== null ? (string) $r['cap_cod'] : null,
+                'chapter' => $r['capitulo'] !== null ? (string) $r['capitulo'] : null,
+                'subchapter' => $r['subcapitulo'] !== null ? (string) $r['subcapitulo'] : null,
+                'practice' => (string) $r['practica'],
+                'notes' => $r['notas'] !== '' && $r['notas'] !== null ? (string) $r['notas'] : null,
+                'conditioned_coverage' => (int) $r['cobertura_condicionada'] === 1,
+            ];
+        }
+
+        return [
+            'data' => $results,
+            'meta' => [
+                'query' => $query !== '' ? $query : null,
+                'chapter' => $capitulo !== '' ? $capitulo : null,
+                'limit' => $limit,
+                'offset' => $offset,
+                'returned' => count($results),
+                'took_ms' => round((hrtime(true) - $startedAt) / 1e6, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Obtiene el detalle de una práctica PMO por su código.
+     *
+     * @return array{data: array<string, mixed>, meta: array<string, mixed>}
+     */
+    public function findPmoPractica(string $code): array
+    {
+        $startedAt = hrtime(true);
+        $code = trim($code);
+
+        $stmt = $this->db->prepare('SELECT id, codigo, cap_cod, capitulo, subcapitulo, practica, notas, cobertura_condicionada, revisar
+                                      FROM pmo_practicas
+                                     WHERE codigo = :code
+                                     LIMIT 1');
+        $stmt->execute([':code' => $code]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            $odontoStmt = $this->db->prepare('SELECT id, codigo, practica, descripcion FROM pmo_odontologia WHERE codigo = :code LIMIT 1');
+            $odontoStmt->execute([':code' => $code]);
+            $odontoRow = $odontoStmt->fetch();
+
+            if ($odontoRow !== false) {
+                return [
+                    'data' => [
+                        'type' => 'odontologia',
+                        'code' => (string) $odontoRow['codigo'],
+                        'practice' => (string) $odontoRow['practica'],
+                        'description' => $odontoRow['descripcion'] !== '' ? (string) $odontoRow['descripcion'] : null,
+                    ],
+                    'meta' => ['took_ms' => round((hrtime(true) - $startedAt) / 1e6, 2)],
+                ];
+            }
+
+            throw ApiException::notFound("No se encontró la práctica PMO con código: {$code}.");
+        }
+
+        return [
+            'data' => [
+                'type' => 'medica',
+                'code' => (string) $row['codigo'],
+                'chapter_code' => $row['cap_cod'] !== null ? (string) $row['cap_cod'] : null,
+                'chapter' => $row['capitulo'] !== null ? (string) $row['capitulo'] : null,
+                'subchapter' => $row['subcapitulo'] !== null ? (string) $row['subcapitulo'] : null,
+                'practice' => (string) $row['practica'],
+                'notes' => $row['notas'] !== '' && $row['notas'] !== null ? (string) $row['notas'] : null,
+                'conditioned_coverage' => (int) $row['cobertura_condicionada'] === 1,
+            ],
+            'meta' => ['took_ms' => round((hrtime(true) - $startedAt) / 1e6, 2)],
+        ];
+    }
+
+    /**
+     * Búsqueda de medicamentos y precios de referencia del PMO.
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function searchPmoMedicamentos(Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $query = trim((string) ($request->query['q'] ?? ''));
+        $atc = trim((string) ($request->query['atc'] ?? ''));
+        $limit = $this->readIntParam($request->query['limit'] ?? null, 20, 1, $this->maxLimit(), 'limit');
+        $offset = $this->readIntParam($request->query['offset'] ?? null, 0, 0, self::MAX_OFFSET, 'offset');
+
+        $sql = 'SELECT p.id, p.principio_activo, p.presentacion, p.precio_ref, p.cobertura_40, p.pagina,
+                       f.atc, f.nombre AS nombre_atc, f.notas AS notas_atc
+                  FROM pmo_precios p
+             LEFT JOIN pmo_formulario f ON f.nombre ILIKE \'%\' || p.principio_activo || \'%\' OR p.principio_activo ILIKE \'%\' || f.nombre || \'%\'';
+
+        $where = [];
+        $params = [];
+
+        if ($query !== '') {
+            $escaped = '%' . $this->escapeLike($query) . '%';
+            $where[] = '(p.principio_activo ILIKE :term OR p.presentacion ILIKE :term OR f.atc ILIKE :term)';
+            $params[':term'] = $escaped;
+        }
+
+        if ($atc !== '') {
+            $where[] = 'f.atc ILIKE :atc';
+            $params[':atc'] = $this->escapeLike($atc) . '%';
+        }
+
+        if (!empty($where)) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        if ($query !== '') {
+            $sql .= ' ORDER BY similarity(p.principio_activo, :sim) DESC, p.id ASC';
+            $params[':sim'] = $query;
+        } else {
+            $sql .= ' ORDER BY p.principio_activo ASC, p.id ASC';
+        }
+
+        $sql .= ' LIMIT :limit OFFSET :offset';
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+
+        $results = [];
+        foreach ($rows as $r) {
+            $results[] = [
+                'active_ingredient' => (string) $r['principio_activo'],
+                'presentation' => (string) $r['presentacion'],
+                'reference_price' => $r['precio_ref'] !== null ? (float) $r['precio_ref'] : null,
+                'coverage_40_percent' => $r['cobertura_40'] !== null ? (float) $r['cobertura_40'] : null,
+                'atc_code' => $r['atc'] !== null ? (string) $r['atc'] : null,
+                'atc_name' => $r['nombre_atc'] !== null ? (string) $r['nombre_atc'] : null,
+                'pmo_resolution_notes' => $r['notas_atc'] !== '' && $r['notas_atc'] !== null ? (string) $r['notas_atc'] : null,
+            ];
+        }
+
+        return [
+            'data' => $results,
+            'meta' => [
+                'query' => $query !== '' ? $query : null,
+                'atc' => $atc !== '' ? $atc : null,
+                'limit' => $limit,
+                'offset' => $offset,
+                'returned' => count($results),
+                'took_ms' => round((hrtime(true) - $startedAt) / 1e6, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Búsqueda en los textos normativos y resoluciones del PMO.
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function searchPmoNormativa(Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $query = trim((string) ($request->query['q'] ?? ''));
+        $seccion = trim((string) ($request->query['seccion'] ?? ''));
+        $limit = $this->readIntParam($request->query['limit'] ?? null, 20, 1, $this->maxLimit(), 'limit');
+
+        $sql = 'SELECT id, seccion, numero, titulo, texto FROM pmo_texto';
+        $where = [];
+        $params = [];
+
+        if ($query !== '') {
+            $escaped = '%' . $this->escapeLike($query) . '%';
+            $where[] = '(titulo ILIKE :term OR texto ILIKE :term)';
+            $params[':term'] = $escaped;
+        }
+
+        if ($seccion !== '') {
+            $where[] = 'seccion ILIKE :sec';
+            $params[':sec'] = '%' . $this->escapeLike($seccion) . '%';
+        }
+
+        if (!empty($where)) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        $sql .= ' ORDER BY id ASC LIMIT :limit';
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+
+        $results = [];
+        foreach ($rows as $r) {
+            $results[] = [
+                'section' => (string) $r['seccion'],
+                'number' => (string) $r['numero'],
+                'title' => (string) $r['titulo'],
+                'text' => (string) $r['texto'],
+            ];
+        }
+
+        return [
+            'data' => $results,
+            'meta' => [
+                'query' => $query !== '' ? $query : null,
+                'section' => $seccion !== '' ? $seccion : null,
+                'limit' => $limit,
+                'returned' => count($results),
+                'took_ms' => round((hrtime(true) - $startedAt) / 1e6, 2),
+            ],
+        ];
+    }
+
+    /**
      * Construye las ramas UNION ALL del buscador. Solo se compilan las ramas
      * de los dominios efectivamente solicitados.
      *

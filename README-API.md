@@ -757,7 +757,57 @@ curl -s -X GET "https://api.origen.ar/v1/loinc/58410-2" \
 
 ---
 
-## 9. Medicamentos ANMAT y Catálogos Locales
+## 9. Programa Médico Obligatorio (PMO / PMOE - Res. 201/2002)
+
+Servicio normativo y arancelario de la canasta básica de cobertura obligatoria de Argentina (Res. 201/2002 y Actualización 1/2002).
+
+### 9.1 Búsqueda de Prácticas Médicas PMO
+
+```http
+GET /v1/pmo/practicas?q={termino}&capitulo={codigo_o_nombre}&cobertura_condicionada={bool}
+```
+
+```bash
+curl -s -H "X-API-Key: TU_API_KEY" \
+  "https://api.origen.ar/v1/pmo/practicas?q=craneotomia"
+```
+
+### 9.2 Detalle de Práctica PMO por Código
+
+```http
+GET /v1/pmo/practicas/{codigo}
+```
+
+```bash
+curl -s -H "X-API-Key: TU_API_KEY" \
+  "https://api.origen.ar/v1/pmo/practicas/010101"
+```
+
+### 9.3 Medicamentos y Precios de Referencia PMO
+
+```http
+GET /v1/pmo/medicamentos?q={droga_o_presentacion}&atc={codigo_atc}
+```
+
+```bash
+curl -s -H "X-API-Key: TU_API_KEY" \
+  "https://api.origen.ar/v1/pmo/medicamentos?q=amoxicilina"
+```
+
+### 9.4 Textos y Resoluciones Normativas PMO
+
+```http
+GET /v1/pmo/normativa?q={termino}&seccion={seccion}
+```
+
+```bash
+curl -s -H "X-API-Key: TU_API_KEY" \
+  "https://api.origen.ar/v1/pmo/normativa?q=materno"
+```
+
+---
+
+## 10. Medicamentos ANMAT y Catálogos Locales
 
 | Endpoint | Descripción | Identificador |
 |---|---|---|
@@ -770,7 +820,7 @@ curl -s -X GET "https://api.origen.ar/v1/loinc/58410-2" \
 
 ---
 
-## 10. Monitoreo y Health Check
+## 11. Monitoreo y Health Check
 
 ### `GET /health`
 Endpoint público diseñado para balanceadores de carga, monitoreo de uptime y Kubernetes probes. **No requiere autenticación**.
