@@ -43,6 +43,7 @@ final class TerminologySearchService
     public const DOMAIN_IMAGENES = 'imagenes';
     public const DOMAIN_NOMENCLADOR = 'nomenclador';
     public const DOMAIN_VADEMECUM = 'vademecum';
+    public const DOMAIN_LOINC = 'loinc';
 
     /** @var list<string> */
     public const DOMAINS = [
@@ -57,6 +58,7 @@ final class TerminologySearchService
         self::DOMAIN_IMAGENES,
         self::DOMAIN_NOMENCLADOR,
         self::DOMAIN_VADEMECUM,
+        self::DOMAIN_LOINC,
     ];
 
     /**
@@ -193,6 +195,15 @@ final class TerminologySearchService
                 'en' => 'Argentine commercial pharmaceutical formulary with Troquel, AlfaBeta, Kairos and GTIN.',
             ],
             'source' => 'vademecum_comercial',
+            'mode' => 'catalog',
+        ],
+        self::DOMAIN_LOINC => [
+            'label' => ['es' => 'LOINC (Observaciones y Laboratorio)', 'en' => 'LOINC (Observations & Laboratory)'],
+            'description' => [
+                'es' => 'Estándar internacional para pruebas de laboratorio, mediciones y observaciones clínicas con traducciones para Argentina y Latinoamérica.',
+                'en' => 'International standard for identifying health measurements, observations, and laboratory documents with Argentine and Latin American translations.',
+            ],
+            'source' => 'loinc',
             'mode' => 'catalog',
         ],
     ];
@@ -1443,6 +1454,218 @@ final class TerminologySearchService
     }
 
     /**
+     * Búsqueda en catálogo maestro LOINC (109.325 conceptos con variantes en español).
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function searchLoinc(Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $query = trim((string) ($request->query['q'] ?? ''));
+        $class = trim((string) ($request->query['class'] ?? ''));
+        $status = trim((string) ($request->query['status'] ?? ''));
+        $system = trim((string) ($request->query['system'] ?? ''));
+        $limit = $this->readIntParam($request->query['limit'] ?? null, 20, 1, $this->maxLimit(), 'limit');
+        $offset = $this->readIntParam($request->query['offset'] ?? null, 0, 0, self::MAX_OFFSET, 'offset');
+
+        $sql = 'SELECT t.id,
+                       t.loinc,
+                       t.long_common_name,
+                       t.display_name,
+                       t.component,
+                       t.property,
+                       t.time_aspct,
+                       t.system_type,
+                       t.scale_type,
+                       t.method_type,
+                       t.class_type,
+                       t.status,
+                       t.shortname,
+                       t.example_units,
+                       t.example_ucum_units,
+                       t.order_obs
+                  FROM loinc t';
+
+        $where = [];
+        $params = [];
+
+        if ($class !== '') {
+            $where[] = 't.class_type ILIKE :class';
+            $params[':class'] = '%' . $this->escapeLike($class) . '%';
+        }
+
+        if ($status !== '') {
+            $where[] = 'upper(t.status) = :status';
+            $params[':status'] = strtoupper($status);
+        }
+
+        if ($system !== '') {
+            $where[] = 't.system_type ILIKE :system';
+            $params[':system'] = '%' . $this->escapeLike($system) . '%';
+        }
+
+        if ($query !== '') {
+            $escaped = '%' . $this->escapeLike($query) . '%';
+            $where[] = '(t.loinc = :exact
+                      OR t.loinc ILIKE :prefix
+                      OR t.long_common_name ILIKE :term
+                      OR t.display_name ILIKE :term
+                      OR t.component ILIKE :term
+                      OR t.shortname ILIKE :term)';
+            $params[':exact'] = $query;
+            $params[':prefix'] = $this->escapeLike($query) . '%';
+            $params[':term'] = $escaped;
+        }
+
+        if (!empty($where)) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        if ($query !== '') {
+            $sql .= ' ORDER BY (t.loinc = :exact_order) DESC,
+                               (t.loinc ILIKE :prefix_order) DESC,
+                               similarity(coalesce(nullif(t.long_common_name, \'\'), t.component), :sim_order) DESC,
+                               t.id ASC';
+            $params[':exact_order'] = $query;
+            $params[':prefix_order'] = $this->escapeLike($query) . '%';
+            $params[':sim_order'] = $query;
+        } else {
+            $sql .= ' ORDER BY t.loinc ASC';
+        }
+
+        $sql .= ' LIMIT :limit OFFSET :offset';
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v);
+            }
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
+        } catch (\PDOException $e) {
+            throw ApiException::internalError('Error al consultar el catálogo LOINC: ' . $e->getMessage());
+        }
+
+        $results = [];
+        foreach ($rows as $r) {
+            $results[] = [
+                'code' => (string) $r['loinc'],
+                'long_common_name' => $r['long_common_name'] !== null ? (string) $r['long_common_name'] : null,
+                'display_name' => $r['display_name'] !== null ? (string) $r['display_name'] : null,
+                'component' => $r['component'] !== null ? (string) $r['component'] : null,
+                'property' => $r['property'] !== null ? (string) $r['property'] : null,
+                'time_aspect' => $r['time_aspct'] !== null ? (string) $r['time_aspct'] : null,
+                'system' => $r['system_type'] !== null ? (string) $r['system_type'] : null,
+                'scale' => $r['scale_type'] !== null ? (string) $r['scale_type'] : null,
+                'method' => $r['method_type'] !== null ? (string) $r['method_type'] : null,
+                'class' => $r['class_type'] !== null ? (string) $r['class_type'] : null,
+                'status' => $r['status'] !== null ? (string) $r['status'] : null,
+                'shortname' => $r['shortname'] !== null ? (string) $r['shortname'] : null,
+                'example_units' => $r['example_units'] !== null ? (string) $r['example_units'] : null,
+                'example_ucum_units' => $r['example_ucum_units'] !== null ? (string) $r['example_ucum_units'] : null,
+                'order_obs' => $r['order_obs'] !== null ? (string) $r['order_obs'] : null,
+            ];
+        }
+
+        return [
+            'data' => $results,
+            'meta' => [
+                'query' => $query !== '' ? $query : null,
+                'class' => $class !== '' ? $class : null,
+                'status' => $status !== '' ? $status : null,
+                'system' => $system !== '' ? $system : null,
+                'limit' => $limit,
+                'offset' => $offset,
+                'returned' => count($results),
+                'language' => $language,
+                'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Ficha técnica detallada de un código LOINC con sus mapeos (MapTo)
+     * y correlación con Nomencladores Argentinos (NBU, NN/PMO).
+     *
+     * @return array{data: array<string, mixed>, meta: array<string, mixed>}
+     */
+    public function findLoinc(string $code, Request $request): array
+    {
+        $startedAt = hrtime(true);
+        $code = trim($code);
+
+        $sql = 'SELECT t.* FROM loinc t WHERE t.loinc = :code LIMIT 1';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':code' => $code]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            throw ApiException::notFound("No se encontró el concepto LOINC '{$code}'.");
+        }
+
+        // Mapeos MapTo
+        $mapStmt = $this->db->prepare('SELECT map, comment FROM loinc_map WHERE loinc = :code ORDER BY map ASC');
+        $mapStmt->execute([':code' => $code]);
+        $mapRows = $mapStmt->fetchAll();
+
+        $mappings = array_map(static fn (array $m): array => [
+            'target_code' => (string) $m['map'],
+            'comment' => $m['comment'] !== null ? (string) $m['comment'] : null,
+        ], $mapRows);
+
+        // Vínculo con Nomencladores Argentinos (NBU, NN/PMO)
+        $nomStmt = $this->db->prepare(
+            'SELECT tipo_nomenclador, codigo, descripcion, unidad_tipo, unidad_valor
+               FROM nomencladores_argentina
+              WHERE codigo_loinc = :code
+              ORDER BY tipo_nomenclador ASC, codigo ASC'
+        );
+        $nomStmt->execute([':code' => $code]);
+        $nomRows = $nomStmt->fetchAll();
+
+        $argentineNomenclators = array_map(static fn (array $n): array => [
+            'nomenclator' => (string) $n['tipo_nomenclador'],
+            'code' => (string) $n['codigo'],
+            'description' => (string) $n['descripcion'],
+            'unit_type' => (string) $n['unidad_tipo'],
+            'unit_value' => $n['unidad_valor'] !== null ? (float) $n['unidad_valor'] : null,
+        ], $nomRows);
+
+        return [
+            'data' => [
+                'code' => (string) $row['loinc'],
+                'long_common_name' => (string) ($row['long_common_name'] ?? ''),
+                'display_name' => $row['display_name'] !== null ? (string) $row['display_name'] : null,
+                'component' => $row['component'] !== null ? (string) $row['component'] : null,
+                'property' => $row['property'] !== null ? (string) $row['property'] : null,
+                'time_aspect' => $row['time_aspct'] !== null ? (string) $row['time_aspct'] : null,
+                'system' => $row['system_type'] !== null ? (string) $row['system_type'] : null,
+                'scale' => $row['scale_type'] !== null ? (string) $row['scale_type'] : null,
+                'method' => $row['method_type'] !== null ? (string) $row['method_type'] : null,
+                'class' => $row['class_type'] !== null ? (string) $row['class_type'] : null,
+                'status' => $row['status'] !== null ? (string) $row['status'] : null,
+                'shortname' => $row['shortname'] !== null ? (string) $row['shortname'] : null,
+                'example_units' => $row['example_units'] !== null ? (string) $row['example_units'] : null,
+                'example_ucum_units' => $row['example_ucum_units'] !== null ? (string) $row['example_ucum_units'] : null,
+                'order_obs' => $row['order_obs'] !== null ? (string) $row['order_obs'] : null,
+                'consumer_name' => $row['consumer_name'] !== null ? (string) $row['consumer_name'] : null,
+                'definition' => $row['definition_description'] !== null ? (string) $row['definition_description'] : null,
+                'formula' => $row['formula'] !== null ? (string) $row['formula'] : null,
+                'version_last_changed' => $row['version_last_changed'] !== null ? (string) $row['version_last_changed'] : null,
+                'version_first_released' => $row['version_first_released'] !== null ? (string) $row['version_first_released'] : null,
+                'mappings_map_to' => $mappings,
+                'argentine_nomenclators' => $argentineNomenclators,
+            ],
+            'meta' => [
+                'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+        ];
+    }
+
+    /**
      * Construye las ramas UNION ALL del buscador. Solo se compilan las ramas
      * de los dominios efectivamente solicitados.
      *
@@ -1495,6 +1718,12 @@ final class TerminologySearchService
 
         if (in_array(self::DOMAIN_ANMAT, $domains, true)) {
             [$sql, $params] = $this->anmatBranch($term, $contains, $prefix, $useTrigram, $index++);
+            $branches[] = $sql;
+            $parameters += $params;
+        }
+
+        if (in_array(self::DOMAIN_LOINC, $domains, true)) {
+            [$sql, $params] = $this->loincBranch($term, $contains, $prefix, $language, $useTrigram, $index++);
             $branches[] = $sql;
             $parameters += $params;
         }
@@ -1779,6 +2008,79 @@ final class TerminologySearchService
         if ($useTrigram) {
             $params[":{$p}_trgm_c"] = $term;
             $params[":{$p}_trgm_g"] = $term;
+        }
+
+        return [$sql, $params];
+    }
+
+    /**
+     * Rama LOINC para el buscador unificado.
+     *
+     * @return array{0: string, 1: array<string, string>}
+     */
+    private function loincBranch(
+        string $term,
+        string $contains,
+        string $prefix,
+        string $language,
+        bool $useTrigram,
+        int $index
+    ): array {
+        $p = 'lo' . $index;
+        $trigramSql = $useTrigram ? " OR t.long_common_name % :{$p}_trgm OR t.component % :{$p}_trgm" : '';
+
+        $sql = <<<SQL
+            SELECT
+                'loinc'                                             AS domain,
+                'loinc'                                             AS source,
+                'loinc:' || t.loinc                                 AS result_key,
+                t.loinc                                             AS source_id,
+                t.loinc                                             AS code,
+                coalesce(nullif(t.long_common_name, ''), nullif(t.display_name, ''), t.component) AS term,
+                t.component                                         AS subtitle,
+                'es'                                                AS language,
+                'loinc_observation'                                 AS kind,
+                CAST(GREATEST(
+                    CASE WHEN lower(t.loinc) = lower(:{$p}_exact) THEN CAST(1.0 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.loinc ILIKE :{$p}_prefix THEN CAST(0.96 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN lower(t.long_common_name) = lower(:{$p}_exact) THEN CAST(0.94 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.long_common_name ILIKE :{$p}_prefix THEN CAST(0.90 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.display_name ILIKE :{$p}_prefix THEN CAST(0.88 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.component ILIKE :{$p}_prefix THEN CAST(0.86 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.long_common_name ILIKE :{$p}_contains THEN CAST(0.78 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.display_name ILIKE :{$p}_contains THEN CAST(0.76 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CASE WHEN t.component ILIKE :{$p}_contains THEN CAST(0.74 AS float8) ELSE CAST(0.0 AS float8) END,
+                    CAST(similarity(coalesce(nullif(t.long_common_name, ''), t.component), :{$p}_sim) AS float8)
+                ) AS float8)                                        AS score,
+                CAST(json_build_object(
+                    'loinc_code', t.loinc,
+                    'class_type', t.class_type,
+                    'system_type', t.system_type,
+                    'scale_type', t.scale_type,
+                    'method_type', t.method_type,
+                    'status', t.status,
+                    'example_ucum_units', t.example_ucum_units
+                ) AS text)                                          AS metadata
+            FROM loinc t
+            WHERE (
+                    t.loinc ILIKE :{$p}_prefix
+                 OR t.long_common_name ILIKE :{$p}_contains
+                 OR t.display_name ILIKE :{$p}_contains
+                 OR t.component ILIKE :{$p}_contains
+                 OR t.shortname ILIKE :{$p}_contains
+                 {$trigramSql}
+            )
+            SQL;
+
+        $params = [
+            ":{$p}_exact" => $term,
+            ":{$p}_prefix" => $prefix,
+            ":{$p}_contains" => $contains,
+            ":{$p}_sim" => $term,
+        ];
+
+        if ($useTrigram) {
+            $params[":{$p}_trgm"] = $term;
         }
 
         return [$sql, $params];

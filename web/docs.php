@@ -398,6 +398,7 @@ $isEn = $locale === 'en';
                     <li><a href="#snomed"><?= $isEn ? 'SNOMED CT Concepts' : 'Conceptos SNOMED CT' ?></a></li>
                     <li><a href="#cie10"><?= $isEn ? 'WHO ICD-10 (CIE-10)' : 'CIE-10 de la OMS' ?></a></li>
                     <li><a href="#anmat"><?= $isEn ? 'ANMAT Medications' : 'Medicamentos ANMAT' ?></a></li>
+                    <li><a href="#loinc"><?= $isEn ? 'LOINC Observations' : 'Observaciones LOINC' ?></a></li>
                     <li><a href="#local-catalogs"><?= $isEn ? 'Lab, Vaccines & Imaging' : 'Laboratorio, Vacunas e Imágenes' ?></a></li>
                 </ul>
             </div>
@@ -1115,6 +1116,70 @@ fmt.Println(string(body))</code></pre>
                         : 'Consulta especialidades medicinales autorizadas por ANMAT Argentina, incluyendo número de certificado, nombre genérico y comercial, forma farmacéutica, laboratorio y concepto SNOMED-CT vinculado.'
                     ?>
                 </p>
+
+                <h3 id="loinc">LOINC Laboratory & Clinical Observations (`/v1/loinc`)</h3>
+                <div class="endpoint-badge">
+                    <span class="method-get">GET</span>
+                    <code>/v1/loinc?q={query}&amp;class={class}&amp;status={status}&amp;limit={n}</code>
+                </div>
+                <div class="endpoint-badge" style="margin-top: 6px;">
+                    <span class="method-get">GET</span>
+                    <code>/v1/loinc/{code}</code>
+                </div>
+                <p>
+                    <?= $isEn
+                        ? 'Search across all 112,400+ official LOINC 2.83 concepts with localized Spanish names (Mexico and Argentina), properties, UCUM units, MapTo links, and Argentine biochemical nomenclator (NBU) mappings.'
+                        : 'Búsqueda en los más de 112.400 conceptos oficiales de LOINC 2.83 con denominaciones localizadas en español (México y Argentina), propiedades analíticas, unidades UCUM, mapeos MapTo y correlación directa con el Nomenclador Bioquímico Único (NBU).'
+                    ?>
+                </p>
+                <div class="code-tabs">
+                    <div class="code-tab-nav">
+                        <button class="tab-btn active" data-lang="curl">cURL</button>
+                        <button class="tab-btn" data-lang="js">JavaScript</button>
+                        <button class="tab-btn" data-lang="py">Python</button>
+                        <button class="tab-btn" data-lang="php">PHP</button>
+                        <button class="tab-btn" data-lang="cs">C#</button>
+                        <button class="tab-btn" data-lang="java">Java</button>
+                        <button class="tab-btn" data-lang="go">Go</button>
+                    </div>
+                    <pre class="code-pane active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/loinc?q=hemograma" \
+  -H "Authorization: Bearer &lt;API_KEY&gt;"</code></pre>
+                    <pre class="code-pane" data-lang="js"><code>const res = await fetch('https://api.origen.ar/v1/loinc?q=hemograma', {
+  headers: { 'Authorization': 'Bearer &lt;API_KEY&gt;' }
+});
+const data = await res.json();
+console.log(data);</code></pre>
+                    <pre class="code-pane" data-lang="py"><code>import requests
+
+r = requests.get(
+    "https://api.origen.ar/v1/loinc",
+    params={"q": "hemograma"},
+    headers={"Authorization": "Bearer &lt;API_KEY&gt;"}
+)
+print(r.json())</code></pre>
+                    <pre class="code-pane" data-lang="php"><code>$ch = curl_init('https://api.origen.ar/v1/loinc?q=hemograma');
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer &lt;API_KEY&gt;']);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$res = json_decode(curl_exec($ch), true);
+curl_close($ch);
+print_r($res);</code></pre>
+                    <pre class="code-pane" data-lang="cs"><code>using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("Authorization", "Bearer &lt;API_KEY&gt;");
+var json = await client.GetStringAsync("https://api.origen.ar/v1/loinc?q=hemograma");
+Console.WriteLine(json);</code></pre>
+                    <pre class="code-pane" data-lang="java"><code>var client = HttpClient.newHttpClient();
+var req = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.origen.ar/v1/loinc?q=hemograma"))
+    .header("Authorization", "Bearer &lt;API_KEY&gt;")
+    .GET().build();
+var res = client.send(req, HttpResponse.BodyHandlers.ofString());
+System.out.println(res.body());</code></pre>
+                    <pre class="code-pane" data-lang="go"><code>req, _ := http.NewRequest("GET", "https://api.origen.ar/v1/loinc?q=hemograma", nil)
+req.Header.Set("Authorization", "Bearer &lt;API_KEY&gt;")
+res, _ := http.DefaultClient.Do(req)
+body, _ := io.ReadAll(res.Body)
+fmt.Println(string(body))</code></pre>
+                </div>
             </section>
 
             <!-- 7. HL7 FHIR R4 -->

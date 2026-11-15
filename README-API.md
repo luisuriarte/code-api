@@ -650,7 +650,114 @@ curl -s -X GET "https://api.origen.ar/v1/cie10/K02.1" \
 
 ---
 
-## 8. Medicamentos ANMAT y Catálogos Locales
+## 8. Catálogo Internacional LOINC (Laboratorio y Observaciones Clínicas)
+
+Origen Salud integra la versión completa y oficial de **LOINC 2.83** con más de **112.400 conceptos clínicos** armonizados con sus capas lingüísticas en español (México y Argentina).
+
+### 8.1. Búsqueda y filtrado en LOINC
+#### `GET /v1/loinc`
+
+##### Parámetros de consulta:
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `q` | `string` | Término libre o código LOINC (ej. `hemograma`, `58410-2`, `glucosa`). |
+| `class` | `string` | Filtro por tipo de clase (ej. `HEM/BC`, `CHEM`, `MICRO`, `SERO`). |
+| `status` | `string` | Filtro por estado: `ACTIVE`, `DEPRECATED`, `DISCOURAGED`. |
+| `system` | `string` | Filtro por muestra o espécimen: `Ser/Plas`, `Bld`, `Urine`, `Pt`. |
+| `limit` | `int` | Límite de resultados (defecto: `20`, máx: `100`). |
+| `offset` | `int` | Paginación (defecto: `0`). |
+
+```bash
+curl -s -X GET "https://api.origen.ar/v1/loinc?q=hemograma&limit=5" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+```
+
+##### Respuesta:
+```json
+{
+  "data": [
+    {
+      "code": "58410-2",
+      "long_common_name": "CBC panel - Blood by Automated count",
+      "display_name": "Recuento sanguíneo completo con recuento diferencial automatizado en sangre",
+      "component": "Hemograma completo",
+      "property": "Contenido numérico",
+      "time_aspect": "Punto en el tiempo",
+      "system": "Sangre",
+      "scale": "Cuantitativo",
+      "method": "Contador automatizado",
+      "class": "HEM/BC",
+      "status": "ACTIVE",
+      "shortname": "CBC pnl Auto Bld",
+      "example_units": null,
+      "example_ucum_units": "10*3/uL",
+      "order_obs": "Both"
+    }
+  ],
+  "meta": {
+    "query": "hemograma",
+    "class": null,
+    "status": null,
+    "system": null,
+    "limit": 5,
+    "offset": 0,
+    "returned": 1,
+    "language": "es",
+    "took_ms": 1.45
+  }
+}
+```
+
+### 8.2. Ficha Técnica y Mapeos de un Concepto LOINC
+#### `GET /v1/loinc/{code}`
+
+Devuelve todos los atributos clínicos, fórmulas, unidades UCUM, tabla de mapeos `MapTo` y su correlación con los nomencladores oficiales de Argentina (NBU, NN/PMO).
+
+```bash
+curl -s -X GET "https://api.origen.ar/v1/loinc/58410-2" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+```
+
+##### Respuesta:
+```json
+{
+  "data": {
+    "code": "58410-2",
+    "long_common_name": "CBC panel - Blood by Automated count",
+    "display_name": "Recuento sanguíneo completo con recuento diferencial automatizado en sangre",
+    "component": "Hemograma completo",
+    "property": "Contenido numérico",
+    "time_aspect": "Punto en el tiempo",
+    "system": "Sangre",
+    "scale": "Cuantitativo",
+    "method": "Contador automatizado",
+    "class": "HEM/BC",
+    "status": "ACTIVE",
+    "shortname": "CBC pnl Auto Bld",
+    "example_ucum_units": "10*3/uL",
+    "order_obs": "Both",
+    "consumer_name": "Hemograma completo automatizado",
+    "definition": "Panel de recuento celular hematológico completo...",
+    "mappings_map_to": [],
+    "argentine_nomenclators": [
+      {
+        "nomenclator": "NBU",
+        "code": "660475",
+        "description": "Hemograma completo (recuento de hematíes, leucocitos, fórmula leucocitaria, Hb y Hto)",
+        "unit_type": "UB",
+        "unit_value": 3.8000
+      }
+    ]
+  },
+  "meta": {
+    "took_ms": 0.85
+  }
+}
+```
+
+---
+
+## 9. Medicamentos ANMAT y Catálogos Locales
 
 | Endpoint | Descripción | Identificador |
 |---|---|---|
@@ -663,7 +770,7 @@ curl -s -X GET "https://api.origen.ar/v1/cie10/K02.1" \
 
 ---
 
-## 9. Monitoreo y Health Check
+## 10. Monitoreo y Health Check
 
 ### `GET /health`
 Endpoint público diseñado para balanceadores de carga, monitoreo de uptime y Kubernetes probes. **No requiere autenticación**.

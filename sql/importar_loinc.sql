@@ -1,15 +1,16 @@
 -- =============================================================================
--- Origen Salud · Importación Maestra de LOINC para PostgreSQL 18
--- tools/sql/loinc/importar_loinc_postgresql.sql
+-- Origen Salud · Importación Maestra de LOINC 2.83 para PostgreSQL 18
+-- sql/importar_loinc.sql
 -- =============================================================================
--- Ubicación por defecto de los CSV en este proyecto:
---   tools/loinc/fuentes/Loinc.csv
---   tools/loinc/fuentes/MapTo.csv
---   tools/loinc/fuentes/esMX28LinguisticVariant.csv
---   tools/loinc/fuentes/esAR7LinguisticVariant.csv
+-- Versión Oficial: LOINC 2.83 (112.405 conceptos · Agosto 2026)
+-- Ubicación de las fuentes CSV en tools:
+--   tools/loinc/sources/Loinc.csv
+--   tools/loinc/sources/MapTo.csv
+--   tools/loinc/sources/esMX28LinguisticVariant.csv
+--   tools/loinc/sources/esAR7LinguisticVariant.csv
 --
 -- Orden de precedencia y traducción:
---  1º Se importa la base oficial en Inglés (Loinc.csv, 109.325 registros).
+--  1º Se importa la base oficial en Inglés (Loinc.csv, 112.405 registros).
 --  2º Se actualiza con la variante de México (esMX28LinguisticVariant.csv, 83.231 registros),
 --     que cuenta con la cobertura de traducción más amplia en español.
 --  3º Se actualiza con la variante de Argentina (esAR7LinguisticVariant.csv, 38.293 registros),
@@ -18,10 +19,11 @@
 --
 -- EJECUCIÓN RECOMENDADA EN EL VPS (desde el directorio raíz del proyecto):
 --   cd /var/www/html/origen.ar/code-api
---   sudo -u postgres psql -d origen_salud -f tools/loinc/importar_loinc_postgresql.sql
+--   chmod -R a+rX tools/loinc
+--   sudo -u postgres psql -d origen_salud -f sql/importar_loinc.sql
 --
 -- O pasando una ruta personalizada si los archivos están en otra carpeta:
---   sudo -u postgres psql -d origen_salud -v dir_loinc="/otra/ruta/fuentes" -f tools/loinc/importar_loinc_postgresql.sql
+--   sudo -u postgres psql -d origen_salud -v dir_loinc="/otra/ruta/sources" -f sql/importar_loinc.sql
 -- =============================================================================
 
 SET client_encoding = 'UTF8';
@@ -35,7 +37,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- =============================================================================
 \if :{?dir_loinc}
 \else
-  \set dir_loinc 'tools/loinc/fuentes'
+  \set dir_loinc 'tools/loinc/sources'
 \endif
 
 \set q ''''
@@ -44,17 +46,17 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 \set f_mx :dir_loinc '/esMX28LinguisticVariant.csv'
 \set f_ar :dir_loinc '/esAR7LinguisticVariant.csv'
 
--- Meta-comandos dinámicos \copy
+-- Meta-comandos dinámicos \copy (con soporte para ConsumerName de LOINC 2.83)
 \set cmd_loinc '\\copy loinc (loinc, component, property, time_aspct, system_type, scale_type, method_type, class_type, version_last_changed, chng_type, definition_description, status, consumer_name, classtype, formula, exmpl_answers, survey_quest_text, survey_quest_src, unitsrequired, relatednames2, shortname, order_obs, hl7_field_subfield_id, external_copyright_notice, example_units, long_common_name, example_ucum_units, status_reason, status_text, change_reason_public, common_test_rank, common_order_rank, hl7_attachment_structure, external_copyright_link, panel_type, ask_at_order_entry, associated_observations, version_first_released, valid_hl7_attachment_request, display_name) FROM ' :q :f_loinc :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''', FORCE_NULL (classtype, common_test_rank, common_order_rank))'
 
 \set cmd_map '\\copy loinc_map (loinc, map, comment) FROM ' :q :f_map :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''')'
 
-\set cmd_mx '\\copy temp_loinc_mx (loinc_num, component, property, time_aspct, system, scale_typ, method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name) FROM ' :q :f_mx :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''')'
+\set cmd_mx '\\copy temp_loinc_mx (loinc_num, component, property, time_aspct, system, scale_typ, method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name, consumer_name) FROM ' :q :f_mx :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''')'
 
-\set cmd_ar '\\copy temp_loinc_ar (loinc_num, component, property, time_aspct, system, scale_typ, method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name) FROM ' :q :f_ar :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''')'
+\set cmd_ar '\\copy temp_loinc_ar (loinc_num, component, property, time_aspct, system, scale_typ, method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name, consumer_name) FROM ' :q :f_ar :q ' WITH (FORMAT csv, HEADER true, QUOTE ''"'', ESCAPE ''"'', ENCODING ''UTF8'', NULL '''')'
 
 \echo '-----------------------------------------------------------------------------'
-\echo 'Iniciando carga de LOINC desde:' :dir_loinc
+\echo 'Iniciando carga de LOINC 2.83 desde:' :dir_loinc
 \echo '-----------------------------------------------------------------------------'
 
 -- =============================================================================
@@ -119,19 +121,19 @@ CREATE TABLE loinc_map (
 );
 
 -- =============================================================================
--- 3. CARGA DE DATOS BASE EN INGLÉS (Loinc.csv)
+-- 3. CARGA DE DATOS BASE EN INGLÉS (Loinc.csv - 112.405 filas)
 -- =============================================================================
 \echo 'Cargando base en inglés (Loinc.csv)...'
 :cmd_loinc
 
 -- =============================================================================
--- 4. CARGA DE TABLA DE MAPEOS (MapTo.csv)
+-- 4. CARGA DE TABLA DE MAPEOS (MapTo.csv - 4.667 filas)
 -- =============================================================================
 \echo 'Cargando mapeos (MapTo.csv)...'
 :cmd_map
 
 -- =============================================================================
--- 5. CAPA DE TRADUCCIÓN MÉXICO: esMX28LinguisticVariant.csv
+-- 5. CAPA DE TRADUCCIÓN MÉXICO: esMX28LinguisticVariant.csv (83.231 filas)
 -- =============================================================================
 \echo 'Cargando variante lingüística México (esMX28LinguisticVariant.csv)...'
 DROP TABLE IF EXISTS temp_loinc_mx;
@@ -148,18 +150,19 @@ CREATE TEMP TABLE temp_loinc_mx (
     shortname TEXT,
     long_common_name TEXT,
     relatednames2 TEXT,
-    linguistic_variant_display_name TEXT
+    linguistic_variant_display_name TEXT,
+    consumer_name TEXT
 );
 
 :cmd_mx
 
 INSERT INTO loinc (
     loinc, component, property, time_aspct, system_type, scale_type,
-    method_type, class_type, shortname, long_common_name, relatednames2, display_name
+    method_type, class_type, shortname, long_common_name, relatednames2, display_name, consumer_name
 )
 SELECT
     loinc_num, component, property, time_aspct, system, scale_typ,
-    method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name
+    method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name, consumer_name
 FROM temp_loinc_mx
 ON CONFLICT (loinc) DO UPDATE SET
     component = COALESCE(NULLIF(EXCLUDED.component, ''), loinc.component),
@@ -172,12 +175,13 @@ ON CONFLICT (loinc) DO UPDATE SET
     shortname = COALESCE(NULLIF(EXCLUDED.shortname, ''), loinc.shortname),
     long_common_name = COALESCE(NULLIF(EXCLUDED.long_common_name, ''), loinc.long_common_name),
     relatednames2 = COALESCE(NULLIF(EXCLUDED.relatednames2, ''), loinc.relatednames2),
-    display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), loinc.display_name);
+    display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), loinc.display_name),
+    consumer_name = COALESCE(NULLIF(EXCLUDED.consumer_name, ''), loinc.consumer_name);
 
 DROP TABLE IF EXISTS temp_loinc_mx;
 
 -- =============================================================================
--- 6. CAPA DE TRADUCCIÓN ARGENTINA: esAR7LinguisticVariant.csv
+-- 6. CAPA DE TRADUCCIÓN ARGENTINA: esAR7LinguisticVariant.csv (38.293 filas)
 -- =============================================================================
 \echo 'Cargando y sobreescribiendo con variante Argentina (esAR7LinguisticVariant.csv)...'
 DROP TABLE IF EXISTS temp_loinc_ar;
@@ -194,18 +198,19 @@ CREATE TEMP TABLE temp_loinc_ar (
     shortname TEXT,
     long_common_name TEXT,
     relatednames2 TEXT,
-    linguistic_variant_display_name TEXT
+    linguistic_variant_display_name TEXT,
+    consumer_name TEXT
 );
 
 :cmd_ar
 
 INSERT INTO loinc (
     loinc, component, property, time_aspct, system_type, scale_type,
-    method_type, class_type, shortname, long_common_name, relatednames2, display_name
+    method_type, class_type, shortname, long_common_name, relatednames2, display_name, consumer_name
 )
 SELECT
     loinc_num, component, property, time_aspct, system, scale_typ,
-    method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name
+    method_typ, class, shortname, long_common_name, relatednames2, linguistic_variant_display_name, consumer_name
 FROM temp_loinc_ar
 ON CONFLICT (loinc) DO UPDATE SET
     component = COALESCE(NULLIF(EXCLUDED.component, ''), loinc.component),
@@ -218,7 +223,8 @@ ON CONFLICT (loinc) DO UPDATE SET
     shortname = COALESCE(NULLIF(EXCLUDED.shortname, ''), loinc.shortname),
     long_common_name = COALESCE(NULLIF(EXCLUDED.long_common_name, ''), loinc.long_common_name),
     relatednames2 = COALESCE(NULLIF(EXCLUDED.relatednames2, ''), loinc.relatednames2),
-    display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), loinc.display_name);
+    display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), loinc.display_name),
+    consumer_name = COALESCE(NULLIF(EXCLUDED.consumer_name, ''), loinc.consumer_name);
 
 DROP TABLE IF EXISTS temp_loinc_ar;
 
@@ -250,7 +256,8 @@ ANALYZE loinc_map;
 SELECT count(*) AS total_conceptos_loinc,
        count(NULLIF(long_common_name, '')) AS con_nombre_comun,
        count(NULLIF(display_name, '')) AS con_display_name,
-       count(NULLIF(component, '')) AS con_componente
+       count(NULLIF(component, '')) AS con_componente,
+       count(NULLIF(consumer_name, '')) AS con_consumer_name
   FROM loinc;
 
 SELECT count(*) AS total_mapeos_loinc FROM loinc_map;

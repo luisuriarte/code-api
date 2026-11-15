@@ -258,6 +258,34 @@ try {
         ], 200, ['X-Request-Id' => $request->requestId]);
     }
 
+    // Consulta y búsqueda directa en LOINC (con filtros ?q=...&class=...&status=...&system=...)
+    if ($path === '/v1/loinc') {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->searchLoinc($request);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
+    // Detalle específico de un código LOINC con sus mapeos MapTo y correlaciones
+    if (preg_match('#^/v1/loinc/([0-9]{1,7}-[0-9])$#', $path, $matches) === 1) {
+        if ($request->method !== 'GET') {
+            throw ApiException::methodNotAllowed('GET, OPTIONS');
+        }
+
+        $result = (new TerminologySearchService($db))->findLoinc($matches[1], $request);
+        Response::json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'request_id' => $request->requestId,
+        ], 200, ['X-Request-Id' => $request->requestId]);
+    }
+
     // Detalle CIE-10 con descripciones bilingües y mapeo a SNOMED-CT.
     if (preg_match('#^/v1/cie10/([A-Za-z][0-9]{2}(?:\.[0-9A-Za-z]{1,4}|[0-9A-Za-z]{0,3}))$#', $path, $matches) === 1) {
         if ($request->method !== 'GET') {
