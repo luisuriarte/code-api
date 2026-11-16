@@ -60,26 +60,26 @@ ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
 SELECT
     (SELECT id FROM os_catalog WHERE code = 'nn-pmo') AS catalog_id,
-    codigo,                      -- '010101', '010102', etc. (texto, ceros iniciales preservados)
+    codigo,
     'active' AS status
 FROM (VALUES
--- Datos representativos de pmo_practicas (primeras filas del archivo fuente)
- ('010101'), -- operación sistema nervioso
- ('010102'), -- operación craneostenosis
- ('010103'), -- craneoplastia con injerto
- ('010104'), -- reducción fractura cráneo
- ('010105'), -- escisión lesión tumoral infectiosa
- ('010106'), -- descompresión orbitaria unilateral
- ('010107'), -- evacución por punción colección intercerebral
- ('010108'), -- craneotomía exploradora
- ('010109'), -- reparación plástica senos craneales
- ('010110'), -- escisión lesión tumoral intracraneana
- ('010111'), -- drenaje ventricular continuo
- ('010112'), -- extracción tubos derivativas craneanas
- ('010113'), -- cirugía estereotáxica diversos métodos
- ('010114'), -- punción diagnóstica ventrículo trepanación
- ('010115'), -- punción transfontanelar ventrículos
- ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
+    ('010101'),
+    ('010102'),
+    ('010103'),
+    ('010104'),
+    ('010105'),
+    ('010106'),
+    ('010107'),
+    ('010108'),
+    ('010109'),
+    ('010110'),
+    ('010111'),
+    ('010112'),
+    ('010113'),
+    ('010114'),
+    ('010115')
+) AS tmp(codigo)
+ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 -- =============================================================================
 -- 3. Insertar versiones os_catalog_item_version
