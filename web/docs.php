@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 declare(strict_types=1);
 
@@ -510,7 +510,7 @@ $isEn = $locale === 'en';
                         <tr>
                             <td><strong style="color:var(--teal-dark)">Propio</strong></td>
                             <td><code>dentar</code></td>
-                            <td><?= $isEn ? 'DENTAR System: Dental procedures harmonized with ADA CDT 2025 and ICD-10.' : 'Sistema DENTAR: Prestaciones odontológicas armonizadas con ADA CDT 2025 y CIE-10.' ?></td>
+                            <td><?= $isEn ? 'DENTAR-PR: procedimientos odontológicos harmonized with ADA CDT 2025 and ICD-10.' : 'Sistema DENTAR: Prestaciones odontológicas armonizadas con ADA CDT 2025 y CIE-10.' ?></td>
                         </tr>
                         <tr>
                             <td><strong>Argentina</strong></td>
@@ -832,7 +832,7 @@ func main() {
                 <h2><?= $isEn ? '4. Dental Module (DENTAR / ADA CDT / CIE-10)' : '4. Módulo Odontológico (DENTAR / ADA CDT / CIE-10)' ?></h2>
                 <p>
                     <?= $isEn
-                        ? 'DENTAR harmonizes the 11 chapters of the Argentine Dental Nomenclator, ADA CDT 2025 (12 categories), permanent DNT-XXXXXX codes, SNOMED-CT clinical procedures, and ICD-10 (K00–K14) diagnosis justifications.'
+                        ? 'DENTAR-PR armoniza los procedimientos dentales y DENTAR-DX los diagnósticos of the Argentine Dental Nomenclator, ADA CDT 2025 (12 categories), permanent DNT-XXXXXX codes, SNOMED-CT clinical procedures, and ICD-10 (K00–K14) diagnosis justifications.'
                         : 'DENTAR armoniza los 11 capítulos del Nomenclador Odontológico Argentino, ADA CDT 2025 (12 categorías), códigos permanentes DNT-XXXXXX, procedimientos clínicos SNOMED-CT y justificaciones diagnósticas CIE-10 (K00–K14).'
                     ?>
                 </p>
@@ -933,8 +933,8 @@ fmt.Println(string(body))</code></pre>
                 <h3><?= $isEn ? 'Clinical Justification & Audit Rules for Procedures' : 'Justificación Clínica y Auditoría para Prestaciones' ?></h3>
                 <p>
                     <?= $isEn
-                        ? 'Verify which diagnoses justify a dental procedure before authorization or billing. Accepts Argentine code (02.01), CDT (D2140), DENTAR (DNT-000007), internal ID, or SNOMED-CT SCTID (424759004).'
-                        : 'Consulta qué diagnósticos justifican una práctica odontológica antes de autorizarla o facturarla. Acepta indistintamente código del nomenclador argentino (02.01), código CDT (D2140), código DENTAR (DNT-000007), ID numérico o SCTID de SNOMED-CT (424759004).'
+                        ? 'Verify which diagnoses justify a dental procedure before authorization or billing. Accepts Argentine code (02.01), CDT (D2140), DENTAR (DNT-PR-000007), internal ID, or SNOMED-CT SCTID (424759004).'
+                        : 'Consulta qué diagnósticos justifican una práctica odontológica antes de autorizarla o facturarla. Acepta indistintamente código del nomenclador argentino (02.01), código CDT (D2140), código DENTAR (DNT-PR-000007), ID numérico o SCTID de SNOMED-CT (424759004).'
                     ?>
                 </p>
 
@@ -1287,7 +1287,7 @@ fmt.Println(string(body))</code></pre>
     "coding": [
       {
         "system": "https://origen.ar/fhir/CodeSystem/dentar-procedures",
-        "code": "DNT-000007",
+        "code": "DNT-PR-000007",
         "display": "Restauración con amalgama - cavidad simple"
       },
       {

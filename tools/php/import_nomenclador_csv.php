@@ -15,6 +15,12 @@ declare(strict_types=1);
  *   php tools/php/import_nomenclador_csv.php archivos/nbu_2026.csv NBU
  *   php tools/php/import_nomenclador_csv.php archivos/nn_pmo.csv NN_PMO
  *   php tools/php/import_nomenclador_csv.php archivos/andis.csv ANDIS
+ *   php tools/php/import_nomenclador_csv.php archivos/vademecum.csv VADEMECUM
+ *
+ * Para VADEMECUM el CSV necesita: troquel (o numero_troquel), nombre_comercial,
+ * monodroga y presentacion. Opcionales: codigo_alfabeta, codigo_kairos,
+ * codigo_barras_gtin, laboratorio, accion_farmacologica, tipo_venta,
+ * anmat_certificado.
  */
 
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
@@ -78,6 +84,132 @@ foreach ($headers as $idx => $col) {
     $headerMap[$clean] = $idx;
 }
 
+$tiposValidos = ['NN_PMO', 'NBU', 'NHPGD', 'ANDIS', 'KINESIOLOGIA', 'SALUD_MENTAL', 'VADEMECUM'];
+if (!in_array($tipoNomenclador, $tiposValidos, true)) {
+    fwrite(STDERR, "Error: tipo de nomenclador '{$tipoNomenclador}' inválido.\n");
+    fwrite(STDERR, 'Tipos válidos: ' . implode(', ', $tiposValidos) . "\n");
+    exit(2);
+}
+
+$valorColumna = static function (array $row, ?int $idx): ?string {
+    if ($idx === null) {
+        return null;
+    }
+
+    $texto = trim((string) ($row[$idx] ?? ''));
+
+    return $texto === '' ? null : $texto;
+};
+
+$buscarColumna = static function (array $nombres) use ($headerMap): ?int {
+    foreach ($nombres as $nombre) {
+        if (isset($headerMap[$nombre])) {
+            return $headerMap[$nombre];
+        }
+    }
+
+    return null;
+};
+
+// El vademécum comercial tiene su propia tabla y su propia clave (troquel), no
+// entra en nomencladores_argentina. Se carga con el mismo comando para no
+// obligar a recordar dos herramientas distintas.
+if ($tipoNomenclador === 'VADEMECUM') {
+    $iTroquel = $buscarColumna(['numero_troquel', 'troquel']);
+    $iNombre = $buscarColumna(['nombre_comercial', 'nombre', 'producto']);
+    $iMonodroga = $buscarColumna(['monodroga', 'principio_activo']);
+    $iPresentacion = $buscarColumna(['presentacion', 'forma_farmaceutica']);
+
+    if ($iTroquel === null || $iNombre === null || $iMonodroga === null || $iPresentacion === null) {
+        fwrite(STDERR, "Error: para VADEMECUM el CSV necesita las columnas troquel, nombre_comercial, monodroga y presentacion.\n");
+        exit(1);
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO vademecum_comercial (
+            numero_troquel, codigo_alfabeta, codigo_kairos, codigo_barras_gtin,
+            monodroga, nombre_comercial, presentacion, laboratorio,
+            accion_farmacologica, tipo_venta, anmat_certificado
+        ) VALUES (
+            :troquel, :alfabeta, :kairos, :gtin,
+            :monodroga, :nombre, :presentacion, :laboratorio,
+            :accion, :venta, :anmat
+        )
+        ON CONFLICT (numero_troquel) DO UPDATE SET
+            codigo_alfabeta = EXCLUDED.codigo_alfabeta,
+            codigo_kairos = EXCLUDED.codigo_kairos,
+            codigo_barras_gtin = EXCLUDED.codigo_barras_gtin,
+            monodroga = EXCLUDED.monodroga,
+            nombre_comercial = EXCLUDED.nombre_comercial,
+            presentacion = EXCLUDED.presentacion,
+            laboratorio = EXCLUDED.laboratorio,
+            accion_farmacologica = EXCLUDED.accion_farmacologica,
+            tipo_venta = EXCLUDED.tipo_venta,
+            anmat_certificado = EXCLUDED.anmat_certificado,
+            updated_at = CURRENT_TIMESTAMP'
+    );
+
+    $iAlfabeta = $buscarColumna(['codigo_alfabeta', 'alfabeta']);
+    $iKairos = $buscarColumna(['codigo_kairos', 'kairos']);
+    $iGtin = $buscarColumna(['codigo_barras_gtin', 'gtin', 'ean']);
+    $iLaboratorio = $buscarColumna(['laboratorio']);
+    $iAccion = $buscarColumna(['accion_farmacologica']);
+    $iVenta = $buscarColumna(['tipo_venta', 'condicion_venta']);
+    $iAnmat = $buscarColumna(['anmat_certificado', 'registro_anmat']);
+
+    $count = 0;
+    $omitidos = 0;
+    $db->beginTransaction();
+
+    while (($row = fgetcsv($handle, 0, $delimiter, '"', '')) !== false) {
+        if (empty($row) || (count($row) === 1 && $row[0] === null)) {
+            continue;
+        }
+
+        $troquel = $valorColumna($row, $iTroquel);
+        $nombre = $valorColumna($row, $iNombre);
+        $monodroga = $valorColumna($row, $iMonodroga);
+        $presentacion = $valorColumna($row, $iPresentacion);
+
+        // Sin troquel no hay clave de upsert: se informa y se omite, en lugar de
+        // duplicar el producto en cada carga.
+        if ($troquel === null || $nombre === null || $monodroga === null || $presentacion === null) {
+            $omitidos++;
+            continue;
+        }
+
+        $stmt->execute([
+            ':troquel' => $troquel,
+            ':alfabeta' => $valorColumna($row, $iAlfabeta),
+            ':kairos' => $valorColumna($row, $iKairos),
+            ':gtin' => $valorColumna($row, $iGtin),
+            ':monodroga' => $monodroga,
+            ':nombre' => $nombre,
+            ':presentacion' => $presentacion,
+            ':laboratorio' => $valorColumna($row, $iLaboratorio),
+            ':accion' => $valorColumna($row, $iAccion),
+            ':venta' => $valorColumna($row, $iVenta),
+            ':anmat' => $valorColumna($row, $iAnmat),
+        ]);
+
+        $count++;
+        if ($count % 500 === 0) {
+            echo "Procesadas {$count} filas...\n";
+        }
+    }
+
+    $db->commit();
+    fclose($handle);
+
+    echo "¡Listo! Vademécum: {$count} productos cargados";
+    if ($omitidos > 0) {
+        echo " ({$omitidos} filas omitidas por falta de troquel, nombre, monodroga o presentación)";
+    }
+    echo ".\n";
+
+    exit(0);
+}
+
 $sql = 'INSERT INTO nomencladores_argentina (
             tipo_nomenclador, codigo, capitulo, descripcion, unidad_tipo, unidad_valor, gastos_valor, snomed_concept_id, codigo_loinc
         ) VALUES (
@@ -97,7 +229,7 @@ $stmt = $db->prepare($sql);
 $count = 0;
 $db->beginTransaction();
 
-while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+while (($row = fgetcsv($handle, 0, $delimiter, '"', '')) !== false) {
     if (empty($row) || (count($row) === 1 && $row[0] === null)) {
         continue;
     }

@@ -126,13 +126,15 @@ curl -s -X GET "https://api.origen.ar/v1/domains" \
 
 ---
 
-## 3. Origen Catalog Engine: Nomencladores Argentinos y DENTAR
+## 3. Origen Catalog Engine: Nomencladores Argentinos y familia DENTAR
 
 Origen Salud implementa el **Origen Catalog Engine 1.0**, una arquitectura desacoplada que separa la identidad de las prestaciones, los aranceles vigentes y las terminologías semánticas internacionales:
 
 | Grupo | Catálogo (`code`) | Función |
 |---|---|---|
-| **Propio** | `dentar` | Sistema DENTAR: Prestaciones odontológicas armonizadas con ADA CDT 2025 y CIE-10. |
+| **Propio** | `dentar` | Marca paraguas de la familia odontológica. Rol `family`: no publica ítems ni releases. |
+| **Propio** | `dentar-pr` | DENTAR-PR: procedimientos odontológicos (`DNT-PR-NNNNNN`), armonizados con ADA CDT 2025 y Nomenclador Argentino. |
+| **Propio** | `dentar-dx` | DENTAR-DX: diagnósticos bucomaxilofaciales (`DNT-DX-NNNNNN`), armonizados con CIE-10 K00-K14. |
 | **Argentina** | `nn-pmo` | Nomenclador Nacional de Prestaciones Médicas, Quirúrgicas y Sanatoriales (PMO). |
 | **Argentina** | `nbu` | Nomenclador Bioquímico Único de CUBRA (con Unidades Bioquímicas y LOINC). |
 | **Argentina** | `nhpgd` | Nomenclador de Hospitales Públicos de Gestión Descentralizada (recupero de costos). |
@@ -147,6 +149,9 @@ Origen Salud implementa el **Origen Catalog Engine 1.0**, una arquitectura desac
 curl -s -X GET "https://api.origen.ar/v1/catalogs" \
   -H "Authorization: Bearer <TU_API_KEY>"
 ```
+Cada catálogo devuelve, entre otros campos, `role` (`family` o `catalog`),
+`family` (código de la marca paraguas) y `short_name`. Los productos
+`dentar-pr` y `dentar-dx` declaran `family: "dentar"`.
 
 ### 3.2. Consultar Prestaciones de un Catálogo
 #### `GET /v1/catalogs/{catalog_code}/items?q={query}&limit={n}`
@@ -159,8 +164,12 @@ curl -s -X GET "https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma" \
 curl -s -X GET "https://api.origen.ar/v1/catalogs/nn-pmo/items?q=consulta" \
   -H "Authorization: Bearer <TU_API_KEY>"
 
-# Buscar prestaciones en DENTAR
-curl -s -X GET "https://api.origen.ar/v1/catalogs/dentar/items?q=conducto" \
+# Buscar procedimientos en DENTAR-PR
+curl -s -X GET "https://api.origen.ar/v1/catalogs/dentar-pr/items?q=conducto" \
+  -H "Authorization: Bearer <TU_API_KEY>"
+
+# Buscar diagnósticos en DENTAR-DX
+curl -s -X GET "https://api.origen.ar/v1/catalogs/dentar-dx/items?q=caries" \
   -H "Authorization: Bearer <TU_API_KEY>"
 ```
 
@@ -235,21 +244,25 @@ Atajo directo para buscar exclusivamente dentro de un dominio específico.
 
 ---
 
-## 5. Módulo Odontológico Armonizado (DENTAR / CDT / Nomenclador AR)
+## 5. Módulo Odontológico Armonizado (DENTAR-PR / DENTAR-DX / CDT / CIE-10)
 
 El módulo odontológico de Origen Salud unifica:
-1. **DENTAR:** Ontología clínica con identificadores permanentes (`DNT-000001` a `DNT-000138`).
-2. **ADA CDT 2025:** Estándar internacional de la Asociación Dental Americana (12 categorías, ej. `D0150`, `D2140`, `D3310`).
-3. **Nomenclador Odontológico Argentino:** 11 capítulos de obras sociales y medicina prepaga (`01.01` a `11.02`).
-4. **SNOMED CT:** Conceptos clínicos de procedimientos odontológicos y diagnósticos bucales.
-5. **CIE-10 (K00–K14):** Diagnósticos bucomaxilofaciales y justificación clínica de auditoría.
+1. **DENTAR-PR:** procedimientos con identificadores permanentes (`DNT-PR-000001` a `DNT-PR-000138`, en camino a 800).
+2. **DENTAR-DX:** diagnósticos con identificadores permanentes (`DNT-DX-000001` a `DNT-DX-000038`).
+3. **ADA CDT 2025:** estándar internacional de la Asociación Dental Americana (12 categorías, ej. `D0150`, `D2140`, `D3310`).
+4. **Nomenclador Odontológico Argentino:** 11 capítulos de obras sociales y medicina prepaga (`01.01` a `11.02`).
+5. **SNOMED CT:** conceptos clínicos de procedimientos odontológicos y diagnósticos bucales.
+6. **CIE-10 (K00–K14):** diagnósticos bucomaxilofaciales y justificación clínica de auditoría.
+
+Cada producto tiene su propio prefijo, reglas de mapeo y ciclo de releases. La
+marca `dentar` sólo agrupa la familia en `GET /v1/catalogs`.
 
 ---
 
 ### 5.1. Búsqueda y Catálogo de Diagnósticos Odontológicos
 
 #### `GET /v1/odontologia/diagnosticos`
-Permite listar o buscar en el catálogo clínico de diagnósticos odontológicos DENTAR vinculados con **CIE-10** y **SNOMED-CT**.
+Permite listar o buscar en el catálogo clínico de diagnósticos DENTAR-DX vinculados con **CIE-10** y **SNOMED-CT**.
 
 ##### Parámetros opcionales:
 - `q`: Búsqueda de texto libre en nombres de diagnósticos, códigos CIE-10 o SCTID.
@@ -266,8 +279,15 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos?snomed=8096700
 {
   "data": [
     {
-      "code": "DNT-DX-0005",
+      "catalog": "DENTAR-DX",
+      "code": "DNT-DX-000005",
       "clinical_name": "Caries limitada al esmalte (manchas blancas / cavitación incipiente)",
+      "definition": "Lesión cariosa limitada al esmalte dental.",
+      "clinical_criteria": "Diagnóstico clínico y/o radiográfico de lesión no cavitada o cavitación incipiente.",
+      "category": {
+        "code": "CAT-DX",
+        "name": "Diagnósticos odontológicos (CIE-10 K00-K14)"
+      },
       "cie10": {
         "code": "K02.0",
         "description": "Caries limitada al esmalte"
@@ -278,8 +298,15 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos?snomed=8096700
       }
     },
     {
-      "code": "DNT-DX-0006",
+      "catalog": "DENTAR-DX",
+      "code": "DNT-DX-000006",
       "clinical_name": "Caries de la dentina (cavitación simple, compuesta o compleja)",
+      "definition": "Lesión cariosa que compromete la dentina.",
+      "clinical_criteria": "Diagnóstico clínico y/o radiográfico con compromiso de dentina.",
+      "category": {
+        "code": "CAT-DX",
+        "name": "Diagnósticos odontológicos (CIE-10 K00-K14)"
+      },
       "cie10": {
         "code": "K02.1",
         "description": "Caries de la dentina"
@@ -309,7 +336,7 @@ Permite consultar un diagnóstico odontológico y obtener **todas las prestacion
 ##### Identificadores admitidos:
 - **SCTID de SNOMED-CT:** ej. `80967001` (Caries dental), `71738007` (Pulpitis), `110463002` (Periodontitis).
 - **Código CIE-10:** ej. `K02`, `K02.1`, `K04.0`.
-- **Código DENTAR-DX:** ej. `DNT-DX-0006`.
+- **Código DENTAR-DX:** ej. `DNT-DX-000006`.
 - **ID numérico interno:** ej. `6`.
 
 ```bash
@@ -321,9 +348,16 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos/K02.1" \
 ```json
 {
   "data": {
+    "catalog": "DENTAR-DX",
     "diagnosis": {
-      "dentar_diagnosis_code": "DNT-DX-0006",
+      "dentar_diagnosis_code": "DNT-DX-000006",
       "clinical_name": "Caries de la dentina (cavitación simple, compuesta o compleja)",
+      "definition": "Lesión cariosa que compromete la dentina.",
+      "clinical_criteria": "Diagnóstico clínico y/o radiográfico con compromiso de dentina.",
+      "category": {
+        "code": "CAT-DX",
+        "name": "Diagnósticos odontológicos (CIE-10 K00-K14)"
+      },
       "cie10": {
         "code": "K02.1",
         "description": "Caries de la dentina"
@@ -335,8 +369,10 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos/K02.1" \
     },
     "indicated_procedures": [
       {
-        "dentar_code": "DNT-000007",
+        "catalog": "DENTAR-PR",
+        "dentar_code": "DNT-PR-000007",
         "name": "Restauración con amalgama - cavidad simple",
+        "category": "Operatoria Dental y Restauradora",
         "nomenclador_argentino": "02.01",
         "cdt_code": "D2140",
         "snomed_concept_id": "424759004",
@@ -344,8 +380,10 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos/K02.1" \
         "clinical_rationale": "Caries oclusal o proximal que compromete dentina y requiere restauración definitiva"
       },
       {
-        "dentar_code": "DNT-000010",
+        "catalog": "DENTAR-PR",
+        "dentar_code": "DNT-PR-000010",
         "name": "Restauración con composite / resina fotocurable - cavidad simple",
+        "category": "Operatoria Dental y Restauradora",
         "nomenclador_argentino": "02.04",
         "cdt_code": "D2330",
         "snomed_concept_id": "424759004",

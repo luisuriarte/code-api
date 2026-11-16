@@ -5,10 +5,10 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 | Frente | Dominio | Contenido |
 | --- | --- | --- |
 | Portal institucional | `med.origen.ar` | Sitio bilingüe ES/EN con selector de idioma persistente. |
-| API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, odontología (DENTAR / ADA CDT 2025), prestaciones, programas e imágenes. |
+| API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, familia odontológica DENTAR (DENTAR-PR / DENTAR-DX, ADA CDT 2025), prestaciones, programas e imágenes. |
 
 ### Documentación de Acceso e Interoperabilidad
-- 📖 [Documentación de la API REST (v1)](README-API.md) — Autenticación, endpoints unificados, catálogos nacionales y módulo odontológico DENTAR / CDT / CIE-10.
+- 📖 [Documentación de la API REST (v1)](README-API.md) — Autenticación, endpoints unificados, catálogos nacionales y familia odontológica DENTAR-PR / DENTAR-DX (CDT / CIE-10).
 - 🏥 [Guía de Interoperabilidad HL7® FHIR® R4](README-FHIR.md) — Terminología FHIR R4 (`CodeSystem`, `ValueSet`, `ConceptMap`, `$lookup`, `$expand`, `$translate`) y modelado clínico (`Procedure`, `Condition`, `Claim`).
 
 ## Stack
@@ -27,15 +27,31 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 ├── composer.json
 ├── .env.example
 ├── sql/
-│   └── design.sql             # Esquema y extensiones de PostgreSQL
+│   ├── README.md              # Orden de carga y mapa de esquemas
+│   ├── design.sql             # Esquema base y extensiones de PostgreSQL
+│   ├── origen_catalog_engine.sql  # Catálogos, nomencladores, aranceles y familia DENTAR
+│   ├── pmo.sql                # Programa Médico Obligatorio
+│   ├── dentar_family.sql      # Registro DENTAR-PR / DENTAR-DX y migración de códigos
+│   ├── dentar_core_and_diagnosis.sql  # Núcleo editorial DENTAR-PR y DENTAR-DX
+│   ├── sync_dentar_to_os.sql  # Publica DENTAR-PR y DENTAR-DX en el Catalog Engine (os_*)
+│   ├── Argentina_dental_cdt_codes_2025.sql
+│   ├── importar_loinc.sql
+│   └── nomencladores_argentina.sql    # Legacy (subconjunto del engine)
+├── docs/
+│   ├── dentar/                # Familia DENTAR: formato CSV, plantillas e importación
+│   └── adopcion/              # Informe mensual de adopción institucional
 ├── tools/
 │   ├── php/
 │   │   ├── generar_carga_snomed.php   # Genera 02_carga.sql (COPY) desde el ZIP RF2
 │   │   ├── convertir_excel_maps.php   # Convierte los XLSX de NBU/GTIN a TSV
+│   │   ├── import_dentar_csv.php      # Ingesta masiva de DENTAR-PR y DENTAR-DX
+│   │   ├── import_nomenclador_csv.php # Ingesta CSV de nomencladores argentinos
 │   │   ├── import_snomed_rf2.php      # CLI de ingesta RF2 por lotes
 │   │   ├── Rf2Importer.php           # Motor de importación (streaming + UPSERT)
 │   │   ├── ImportOptions.php
 │   │   └── ImportResult.php
+│   ├── sh/
+│   │   └── cargar_snomed.sh   # Carga SNOMED completa (01..99) en el VPS
 │   └── sql/
 │       ├── README.md
 │       ├── snomed/
@@ -108,6 +124,10 @@ GRANT USAGE ON SCHEMA public TO origen_api;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO origen_api;
 ```
 
+`sql/design.sql` solo crea el esquema base. El resto de los catálogos
+(nomencladores argentinos, PMO, familia DENTAR, LOINC) se cargan en un orden
+específico: ver [`sql/README.md`](sql/README.md).
+
 ### 4. Crear un cliente B2B
 
 ```bash
@@ -148,10 +168,12 @@ psql -d origen_salud -v ON_ERROR_STOP=1 -f tools/sql/snomed/04_codigos_opcional.
 
 # 6. Opcional: mapeos NBU y GTIN
 php tools/php/convertir_excel_maps.php "D:\sct\20260820\Resources"
-psql -d origen_salud -v ON_ERROR_STOP=1 \
-     -v ruta_nbu="D:/sct/20260820/Resources/Mapeo_NBU_SCT_Agosto26.tsv" \
-     -v ruta_gtin="D:/sct/20260820/Resources/MAP_GTIN_a_RPCD_comercializadas_20260820.tsv" \
-     -f tools/sql/snomed/05_map_excel.sql
+# 05_map_excel.sql usa \copy: los nombres de los TSV son literales y se
+# resuelven contra el directorio actual de psql, así que hay que pararse
+# en la carpeta que los contiene (no se pasan -v ruta_nbu / -v ruta_gtin).
+cd /ruta/al/20260820/Resources
+sudo -u postgres psql -d origen_salud -v ON_ERROR_STOP=1 \
+     -f /var/www/html/origen.ar/code-api/tools/sql/snomed/05_map_excel.sql
 
 # 7. Verificación
 psql -d origen_salud -f tools/sql/snomed/99_verificacion.sql
@@ -191,7 +213,10 @@ tablas derivadas de genéricos/marcas del DNM y las vistas de consulta. Después
   (`LABORATORIO`, `VACUNAS`, `MARCAS`, `ESPECIALIDADES`, etc.). La API los
   expone en `GET /v1/refsets` y en el parámetro `refset` de `/v1/search`.
 - `05_map_excel.sql` carga los mapeos NBU y GTIN desde los TSV que genera
-  `tools/php/convertir_excel_maps.php` (PHP puro, sin Python ni `ext-zip`).
+  `tools/php/convertir_excel_maps.php` (PHP puro, sin Python ni `ext-zip`). Usa
+  `\copy`, que lee los archivos en la máquina donde corre `psql`: hay que
+  ejecutarlo parado en la carpeta de los TSV, o descomentar la línea `\cd` del
+  script. `\copy` no expande variables de psql, así que no acepta `-v ruta_...`.
 
 #### 5.2 Importador PHP por lotes (alternativa)
 
@@ -544,6 +569,64 @@ Endpoint público para monitoreo. Verifica la conexión a PostgreSQL.
 ```
 
 Códigos usados: `bad_request`, `unauthorized`, `not_found`, `method_not_allowed`, `internal_error`, `service_unavailable`.
+
+### Catálogos, nomencladores y familia DENTAR
+
+Endpoints del Origen Catalog Engine. Requieren los scripts de
+[`sql/README.md`](sql/README.md) cargados (`origen_catalog_engine.sql`,
+`pmo.sql`, `dentar_family.sql`, `dentar_core_and_diagnosis.sql`); si faltan,
+responden `not_found` con la indicación del script a ejecutar.
+
+| Endpoint | Parámetros | Devuelve |
+| --- | --- | --- |
+| `GET /v1/catalogs` | — | Catálogos publicados (`nn-pmo`, `nbu`, `nhpgd`, `andis`, `dentar-pr`, `dentar-dx`, …) con organización, tipo de dominio y metadatos de familia (`role`, `family`, `short_name`). |
+| `GET /v1/catalogs/{code}/releases` | — | Versiones del catálogo con vigencia y estado. |
+| `GET /v1/catalogs/{code}/items` | `q`, `category`, `limit` (1-100), `offset` | Ítems publicados con código oficial, término preferido, categoría y arancel vigente. |
+| `GET /v1/catalogs/{code}/items/{item}` | — | Detalle de un ítem por código permanente, oficial o término, con `clinical_criteria` y familia. |
+| `GET /v1/mappings` | `system`, `code`, `catalog` | Mapeos cruzados (`SNOMED-CT`, `CIE-10`, `CDT-2025`, `LOINC`) con tipo de relación. |
+| `GET /v1/pricing-units` | — | Unidades arancelarias (UB, Galeno, Módulo, Sesión, Pesos). |
+| `GET /v1/nomenclador` | `type` (`NN_PMO`, `NBU`, `NHPGD`, `ANDIS`, `KINESIOLOGIA`, `SALUD_MENTAL`), `q`, `limit` | Nomencladores argentinos unificados (`nomencladores_argentina`). |
+| `GET /v1/vademecum` | `troquel`, `q`, `limit` | Vademécum comercial (Troquel / AlfaBeta / Kairos / GTIN / monodroga). |
+| `GET /v1/medicines/identifiers/{system}/{code}` | — | Producto medicinal por identificador (`troquel`, `alfabeta`, `kairos`, `gtin`). |
+| `GET /v1/odontologia/diagnosticos` | `q`, `limit` | Diagnósticos DENTAR-DX con CIE-10, SNOMED CT, categoría y criterios clínicos. |
+| `GET /v1/odontologia/diagnosticos/{code}` | — | Diagnóstico por código DENTAR-DX (`DNT-DX-NNNNNN`), CIE-10 (`K02`) o SCTID. |
+| `GET /v1/odontologia/{code}/diagnosticos` | — | Diagnósticos que justifican una prestación (código DENTAR-PR, nomenclador, CDT o SCTID). |
+
+`GET /v1/catalogs` distingue la marca paraguas (`dentar`, `role: family`) de sus
+productos (`dentar-pr` y `dentar-dx`, `role: catalog`, `family: dentar`). Cada
+producto publica su propia release y se consulta por separado.
+
+```bash
+# Nomenclador bioquímico
+curl -s -H "X-API-Key: $KEY" \
+  "https://api.origen.ar/v1/nomenclador?type=NBU&q=660475"
+
+# Vademécum por troquel
+curl -s -H "X-API-Key: $KEY" \
+  "https://api.origen.ar/v1/vademecum?troquel=458921"
+
+# Procedimientos DENTAR-PR con arancel
+curl -s -H "X-API-Key: $KEY" \
+  "https://api.origen.ar/v1/catalogs/dentar-pr/items?q=endodoncia&limit=10"
+
+# Diagnósticos DENTAR-DX con CIE-10 y SNOMED CT
+curl -s -H "X-API-Key: $KEY" \
+  "https://api.origen.ar/v1/catalogs/dentar-dx/items?q=caries&limit=10"
+
+# Mapeos de un código a SNOMED CT y CIE-10
+curl -s -H "X-API-Key: $KEY" \
+  "https://api.origen.ar/v1/mappings?code=D3310"
+
+# Justificación clínica de una prestación odontológica
+curl -s -H "X-API-Key: $KEY" \
+  "https://api.origen.ar/v1/odontologia/DNT-PR-000007/diagnosticos"
+```
+
+La familia DENTAR se carga y versiona desde CSV:
+[`docs/dentar/README.md`](docs/dentar/README.md); el importador publica los
+cambios de cada producto en el Origen Catalog Engine (`os_*`) en la misma
+transacción. El seguimiento de adopción institucional tiene plantilla mensual en
+[`docs/adopcion/PLANTILLA_INFORME_MENSUAL.md`](docs/adopcion/PLANTILLA_INFORME_MENSUAL.md).
 
 ## i18n
 

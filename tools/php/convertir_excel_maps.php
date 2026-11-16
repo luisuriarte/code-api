@@ -325,11 +325,10 @@ Códigos de salida:
   1  Error de archivo, ZIP/XLSX o escritura.
   2  Uso incorrecto de argumentos.
 
-Después de convertir, cargar con psql:
-  psql -d origen_salud -v ON_ERROR_STOP=1 ^
-       -v ruta_nbu="RUTA/Mapeo_NBU_SCT_Agosto26.tsv" ^
-       -v ruta_gtin="RUTA/MAP_GTIN_a_RPCD_comercializadas_20260820.tsv" ^
-       -f tools/sql/snomed/05_map_excel.sql
+Después de convertir, cargar con psql desde la carpeta de los TSV
+(el script usa \copy: los nombres son literales, no acepta -v ruta_*):
+  cd RUTA
+  psql -d origen_salud -v ON_ERROR_STOP=1 -f tools/sql/snomed/05_map_excel.sql
 TXT;
 }
 
@@ -914,7 +913,7 @@ function main(array $argv): int
     }
 
     if (!$options['quiet']) {
-        echo "\nSiguiente paso: psql -v ON_ERROR_STOP=1 -v ruta_nbu=... -v ruta_gtin=... -f tools/sql/snomed/05_map_excel.sql\n";
+        echo "\nSiguiente paso: cd a la carpeta de los TSV y después psql -v ON_ERROR_STOP=1 -f tools/sql/snomed/05_map_excel.sql\n";
     }
 
     return EXIT_SUCCESS;

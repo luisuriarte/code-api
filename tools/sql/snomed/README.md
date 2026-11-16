@@ -65,10 +65,11 @@ psql -d origen_salud -v ON_ERROR_STOP=1 -f tools/sql/snomed/04_codigos_opcional.
 
 # 6. Opcional: mapeos NBU y GTIN (primero convertir los XLSX a TSV)
 php tools/php/convertir_excel_maps.php "D:\sct\20260820\Resources"
-psql -d origen_salud -v ON_ERROR_STOP=1 \
-     -v ruta_nbu="D:/sct/20260820/Resources/Mapeo_NBU_SCT_Agosto26.tsv" \
-     -v ruta_gtin="D:/sct/20260820/Resources/MAP_GTIN_a_RPCD_comercializadas_20260820.tsv" \
-     -f tools/sql/snomed/05_map_excel.sql
+# \copy lee los TSV en la máquina cliente, con nombres resueltos contra el
+# directorio actual: hay que ejecutar psql parado en la carpeta de los TSV.
+cd /ruta/al/20260820/Resources
+sudo -u postgres psql -d origen_salud -v ON_ERROR_STOP=1 \
+     -f /var/www/html/origen.ar/code-api/tools/sql/snomed/05_map_excel.sql
 
 # 7. Controles
 psql -d origen_salud -f tools/sql/snomed/99_verificacion.sql
@@ -305,11 +306,23 @@ php tools/php/convertir_excel_maps.php "D:\sct\20260820\Resources" \
 Luego se cargan con `psql`, porque el script usa `\copy`:
 
 ```bash
+# \copy NO expande variables de psql (:ruta_nbu no sirve): los nombres de
+# archivo del script son literales y se buscan en el directorio actual.
+cd "D:/sct/20260820/Resources/tsv"
 psql -d origen_salud -v ON_ERROR_STOP=1 \
-     -v ruta_nbu="D:/sct/20260820/Resources/tsv/Mapeo_NBU_SCT_Agosto26.tsv" \
-     -v ruta_gtin="D:/sct/20260820/Resources/tsv/MAP_GTIN_a_RPCD_comercializadas_20260820.tsv" \
      -f tools/sql/snomed/05_map_excel.sql
 ```
+
+En Linux, con los archivos en otra ruta, se puede fijar la carpeta dentro del
+script descomentando y editando la línea `\cd` de la sección 2:
+
+```sql
+\cd /root/SnomedCT_Argentina-EditionRelease_PRODUCTION_20260820T120000Z/Resources
+```
+
+El script corta con un `ERROR` explícito si alguna de las dos tablas queda en 0
+filas, para no confundir un `\copy` que no encontró el archivo con una carga
+exitosa.
 
 - `sct2.map_nbu (sctid, codigo_nbu, determinacion)`.
 - `sct2.map_gtin (gtin, condicion, rpcd_id, rpcd_fsn)`. El GTIN se guarda como
@@ -427,7 +440,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO origen_api;
 | `ERROR: no existe la extensión zip` | Habilitar `php_zip` o descomprimir y pasar la carpeta. El conversor NBU/GTIN no usa `ext-zip`. |
 | `ERROR: No se pudo descomprimir ...` en el conversor | El XLSX está dañado o usa ZIP64. Abrirlo y volver a guardarlo desde Excel/LibreOffice. |
 | `ERROR: No se encontró la relación de la hoja` | El XLSX se generó con una herramienta que no escribe `xl/_rels/workbook.xml.rels`. Guardarlo de nuevo desde Excel. |
-| `ERROR: could not open file` en `05` | `\copy` lee en la máquina donde corre `psql`: revisar que `-v ruta_nbu` y `-v ruta_gtin` apunten a archivos locales existentes. |
+| `ERROR: could not open file` en `05` | `\copy` lee en la máquina donde corre `psql` y resuelve los nombres contra el directorio actual: ejecutar `psql` parado en la carpeta de los TSV o descomentar la línea `\cd` de la sección 2. Pasar `-v ruta_nbu` no sirve: `\copy` no expande variables de psql. |
 | `ERROR: invalid input syntax for type bigint` en `05` | Se cargó un TSV viejo o editado a mano. Volver a generarlo con `convertir_excel_maps.php`; el conversor omite filas sin ID numérico. |
 | Acentos rotos | Verificar `client_encoding = 'UTF8'` y que los `.txt` sean UTF-8 sin BOM. La release oficial lo es. |
 | `REVISAR` en conteos | Es esperable si la release no es 2026-08-20. Actualizar `expected` en `99_verificacion.sql`. |

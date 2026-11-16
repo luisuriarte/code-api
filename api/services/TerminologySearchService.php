@@ -788,7 +788,7 @@ final class TerminologySearchService
     }
 
     /**
-     * Catálogo clínico de diagnósticos odontológicos DENTAR (CIE-10 / SNOMED-CT).
+     * Catálogo clínico de diagnósticos odontológicos DENTAR-DX (CIE-10 / SNOMED-CT).
      * Permite filtrar por texto general (q), código SNOMED-CT (snomed) o código CIE-10 (cie10).
      *
      * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
@@ -802,12 +802,44 @@ final class TerminologySearchService
         $cie10 = trim((string) ($request->query['cie10'] ?? $request->query['cie10_code'] ?? ''));
 
         $sql = 'SELECT d.code AS dentar_diagnosis_code,
-                       d.clinical_name,
+                       COALESCE(dtp.term, d.clinical_name) AS clinical_name,
+                       dv.definition,
+                       dv.clinical_criteria,
+                       dcat.code AS category_code,
+                       dcatv.name AS category_name,
                        m_cie.external_code AS cie10_code,
                        m_cie.external_display AS cie10_description,
                        m_sct.external_code AS snomed_concept_id,
                        m_sct.external_display AS snomed_term
                   FROM dentar_diagnosis d
+                  JOIN dentar_catalog dcatl ON dcatl.id = d.catalog_id AND dcatl.code = \'dentar-dx\'
+                  LEFT JOIN dentar_diagnosis_version dv
+                    ON dv.diagnosis_id = d.id
+                   AND dv.version_number = (
+                       SELECT max(v2.version_number)
+                         FROM dentar_diagnosis_version v2
+                        WHERE v2.diagnosis_id = d.id
+                          AND v2.approval_status = \'approved\'
+                   )
+                  LEFT JOIN LATERAL (
+                       SELECT dt.term
+                         FROM dentar_diagnosis_term dt
+                        WHERE dt.diagnosis_id = d.id
+                          AND dt.term_type = \'preferred\'
+                          AND dt.language = \'es-AR\'
+                        ORDER BY dt.id DESC
+                        LIMIT 1
+                  ) dtp ON TRUE
+                  LEFT JOIN dentar_category dcat ON dcat.id = d.category_id
+                  LEFT JOIN dentar_category_version dcatv
+                    ON dcatv.category_id = dcat.id
+                   AND dcatv.language = \'es-AR\'
+                   AND dcatv.version_number = (
+                       SELECT max(v2.version_number)
+                         FROM dentar_category_version v2
+                        WHERE v2.category_id = dcat.id
+                          AND v2.language = \'es-AR\'
+                   )
                   LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
                   LEFT JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'';
 
@@ -816,12 +848,19 @@ final class TerminologySearchService
 
         if ($query !== '') {
             $escaped = '%' . $this->escapeLike($query) . '%';
-            $whereClauses[] = '(d.clinical_name ILIKE :q
+            $whereClauses[] = '(COALESCE(dtp.term, d.clinical_name) ILIKE :q
                              OR d.code ILIKE :q
                              OR m_cie.external_code ILIKE :q
                              OR m_cie.external_display ILIKE :q
                              OR m_sct.external_code ILIKE :q
-                             OR m_sct.external_display ILIKE :q)';
+                             OR m_sct.external_display ILIKE :q
+                             OR EXISTS (
+                                 SELECT 1
+                                   FROM dentar_diagnosis_term dtq
+                                  WHERE dtq.diagnosis_id = d.id
+                                    AND dtq.language = \'es-AR\'
+                                    AND dtq.term ILIKE :q
+                             ))';
             $params[':q'] = $escaped;
         }
 
@@ -857,8 +896,15 @@ final class TerminologySearchService
         $results = [];
         foreach ($rows as $r) {
             $results[] = [
+                'catalog' => 'DENTAR-DX',
                 'code' => $r['dentar_diagnosis_code'],
                 'clinical_name' => $r['clinical_name'],
+                'definition' => $r['definition'],
+                'clinical_criteria' => $r['clinical_criteria'],
+                'category' => $r['category_name'] !== null ? [
+                    'code' => $r['category_code'],
+                    'name' => $r['category_name'],
+                ] : null,
                 'cie10' => $r['cie10_code'] !== null ? [
                     'code' => $r['cie10_code'],
                     'description' => $r['cie10_description'],
@@ -885,7 +931,7 @@ final class TerminologySearchService
 
     /**
      * Detalle de un diagnóstico odontológico DENTAR con sus prestaciones indicadas.
-     * Admite búsqueda por SCTID (SNOMED-CT), código CIE-10 (K02), código DENTAR (DNT-DX-0005) o ID.
+     * Admite búsqueda por SCTID (SNOMED-CT), código CIE-10 (K02), código DENTAR-DX (DNT-DX-000005) o ID.
      *
      * @return array{data: array<string, mixed>, meta: array<string, mixed>}
      */
@@ -901,25 +947,86 @@ final class TerminologySearchService
 
         $sql = 'SELECT d.id AS diagnosis_id,
                        d.code AS dentar_diagnosis_code,
-                       d.clinical_name,
+                       COALESCE(dtp.term, d.clinical_name) AS clinical_name,
+                       dv.definition,
+                       dv.clinical_criteria,
+                       dcat.code AS diagnosis_category_code,
+                       dcatv.name AS diagnosis_category_name,
                        m_cie.external_code AS cie10_code,
                        m_cie.external_display AS cie10_description,
                        m_sct.external_code AS snomed_concept_id,
                        m_sct.external_display AS snomed_term,
                        c.code AS dentar_procedure_code,
                        t.term AS procedure_name,
+                       pcat.name AS procedure_category,
                        m_ar.external_code AS nomenclador_argentino,
                        m_cdt.external_code AS cdt_code,
                        m_sct_proc.external_code AS snomed_procedure_code,
                        cd.relationship_type,
                        cd.clinical_rationale
                   FROM dentar_diagnosis d
+                  JOIN dentar_catalog dl ON dl.id = d.catalog_id AND dl.code = \'dentar-dx\'
+                  LEFT JOIN dentar_diagnosis_version dv
+                    ON dv.diagnosis_id = d.id
+                   AND dv.version_number = (
+                       SELECT max(v2.version_number)
+                         FROM dentar_diagnosis_version v2
+                        WHERE v2.diagnosis_id = d.id
+                          AND v2.approval_status = \'approved\'
+                   )
+                  LEFT JOIN LATERAL (
+                       SELECT dt.term
+                         FROM dentar_diagnosis_term dt
+                        WHERE dt.diagnosis_id = d.id
+                          AND dt.term_type = \'preferred\'
+                          AND dt.language = \'es-AR\'
+                        ORDER BY dt.id DESC
+                        LIMIT 1
+                  ) dtp ON TRUE
+                  LEFT JOIN dentar_category dcat ON dcat.id = d.category_id
+                  LEFT JOIN dentar_category_version dcatv
+                    ON dcatv.category_id = dcat.id
+                   AND dcatv.language = \'es-AR\'
+                   AND dcatv.version_number = (
+                       SELECT max(v2.version_number)
+                         FROM dentar_category_version v2
+                        WHERE v2.category_id = dcat.id
+                          AND v2.language = \'es-AR\'
+                   )
                   LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
                   LEFT JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'
                   LEFT JOIN dentar_concept_diagnosis cd ON cd.diagnosis_id = d.id
-                  LEFT JOIN dentar_concept c ON c.id = cd.concept_id
-                  LEFT JOIN dentar_concept_version cv ON cv.concept_id = c.id
-                  LEFT JOIN dentar_term t ON t.concept_version_id = cv.id AND t.term_type = \'preferred\' AND t.language = \'es-AR\'
+                  LEFT JOIN dentar_concept c
+                    ON c.id = cd.concept_id
+                   AND c.catalog_id = dentar_catalog_id(\'dentar-pr\')
+                  LEFT JOIN LATERAL (
+                       SELECT cv.id
+                         FROM dentar_concept_version cv
+                        WHERE cv.concept_id = c.id
+                          AND cv.approval_status = \'approved\'
+                        ORDER BY cv.version_number DESC
+                        LIMIT 1
+                  ) cv ON TRUE
+                  LEFT JOIN LATERAL (
+                       SELECT t.term
+                         FROM dentar_term t
+                        WHERE t.concept_version_id = cv.id
+                          AND t.term_type = \'preferred\'
+                          AND t.language = \'es-AR\'
+                        ORDER BY t.id DESC
+                        LIMIT 1
+                  ) t ON TRUE
+                  LEFT JOIN dentar_concept_category cc ON cc.concept_version_id = cv.id AND cc.is_primary = TRUE
+                  LEFT JOIN dentar_category pdcat ON pdcat.id = cc.category_id
+                  LEFT JOIN dentar_category_version pcat
+                    ON pcat.category_id = pdcat.id
+                   AND pcat.language = \'es-AR\'
+                   AND pcat.version_number = (
+                       SELECT max(v2.version_number)
+                         FROM dentar_category_version v2
+                        WHERE v2.category_id = pdcat.id
+                          AND v2.language = \'es-AR\'
+                   )
                   LEFT JOIN dentar_concept_mapping m_ar ON m_ar.concept_version_id = cv.id AND m_ar.system_code = \'NOMENCLADOR-AR\'
                   LEFT JOIN dentar_concept_mapping m_cdt ON m_cdt.concept_version_id = cv.id AND m_cdt.system_code = \'CDT-2025\'
                   LEFT JOIN dentar_concept_mapping m_sct_proc ON m_sct_proc.concept_version_id = cv.id AND m_sct_proc.system_code = \'SNOMED-CT\'
@@ -959,8 +1066,10 @@ final class TerminologySearchService
         foreach ($rows as $r) {
             if ($r['dentar_procedure_code'] !== null) {
                 $indicatedProcedures[] = [
+                    'catalog' => 'DENTAR-PR',
                     'dentar_code' => $r['dentar_procedure_code'],
                     'name' => $r['procedure_name'],
+                    'category' => $r['procedure_category'],
                     'nomenclador_argentino' => $r['nomenclador_argentino'],
                     'cdt_code' => $r['cdt_code'],
                     'snomed_concept_id' => $r['snomed_procedure_code'],
@@ -972,9 +1081,16 @@ final class TerminologySearchService
 
         return [
             'data' => [
+                'catalog' => 'DENTAR-DX',
                 'diagnosis' => [
                     'dentar_diagnosis_code' => $first['dentar_diagnosis_code'],
                     'clinical_name' => $first['clinical_name'],
+                    'definition' => $first['definition'],
+                    'clinical_criteria' => $first['clinical_criteria'],
+                    'category' => $first['diagnosis_category_name'] !== null ? [
+                        'code' => $first['diagnosis_category_code'],
+                        'name' => $first['diagnosis_category_name'],
+                    ] : null,
                     'cie10' => $first['cie10_code'] !== null ? [
                         'code' => $first['cie10_code'],
                         'description' => $first['cie10_description'],
@@ -1013,15 +1129,40 @@ final class TerminologySearchService
         // 1. Buscar si corresponde a una o más prácticas odontológicas
         $procSql = 'SELECT DISTINCT
                            c.code AS dentar_code,
-                           t.term AS prestacion_nombre,
+                           tp.term AS prestacion_nombre,
                            m_ar.external_code AS codigo_nomenclador_ar,
                            m_cdt.external_code AS codigo_cdt,
-                           cat.name AS categoria
+                           pcat.name AS categoria
                       FROM dentar_concept c
-                      JOIN dentar_concept_version cv ON cv.concept_id = c.id
-                      JOIN dentar_term t ON t.concept_version_id = cv.id AND t.term_type = \'preferred\' AND t.language = \'es-AR\'
+                      JOIN dentar_catalog cl ON cl.id = c.catalog_id AND cl.code = \'dentar-pr\'
+                      JOIN LATERAL (
+                           SELECT cv.id
+                             FROM dentar_concept_version cv
+                            WHERE cv.concept_id = c.id
+                              AND cv.approval_status = \'approved\'
+                            ORDER BY cv.version_number DESC
+                            LIMIT 1
+                      ) cv ON TRUE
+                      JOIN LATERAL (
+                           SELECT t.term
+                             FROM dentar_term t
+                            WHERE t.concept_version_id = cv.id
+                              AND t.term_type = \'preferred\'
+                              AND t.language = \'es-AR\'
+                            ORDER BY t.id DESC
+                            LIMIT 1
+                      ) tp ON TRUE
                       LEFT JOIN dentar_concept_category cc ON cc.concept_version_id = cv.id AND cc.is_primary = TRUE
-                      LEFT JOIN dentar_category_version cat ON cat.category_id = cc.category_id AND cat.language = \'es-AR\'
+                      LEFT JOIN dentar_category pdcat ON pdcat.id = cc.category_id
+                      LEFT JOIN dentar_category_version pcat
+                        ON pcat.category_id = pdcat.id
+                       AND pcat.language = \'es-AR\'
+                       AND pcat.version_number = (
+                           SELECT max(v2.version_number)
+                             FROM dentar_category_version v2
+                            WHERE v2.category_id = pdcat.id
+                              AND v2.language = \'es-AR\'
+                       )
                       LEFT JOIN dentar_concept_mapping m_ar ON m_ar.concept_version_id = cv.id AND m_ar.system_code = \'NOMENCLADOR-AR\'
                       LEFT JOIN dentar_concept_mapping m_cdt ON m_cdt.concept_version_id = cv.id AND m_cdt.system_code = \'CDT-2025\'
                       LEFT JOIN dentar_concept_mapping m_sct ON m_sct.concept_version_id = cv.id AND m_sct.system_code = \'SNOMED-CT\'
@@ -1035,12 +1176,44 @@ final class TerminologySearchService
 
         // 2. Buscar si corresponde a uno o más diagnósticos odontológicos
         $diagSql = 'SELECT d.code AS dentar_diagnosis_code,
-                           d.clinical_name,
+                           COALESCE(dtp.term, d.clinical_name) AS clinical_name,
+                           dv.definition,
+                           dv.clinical_criteria,
+                           dcat.code AS category_code,
+                           dcatv.name AS category_name,
                            m_cie.external_code AS cie10_code,
                            m_cie.external_display AS cie10_description,
                            m_sct.external_code AS snomed_concept_id,
                            m_sct.external_display AS snomed_term
                       FROM dentar_diagnosis d
+                      JOIN dentar_catalog dl ON dl.id = d.catalog_id AND dl.code = \'dentar-dx\'
+                      LEFT JOIN dentar_diagnosis_version dv
+                        ON dv.diagnosis_id = d.id
+                       AND dv.version_number = (
+                           SELECT max(v2.version_number)
+                             FROM dentar_diagnosis_version v2
+                            WHERE v2.diagnosis_id = d.id
+                              AND v2.approval_status = \'approved\'
+                       )
+                      LEFT JOIN LATERAL (
+                           SELECT dt.term
+                             FROM dentar_diagnosis_term dt
+                            WHERE dt.diagnosis_id = d.id
+                              AND dt.term_type = \'preferred\'
+                              AND dt.language = \'es-AR\'
+                            ORDER BY dt.id DESC
+                            LIMIT 1
+                      ) dtp ON TRUE
+                      LEFT JOIN dentar_category dcat ON dcat.id = d.category_id
+                      LEFT JOIN dentar_category_version dcatv
+                        ON dcatv.category_id = dcat.id
+                       AND dcatv.language = \'es-AR\'
+                       AND dcatv.version_number = (
+                           SELECT max(v2.version_number)
+                             FROM dentar_category_version v2
+                            WHERE v2.category_id = dcat.id
+                              AND v2.language = \'es-AR\'
+                       )
                       JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'
                       LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
                      WHERE m_sct.external_code = :sct
@@ -1067,6 +1240,7 @@ final class TerminologySearchService
         }
 
         $formattedProcedures = array_map(static fn (array $r): array => [
+            'catalog' => 'DENTAR-PR',
             'dentar_code' => $r['dentar_code'],
             'name' => $r['prestacion_nombre'],
             'nomenclador_argentino' => $r['codigo_nomenclador_ar'],
@@ -1075,8 +1249,15 @@ final class TerminologySearchService
         ], $procedures);
 
         $formattedDiagnoses = array_map(static fn (array $r): array => [
+            'catalog' => 'DENTAR-DX',
             'dentar_diagnosis_code' => $r['dentar_diagnosis_code'],
             'clinical_name' => $r['clinical_name'],
+            'definition' => $r['definition'],
+            'clinical_criteria' => $r['clinical_criteria'],
+            'category' => $r['category_name'] !== null ? [
+                'code' => $r['category_code'],
+                'name' => $r['category_name'],
+            ] : null,
             'cie10' => $r['cie10_code'] !== null ? [
                 'code' => $r['cie10_code'],
                 'description' => $r['cie10_description'],
@@ -1121,7 +1302,7 @@ final class TerminologySearchService
         }
 
         // Buscar en la vista v_dentar_procedimiento_diagnostico por:
-        // 1. dentar_code (ej. DNT-000001)
+        // 1. dentar_code (ej. DNT-PR-000001)
         // 2. codigo_nomenclador_ar (ej. 01.01)
         // 3. codigo_cdt (ej. D0150)
         // 4. snomed_ct_practica (ej. 424759004)
@@ -1151,11 +1332,13 @@ final class TerminologySearchService
         }
 
         $statement = $this->db->prepare(
-            'SELECT dentar_code,
+            'SELECT catalogo_prestacion,
+                    dentar_code,
                     prestacion_nombre,
                     codigo_nomenclador_ar,
                     codigo_cdt,
                     categoria,
+                    catalogo_diagnostico,
                     codigo_diagnostico_dentar,
                     diagnostico_nombre,
                     cie10_codigo,
@@ -1195,6 +1378,7 @@ final class TerminologySearchService
         foreach ($rows as $r) {
             if ($r['codigo_diagnostico_dentar'] !== null) {
                 $diagnoses[] = [
+                    'catalog' => 'DENTAR-DX',
                     'dentar_diagnosis_code' => $r['codigo_diagnostico_dentar'],
                     'name' => $r['diagnostico_nombre'],
                     'cie10' => $r['cie10_codigo'] !== null ? [
@@ -1213,6 +1397,7 @@ final class TerminologySearchService
         return [
             'data' => [
                 'procedure' => [
+                    'catalog' => 'DENTAR-PR',
                     'dentar_code' => $first['dentar_code'],
                     'name' => $first['prestacion_nombre'],
                     'nomenclador_argentino' => $first['codigo_nomenclador_ar'],

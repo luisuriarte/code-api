@@ -135,7 +135,7 @@ try {
         ], 200, ['X-Request-Id' => $request->requestId]);
     }
 
-    // Origen Catalog Engine: Catálogos maestros (NN/PMO, NBU, NHPGD, ANDIS, Kinesiología, Salud Mental, DENTAR)
+    // Origen Catalog Engine: catálogos maestros (NN/PMO, NBU, NHPGD, ANDIS, Kinesiología, Salud Mental) y familia DENTAR (DENTAR-PR / DENTAR-DX)
     if ($path === '/v1/catalogs') {
         if ($request->method !== 'GET') {
             throw ApiException::methodNotAllowed('GET, OPTIONS');
@@ -387,7 +387,7 @@ try {
         ], 200, ['X-Request-Id' => $request->requestId]);
     }
 
-    // Catálogo de diagnósticos odontológicos DENTAR (CIE-10 / SNOMED CT).
+    // Catálogo de diagnósticos odontológicos DENTAR-DX (CIE-10 / SNOMED CT).
     if ($path === '/v1/odontologia/diagnosticos') {
         if ($request->method !== 'GET') {
             throw ApiException::methodNotAllowed('GET, OPTIONS');
@@ -403,7 +403,7 @@ try {
     }
 
     // Detalle de un diagnóstico odontológico y sus prestaciones indicadas.
-    // Admite SCTID de SNOMED-CT, código CIE-10 (K02), código DNT-DX o ID.
+    // Admite SCTID de SNOMED-CT, código CIE-10 (K02), código DNT-DX-NNNNNN o ID.
     if (preg_match('#^/v1/odontologia/diagnosticos/([A-Za-z0-9\.\-]+)$#', $path, $matches) === 1) {
         if ($request->method !== 'GET') {
             throw ApiException::methodNotAllowed('GET, OPTIONS');
@@ -419,7 +419,7 @@ try {
     }
 
     // Diagnósticos asociados y justificación clínica de una prestación odontológica
-    // Admite ID numérico, código de nomenclador (01.01), código DNT (DNT-000001), CDT (D0150) o SCTID SNOMED-CT.
+    // Admite ID numérico, código de nomenclador (01.01), código DNT-PR-NNNNNN, CDT (D0150) o SCTID SNOMED-CT.
     if (preg_match('#^/v1/odontologia/([A-Za-z0-9\.\-]+)/diagnosticos$#', $path, $matches) === 1) {
         if ($request->method !== 'GET') {
             throw ApiException::methodNotAllowed('GET, OPTIONS');

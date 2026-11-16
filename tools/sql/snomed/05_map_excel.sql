@@ -16,14 +16,16 @@
 --   1. Convertir los XLSX a TSV con:
 --        php tools/php/convertir_excel_maps.php <carpeta Resources>
 --      El conversor escribe los .tsv junto a los .xlsx (o en --salida=DIR).
---   2. Ejecutar este script con psql, indicando las rutas de los TSV:
---        psql -d origen_salud -v ON_ERROR_STOP=1 \
---             -v ruta_nbu="D:/sct/Resources/Mapeo_NBU_SCT_Agosto26.tsv" \
---             -v ruta_gtin="D:/sct/Resources/MAP_GTIN_a_RPCD_comercializadas_20260820.tsv" \
---             -f tools/sql/snomed/05_map_excel.sql
+--   2. Ubicarse en la carpeta donde quedaron los TSV y ejecutar desde ahí:
+--        cd /ruta/al/SnomedCT_.../Resources
+--        sudo -u postgres psql -d origen_salud -v ON_ERROR_STOP=1 \
+--             -f /var/www/html/origen.ar/code-api/tools/sql/snomed/05_map_excel.sql
 --
---   Si no se pasan las variables, se usan los nombres por defecto en el
---   directorio desde donde corre psql.
+--   IMPORTANTE: `\copy` NO expande variables de psql, así que NO sirve pasar
+--   -v ruta_nbu=... / -v ruta_gtin=.... Los nombres de archivo son literales y
+--   se resuelven contra el directorio de trabajo de psql (el del shell desde
+--   donde se lanza). Si los TSV están en otra carpeta, descomentar la línea
+--   `\cd` de la sección 2 y poner ahí la ruta absoluta.
 --
 -- POR QUÉ \copy
 --   `\copy` es el equivalente directo de `LOAD DATA LOCAL INFILE` de MariaDB:
@@ -45,6 +47,10 @@
 SET client_encoding = 'UTF8';
 SET statement_timeout = 0;
 SET lock_timeout = 0;
+
+-- Cortar en el primer error: si un \copy no encuentra el archivo, no tiene
+-- sentido seguir creando índices y vistas sobre tablas vacías.
+\set ON_ERROR_STOP on
 
 -- =============================================================================
 -- 0. Comprobaciones previas
@@ -100,29 +106,43 @@ COMMENT ON COLUMN sct2.map_gtin.rpcd_fsn IS
 -- =============================================================================
 -- 2. Carga de los TSV generados por tools/php/convertir_excel_maps.php
 -- =============================================================================
-
-\if :{?ruta_nbu}
-\else
-  \set ruta_nbu 'Mapeo_NBU_SCT_Agosto26.tsv'
-\endif
-
-\if :{?ruta_gtin}
-\else
-  \set ruta_gtin 'MAP_GTIN_a_RPCD_comercializadas_20260820.tsv'
-\endif
-
--- \copy es un meta-comando de psql y NO expande variables en sus argumentos
--- directos (interpreta :'var' como el archivo literal ":"). Para pasar variables
--- se construye el comando en una variable psql y se ejecuta en su propia línea.
-\set q ''''
-\set cmd_nbu '\\copy sct2.map_nbu (sctid, codigo_nbu, determinacion) FROM ' :q :ruta_nbu :q ' WITH (FORMAT csv, DELIMITER E''\t'', HEADER true, ENCODING ''UTF8'', FORCE_NOT_NULL (determinacion))'
-\set cmd_gtin '\\copy sct2.map_gtin (gtin, condicion, rpcd_id, rpcd_fsn) FROM ' :q :ruta_gtin :q ' WITH (FORMAT csv, DELIMITER E''\t'', HEADER true, ENCODING ''UTF8'', FORCE_NOT_NULL (condicion, rpcd_fsn))'
+--
+-- \copy es un meta-comando de psql: lee los archivos en la máquina cliente y
+-- NO expande variables de psql. Si se escribe `FROM :'ruta_nbu'`, psql busca un
+-- archivo llamado literalmente ":'ruta_nbu'" y falla con:
+--     error: : No such file or directory
+-- Por eso los nombres de archivo van literales en este script.
+--
+-- Los nombres se resuelven contra el directorio de trabajo de psql, es decir
+-- el del shell desde donde se lanza (por ejemplo .../Resources). Si los TSV
+-- están en otra carpeta, descomentar y ajustar la línea \cd (ruta absoluta,
+-- sin comillas y sin ~):
+--
+-- \cd /root/SnomedCT_Argentina-EditionRelease_PRODUCTION_20260820T120000Z/Resources
 
 TRUNCATE TABLE sct2.map_nbu;
-:cmd_nbu
+\copy sct2.map_nbu (sctid, codigo_nbu, determinacion) FROM 'Mapeo_NBU_SCT_Agosto26.tsv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, ENCODING 'UTF8', FORCE_NOT_NULL (determinacion))
 
 TRUNCATE TABLE sct2.map_gtin;
-:cmd_gtin
+\copy sct2.map_gtin (gtin, condicion, rpcd_id, rpcd_fsn) FROM 'MAP_GTIN_a_RPCD_comercializadas_20260820.tsv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, ENCODING 'UTF8', FORCE_NOT_NULL (condicion, rpcd_fsn))
+
+-- Guarda explícita: si los archivos no se encontraron (o venían sólo con el
+-- encabezado) las tablas quedan en 0 filas y hay que cortar acá, en lugar de
+-- terminar con el mensaje optimista de "mapeos cargados".
+DO $$
+DECLARE
+    v_nbu  BIGINT;
+    v_gtin BIGINT;
+BEGIN
+    SELECT count(*) INTO v_nbu  FROM sct2.map_nbu;
+    SELECT count(*) INTO v_gtin FROM sct2.map_gtin;
+
+    IF v_nbu = 0 OR v_gtin = 0 THEN
+        RAISE EXCEPTION
+            'Carga vacía: sct2.map_nbu=%, sct2.map_gtin=%. Los TSV no se encontraron: ejecutá psql parado en la carpeta Resources/ o descomentá la línea \cd de la sección 2.',
+            v_nbu, v_gtin;
+    END IF;
+END $$;
 
 -- =============================================================================
 -- 3. Índices

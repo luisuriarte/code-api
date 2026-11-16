@@ -16,11 +16,28 @@ CREATE TABLE IF NOT EXISTS os_catalog (
     organization VARCHAR(150) NOT NULL,
     country_code VARCHAR(2) NOT NULL DEFAULT 'AR',
     domain_type VARCHAR(30) NOT NULL CHECK (domain_type IN ('dental', 'medical', 'biochemical', 'rehabilitation', 'mental_health', 'pharma', 'terminology')),
+    family_code VARCHAR(50),
+    product_role VARCHAR(20) NOT NULL DEFAULT 'catalog',
+    short_name VARCHAR(30),
     description TEXT,
     website_url VARCHAR(255),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Actualización de bases creadas antes de la familia DENTAR (idempotente).
+ALTER TABLE os_catalog ADD COLUMN IF NOT EXISTS family_code VARCHAR(50);
+ALTER TABLE os_catalog ADD COLUMN IF NOT EXISTS product_role VARCHAR(20) NOT NULL DEFAULT 'catalog';
+ALTER TABLE os_catalog ADD COLUMN IF NOT EXISTS short_name VARCHAR(30);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_os_catalog_product_role') THEN
+        ALTER TABLE os_catalog
+            ADD CONSTRAINT chk_os_catalog_product_role
+            CHECK (product_role IN ('family', 'catalog'));
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS os_catalog_release (
     id SERIAL PRIMARY KEY,
@@ -224,24 +241,68 @@ ON CONFLICT (code) DO NOTHING;
 -- =============================================================================
 -- 6. POBLADO: REGISTRO DE LOS 7 CATÁLOGOS CENTRALES
 -- =============================================================================
-INSERT INTO os_catalog (code, name, organization, country_code, domain_type, description) VALUES
-('dentar', 'Sistema DENTAR - Ontología Odontológica Argentina y Latinoamericana', 'Origen Salud / Comité Odontológico', 'AR', 'dental', 'Catálogo odontológico central armonizado con ADA CDT 2025, Nomenclador Argentino y CIE-10.'),
-('nn-pmo', 'Nomenclador Nacional de Prestaciones Médicas y Sanatoriales', 'Ministerio de Salud de la Nación', 'AR', 'medical', 'Estándar histórico para consultas médicas, cirugías, internaciones y base del PMO.'),
-('nbu', 'Nomenclador Bioquímico Único', 'Confederación Unificada Bioquímica de la República Argentina (CUBRA)', 'AR', 'biochemical', 'Catálogo nacional de análisis clínicos con cálculo de Unidades Bioquímicas (UB).'),
-('nhpgd', 'Nomenclador de Hospitales Públicos de Gestión Descentralizada', 'Ministerio de Salud de la Nación', 'AR', 'medical', 'Nomenclador para recupero de costos hospitalarios a obras sociales y prepagas.'),
-('andis', 'Nomenclador de Prestaciones Básicas para Personas con Discapacidad', 'Agencia Nacional de Discapacidad', 'AR', 'rehabilitation', 'Aranceles regulados para rehabilitación, centros de día, transporte y apoyo escolar.'),
-('kinesiologia', 'Nomenclador de Kinesiología y Fisiatría', 'Colegios y Asociaciones de Kinesiólogos', 'AR', 'rehabilitation', 'Codificación arancelaria para fisioterapia, kinesiología motriz y respiratoria.'),
-('salud-mental', 'Nomenclador de Psicología y Salud Mental', 'Colegios de Psicólogos y Asociaciones de Psiquiatría', 'AR', 'mental_health', 'Prestaciones de psicoterapia individual, familiar, evaluaciones y peritajes.')
-ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
+INSERT INTO os_catalog (code, name, organization, country_code, domain_type, family_code, product_role, short_name, description) VALUES
+('dentar', 'DENTAR · Familia de catálogos odontológicos', 'Origen Salud / Comité Odontológico', 'AR', 'dental', NULL, 'family', 'DENTAR', 'Marca paraguas de la familia DENTAR. Los productos activos son DENTAR-PR (procedimientos) y DENTAR-DX (diagnósticos); AN y CL quedan para una segunda etapa.'),
+('dentar-pr', 'DENTAR-PR · Procedimientos odontológicos', 'Origen Salud / Comité Odontológico', 'AR', 'dental', 'dentar', 'catalog', 'DENTAR-PR', 'Prestaciones y prácticas odontológicas con códigos permanentes DNT-PR-NNNNNN, armonizadas con Nomenclador Argentino, ADA CDT 2025 y SNOMED CT.'),
+('dentar-dx', 'DENTAR-DX · Diagnósticos odontológicos', 'Origen Salud / Comité Odontológico', 'AR', 'dental', 'dentar', 'catalog', 'DENTAR-DX', 'Diagnósticos y condiciones bucomaxilofaciales con códigos permanentes DNT-DX-NNNNNN, armonizados con CIE-10 (K00-K14) y SNOMED CT.'),
+('nn-pmo', 'Nomenclador Nacional de Prestaciones Médicas y Sanatoriales', 'Ministerio de Salud de la Nación', 'AR', 'medical', NULL, 'catalog', NULL, 'Estándar histórico para consultas médicas, cirugías, internaciones y base del PMO.'),
+('nbu', 'Nomenclador Bioquímico Único', 'Confederación Unificada Bioquímica de la República Argentina (CUBRA)', 'AR', 'biochemical', NULL, 'catalog', NULL, 'Catálogo nacional de análisis clínicos con cálculo de Unidades Bioquímicas (UB).'),
+('nhpgd', 'Nomenclador de Hospitales Públicos de Gestión Descentralizada', 'Ministerio de Salud de la Nación', 'AR', 'medical', NULL, 'catalog', NULL, 'Nomenclador para recupero de costos hospitalarios a obras sociales y prepagas.'),
+('andis', 'Nomenclador de Prestaciones Básicas para Personas con Discapacidad', 'Agencia Nacional de Discapacidad', 'AR', 'rehabilitation', NULL, 'catalog', NULL, 'Aranceles regulados para rehabilitación, centros de día, transporte y apoyo escolar.'),
+('kinesiologia', 'Nomenclador de Kinesiología y Fisiatría', 'Colegios y Asociaciones de Kinesiólogos', 'AR', 'rehabilitation', NULL, 'catalog', NULL, 'Codificación arancelaria para fisioterapia, kinesiología motriz y respiratoria.'),
+('salud-mental', 'Nomenclador de Psicología y Salud Mental', 'Colegios de Psicólogos y Asociaciones de Psiquiatría', 'AR', 'mental_health', NULL, 'catalog', NULL, 'Prestaciones de psicoterapia individual, familiar, evaluaciones y peritajes.')
+ON CONFLICT (code) DO UPDATE
+   SET name         = EXCLUDED.name,
+       family_code  = EXCLUDED.family_code,
+       product_role = EXCLUDED.product_role,
+       short_name   = EXCLUDED.short_name,
+       description  = EXCLUDED.description;
 
--- Releases 2026 oficiales para todos los catálogos
+-- Limpieza de la etapa anterior, cuando 'dentar' era un catálogo único.
+-- La marca paraguas no publica releases, categorías, aranceles ni ítems propios:
+-- todo el contenido vive en DENTAR-PR y DENTAR-DX. Borrar los ítems arrastra
+-- versiones, términos, identificadores, mapeos y aranceles por ítem.
+DO $$
+DECLARE
+    v_family INT;
+    v_items INT;
+    v_categories INT;
+    v_fees INT;
+    v_releases INT;
+BEGIN
+    SELECT id INTO v_family FROM os_catalog WHERE code = 'dentar' AND product_role = 'family';
+    IF v_family IS NULL THEN
+        RETURN;
+    END IF;
+
+    DELETE FROM os_catalog_item WHERE catalog_id = v_family;
+    GET DIAGNOSTICS v_items = ROW_COUNT;
+
+    DELETE FROM os_catalog_category WHERE catalog_id = v_family;
+    GET DIAGNOSTICS v_categories = ROW_COUNT;
+
+    DELETE FROM os_fee_schedule WHERE catalog_id = v_family;
+    GET DIAGNOSTICS v_fees = ROW_COUNT;
+
+    DELETE FROM os_catalog_release WHERE catalog_id = v_family;
+    GET DIAGNOSTICS v_releases = ROW_COUNT;
+
+    IF v_items + v_categories + v_fees + v_releases > 0 THEN
+        RAISE NOTICE 'DENTAR familia: % ítems, % categorías, % aranceles y % releases heredados de la etapa anterior eliminados.',
+            v_items, v_categories, v_fees, v_releases;
+    END IF;
+END $$;
+
+-- Releases 2026 oficiales para los catálogos (la marca paraguas no versiona)
 INSERT INTO os_catalog_release (catalog_id, version_tag, valid_from, official_norm_reference)
-SELECT id, '2026-v1', '2026-01-01', 'Vigencia oficial 2026' FROM os_catalog
+SELECT id, '2026-v1', '2026-01-01', 'Vigencia oficial 2026'
+  FROM os_catalog
+ WHERE product_role = 'catalog' AND is_active = TRUE
 ON CONFLICT (catalog_id, version_tag) DO NOTHING;
 
 -- Cuadros Arancelarios 2026 para todos los catálogos
 INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
-SELECT id, 'Arancel Ético DENTAR 2026', '2026-01-01', 'ARS', 1.0 FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'Arancel Ético DENTAR 2026', '2026-01-01', 'ARS', 1.0 FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, name) DO NOTHING;
 
 INSERT INTO os_fee_schedule (catalog_id, name, valid_from, currency, unit_monetary_value)
@@ -271,43 +332,49 @@ ON CONFLICT (catalog_id, name) DO NOTHING;
 
 -- Categorías DENTAR
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-DIAG', E'Capítulo I - Consultas y Diagnóstico' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-DIAG', E'Capítulo I - Consultas y Diagnóstico' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-REST', E'Capítulo II - Operatoria Dental y Restauradora' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-REST', E'Capítulo II - Operatoria Dental y Restauradora' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-ENDO', E'Capítulo III - Endodoncia' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-ENDO', E'Capítulo III - Endodoncia' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-SURG', E'Capítulo IV - Cirugía Bucomaxilofacial Menor' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-SURG', E'Capítulo IV - Cirugía Bucomaxilofacial Menor' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-PROSTH-R', E'Capítulo V - Prótesis Removible' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-PROSTH-R', E'Capítulo V - Prótesis Removible' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-PROSTH-F', E'Capítulo VI - Prótesis Fija' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-PROSTH-F', E'Capítulo VI - Prótesis Fija' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-PERI', E'Capítulo VII - Periodoncia' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-PERI', E'Capítulo VII - Periodoncia' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-ORTHO', E'Capítulo VIII - Ortodoncia y Ortopedia Funcional' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-ORTHO', E'Capítulo VIII - Ortodoncia y Ortopedia Funcional' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-IMPL', E'Capítulo IX - Implantología Oral' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-IMPL', E'Capítulo IX - Implantología Oral' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-SURG-MAX', E'Capítulo X - Cirugía Bucomaxilofacial Mayor' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-SURG-MAX', E'Capítulo X - Cirugía Bucomaxilofacial Mayor' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 INSERT INTO os_catalog_category (catalog_id, code, name)
-SELECT id, 'CAT-ADJ', E'Capítulo XI - Prestaciones Generales y Urgencias' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'CAT-ADJ', E'Capítulo XI - Prestaciones Generales y Urgencias' FROM os_catalog WHERE code = 'dentar-pr'
+ON CONFLICT (catalog_id, code) DO NOTHING;
+
+-- DENTAR-DX tiene su propio árbol de categorías: no comparte los capítulos de
+-- procedimientos. La categoría única agrupa los diagnósticos CIE-10 K00-K14.
+INSERT INTO os_catalog_category (catalog_id, code, name)
+SELECT id, 'CAT-DX', E'Diagnósticos odontológicos (CIE-10 K00-K14)' FROM os_catalog WHERE code = 'dentar-dx'
 ON CONFLICT (catalog_id, code) DO NOTHING;
 
 -- Ingesta de las 138 Prestaciones DENTAR
--- DNT-000001 :: 01.01
+-- DNT-PR-000001 :: 01.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000001', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000001', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -316,32 +383,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-DIAG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000001'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000001'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '01.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000001'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000001'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D0150', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000001'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000001'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000001'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000001'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000002 :: 01.02
+-- DNT-PR-000002 :: 01.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000002', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000002', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -350,32 +417,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-DIAG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000002'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000002'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '01.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000002'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000002'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D0120', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000002'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000002'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000002'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000002'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000003 :: 01.03
+-- DNT-PR-000003 :: 01.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000003', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000003', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -384,32 +451,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-DIAG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000003'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000003'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '01.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000003'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000003'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D0120', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000003'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000003'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000003'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000003'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000004 :: 01.04
+-- DNT-PR-000004 :: 01.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000004', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000004', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -418,32 +485,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-DIAG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000004'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000004'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '01.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000004'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000004'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D0120', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000004'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000004'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000004'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000004'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000005 :: 01.05
+-- DNT-PR-000005 :: 01.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000005', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000005', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -452,32 +519,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-DIAG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000005'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000005'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '01.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000005'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000005'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D0120', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000005'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000005'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000005'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000005'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000006 :: 01.06
+-- DNT-PR-000006 :: 01.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000006', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000006', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -486,32 +553,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-DIAG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000006'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000006'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '01.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000006'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000006'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D0120', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000006'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000006'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000006'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000006'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000007 :: 01.07
+-- DNT-PR-000007 :: 01.07
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000007', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000007', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -520,32 +587,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-DIAG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000007'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000007'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '01.07', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000007'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000007'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D0120', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000007'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000007'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000007'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000007'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000008 :: 02.01
+-- DNT-PR-000008 :: 02.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000008', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000008', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -554,32 +621,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000008'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000008'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000008'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000008'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000008'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000008'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000008'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000008'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000009 :: 02.02
+-- DNT-PR-000009 :: 02.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000009', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000009', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -588,32 +655,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000009'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000009'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000009'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000009'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2150', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000009'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000009'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000009'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000009'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000010 :: 02.03
+-- DNT-PR-000010 :: 02.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000010', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000010', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -622,32 +689,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000010'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000010'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000010'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000010'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2160', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000010'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000010'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000010'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000010'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000011 :: 02.04
+-- DNT-PR-000011 :: 02.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000011', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000011', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -656,32 +723,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000011'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000011'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000011'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000011'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2160', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000011'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000011'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000011'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000011'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000012 :: 02.05
+-- DNT-PR-000012 :: 02.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000012', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000012', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -690,32 +757,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000012'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000012'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000012'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000012'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000012'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000012'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000012'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000012'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000013 :: 02.06
+-- DNT-PR-000013 :: 02.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000013', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000013', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -724,32 +791,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000013'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000013'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000013'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000013'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000013'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000013'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000013'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000013'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000014 :: 02.08
+-- DNT-PR-000014 :: 02.08
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000014', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000014', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -758,32 +825,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000014'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000014'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.08', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000014'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000014'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2332', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000014'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000014'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000014'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000014'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000015 :: 02.09
+-- DNT-PR-000015 :: 02.09
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000015', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000015', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -792,32 +859,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000015'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000015'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.09', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000015'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000015'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000015'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000015'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000015'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000015'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000016 :: 02.10
+-- DNT-PR-000016 :: 02.10
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000016', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000016', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -826,32 +893,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000016'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000016'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.10', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000016'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000016'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2332', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000016'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000016'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000016'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000016'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000017 :: 02.15
+-- DNT-PR-000017 :: 02.15
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000017', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000017', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -860,32 +927,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000017'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000017'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.15', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000017'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000017'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2330', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000017'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000017'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000017'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000017'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000018 :: 02.16
+-- DNT-PR-000018 :: 02.16
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000018', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000018', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -894,32 +961,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000018'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000018'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.16', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000018'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000018'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2332', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000018'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000018'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000018'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000018'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000019 :: 02.17
+-- DNT-PR-000019 :: 02.17
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000019', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000019', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -928,32 +995,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000019'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000019'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.17', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000019'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000019'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2332', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000019'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000019'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000019'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000019'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000020 :: 02.15 F
+-- DNT-PR-000020 :: 02.15 F
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000020', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000020', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -962,32 +1029,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-REST'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000020'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000020'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '02.15 F', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000020'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000020'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D2999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000020'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000020'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000020'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000020'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000021 :: 03.01
+-- DNT-PR-000021 :: 03.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000021', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000021', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -996,32 +1063,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ENDO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000021'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000021'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '03.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000021'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000021'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000021'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000021'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000021'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000021'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000022 :: 03.02
+-- DNT-PR-000022 :: 03.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000022', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000022', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1030,32 +1097,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ENDO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000022'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000022'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '03.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000022'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000022'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000022'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000022'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000022'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000022'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000023 :: 03.03
+-- DNT-PR-000023 :: 03.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000023', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000023', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1064,32 +1131,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ENDO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000023'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000023'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '03.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000023'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000023'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000023'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000023'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000023'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000023'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000024 :: 03.04
+-- DNT-PR-000024 :: 03.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000024', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000024', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1098,32 +1165,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ENDO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000024'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000024'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '03.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000024'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000024'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000024'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000024'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000024'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000024'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000025 :: 03.05
+-- DNT-PR-000025 :: 03.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000025', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000025', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1132,32 +1199,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ENDO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000025'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000025'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '03.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000025'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000025'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000025'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000025'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000025'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000025'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000026 :: 03.06
+-- DNT-PR-000026 :: 03.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000026', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000026', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1166,32 +1233,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ENDO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000026'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000026'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '03.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000026'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000026'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D3999', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000026'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000026'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000026'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000026'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000027 :: 04.01.01
+-- DNT-PR-000027 :: 04.01.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000027', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000027', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1200,32 +1267,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000027'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000027'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000027'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000027'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000027'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000027'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000027'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000027'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000028 :: 04.01.02
+-- DNT-PR-000028 :: 04.01.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000028', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000028', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1234,32 +1301,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000028'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000028'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000028'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000028'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000028'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000028'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000028'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000028'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000029 :: 04.01.03
+-- DNT-PR-000029 :: 04.01.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000029', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000029', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1268,32 +1335,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000029'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000029'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000029'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000029'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000029'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000029'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000029'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000029'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000030 :: 04.01.04
+-- DNT-PR-000030 :: 04.01.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000030', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000030', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1302,32 +1369,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000030'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000030'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000030'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000030'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000030'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000030'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000030'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000030'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000031 :: 04.01.05
+-- DNT-PR-000031 :: 04.01.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000031', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000031', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1336,32 +1403,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000031'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000031'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000031'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000031'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000031'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000031'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000031'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000031'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000032 :: 04.01.06
+-- DNT-PR-000032 :: 04.01.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000032', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000032', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1370,32 +1437,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000032'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000032'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000032'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000032'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000032'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000032'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000032'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000032'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000033 :: 04.01.07
+-- DNT-PR-000033 :: 04.01.07
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000033', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000033', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1404,32 +1471,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000033'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000033'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.07', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000033'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000033'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000033'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000033'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000033'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000033'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000034 :: 04.01.07 bis
+-- DNT-PR-000034 :: 04.01.07 bis
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000034', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000034', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1438,32 +1505,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000034'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000034'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.07 bis', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000034'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000034'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000034'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000034'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000034'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000034'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000035 :: 04.01.07 bis i
+-- DNT-PR-000035 :: 04.01.07 bis i
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000035', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000035', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1472,32 +1539,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000035'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000035'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.07 bis i', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000035'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000035'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000035'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000035'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000035'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000035'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000036 :: 04.01.08
+-- DNT-PR-000036 :: 04.01.08
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000036', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000036', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1506,32 +1573,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000036'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000036'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.08', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000036'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000036'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000036'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000036'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000036'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000036'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000037 :: 04.01.08 i
+-- DNT-PR-000037 :: 04.01.08 i
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000037', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000037', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1540,32 +1607,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000037'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000037'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.08 i', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000037'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000037'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000037'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000037'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000037'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000037'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000038 :: 04.01.09
+-- DNT-PR-000038 :: 04.01.09
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000038', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000038', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1574,32 +1641,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000038'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000038'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.09', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000038'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000038'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000038'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000038'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000038'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000038'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000039 :: 04.01.10
+-- DNT-PR-000039 :: 04.01.10
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000039', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000039', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1608,32 +1675,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000039'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000039'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.10', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000039'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000039'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000039'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000039'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000039'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000039'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000040 :: 04.01.10 bis
+-- DNT-PR-000040 :: 04.01.10 bis
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000040', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000040', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1642,32 +1709,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000040'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000040'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.10 bis', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000040'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000040'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000040'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000040'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000040'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000040'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000041 :: 04.01.11
+-- DNT-PR-000041 :: 04.01.11
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000041', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000041', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1676,32 +1743,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000041'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000041'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.11', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000041'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000041'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000041'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000041'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000041'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000041'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000042 :: 04.01.12
+-- DNT-PR-000042 :: 04.01.12
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000042', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000042', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1710,32 +1777,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000042'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000042'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.12', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000042'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000042'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000042'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000042'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000042'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000042'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000043 :: 04.01.12 i
+-- DNT-PR-000043 :: 04.01.12 i
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000043', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000043', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1744,32 +1811,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000043'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000043'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.12 i', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000043'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000043'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000043'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000043'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000043'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000043'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000044 :: 04.01.15
+-- DNT-PR-000044 :: 04.01.15
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000044', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000044', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1778,32 +1845,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000044'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000044'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.15', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000044'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000044'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000044'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000044'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000044'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000044'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000045 :: 04.01.16
+-- DNT-PR-000045 :: 04.01.16
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000045', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000045', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1812,32 +1879,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000045'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000045'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.16', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000045'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000045'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000045'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000045'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000045'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000045'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000046 :: 04.01.17
+-- DNT-PR-000046 :: 04.01.17
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000046', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000046', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1846,32 +1913,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000046'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000046'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.01.17', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000046'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000046'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000046'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000046'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000046'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000046'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000047 :: 04.02.01
+-- DNT-PR-000047 :: 04.02.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000047', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000047', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1880,32 +1947,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000047'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000047'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.02.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000047'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000047'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000047'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000047'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000047'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000047'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000048 :: 04.02.02
+-- DNT-PR-000048 :: 04.02.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000048', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000048', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1914,32 +1981,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000048'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000048'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.02.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000048'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000048'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000048'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000048'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000048'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000048'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000049 :: 04.02.03
+-- DNT-PR-000049 :: 04.02.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000049', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000049', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1948,32 +2015,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000049'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000049'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.02.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000049'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000049'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000049'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000049'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000049'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000049'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000050 :: 04.02.04
+-- DNT-PR-000050 :: 04.02.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000050', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000050', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -1982,32 +2049,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000050'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000050'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.02.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000050'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000050'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000050'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000050'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000050'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000050'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000051 :: 04.02.04 i
+-- DNT-PR-000051 :: 04.02.04 i
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000051', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000051', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2016,32 +2083,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000051'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000051'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.02.04 i', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000051'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000051'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000051'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000051'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000051'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000051'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000052 :: 04.02.05
+-- DNT-PR-000052 :: 04.02.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000052', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000052', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2050,32 +2117,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000052'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000052'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.02.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000052'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000052'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000052'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000052'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000052'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000052'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000053 :: 04.02.05 i
+-- DNT-PR-000053 :: 04.02.05 i
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000053', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000053', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2084,32 +2151,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000053'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000053'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.02.05 i', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000053'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000053'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000053'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000053'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000053'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000053'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000054 :: 04.03.01
+-- DNT-PR-000054 :: 04.03.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000054', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000054', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2118,32 +2185,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000054'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000054'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.03.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000054'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000054'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000054'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000054'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000054'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000054'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000055 :: 04.03.01 i
+-- DNT-PR-000055 :: 04.03.01 i
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000055', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000055', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2152,32 +2219,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000055'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000055'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.03.01 i', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000055'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000055'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000055'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000055'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000055'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000055'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000056 :: 04.03.02
+-- DNT-PR-000056 :: 04.03.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000056', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000056', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2186,32 +2253,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000056'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000056'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.03.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000056'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000056'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000056'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000056'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000056'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000056'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000057 :: 04.03.02 i
+-- DNT-PR-000057 :: 04.03.02 i
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000057', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000057', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2220,32 +2287,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000057'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000057'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.03.02 i', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000057'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000057'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000057'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000057'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000057'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000057'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000058 :: 04.03.03
+-- DNT-PR-000058 :: 04.03.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000058', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000058', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2254,32 +2321,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000058'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000058'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.03.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000058'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000058'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000058'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000058'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000058'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000058'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000059 :: 04.03.03 i
+-- DNT-PR-000059 :: 04.03.03 i
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000059', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000059', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2288,32 +2355,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000059'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000059'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.03.03 i', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000059'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000059'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000059'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000059'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000059'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000059'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000060 :: 04.04.01
+-- DNT-PR-000060 :: 04.04.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000060', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000060', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2322,32 +2389,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000060'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000060'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000060'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000060'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000060'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000060'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000060'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000060'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000061 :: 04.04.02
+-- DNT-PR-000061 :: 04.04.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000061', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000061', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2356,32 +2423,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000061'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000061'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000061'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000061'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000061'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000061'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000061'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000061'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000062 :: 04.04.03
+-- DNT-PR-000062 :: 04.04.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000062', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000062', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2390,32 +2457,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000062'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000062'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000062'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000062'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000062'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000062'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000062'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000062'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000063 :: 04.04.04
+-- DNT-PR-000063 :: 04.04.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000063', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000063', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2424,32 +2491,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000063'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000063'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000063'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000063'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000063'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000063'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000063'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000063'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000064 :: 04.04.05
+-- DNT-PR-000064 :: 04.04.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000064', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000064', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2458,32 +2525,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000064'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000064'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000064'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000064'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000064'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000064'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000064'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000064'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000065 :: 04.04.06
+-- DNT-PR-000065 :: 04.04.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000065', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000065', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2492,32 +2559,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000065'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000065'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000065'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000065'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000065'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000065'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000065'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000065'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000066 :: 04.04.07
+-- DNT-PR-000066 :: 04.04.07
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000066', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000066', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2526,32 +2593,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000066'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000066'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.07', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000066'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000066'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000066'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000066'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000066'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000066'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000067 :: 04.04.08
+-- DNT-PR-000067 :: 04.04.08
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000067', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000067', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2560,32 +2627,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000067'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000067'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.08', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000067'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000067'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000067'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000067'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000067'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000067'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000068 :: 04.04.09
+-- DNT-PR-000068 :: 04.04.09
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000068', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000068', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2594,32 +2661,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000068'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000068'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.09', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000068'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000068'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000068'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000068'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000068'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000068'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000069 :: 04.04.10
+-- DNT-PR-000069 :: 04.04.10
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000069', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000069', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2628,32 +2695,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000069'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000069'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.10', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000069'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000069'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000069'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000069'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000069'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000069'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000070 :: 04.04.11
+-- DNT-PR-000070 :: 04.04.11
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000070', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000070', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2662,32 +2729,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000070'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000070'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.11', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000070'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000070'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000070'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000070'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000070'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000070'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000071 :: 04.04.12
+-- DNT-PR-000071 :: 04.04.12
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000071', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000071', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2696,32 +2763,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000071'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000071'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '04.04.12', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000071'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000071'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7140', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000071'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000071'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000071'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000071'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000072 :: 05.00
+-- DNT-PR-000072 :: 05.00
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000072', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000072', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2730,32 +2797,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-R'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000072'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000072'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '05.00', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000072'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000072'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000072'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000072'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000072'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000072'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000073 :: 05.01
+-- DNT-PR-000073 :: 05.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000073', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000073', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2764,32 +2831,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-R'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000073'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000073'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '05.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000073'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000073'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000073'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000073'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000073'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000073'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000074 :: 05.02
+-- DNT-PR-000074 :: 05.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000074', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000074', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2798,32 +2865,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-R'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000074'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000074'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '05.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000074'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000074'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000074'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000074'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000074'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000074'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000075 :: 05.03
+-- DNT-PR-000075 :: 05.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000075', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000075', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2832,32 +2899,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-R'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000075'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000075'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '05.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000075'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000075'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000075'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000075'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000075'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000075'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000076 :: 05.04
+-- DNT-PR-000076 :: 05.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000076', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000076', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2866,32 +2933,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-R'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000076'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000076'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '05.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000076'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000076'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000076'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000076'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000076'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000076'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000077 :: 05.05
+-- DNT-PR-000077 :: 05.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000077', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000077', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2900,32 +2967,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-R'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000077'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000077'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '05.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000077'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000077'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000077'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000077'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000077'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000077'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000078 :: 05.06
+-- DNT-PR-000078 :: 05.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000078', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000078', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2934,32 +3001,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-R'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000078'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000078'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '05.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000078'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000078'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D5110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000078'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000078'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000078'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000078'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000079 :: 06.01
+-- DNT-PR-000079 :: 06.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000079', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000079', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -2968,32 +3035,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-F'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000079'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000079'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '06.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000079'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000079'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6240', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000079'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000079'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000079'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000079'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000080 :: 06.02
+-- DNT-PR-000080 :: 06.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000080', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000080', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3002,32 +3069,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-F'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000080'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000080'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '06.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000080'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000080'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6240', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000080'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000080'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000080'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000080'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000081 :: 06.03
+-- DNT-PR-000081 :: 06.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000081', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000081', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3036,32 +3103,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-F'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000081'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000081'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '06.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000081'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000081'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6240', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000081'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000081'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000081'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000081'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000082 :: 06.04
+-- DNT-PR-000082 :: 06.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000082', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000082', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3070,32 +3137,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-F'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000082'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000082'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '06.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000082'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000082'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6240', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000082'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000082'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000082'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000082'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000083 :: 06.05
+-- DNT-PR-000083 :: 06.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000083', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000083', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3104,32 +3171,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PROSTH-F'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000083'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000083'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '06.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000083'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000083'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6240', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000083'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000083'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000083'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000083'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000084 :: 07.01
+-- DNT-PR-000084 :: 07.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000084', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000084', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3138,32 +3205,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000084'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000084'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000084'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000084'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000084'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000084'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000084'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000084'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000085 :: 07.02
+-- DNT-PR-000085 :: 07.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000085', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000085', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3172,32 +3239,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000085'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000085'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000085'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000085'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000085'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000085'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000085'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000085'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000086 :: 07.03
+-- DNT-PR-000086 :: 07.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000086', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000086', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3206,32 +3273,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000086'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000086'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000086'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000086'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000086'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000086'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000086'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000086'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000087 :: 07.04
+-- DNT-PR-000087 :: 07.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000087', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000087', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3240,32 +3307,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000087'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000087'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000087'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000087'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000087'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000087'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000087'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000087'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000088 :: 07.05
+-- DNT-PR-000088 :: 07.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000088', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000088', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3274,32 +3341,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000088'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000088'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000088'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000088'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000088'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000088'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000088'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000088'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000089 :: 07.06.01
+-- DNT-PR-000089 :: 07.06.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000089', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000089', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3308,32 +3375,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000089'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000089'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.06.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000089'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000089'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000089'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000089'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000089'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000089'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000090 :: 07.06.02
+-- DNT-PR-000090 :: 07.06.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000090', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000090', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3342,32 +3409,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000090'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000090'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.06.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000090'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000090'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000090'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000090'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000090'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000090'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000091 :: 07.06.04
+-- DNT-PR-000091 :: 07.06.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000091', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000091', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3376,32 +3443,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000091'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000091'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.06.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000091'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000091'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000091'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000091'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000091'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000091'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000092 :: 07.07
+-- DNT-PR-000092 :: 07.07
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000092', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000092', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3410,32 +3477,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000092'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000092'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.07', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000092'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000092'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000092'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000092'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000092'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000092'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000093 :: 07.08
+-- DNT-PR-000093 :: 07.08
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000093', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000093', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3444,32 +3511,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-PERI'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000093'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000093'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '07.08', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000093'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000093'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D4341', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000093'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000093'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000093'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000093'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000094 :: 08.01
+-- DNT-PR-000094 :: 08.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000094', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000094', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3478,32 +3545,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000094'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000094'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000094'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000094'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000094'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000094'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000094'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000094'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000095 :: 08.02
+-- DNT-PR-000095 :: 08.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000095', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000095', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3512,32 +3579,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000095'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000095'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000095'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000095'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000095'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000095'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000095'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000095'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000096 :: 08.03
+-- DNT-PR-000096 :: 08.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000096', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000096', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3546,32 +3613,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000096'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000096'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000096'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000096'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000096'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000096'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000096'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000096'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000097 :: 08.04
+-- DNT-PR-000097 :: 08.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000097', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000097', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3580,32 +3647,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000097'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000097'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000097'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000097'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000097'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000097'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000097'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000097'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000098 :: 08.04 C
+-- DNT-PR-000098 :: 08.04 C
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000098', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000098', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3614,32 +3681,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000098'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000098'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.04 C', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000098'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000098'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000098'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000098'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000098'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000098'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000099 :: 08.05
+-- DNT-PR-000099 :: 08.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000099', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000099', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3648,32 +3715,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000099'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000099'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000099'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000099'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000099'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000099'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000099'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000099'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000100 :: 08.05.01
+-- DNT-PR-000100 :: 08.05.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000100', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000100', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3682,32 +3749,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000100'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000100'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.05.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000100'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000100'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000100'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000100'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000100'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000100'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000101 :: 08.05.02
+-- DNT-PR-000101 :: 08.05.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000101', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000101', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3716,32 +3783,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000101'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000101'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.05.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000101'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000101'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000101'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000101'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000101'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000101'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000102 :: 08.05.03
+-- DNT-PR-000102 :: 08.05.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000102', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000102', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3750,32 +3817,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000102'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000102'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.05.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000102'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000102'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000102'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000102'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000102'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000102'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000103 :: 08.06
+-- DNT-PR-000103 :: 08.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000103', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000103', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3784,32 +3851,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000103'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000103'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000103'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000103'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000103'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000103'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000103'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000103'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000104 :: 08.07
+-- DNT-PR-000104 :: 08.07
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000104', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000104', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3818,32 +3885,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ORTHO'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000104'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000104'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '08.07', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000104'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000104'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D8080', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000104'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000104'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000104'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000104'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000105 :: 09.01.01
+-- DNT-PR-000105 :: 09.01.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000105', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000105', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3852,32 +3919,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000105'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000105'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.01.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000105'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000105'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000105'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000105'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000105'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000105'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000106 :: 09.01.02
+-- DNT-PR-000106 :: 09.01.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000106', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000106', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3886,32 +3953,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000106'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000106'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.01.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000106'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000106'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000106'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000106'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000106'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000106'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000107 :: 09.01.03
+-- DNT-PR-000107 :: 09.01.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000107', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000107', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3920,32 +3987,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000107'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000107'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.01.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000107'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000107'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000107'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000107'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000107'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000107'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000108 :: 09.01.04
+-- DNT-PR-000108 :: 09.01.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000108', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000108', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3954,32 +4021,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000108'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000108'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.01.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000108'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000108'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000108'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000108'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000108'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000108'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000109 :: 09.01.05
+-- DNT-PR-000109 :: 09.01.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000109', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000109', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -3988,32 +4055,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000109'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000109'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.01.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000109'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000109'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000109'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000109'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000109'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000109'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000110 :: 09.02.01
+-- DNT-PR-000110 :: 09.02.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000110', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000110', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4022,32 +4089,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000110'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000110'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.02.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000110'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000110'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000110'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000110'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000110'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000110'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000111 :: 09.02.02
+-- DNT-PR-000111 :: 09.02.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000111', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000111', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4056,32 +4123,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000111'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000111'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.02.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000111'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000111'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000111'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000111'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000111'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000111'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000112 :: 09.02.03
+-- DNT-PR-000112 :: 09.02.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000112', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000112', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4090,32 +4157,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000112'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000112'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.02.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000112'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000112'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000112'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000112'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000112'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000112'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000113 :: 09.02.04
+-- DNT-PR-000113 :: 09.02.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000113', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000113', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4124,32 +4191,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000113'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000113'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.02.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000113'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000113'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000113'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000113'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000113'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000113'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000114 :: 09.02.05
+-- DNT-PR-000114 :: 09.02.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000114', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000114', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4158,32 +4225,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000114'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000114'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.02.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000114'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000114'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000114'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000114'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000114'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000114'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000115 :: 09.02.05 bis
+-- DNT-PR-000115 :: 09.02.05 bis
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000115', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000115', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4192,32 +4259,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000115'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000115'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.02.05 bis', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000115'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000115'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000115'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000115'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000115'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000115'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000116 :: 09.02.06
+-- DNT-PR-000116 :: 09.02.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000116', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000116', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4226,32 +4293,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-IMPL'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000116'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000116'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '09.02.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000116'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000116'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D6010', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000116'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000116'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000116'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000116'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000117 :: 10.01
+-- DNT-PR-000117 :: 10.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000117', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000117', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4260,32 +4327,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000117'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000117'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000117'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000117'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000117'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000117'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000117'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000117'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000118 :: 10.02
+-- DNT-PR-000118 :: 10.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000118', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000118', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4294,32 +4361,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000118'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000118'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000118'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000118'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000118'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000118'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000118'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000118'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000119 :: 10.03
+-- DNT-PR-000119 :: 10.03
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000119', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000119', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4328,32 +4395,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000119'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000119'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.03', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000119'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000119'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000119'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000119'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000119'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000119'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000120 :: 10.04
+-- DNT-PR-000120 :: 10.04
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000120', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000120', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4362,32 +4429,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000120'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000120'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.04', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000120'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000120'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000120'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000120'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000120'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000120'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000121 :: 10.05
+-- DNT-PR-000121 :: 10.05
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000121', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000121', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4396,32 +4463,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000121'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000121'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.05', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000121'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000121'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000121'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000121'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000121'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000121'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000122 :: 10.06
+-- DNT-PR-000122 :: 10.06
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000122', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000122', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4430,32 +4497,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000122'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000122'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.06', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000122'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000122'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000122'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000122'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000122'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000122'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000123 :: 10.07
+-- DNT-PR-000123 :: 10.07
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000123', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000123', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4464,32 +4531,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000123'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000123'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.07', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000123'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000123'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000123'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000123'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000123'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000123'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000124 :: 10.08
+-- DNT-PR-000124 :: 10.08
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000124', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000124', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4498,32 +4565,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000124'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000124'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.08', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000124'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000124'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000124'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000124'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000124'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000124'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000125 :: 10.09
+-- DNT-PR-000125 :: 10.09
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000125', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000125', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4532,32 +4599,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000125'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000125'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.09', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000125'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000125'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000125'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000125'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000125'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000125'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000126 :: 10.10
+-- DNT-PR-000126 :: 10.10
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000126', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000126', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4566,32 +4633,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000126'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000126'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.10', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000126'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000126'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000126'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000126'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000126'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000126'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000127 :: 10.11
+-- DNT-PR-000127 :: 10.11
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000127', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000127', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4600,32 +4667,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000127'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000127'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.11', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000127'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000127'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000127'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000127'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000127'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000127'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000128 :: 10.12
+-- DNT-PR-000128 :: 10.12
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000128', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000128', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4634,32 +4701,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000128'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000128'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.12', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000128'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000128'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000128'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000128'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000128'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000128'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000129 :: 10.13
+-- DNT-PR-000129 :: 10.13
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000129', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000129', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4668,32 +4735,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000129'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000129'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.13', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000129'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000129'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000129'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000129'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000129'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000129'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000130 :: 10.14
+-- DNT-PR-000130 :: 10.14
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000130', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000130', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4702,32 +4769,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000130'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000130'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.14', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000130'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000130'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000130'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000130'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000130'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000130'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000131 :: 10.15
+-- DNT-PR-000131 :: 10.15
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000131', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000131', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4736,32 +4803,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000131'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000131'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.15', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000131'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000131'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000131'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000131'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000131'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000131'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000132 :: 10.16
+-- DNT-PR-000132 :: 10.16
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000132', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000132', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4770,32 +4837,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000132'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000132'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.16', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000132'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000132'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000132'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000132'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000132'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000132'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000133 :: 10.17
+-- DNT-PR-000133 :: 10.17
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000133', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000133', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4804,32 +4871,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000133'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000133'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.17', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000133'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000133'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000133'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000133'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000133'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000133'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000134 :: 10.18
+-- DNT-PR-000134 :: 10.18
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000134', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000134', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4838,32 +4905,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000134'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000134'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.18', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000134'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000134'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000134'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000134'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000134'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000134'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000135 :: 10.19
+-- DNT-PR-000135 :: 10.19
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000135', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000135', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4872,32 +4939,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000135'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000135'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.19', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000135'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000135'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000135'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000135'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000135'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000135'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000136 :: 10.20
+-- DNT-PR-000136 :: 10.20
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000136', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000136', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4906,32 +4973,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-SURG-MAX'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000136'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000136'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '10.20', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000136'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000136'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D7210', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000136'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000136'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000136'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000136'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000137 :: 11.01.01
+-- DNT-PR-000137 :: 11.01.01
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000137', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000137', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4940,32 +5007,32 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ADJ'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000137'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000137'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '11.01.01', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000137'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000137'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D9110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000137'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000137'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000137'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000137'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
--- DNT-000138 :: 11.02
+-- DNT-PR-000138 :: 11.02
 INSERT INTO os_catalog_item (catalog_id, permanent_code, status)
-SELECT id, 'DNT-000138', 'active' FROM os_catalog WHERE code = 'dentar'
+SELECT id, 'DNT-PR-000138', 'active' FROM os_catalog WHERE code = 'dentar-pr'
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 INSERT INTO os_catalog_item_version (item_id, release_id, category_id, preferred_term, language_code)
@@ -4974,27 +5041,27 @@ FROM os_catalog_item i
 JOIN os_catalog cat ON cat.id = i.catalog_id
 JOIN os_catalog_release r ON r.catalog_id = cat.id AND r.version_tag = '2026-v1'
 LEFT JOIN os_catalog_category c ON c.catalog_id = cat.id AND c.code = 'CAT-ADJ'
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000138'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000138'
 ON CONFLICT (item_id, release_id, language_code) DO UPDATE SET preferred_term = EXCLUDED.preferred_term;
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
 SELECT i.id, 'NOMENCLADOR_AR', '11.02', TRUE
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000138'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000138'
 ON CONFLICT (item_id, system_name, value) DO NOTHING;
 
 -- Mapeo CDT 2025
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 4, 'D9110', 'ADA CDT 2025', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000138'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000138'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Mapeo SNOMED CT
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role)
 SELECT i.id, 1, '424759004', 'SNOMED CT Procedure Concept', 'equivalent', 'procedure_concept'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code = 'DNT-000138'
+WHERE cat.code = 'dentar-pr' AND i.permanent_code = 'DNT-PR-000138'
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 
@@ -5002,21 +5069,21 @@ ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) D
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role, clinical_rationale)
 SELECT i.id, 2, 'K02.1', 'Caries de la dentina', 'equivalent', 'justifying_diagnosis', 'Caries activa con cavitación dentinaria que justifica restauración'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code IN ('DNT-000007', 'DNT-000008', 'DNT-000009', 'DNT-000010', 'DNT-000011', 'DNT-000012')
+WHERE cat.code = 'dentar-pr' AND i.permanent_code IN ('DNT-PR-000007', 'DNT-PR-000008', 'DNT-PR-000009', 'DNT-PR-000010', 'DNT-PR-000011', 'DNT-PR-000012')
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Justificaciones Diagnósticas CIE-10 para Endodoncia DENTAR
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role, clinical_rationale)
 SELECT i.id, 2, 'K04.0', 'Pulpitis irreversible', 'equivalent', 'justifying_diagnosis', 'Inflamación pulpar irreversible que requiere tratamiento endodóntico'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code IN ('DNT-000017', 'DNT-000018', 'DNT-000019', 'DNT-000020')
+WHERE cat.code = 'dentar-pr' AND i.permanent_code IN ('DNT-PR-000017', 'DNT-PR-000018', 'DNT-PR-000019', 'DNT-PR-000020')
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- Justificaciones Diagnósticas CIE-10 para Periodoncia DENTAR
 INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role, clinical_rationale)
 SELECT i.id, 2, 'K05.3', 'Periodontitis crónica', 'equivalent', 'justifying_diagnosis', 'Pérdida ósea y bolsas periodontales que requieren raspado y alisado radicular'
 FROM os_catalog_item i JOIN os_catalog cat ON cat.id = i.catalog_id
-WHERE cat.code = 'dentar' AND i.permanent_code IN ('DNT-000049', 'DNT-000050', 'DNT-000051')
+WHERE cat.code = 'dentar-pr' AND i.permanent_code IN ('DNT-PR-000049', 'DNT-PR-000050', 'DNT-PR-000051')
 ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- =============================================================================
@@ -7626,8 +7693,12 @@ ANALYZE nomencladores_argentina;
 ANALYZE vademecum_comercial;
 
 -- Resumen de Catálogos
-SELECT cat.code AS catalogo, count(i.id) AS total_items
+SELECT cat.code AS catalogo,
+       cat.short_name AS nombre_corto,
+       cat.product_role AS rol,
+       cat.family_code AS familia,
+       count(i.id) AS total_items
   FROM os_catalog cat
   LEFT JOIN os_catalog_item i ON i.catalog_id = cat.id
- GROUP BY cat.code
- ORDER BY total_items DESC;
+ GROUP BY cat.code, cat.short_name, cat.product_role, cat.family_code
+ ORDER BY cat.product_role DESC, cat.code;

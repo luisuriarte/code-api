@@ -27,11 +27,12 @@ final class CatalogEngineService
     public function listCatalogs(): array
     {
         $startedAt = hrtime(true);
-        $sql = 'SELECT c.id, c.code, c.name, c.organization, c.country_code, c.domain_type, c.description, c.website_url,
+        $sql = 'SELECT c.id, c.code, c.name, c.short_name, c.family_code, c.product_role,
+                       c.organization, c.country_code, c.domain_type, c.description, c.website_url,
                        (SELECT count(*) FROM os_catalog_item i WHERE i.catalog_id = c.id AND i.status = \'active\') AS active_items_count
                   FROM os_catalog c
                  WHERE c.is_active = TRUE
-                 ORDER BY c.id ASC';
+                 ORDER BY CASE c.product_role WHEN \'family\' THEN 0 ELSE 1 END, c.code ASC';
 
         $stmt = $this->db->query($sql);
         $rows = $stmt->fetchAll();
@@ -40,6 +41,9 @@ final class CatalogEngineService
             'id' => (string) $r['id'],
             'code' => (string) $r['code'],
             'name' => (string) $r['name'],
+            'short_name' => $r['short_name'] !== null ? (string) $r['short_name'] : null,
+            'family' => $r['family_code'] !== null ? (string) $r['family_code'] : null,
+            'role' => (string) $r['product_role'],
             'organization' => (string) $r['organization'],
             'country' => (string) $r['country_code'],
             'domain_type' => (string) $r['domain_type'],
@@ -133,7 +137,7 @@ final class CatalogEngineService
             $params[':category_like'] = '%' . $category . '%';
         }
 
-        $sql .= ' ORDER BY ident.value ASC LIMIT :limit OFFSET :offset';
+        $sql .= ' ORDER BY COALESCE(ident.value, item.permanent_code) ASC LIMIT :limit OFFSET :offset';
 
         $stmt = $this->db->prepare($sql);
         foreach ($params as $k => $v) {
@@ -147,7 +151,7 @@ final class CatalogEngineService
         return [
             'data' => array_map(static fn (array $r): array => [
                 'permanent_code' => (string) $r['permanent_code'],
-                'official_code' => (string) $r['official_code'],
+                'official_code' => $r['official_code'] !== null ? (string) $r['official_code'] : null,
                 'term' => (string) $r['preferred_term'],
                 'category' => $r['category_name'] !== null ? (string) $r['category_name'] : null,
                 'pricing' => $r['pricing_unit'] !== null ? [
@@ -181,6 +185,8 @@ final class CatalogEngineService
                        ver.clinical_criteria,
                        cat.code AS catalog_code,
                        cat.name AS catalog_name,
+                       cat.short_name AS catalog_short_name,
+                       cat.family_code AS catalog_family_code,
                        categ.name AS category_name,
                        p_unit.code AS pricing_unit,
                        p_unit.name AS pricing_unit_name,
@@ -229,11 +235,14 @@ final class CatalogEngineService
                 'catalog' => [
                     'code' => $row['catalog_code'],
                     'name' => $row['catalog_name'],
+                    'short_name' => $row['catalog_short_name'] !== null ? (string) $row['catalog_short_name'] : null,
+                    'family' => $row['catalog_family_code'] !== null ? (string) $row['catalog_family_code'] : null,
                 ],
                 'permanent_code' => $row['permanent_code'],
-                'official_code' => $row['official_code'],
+                'official_code' => $row['official_code'] !== null ? (string) $row['official_code'] : null,
                 'preferred_term' => $row['preferred_term'],
                 'definition' => $row['definition'],
+                'clinical_criteria' => $row['clinical_criteria'] !== null ? (string) $row['clinical_criteria'] : null,
                 'category' => $row['category_name'],
                 'pricing' => $row['pricing_unit'] !== null ? [
                     'unit_type' => $row['pricing_unit'],
@@ -311,7 +320,7 @@ final class CatalogEngineService
         return [
             'data' => array_map(static fn (array $r): array => [
                 'catalog' => $r['catalog_code'],
-                'catalog_code' => $r['official_code'],
+                'catalog_code' => $r['official_code'] !== null ? (string) $r['official_code'] : null,
                 'term' => $r['preferred_term'],
                 'target_system' => $r['target_system'],
                 'target_uri' => $r['target_uri'],
