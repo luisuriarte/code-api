@@ -75,6 +75,15 @@ importador reconoce las filas de ambos catálogos en un mismo archivo.
 | `total_rvu` | No | ambos | Total de unidades relativas (referencia). |
 | `estimated_payment` | No | ambos | Pago estimado de referencia (ARS, solo orientativo). |
 | `criterios_clinicos` | No | ambos | Criterios de uso o justificación clínica. |
+| `lay_terms` | No | ambos | Descripción comprensible para pacientes (resumida). |
+| `chapter_section` | No | DENTAR-PR | Capítulo del nomenclador (ej. "Capítulo I - Consultas"). |
+| `specialty` | No | DENTAR-PR | Especialidad odontológica (ej. "Operatoria Dental"). |
+| `modifiers_allowed` | No | DENTAR-PR | Indica si el código admite modificadores. |
+| `units` | No | DENTAR-PR | Unidad de prestación (ej. "por pieza dentaria"). |
+| `clinical_indications` | No | ambos | Indicaciones clínicas detalladas. |
+| `exclusions` | No | ambos | Condiciones o situaciones en las que no aplicar. |
+| `documentation_requirements` | No | ambos | Requisitos de documentación para facturación. |
+| `editorial_notes` | No | ambos | Notas internas del comité editorial. |
 | `ambito_clinico` | No | DENTAR-PR | Capítulo, ej. `Capítulo III - Endodoncia`. |
 | `categoria` | No | ambos | Código de `dentar_category` del mismo catálogo. |
 | `tipo_concepto` | No | DENTAR-PR | `procedure` (default), `service`, `evaluation`, `diagnostic_service`, `rehabilitation`. |

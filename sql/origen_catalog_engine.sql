@@ -170,6 +170,29 @@ CREATE TABLE IF NOT EXISTS os_fee_item (
     UNIQUE (fee_schedule_id, item_id)
 );
 
+-- Valores de referencia de RVU y conversión por código DENTAR y sistema de valoración.
+-- Permite almacenar múltiples sistemas (DENTAR-RVU, Medicare, particular, etc.) sin alterar
+-- la ficha maestra del código DENTAR. Cada fila representa una combinación catalog_code +
+-- pricing_system con su vigencia.
+CREATE TABLE IF NOT EXISTS os_pricing_values (
+    id SERIAL PRIMARY KEY,
+    catalog_code VARCHAR(20) NOT NULL,        -- ej. 'DNT-PR-000125'
+    pricing_system VARCHAR(30) NOT NULL,      -- ej. 'DENTAR-RVU', 'Medicare', 'Particular'
+    work_rvu NUMERIC(5,2) DEFAULT 0,
+    practice_expense_rvu NUMERIC(5,2) DEFAULT 0,
+    malpractice_rvu NUMERIC(5,2) DEFAULT 0,
+    total_rvu NUMERIC(5,2) DEFAULT 0,
+    conversion_factor NUMERIC(12,4) DEFAULT 1.0000,
+    estimated_payment NUMERIC(12,2),
+    currency VARCHAR(5) NOT NULL DEFAULT 'ARS',
+    global_period_days INT DEFAULT 0,
+    year_effective INT NOT NULL,
+    effective_from DATE NOT NULL,
+    effective_to DATE,
+    source VARCHAR(100),                     -- 'ORIGEN_SALUD', 'Medicare', 'OBRA_SOCIAL', etc.
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (catalog_code, pricing_system, year_effective)
+);
 
 -- =============================================================================
 -- 4. TABLAS DE FARMACIA Y VADEMÉCUM (os_pharma_*)

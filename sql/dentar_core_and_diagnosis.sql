@@ -249,7 +249,8 @@ CREATE TABLE IF NOT EXISTS dentar_concept (
     code VARCHAR(30) NOT NULL UNIQUE,            -- Ej: 'DNT-PR-000001'
     concept_type VARCHAR(30) NOT NULL DEFAULT 'procedure' CHECK (concept_type IN ('procedure','service','evaluation','diagnostic_service','rehabilitation')),
     lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (lifecycle_status IN ('draft','active','retired')),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS dentar_concept_version (
@@ -259,15 +260,18 @@ CREATE TABLE IF NOT EXISTS dentar_concept_version (
     definition TEXT NOT NULL,
     short_definition VARCHAR(255),    -- descripción abreviada para listados y resumidos
     global_period_days INT,            -- período global (0 = ninguno, 10, 30, 90, NULL = no definido)
-    work_rvu NUMERIC(5,2),             -- Unidades relativas de trabajo profesional (referencia)
-    practice_expense_rvu NUMERIC(5,2),-- Unidades relativas de gastos de práctica (referencia)
-    malpractice_rvu NUMERIC(5,2),      -- Unidades relativas de responsabilidad profesional (referencia)
-    total_rvu NUMERIC(5,2),            -- Total de unidades relativas (referencia)
+    work_uvr NUMERIC(5,2),             -- Unidades relativas de trabajo profesional (referencia)
+    practice_expense_uvr NUMERIC(5,2),-- Unidades relativas de gastos de práctica (referencia)
+    malpractice_uvr NUMERIC(5,2),      -- Unidades relativas de responsabilidad profesional (referencia)
+    total_uvr NUMERIC(5,2),            -- Total de unidades relativas (referencia)
     estimated_payment NUMERIC(12,2),   -- Pago estimado de referencia (ARS, solo orientativo)
+    lay_terms TEXT,                    -- descripción comprensible para pacientes
     clinical_scope TEXT,
     clinical_criteria TEXT,
     approval_status VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('draft','review','approved','rejected')),
     effective_from DATE NOT NULL DEFAULT CURRENT_DATE,
+    effective_to DATE,                   -- fecha de fin de vigencia de esta versión
+    year_effective INT,                  -- año de vigencia (ej. 2026)
     UNIQUE (concept_id, version_number)
 );
 
