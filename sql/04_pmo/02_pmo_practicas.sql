@@ -79,7 +79,6 @@ FROM (VALUES
  ('010113'), -- cirugía estereotáxica diversos métodos
  ('010114'), -- punción diagnóstica ventrículo trepanación
  ('010115'), -- punción transfontanelar ventrículos
- ('010113'), -- -- (más registros según archivo pmo_2002.sql)
  ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 -- =============================================================================
@@ -98,23 +97,6 @@ SELECT
 FROM os_catalog_item
 WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
 ON CONFLICT (item_id, release_id, language_code) DO NOTHING;
-
--- =============================================================================
--- 4. Mapeo de conceptopmapping opcional
--- =============================================================================
---
-INSERT INTO os_concept_mapping (item_id, terminology_system_id, external_code, external_display, mapping_type, relationship_role, review_status)
-SELECT
-    os_catalog_item.id,
-    1,                           -- SNOMED-CT (id 1 en os_terminology_system)
-    os_catalog_item.permanent_code,
-    os_catalog_item.permanent_code,
-    'equivalent',
-    'procedure_concept',
-    'approved'
-FROM os_catalog_item
-WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
-ON CONFLICT (item_id, terminology_system_id, external_code, relationship_role) DO NOTHING;
 
 -- =============================================================================
 -- Nota final: Para importación masiva real
