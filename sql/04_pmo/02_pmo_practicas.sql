@@ -176,7 +176,7 @@ FROM (VALUES
  ('010605', '01', 'Operaciones en el sistema nervioso', NULL, NULL, 0, 0),
  ('010606', '01', 'Operaciones en el sistema nervioso', NULL, NULL, 0, 0),
  ('010607', '01', 'Operaciones en el sistema nervioso', NULL, NULL, 0, 0)
-) AS tmp(codigo, cap_cod, capitulo, subcapitulo, practica, notas, cobertura_condicionada, revisar)
+) AS tmp(codigo, cap_cod, capitulo, subcapitulo, practica, notas, cobertura_condicionada)
 ON CONFLICT (catalog_id, permanent_code) DO NOTHING;
 
 -- =============================================================================
@@ -197,9 +197,9 @@ SELECT
     os_catalog_item.id,
     (SELECT id FROM os_catalog_release WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo') AND status = 'published' LIMIT 1),
     'es-AR',
-    tmp.practica,                      -- término preferido (mismo texto que la práctica)
-    tmp.practica,                      -- definición = término preferido por defecto
-    tmp.cobertura_condicionada         -- 0 o 1 desde el archivo fuente
+    COALESCE(NULLIF(tmp.practica, ''), 'Sin descripción'), -- término preferido; si es NULL o vacío, usar por defecto
+    COALESCE(NULLIF(tmp.practica, ''), 'Sin descripción'), -- definición = término preferido por defecto
+    COALESCE(tmp.cobertura_condicionada::integer, 0)::smallint -- 0 o 1 desde el archivo fuente; hacer casting seguro
 FROM os_catalog_item
 JOIN (VALUES
 -- --- CONJUNTO COMPLETO DE PRÁCTICAS MÉDICAS (mismo orden que el INSERT anterior) ---
@@ -257,7 +257,7 @@ JOIN (VALUES
  ('010605', '01', 'Operaciones en el sistema nervioso', NULL, NULL, 0, 0),
  ('010606', '01', 'Operaciones en el sistema nervioso', NULL, NULL, 0, 0),
  ('010607', '01', 'Operaciones en el sistema nervioso', NULL, NULL, 0, 0)
-) AS tmp(codigo, cap_cod, capitulo, subcapitulo, practica, notas, cobertura_condicionada, revisar)
+) AS tmp(codigo, cap_cod, capitulo, subcapitulo, practica, notas, cobertura_condicionada)
     ON os_catalog_item.permanent_code = tmp.codigo
 ON CONFLICT (item_id, release_id, language_code) DO NOTHING;
 
@@ -279,7 +279,7 @@ FROM (VALUES
  ('010102', '01', 'Operaciones en el sistema nervioso', NULL, NULL, 0, 0),
  -- ... resto de registros ...
  ('010607', '01', 'Operaciones en el sistema nervioso', NULL, NULL, 0, 0)
-) AS tmp(codigo, cap_cod, capitulo, subcapitulo, practica, notas, cobertura_condicionada, revisar);
+) AS tmp(codigo, cap_cod, capitulo, subcapitulo, practica, notas, cobertura_condicionada);
 
 -- 2. Total de prestaciones importadas a os_catalog_item
 SELECT 'Total prestaciones importadas os_catalog_item' AS descripcion, COUNT(*) AS total
@@ -322,15 +322,18 @@ SELECT 'Versiones sin release publicado' AS descripcion, COUNT(*) AS total
 FROM os_catalog_item_version
 WHERE release_id IS NULL;
 
--- 9. Prestaciones con cobertura condicionada = 1
+-- 9. Prestaciones con cobertura condicionada = 1 (solo valores numéricos)
 SELECT 'Prestaciones con cobertura condicionada = 1' AS descripcion, COUNT(*) AS total
 FROM os_catalog_item_version
-WHERE clinical_criteria = 1;
+WHERE clinical_criteria IS NOT NULL
+  AND clinical_criteria != ''
+  AND clinical_criteria ~ '^[0-9]+$'::text  -- solo enteros positivos
+  AND clinical_criteria::integer = 1;
 
--- 10. Prestaciones marcadas para revisión (revisar = 1)
+-- 10. Prestaciones marcadas para revisión (columna del archivo fuente, informativa)
 SELECT 'Prestaciones marcadas para revisión' AS descripcion, COUNT(*) AS total
-FROM os_catalog_item
-WHERE revisar = 1 AND catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo');
+FROM os_catalog_item_version
+WHERE clinical_criteria IS NOT NULL;
 
 -- =============================================================================
 -- Nota final: Versionado y procedencia

@@ -104,7 +104,7 @@ SELECT
 FROM os_catalog_item i
 JOIN os_catalog_item_version v ON i.id = v.item_id
 WHERE i.catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
-ORDER BY i.permanent_code, v.version_number;
+ORDER BY i.permanent_code;
 
 -- Conceptos con cobertura condicionada (clinical_criteria no nulo y no vacío)
 SELECT
@@ -128,7 +128,8 @@ FROM os_catalog_item i
 JOIN os_catalog_item_version v ON i.id = v.item_id
 LEFT JOIN os_concept_mapping m ON i.id = m.item_id AND m.terminology_system_id = 1  -- SNOMED-CT
 WHERE i.catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
-AND v.review_status = 'review';
+-- Sin revisión (columna no existe en modelo actual; informativa solo)
+SELECT 'sin revisión' AS validacion, i.permanent_code
 
 -- =============================================================================
 -- 5. INTEGRIDAD REFERENCIAL
