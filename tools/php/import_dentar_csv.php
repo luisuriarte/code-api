@@ -289,7 +289,7 @@ $categoriaDxId = (int) $categoriaDxId;
 $haySnomed = $hayTabla('snomed_concepts');
 
 $hayEngine = $hayTabla('os_catalog');
-$syncFile = dirname(__DIR__, 2) . '/sql/sync_dentar_to_os.sql';
+$syncFile = dirname(__DIR__, 2) . '/sql/03_dentar/sync_dentar_to_os.sql';
 
 if ($sinSync !== true) {
     if ($hayEngine !== true) {
