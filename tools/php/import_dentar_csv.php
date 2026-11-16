@@ -460,6 +460,12 @@ try {
 
         $definicion = $valor($datos, 'definicion') ?? $termino;
         $short_definition = $valor($datos, 'short_definition');
+        $global_period = $valor($datos, 'global_period');
+        $work_rvu = $valor($datos, 'work_rvu');
+        $practice_expense_rvu = $valor($datos, 'practice_expense_rvu');
+        $malpractice_rvu = $valor($datos, 'malpractice_rvu');
+        $total_rvu = $valor($datos, 'total_rvu');
+        $estimated_payment = $valor($datos, 'estimated_payment');
         $criterios = $valor($datos, 'criterios_clinicos');
         $sinonimos = $valor($datos, 'sinonimos');
 
@@ -512,6 +518,12 @@ try {
                 ':version' => $version,
                 ':definicion' => $definicion,
                 ':short_definition' => $short_definition,
+                ':global_period' => $global_period,
+                ':work_rvu' => $work_rvu,
+                ':practice_expense_rvu' => $practice_expense_rvu,
+                ':malpractice_rvu' => $malpractice_rvu,
+                ':total_rvu' => $total_rvu,
+                ':estimated_payment' => $estimated_payment,
                 ':ambito' => $ambito,
                 ':criterios' => $criterios,
             ]);

@@ -68,6 +68,12 @@ importador reconoce las filas de ambos catálogos en un mismo archivo.
 | `termino` | Sí | ambos | Término preferido en `es-AR`. |
 | `definicion` | No | ambos | Definición. Default: el término. |
 | `short_definition` | No | ambos | Descripción abreviada (máx. 255 chars) para listados y resumidos. |
+| `global_period` | No | ambos | Período global de días (0 = ninguno, 10, 30, 90, NULL = no definido). |
+| `work_rvu` | No | ambos | Unidades relativas de trabajo profesional (referencia). |
+| `practice_expense_rvu` | No | ambos | Unidades relativas de gastos de práctica (referencia). |
+| `malpractice_rvu` | No | ambos | Unidades relativas de responsabilidad profesional (referencia). |
+| `total_rvu` | No | ambos | Total de unidades relativas (referencia). |
+| `estimated_payment` | No | ambos | Pago estimado de referencia (ARS, solo orientativo). |
 | `criterios_clinicos` | No | ambos | Criterios de uso o justificación clínica. |
 | `ambito_clinico` | No | DENTAR-PR | Capítulo, ej. `Capítulo III - Endodoncia`. |
 | `categoria` | No | ambos | Código de `dentar_category` del mismo catálogo. |

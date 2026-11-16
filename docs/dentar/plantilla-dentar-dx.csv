@@ -1,3 +1,3 @@
-codigo,catalogo,termino,definicion,criterios_clinicos,ambito_clinico,categoria,tipo_concepto,sinonimos,nomenclador_ar,cdt_2025,snomed_sctid,cie10
-DNT-DX-900001,DX,Ejemplo - Caries del esmalte,Lesión cariosa limitada al esmalte dental,Diagnóstico clínico y/o radiográfico de lesión no cavitada o cavitación incipiente,,CAT-DX,,Caries incipiente|Mancha blanca,,,K02.0
-DNT-DX-900002,DX,Ejemplo - Pulpitis irreversible,Síndrome inflamatorio pulpar irreversible con dolor espontáneo o provocado,Diagnóstico clínico con pruebas de vitalidad pulpar,,CAT-DX,,Pulpitis aguda|Pulpitis crónica,,,K04.0
+codigo,catalogo,termino,definicion,criterios_clinicos,ambito_clinico,categoria,tipo_concepto,sinonimos,nomenclador_ar,cdt_2025,snomed_sctid,cie10,global_period,work_rvu,practice_expense_rvu,malpractice_rvu,total_rvu,estimated_payment
+DNT-DX-900001,DX,Ejemplo - Caries del esmalte,Lesión cariosa limitada al esmalte dental,Diagnóstico clínico y/o radiográfico de lesión no cavitada o cavitación incipiente,,CAT-DX,,Caries incipiente|Mancha blanca,,,K02.0,,
+DNT-DX-900002,DX,Ejemplo - Pulpitis irreversible,Síndrome inflamatorio pulpar irreversible con dolor espontáneo o provocado,Diagnóstico clínico con pruebas de vitalidad pulpar,,CAT-DX,,Pulpitis aguda|Pulpitis crónica,,,K04.0,,

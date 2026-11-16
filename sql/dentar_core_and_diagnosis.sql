@@ -258,6 +258,12 @@ CREATE TABLE IF NOT EXISTS dentar_concept_version (
     version_number INT NOT NULL DEFAULT 1,
     definition TEXT NOT NULL,
     short_definition VARCHAR(255),    -- descripción abreviada para listados y resumidos
+    global_period_days INT,            -- período global (0 = ninguno, 10, 30, 90, NULL = no definido)
+    work_rvu NUMERIC(5,2),             -- Unidades relativas de trabajo profesional (referencia)
+    practice_expense_rvu NUMERIC(5,2),-- Unidades relativas de gastos de práctica (referencia)
+    malpractice_rvu NUMERIC(5,2),      -- Unidades relativas de responsabilidad profesional (referencia)
+    total_rvu NUMERIC(5,2),            -- Total de unidades relativas (referencia)
+    estimated_payment NUMERIC(12,2),   -- Pago estimado de referencia (ARS, solo orientativo)
     clinical_scope TEXT,
     clinical_criteria TEXT,
     approval_status VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('draft','review','approved','rejected')),
