@@ -10,7 +10,7 @@
 
 \if :{?dir_loinc}
 \else
-  \set dir_loinc 'tools/loinc/sources'
+  \set dir_loinc 'tools/sources/loinc'
 \endif
 
 \set q ''''

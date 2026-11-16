@@ -246,7 +246,7 @@ sql/03_dentar/dentar_family.sql
 **Segundo:**
 
 ```text
-sql/03_dentar/dantar_core_and_diagnosis.sql
+sql/03_dentar/dentar_core_and_diagnosis.sql
 ```
 
 El primer script registra la familia y sus estructuras relacionadas.
