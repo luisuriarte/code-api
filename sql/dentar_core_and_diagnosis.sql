@@ -257,6 +257,7 @@ CREATE TABLE IF NOT EXISTS dentar_concept_version (
     concept_id INT NOT NULL REFERENCES dentar_concept(id) ON DELETE CASCADE,
     version_number INT NOT NULL DEFAULT 1,
     definition TEXT NOT NULL,
+    short_definition VARCHAR(255),    -- descripción abreviada para listados y resumidos
     clinical_scope TEXT,
     clinical_criteria TEXT,
     approval_status VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('draft','review','approved','rejected')),

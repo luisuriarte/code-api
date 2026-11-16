@@ -69,7 +69,8 @@ psql -d origen_salud -v ON_ERROR_STOP=1 -f sql/importar_loinc.sql
   editorial lo exige y falla con un mensaje explícito si falta.
 - `dentar_core_and_diagnosis.sql` referencia `dentar_catalog`, `dentar_category` y
   `dentar_terminology_system`; los mapeos a `SNOMED-CT` sólo se pueden validar
-  con SNOMED presente.
+  con SNOMED presente. Incluye la columna `short_definition` (VARCHAR 255) en
+  `dantar_concept_version`, descripción abreviada para listados y resumidos.
 - `Argentina_dental_cdt_codes_2025.sql` usa `odontologia_prestaciones`, ya creada
   por `design.sql`; si se ejecuta solo (sin `design.sql`) también la crea.
 

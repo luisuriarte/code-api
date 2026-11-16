@@ -67,6 +67,7 @@ importador reconoce las filas de ambos catálogos en un mismo archivo.
 | `catalogo` | No | ambos | `PR`, `DX`, `dentar-pr` o `dentar-dx`. Si falta se infiere del prefijo y se valida contra él. |
 | `termino` | Sí | ambos | Término preferido en `es-AR`. |
 | `definicion` | No | ambos | Definición. Default: el término. |
+| `short_definition` | No | ambos | Descripción abreviada (máx. 255 chars) para listados y resumidos. |
 | `criterios_clinicos` | No | ambos | Criterios de uso o justificación clínica. |
 | `ambito_clinico` | No | DENTAR-PR | Capítulo, ej. `Capítulo III - Endodoncia`. |
 | `categoria` | No | ambos | Código de `dentar_category` del mismo catálogo. |

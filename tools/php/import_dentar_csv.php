@@ -459,6 +459,7 @@ try {
         }
 
         $definicion = $valor($datos, 'definicion') ?? $termino;
+        $short_definition = $valor($datos, 'short_definition');
         $criterios = $valor($datos, 'criterios_clinicos');
         $sinonimos = $valor($datos, 'sinonimos');
 
@@ -510,6 +511,7 @@ try {
                 ':concepto' => $conceptoId,
                 ':version' => $version,
                 ':definicion' => $definicion,
+                ':short_definition' => $short_definition,
                 ':ambito' => $ambito,
                 ':criterios' => $criterios,
             ]);
