@@ -49,6 +49,14 @@ final class EditorialResult
     }
 
     /**
+     * @return list<array{code: string, selectable: bool}>
+     */
+    public function availableLanguages(): array
+    {
+        return $this->availableLanguages;
+    }
+
+    /**
      * @return array<string, string>
      */
     public function headers(): array

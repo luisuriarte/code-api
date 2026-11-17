@@ -6,6 +6,9 @@ namespace OrigenSalud\Api\Controllers;
 
 use OrigenSalud\Api\Http\ApiException;
 use OrigenSalud\Api\Http\Request;
+use OrigenSalud\Api\Services\LanguageCatalog;
+use OrigenSalud\Api\Services\LanguageResolution;
+use OrigenSalud\Api\Services\LanguageResolver;
 use OrigenSalud\Api\Services\TerminologySearchService;
 use PDO;
 
@@ -26,6 +29,10 @@ final class ConceptController
     private const MAX_CIE10_MAPPINGS = 50;
 
     private readonly TerminologySearchService $searchService;
+
+    private ?LanguageCatalog $languageCatalog = null;
+
+    private ?LanguageResolution $languageResolution = null;
 
     public function __construct(private readonly PDO $db)
     {
@@ -61,11 +68,13 @@ final class ConceptController
         }
 
         $meta = $result['meta'];
+        $meta['requested_language'] = $this->languageContext($request)['resolution']->requestedLanguage;
         $meta['took_ms'] = round((hrtime(true) - $startedAt) / 1_000_000, 2);
 
         return [
             'data' => $data,
             'meta' => $meta,
+            'headers' => ['Vary' => 'Accept-Language'],
         ];
     }
 
@@ -85,7 +94,10 @@ final class ConceptController
             throw ApiException::badRequest('El identificador del concepto no es un SCTID válido.');
         }
 
-        $language = $this->resolveLanguage($request);
+        $languageContext = $this->languageContext($request);
+        $language = $languageContext['content_language'];
+        $resolution = $languageContext['resolution'];
+        $catalog = $languageContext['catalog'];
 
         $statement = $this->db->prepare(
             'SELECT CAST(id AS text)                  AS concept_id,
@@ -155,11 +167,56 @@ final class ConceptController
             $data['dental'] = $dental;
         }
 
+        $requestedLanguage = $resolution->requestedLanguage;
+        $fallbackApplied = $language !== $requestedLanguage;
+        $fallbackReason = $fallbackApplied
+            ? ($language === 'es' ? 'rf2_dialect_undetermined' : 'language_fallback')
+            : null;
+        $dialectDetermined = !($language === 'es' && $fallbackApplied);
+        $available = [];
+
+        foreach (array_merge(array_keys($descriptions), $catalog->activeCodes()) as $code) {
+            $canonical = $catalog->canonical((string) $code) ?? (string) $code;
+            $available[$canonical] = [
+                'code' => $canonical,
+                'selectable' => $catalog->isSelectable($canonical),
+            ];
+        }
+
+        $availableLanguages = array_values($available);
+        usort(
+            $availableLanguages,
+            static fn (array $a, array $b): int => strcmp($a['code'], $b['code'])
+        );
+
         return [
             'data' => $data,
             'meta' => [
                 'language' => $language,
+                'requested_language' => $requestedLanguage,
+                'effective_language' => $language,
+                'rf2_language_tag' => $language,
+                'dialect_determined' => $dialectDetermined,
+                'fallback_applied' => $fallbackApplied,
+                'fallback_reason' => $fallbackReason,
+                'available_languages' => $availableLanguages,
+                'field_languages' => [
+                    'descriptions' => [
+                        'effective_language' => $language,
+                        'source_language' => $language,
+                        'provenance' => 'rf2',
+                        'approval_state' => null,
+                        'fallback_applied' => $fallbackApplied,
+                        'fallback_reason' => $fallbackReason,
+                        'untranslated' => $descriptions === [],
+                        'dialect_determined' => $dialectDetermined,
+                    ],
+                ],
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ],
+            'headers' => [
+                'Vary' => 'Accept-Language',
+                'Content-Language' => $language,
             ],
         ];
     }
@@ -367,35 +424,29 @@ final class ConceptController
         );
     }
 
-    private function resolveLanguage(Request $request): string
+    /**
+     * @return array{
+     *     catalog: LanguageCatalog,
+     *     resolution: LanguageResolution,
+     *     content_language: string
+     * }
+     */
+    private function languageContext(Request $request): array
     {
-        $value = $request->query['lang'] ?? $this->defaultLanguage();
+        $this->languageCatalog ??= LanguageCatalog::fromPdo($this->db, null);
+        $this->languageResolution ??= LanguageResolver::fromPdo(
+            $this->db,
+            null,
+            (string) env('API_DEFAULT_LANG', 'es')
+        )->resolve($request);
 
-        if (!is_string($value) || trim($value) === '') {
-            throw ApiException::badRequest(
-                'El parámetro lang es inválido.',
-                ['lang' => 'Valores permitidos: es, en.']
-            );
-        }
+        $requested = $this->languageResolution->requestedLanguage;
 
-        // Acepta variantes regionales como es-AR o en-US y las normaliza.
-        $primary = strtolower(explode('-', trim($value))[0]);
-
-        if (!in_array($primary, ['es', 'en'], true)) {
-            throw ApiException::badRequest(
-                'El parámetro lang es inválido.',
-                ['lang' => 'Valores permitidos: es, en.']
-            );
-        }
-
-        return $primary;
-    }
-
-    private function defaultLanguage(): string
-    {
-        $configured = strtolower(trim((string) env('API_DEFAULT_LANG', 'es')));
-
-        return in_array($configured, ['es', 'en'], true) ? $configured : 'es';
+        return [
+            'catalog' => $this->languageCatalog,
+            'resolution' => $this->languageResolution,
+            'content_language' => $this->languageCatalog->primaryTag($requested) ?? 'es',
+        ];
     }
 
     private function termType(string $typeId): string

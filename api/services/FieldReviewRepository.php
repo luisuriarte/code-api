@@ -78,23 +78,47 @@ final class FieldReviewRepository
         int $targetId,
         array $fieldNames
     ): self {
-        if ($fieldNames === []) {
+        return self::fromPdoForTargets($pdo, [$targetTable], [$targetId], $fieldNames);
+    }
+
+    /**
+     * Carga revisiones de varias tablas/filas destino sin mezclar ids entre sí.
+     * Cada variante pasa su target_id al evaluador para que nunca herede una
+     * aprobación de otra fila (D-28).
+     *
+     * @param list<string> $targetTables
+     * @param list<int> $targetIds
+     * @param list<string> $fieldNames
+     */
+    public static function fromPdoForTargets(
+        PDO $pdo,
+        array $targetTables,
+        array $targetIds,
+        array $fieldNames
+    ): self {
+        $targetTables = array_values(array_unique(array_filter($targetTables, 'is_string')));
+        $targetIds = array_values(array_unique(array_map('intval', $targetIds)));
+        $fieldNames = array_values(array_unique(array_filter($fieldNames, 'is_string')));
+
+        if ($targetTables === [] || $targetIds === [] || $fieldNames === []) {
             return new self([]);
         }
 
-        $placeholders = implode(', ', array_fill(0, count($fieldNames), '?'));
+        $tablePlaceholders = implode(', ', array_fill(0, count($targetTables), '?'));
+        $idPlaceholders = implode(', ', array_fill(0, count($targetIds), '?'));
+        $fieldPlaceholders = implode(', ', array_fill(0, count($fieldNames), '?'));
 
         $statement = $pdo->prepare(
             'SELECT target_table, target_id, field_name, language_code, scope_release_id,
                     source_language_code, language_evidence, provenance, review_status,
                     source_reference, reviewed_by, reviewed_at, content_hash
                FROM os_field_review
-              WHERE target_table = ?
-                AND target_id = ?
-                AND field_name IN (' . $placeholders . ')'
+              WHERE target_table IN (' . $tablePlaceholders . ')
+                AND target_id IN (' . $idPlaceholders . ')
+                AND field_name IN (' . $fieldPlaceholders . ')'
         );
 
-        $statement->execute(array_merge([$targetTable, $targetId], array_values($fieldNames)));
+        $statement->execute(array_merge($targetTables, $targetIds, $fieldNames));
 
         return new self($statement->fetchAll());
     }
@@ -112,11 +136,16 @@ final class FieldReviewRepository
         string $fieldName,
         string $languageCode,
         ?int $releaseId,
-        string $contentHash
+        string $contentHash,
+        ?int $targetId = null
     ): bool {
         $rows = $this->byFieldLanguage[$fieldName][strtolower(trim($languageCode))] ?? [];
 
         foreach ($rows as $row) {
+            if ($targetId !== null && $row['target_id'] !== $targetId) {
+                continue;
+            }
+
             $scope = $row['scope_release_id'];
 
             if ($scope === null) {
@@ -148,13 +177,18 @@ final class FieldReviewRepository
         string $fieldName,
         string $languageCode,
         ?int $releaseId,
-        string $contentHash
+        string $contentHash,
+        ?int $targetId = null
     ): ?array {
         $rows = $this->byFieldLanguage[$fieldName][strtolower(trim($languageCode))] ?? [];
         $best = null;
         $bestScore = -1;
 
         foreach ($rows as $row) {
+            if ($targetId !== null && $row['target_id'] !== $targetId) {
+                continue;
+            }
+
             if ($row['review_status'] !== 'approved') {
                 continue;
             }

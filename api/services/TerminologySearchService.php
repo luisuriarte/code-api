@@ -84,6 +84,10 @@ final class TerminologySearchService
     /** @var list<string>|null */
     private ?array $refsetCodes = null;
 
+    private ?LanguageCatalog $languageCatalog = null;
+
+    private ?LanguageResolution $languageResolution = null;
+
     private const SNOMED_FSN = '900000000000003001';
     private const SNOMED_SYNONYM = '900000000000013009';
 
@@ -452,7 +456,7 @@ final class TerminologySearchService
 
         $term = $this->normalizeTerm($request->query['q'] ?? null);
         $domains = $this->normalizeDomains($this->readDomains($request, $forcedDomain));
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->contentLanguage($request);
         $limit = $this->integerQuery($request, 'limit', 20, 1, $this->maxLimit());
         $offset = $this->integerQuery($request, 'offset', 0, 0, self::MAX_OFFSET);
         $cie10Type = $this->normalizeCie10Type($this->readCie10Type($request));
@@ -540,7 +544,7 @@ final class TerminologySearchService
     public function findCatalog(string $domain, int $id, Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->contentLanguage($request);
 
         if (!isset(self::CATALOG_SOURCES[$domain])) {
             throw ApiException::notFound('El dominio solicitado no expone detalle de catálogo.');
@@ -604,7 +608,7 @@ final class TerminologySearchService
     public function findCie10(string $code, Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->contentLanguage($request);
         $code = strtoupper(trim($code));
 
         if (preg_match('/^[A-Z][0-9]{2}(?:\.[0-9A-Z]{1,4}|[0-9A-Z]{0,3})$/', $code) !== 1) {
@@ -704,7 +708,7 @@ final class TerminologySearchService
     public function findAnmat(int $id, Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->contentLanguage($request);
 
         if ($id < 1) {
             throw ApiException::badRequest('El identificador ANMAT no es válido.');
@@ -796,7 +800,7 @@ final class TerminologySearchService
     public function searchDentalDiagnoses(Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->requestedLanguage($request);
         $query = trim((string) ($request->query['q'] ?? ''));
         $snomed = trim((string) ($request->query['snomed'] ?? $request->query['snomed_id'] ?? ''));
         $cie10 = trim((string) ($request->query['cie10'] ?? $request->query['cie10_code'] ?? ''));
@@ -826,19 +830,19 @@ final class TerminologySearchService
                          FROM dentar_diagnosis_term dt
                         WHERE dt.diagnosis_id = d.id
                           AND dt.term_type = \'preferred\'
-                          AND dt.language = \'es-AR\'
+                          AND dt.language = :language
                         ORDER BY dt.id DESC
                         LIMIT 1
                   ) dtp ON TRUE
                   LEFT JOIN dentar_category dcat ON dcat.id = d.category_id
                   LEFT JOIN dentar_category_version dcatv
                     ON dcatv.category_id = dcat.id
-                   AND dcatv.language = \'es-AR\'
+                   AND dcatv.language = :language
                    AND dcatv.version_number = (
                        SELECT max(v2.version_number)
                          FROM dentar_category_version v2
                         WHERE v2.category_id = dcat.id
-                          AND v2.language = \'es-AR\'
+                          AND v2.language = :language
                    )
                   LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
                   LEFT JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'';
@@ -858,7 +862,7 @@ final class TerminologySearchService
                                  SELECT 1
                                    FROM dentar_diagnosis_term dtq
                                   WHERE dtq.diagnosis_id = d.id
-                                    AND dtq.language = \'es-AR\'
+                                    AND dtq.language = :language
                                     AND dtq.term ILIKE :q
                              ))';
             $params[':q'] = $escaped;
@@ -882,6 +886,8 @@ final class TerminologySearchService
         }
 
         $sql .= ' ORDER BY d.id ASC';
+
+        $params[':language'] = $language;
 
         try {
             $stmt = $this->db->prepare($sql);
@@ -938,7 +944,7 @@ final class TerminologySearchService
     public function findDentalDiagnosis(string $identifier, Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->requestedLanguage($request);
         $identifier = trim($identifier);
 
         if ($identifier === '') {
@@ -979,19 +985,19 @@ final class TerminologySearchService
                          FROM dentar_diagnosis_term dt
                         WHERE dt.diagnosis_id = d.id
                           AND dt.term_type = \'preferred\'
-                          AND dt.language = \'es-AR\'
+                          AND dt.language = :language
                         ORDER BY dt.id DESC
                         LIMIT 1
                   ) dtp ON TRUE
                   LEFT JOIN dentar_category dcat ON dcat.id = d.category_id
                   LEFT JOIN dentar_category_version dcatv
                     ON dcatv.category_id = dcat.id
-                   AND dcatv.language = \'es-AR\'
+                   AND dcatv.language = :language
                    AND dcatv.version_number = (
                        SELECT max(v2.version_number)
                          FROM dentar_category_version v2
                         WHERE v2.category_id = dcat.id
-                          AND v2.language = \'es-AR\'
+                          AND v2.language = :language
                    )
                   LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
                   LEFT JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'
@@ -1012,7 +1018,7 @@ final class TerminologySearchService
                          FROM dentar_term t
                         WHERE t.concept_version_id = cv.id
                           AND t.term_type = \'preferred\'
-                          AND t.language = \'es-AR\'
+                          AND t.language = :language
                         ORDER BY t.id DESC
                         LIMIT 1
                   ) t ON TRUE
@@ -1020,12 +1026,12 @@ final class TerminologySearchService
                   LEFT JOIN dentar_category pdcat ON pdcat.id = cc.category_id
                   LEFT JOIN dentar_category_version pcat
                     ON pcat.category_id = pdcat.id
-                   AND pcat.language = \'es-AR\'
+                   AND pcat.language = :language
                    AND pcat.version_number = (
                        SELECT max(v2.version_number)
                          FROM dentar_category_version v2
                         WHERE v2.category_id = pdcat.id
-                          AND v2.language = \'es-AR\'
+                          AND v2.language = :language
                    )
                   LEFT JOIN dentar_concept_mapping m_ar ON m_ar.concept_version_id = cv.id AND m_ar.system_code = \'NOMENCLADOR-AR\'
                   LEFT JOIN dentar_concept_mapping m_cdt ON m_cdt.concept_version_id = cv.id AND m_cdt.system_code = \'CDT-2025\'
@@ -1046,6 +1052,7 @@ final class TerminologySearchService
                 ':ident' => $identifier,
                 ':ident_clean' => $identClean,
                 ':ident_int' => $identInt,
+                ':language' => $language,
             ]);
             $rows = $stmt->fetchAll();
         } catch (\PDOException $e) {
@@ -1119,7 +1126,7 @@ final class TerminologySearchService
     public function findDentalBySnomed(string $snomedId, Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->requestedLanguage($request);
         $snomedId = trim($snomedId);
 
         if (preg_match('/^[0-9]{6,18}$/', $snomedId) !== 1) {
@@ -1148,7 +1155,7 @@ final class TerminologySearchService
                              FROM dentar_term t
                             WHERE t.concept_version_id = cv.id
                               AND t.term_type = \'preferred\'
-                              AND t.language = \'es-AR\'
+                              AND t.language = :language
                             ORDER BY t.id DESC
                             LIMIT 1
                       ) tp ON TRUE
@@ -1156,12 +1163,12 @@ final class TerminologySearchService
                       LEFT JOIN dentar_category pdcat ON pdcat.id = cc.category_id
                       LEFT JOIN dentar_category_version pcat
                         ON pcat.category_id = pdcat.id
-                       AND pcat.language = \'es-AR\'
+                       AND pcat.language = :language
                        AND pcat.version_number = (
                            SELECT max(v2.version_number)
                              FROM dentar_category_version v2
                             WHERE v2.category_id = pdcat.id
-                              AND v2.language = \'es-AR\'
+                              AND v2.language = :language
                        )
                       LEFT JOIN dentar_concept_mapping m_ar ON m_ar.concept_version_id = cv.id AND m_ar.system_code = \'NOMENCLADOR-AR\'
                       LEFT JOIN dentar_concept_mapping m_cdt ON m_cdt.concept_version_id = cv.id AND m_cdt.system_code = \'CDT-2025\'
@@ -1200,19 +1207,19 @@ final class TerminologySearchService
                              FROM dentar_diagnosis_term dt
                             WHERE dt.diagnosis_id = d.id
                               AND dt.term_type = \'preferred\'
-                              AND dt.language = \'es-AR\'
+                              AND dt.language = :language
                             ORDER BY dt.id DESC
                             LIMIT 1
                       ) dtp ON TRUE
                       LEFT JOIN dentar_category dcat ON dcat.id = d.category_id
                       LEFT JOIN dentar_category_version dcatv
                         ON dcatv.category_id = dcat.id
-                       AND dcatv.language = \'es-AR\'
+                       AND dcatv.language = :language
                        AND dcatv.version_number = (
                            SELECT max(v2.version_number)
                              FROM dentar_category_version v2
                             WHERE v2.category_id = dcat.id
-                              AND v2.language = \'es-AR\'
+                              AND v2.language = :language
                        )
                       JOIN dentar_diagnosis_mapping m_sct ON m_sct.diagnosis_id = d.id AND m_sct.system_code = \'SNOMED-CT\'
                       LEFT JOIN dentar_diagnosis_mapping m_cie ON m_cie.diagnosis_id = d.id AND m_cie.system_code = \'CIE-10\'
@@ -1221,11 +1228,15 @@ final class TerminologySearchService
 
         try {
             $stmtProc = $this->db->prepare($procSql);
-            $stmtProc->execute([':sct' => $snomedId, ':sct_num' => $snomedId]);
+            $stmtProc->execute([
+                ':sct' => $snomedId,
+                ':sct_num' => $snomedId,
+                ':language' => $language,
+            ]);
             $procedures = $stmtProc->fetchAll();
 
             $stmtDiag = $this->db->prepare($diagSql);
-            $stmtDiag->execute([':sct' => $snomedId]);
+            $stmtDiag->execute([':sct' => $snomedId, ':language' => $language]);
             $diagnoses = $stmtDiag->fetchAll();
         } catch (\PDOException $e) {
             throw ApiException::internalError(
@@ -1294,7 +1305,7 @@ final class TerminologySearchService
     public function findDentalDiagnoses(string $identifier, Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->contentLanguage($request);
         $identifier = trim($identifier);
 
         if ($identifier === '') {
@@ -1423,7 +1434,7 @@ final class TerminologySearchService
     public function searchNomencladorArgentina(Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->contentLanguage($request);
         $query = trim((string) ($request->query['q'] ?? ''));
         $tipo = trim((string) ($request->query['type'] ?? $request->query['tipo'] ?? ''));
         $limit = $this->readIntParam($request->query['limit'] ?? null, 20, 1, $this->maxLimit(), 'limit');
@@ -1519,7 +1530,7 @@ final class TerminologySearchService
     public function searchVademecum(Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->contentLanguage($request);
         $query = trim((string) ($request->query['q'] ?? ''));
         $troquel = trim((string) ($request->query['troquel'] ?? ''));
         $alfabeta = trim((string) ($request->query['alfabeta'] ?? ''));
@@ -1646,7 +1657,7 @@ final class TerminologySearchService
     public function searchLoinc(Request $request): array
     {
         $startedAt = hrtime(true);
-        $language = $this->normalizeLanguage($this->readLanguage($request));
+        $language = $this->contentLanguage($request);
         $query = trim((string) ($request->query['q'] ?? ''));
         $class = trim((string) ($request->query['class'] ?? ''));
         $status = trim((string) ($request->query['status'] ?? ''));
@@ -2949,32 +2960,37 @@ final class TerminologySearchService
         return $this->tableChecks[$name] = (bool) $statement->fetchColumn();
     }
 
-    private function readLanguage(Request $request): string
+    private function languageCatalog(): LanguageCatalog
     {
-        $value = $request->query['lang'] ?? env('API_DEFAULT_LANG', 'es');
-
-        if (!is_string($value) || trim($value) === '') {
-            throw ApiException::badRequest(
-                'El parámetro lang es inválido.',
-                ['lang' => 'Valores permitidos: es, en.']
-            );
-        }
-
-        return $value;
+        return $this->languageCatalog ??= LanguageCatalog::fromPdo($this->db, null);
     }
 
-    private function normalizeLanguage(string $language): string
+    private function languageResolution(Request $request): LanguageResolution
     {
-        $primary = strtolower(explode('-', trim($language))[0]);
+        return $this->languageResolution ??= LanguageResolver::fromPdo(
+            $this->db,
+            null,
+            (string) env('API_DEFAULT_LANG', 'es')
+        )->resolve($request);
+    }
 
-        if (!in_array($primary, ['es', 'en'], true)) {
-            throw ApiException::badRequest(
-                'El parámetro lang es inválido.',
-                ['lang' => 'Valores permitidos: es, en.']
-            );
-        }
+    /**
+     * Idioma para las tablas que guardan la etiqueta primaria ('es', 'en').
+     * El cliente puede pedir es-AR; el contenido SNOMED/CIE sigue en 'es'.
+     */
+    private function contentLanguage(Request $request): string
+    {
+        $code = $this->languageResolution($request)->requestedLanguage;
 
-        return $primary;
+        return $this->languageCatalog()->primaryTag($code) ?? 'es';
+    }
+
+    /**
+     * Idioma para las tablas DENTAR, que guardan etiquetas regionales.
+     */
+    private function requestedLanguage(Request $request): string
+    {
+        return $this->languageResolution($request)->requestedLanguage;
     }
 
     private function readCie10Type(Request $request): ?string

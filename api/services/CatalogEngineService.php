@@ -173,21 +173,60 @@ final class CatalogEngineService
 
     /**
      * GET /v1/catalogs/{catalogCode}/items/{code}
+     *
+     * Fase 9: solo se publican campos aprobados. La versión, los sinónimos y
+     * el texto localizado se evalúan por campo con EditorialEvaluator; cuando
+     * no hay contenido aprobado el valor es null y se informa untranslated.
      */
-    public function getItem(string $catalogCode, string $code): array
+    public function getItem(string $catalogCode, string $code, Request $request): array
     {
         $startedAt = hrtime(true);
+
+        $catalogStatement = $this->db->prepare(
+            'SELECT id, code, name, short_name, family_code
+               FROM os_catalog
+              WHERE code = :catalog_code AND is_active = TRUE
+              LIMIT 1'
+        );
+        $catalogStatement->execute([':catalog_code' => $catalogCode]);
+        $catalogRow = $catalogStatement->fetch();
+
+        if ($catalogRow === false) {
+            throw ApiException::notFound("No se encontró el elemento '{$code}' en el catálogo '{$catalogCode}'.");
+        }
+
+        $catalogId = (int) $catalogRow['id'];
+        $catalog = LanguageCatalog::fromPdo($this->db, $catalogId);
+        $resolution = LanguageResolver::fromPdo(
+            $this->db,
+            $catalogId,
+            (string) env('API_DEFAULT_LANG', 'es')
+        )->resolve($request);
+        $requestedLanguage = $resolution->requestedLanguage;
+
         $sql = 'SELECT item.id AS item_id,
                        item.permanent_code,
                        ident.value AS official_code,
+                       ver.id AS version_id,
+                       ver.release_id,
+                       ver.language_code AS version_language,
+                       ver.review_status AS version_review_status,
+                       ver.source_language_code AS version_source_language,
+                       ver.provenance AS version_provenance,
+                       ver.content_hash AS version_content_hash,
+                       ver.language_evidence AS version_language_evidence,
                        ver.preferred_term,
                        ver.definition,
                        ver.clinical_criteria,
+                       ver.short_definition,
+                       ver.lay_terms,
+                       ver.clinical_scope,
                        cat.code AS catalog_code,
-                       cat.name AS catalog_name,
-                       cat.short_name AS catalog_short_name,
+                       cat.name AS catalog_native_name,
+                       cat.short_name AS catalog_native_short_name,
                        cat.family_code AS catalog_family_code,
-                       categ.name AS category_name,
+                       categ.id AS category_id,
+                       categ.name AS category_native_name,
                        p_unit.code AS pricing_unit,
                        p_unit.name AS pricing_unit_name,
                        fee.units_amount,
@@ -202,25 +241,213 @@ final class CatalogEngineService
                   LEFT JOIN os_fee_schedule f_sched ON f_sched.catalog_id = cat.id AND CURRENT_DATE BETWEEN f_sched.valid_from AND coalesce(f_sched.valid_to, CURRENT_DATE)
                   LEFT JOIN os_fee_item fee ON fee.item_id = item.id AND fee.fee_schedule_id = f_sched.id
                   LEFT JOIN os_pricing_unit p_unit ON p_unit.id = fee.pricing_unit_id
-                 WHERE cat.code = :catalog_code
+                 WHERE cat.id = :catalog_id
                    AND (ident.value = :code OR replace(ident.value, \'.\', \'\') = :code_clean OR item.permanent_code = :code)
-                 LIMIT 1';
+                 ORDER BY (ver.language_code = :requested_language) DESC, ver.id DESC';
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':catalog_code' => $catalogCode,
+        $statement = $this->db->prepare($sql);
+        $statement->execute([
+            ':catalog_id' => $catalogId,
             ':code' => $code,
             ':code_clean' => str_replace(['.', ' ', '-'], '', $code),
+            ':requested_language' => $requestedLanguage,
         ]);
-        $row = $stmt->fetch();
 
-        if ($row === false) {
+        $versionRows = [];
+        $seenVersions = [];
+
+        foreach ($statement->fetchAll() as $row) {
+            $versionId = (int) $row['version_id'];
+
+            if (!isset($seenVersions[$versionId])) {
+                $seenVersions[$versionId] = true;
+                $versionRows[] = $row;
+            }
+        }
+
+        if ($versionRows === []) {
             throw ApiException::notFound("No se encontró el elemento '{$code}' en el catálogo '{$catalogCode}'.");
         }
 
-        $itemId = (int) $row['item_id'];
+        $preferred = $versionRows[0];
+        $targetId = (int) $preferred['version_id'];
+        $releaseId = (int) $preferred['release_id'];
+        $itemId = (int) $preferred['item_id'];
+        $versionIds = array_map(static fn (array $row): int => (int) $row['version_id'], $versionRows);
 
-        // Mappings
+        $termStatement = $this->db->prepare(
+            'SELECT id, item_version_id, term, term_type, language_code, review_status,
+                    source_language_code, provenance, language_evidence, content_hash
+               FROM os_catalog_term
+              WHERE item_version_id IN (' . implode(', ', array_fill(0, count($versionIds), '?')) . ')
+              ORDER BY id'
+        );
+        $termStatement->execute($versionIds);
+        $terms = $termStatement->fetchAll();
+
+        $categoryIds = [];
+
+        foreach ($versionRows as $row) {
+            if ($row['category_id'] !== null) {
+                $categoryIds[(int) $row['category_id']] = true;
+            }
+        }
+
+        $categoryIds = array_map('intval', array_keys($categoryIds));
+        $localizedSql = 'SELECT id, entity_type, entity_id, field_name, language_code, value,
+                                source_language_code, language_evidence, provenance, review_status,
+                                content_hash, scope_release_id
+                           FROM os_localized_text
+                          WHERE (entity_type = ? AND entity_id = ?)';
+        $localizedParams = ['catalog', $catalogId];
+
+        if ($categoryIds !== []) {
+            $localizedSql .= ' OR (entity_type = ? AND entity_id IN ('
+                . implode(', ', array_fill(0, count($categoryIds), '?')) . '))';
+            $localizedParams[] = 'catalog_category';
+
+            foreach ($categoryIds as $categoryId) {
+                $localizedParams[] = $categoryId;
+            }
+        }
+
+        $localizedSql .= ' ORDER BY id';
+        $localizedStatement = $this->db->prepare($localizedSql);
+        $localizedStatement->execute($localizedParams);
+        $localizedRows = $localizedStatement->fetchAll();
+
+        $clinicalFields = [
+            'preferred_term',
+            'definition',
+            'clinical_criteria',
+            'short_definition',
+            'lay_terms',
+            'clinical_scope',
+        ];
+
+        $fields = [];
+
+        foreach ($clinicalFields as $field) {
+            $fields[$field] = [];
+        }
+
+        $fields['synonyms'] = [];
+        $fields['catalog_name'] = [];
+        $fields['catalog_short_name'] = [];
+        $fields['catalog_description'] = [];
+        $fields['category_name'] = [];
+
+        foreach ($versionRows as $row) {
+            $base = [
+                'language_code' => (string) $row['version_language'],
+                'review_status' => (string) $row['version_review_status'],
+                'source_language_code' => $row['version_source_language'] !== null
+                    ? (string) $row['version_source_language']
+                    : null,
+                'provenance' => (string) $row['version_provenance'],
+                'language_evidence' => (string) $row['version_language_evidence'],
+                'content_hash' => (string) $row['version_content_hash'],
+                'target_id' => (int) $row['version_id'],
+            ];
+
+            foreach ($clinicalFields as $field) {
+                if ($row[$field] !== null) {
+                    $fields[$field][] = array_merge($base, ['value' => (string) $row[$field]]);
+                }
+            }
+        }
+
+        $synonymsByLanguage = [];
+
+        foreach ($terms as $term) {
+            $language = (string) $term['language_code'];
+            $synonymsByLanguage[$language][] = [
+                'language_code' => $language,
+                'review_status' => (string) $term['review_status'],
+                'source_language_code' => $term['source_language_code'] !== null
+                    ? (string) $term['source_language_code']
+                    : null,
+                'provenance' => (string) $term['provenance'],
+                'language_evidence' => (string) $term['language_evidence'],
+                'content_hash' => (string) $term['content_hash'],
+                'target_id' => (int) $term['id'],
+                'value' => (string) $term['term'],
+                'term_type' => (string) $term['term_type'],
+            ];
+        }
+
+        foreach ($synonymsByLanguage as $language => $variants) {
+            $first = $variants[0];
+            $fields['synonyms'][] = array_merge($first, [
+                'value' => array_map(static fn (array $variant): array => [
+                    'term' => $variant['value'],
+                    'type' => $variant['term_type'],
+                ], $variants),
+            ]);
+        }
+
+        $localizedFieldMap = [
+            'catalog.name' => 'catalog_name',
+            'catalog.short_name' => 'catalog_short_name',
+            'catalog.description' => 'catalog_description',
+            'catalog_category.name' => 'category_name',
+        ];
+
+        foreach ($localizedRows as $row) {
+            $key = (string) $row['entity_type'] . '.' . (string) $row['field_name'];
+            $field = $localizedFieldMap[$key] ?? null;
+
+            if ($field === null) {
+                continue;
+            }
+
+            $fields[$field][] = [
+                'language_code' => (string) $row['language_code'],
+                'review_status' => (string) $row['review_status'],
+                'source_language_code' => $row['source_language_code'] !== null
+                    ? (string) $row['source_language_code']
+                    : null,
+                'provenance' => (string) $row['provenance'],
+                'language_evidence' => (string) $row['language_evidence'],
+                'content_hash' => (string) $row['content_hash'],
+                'target_id' => (int) $row['id'],
+                'value' => (string) $row['value'],
+            ];
+        }
+
+        $reviews = FieldReviewRepository::fromPdoForTargets(
+            $this->db,
+            ['os_catalog_item_version', 'os_catalog_term', 'os_localized_text'],
+            array_merge(
+                $versionIds,
+                array_map(static fn (array $row): int => (int) $row['id'], $terms),
+                array_map(static fn (array $row): int => (int) $row['id'], $localizedRows)
+            ),
+            array_keys(array_filter($fields, static fn (array $variants): bool => $variants !== []))
+        );
+
+        $editorial = (new EditorialEvaluator($catalog, $reviews))->evaluate([
+            'target_table' => 'os_catalog_item_version',
+            'target_id' => $targetId,
+            'catalog_id' => $catalogId,
+            'release_id' => $releaseId,
+            'requested_language' => $requestedLanguage,
+            'source_language_code' => $preferred['version_source_language'],
+            'fields' => $fields,
+        ]);
+
+        $values = $editorial->values();
+        $fieldLanguages = $editorial->fieldLanguages();
+        $meta = $editorial->meta();
+        $meta['available_languages'] = $editorial->availableLanguages();
+        $meta['field_languages'] = $fieldLanguages;
+        $meta['dialect_determined'] = $fieldLanguages['preferred_term']['dialect_determined'] ?? false;
+        $meta['version_id'] = $targetId;
+        $meta['review_status'] = (string) $preferred['version_review_status'];
+        $meta['source_language_code'] = $preferred['version_source_language'];
+        $meta['provenance'] = (string) $preferred['version_provenance'];
+
+        // Mappings: D-19 sigue pendiente; no se aprueban ni degradan filas.
         $mapStmt = $this->db->prepare(
             'SELECT sys.code AS system_code, sys.uri AS system_uri, m.external_code, m.external_display, m.mapping_type, m.relationship_role, m.clinical_rationale
                FROM os_concept_mapping m
@@ -230,26 +457,36 @@ final class CatalogEngineService
         $mapStmt->execute([':item_id' => $itemId]);
         $mappings = $mapStmt->fetchAll();
 
+        $headers = ['Vary' => 'Accept-Language'];
+
+        if ($meta['effective_language'] !== null && $meta['effective_language'] !== '') {
+            $headers['Content-Language'] = (string) $meta['effective_language'];
+        }
+
         return [
             'data' => [
                 'catalog' => [
-                    'code' => $row['catalog_code'],
-                    'name' => $row['catalog_name'],
-                    'short_name' => $row['catalog_short_name'] !== null ? (string) $row['catalog_short_name'] : null,
-                    'family' => $row['catalog_family_code'] !== null ? (string) $row['catalog_family_code'] : null,
+                    'code' => (string) $preferred['catalog_code'],
+                    'name' => $values['catalog_name'] ?? $catalogRow['name'],
+                    'short_name' => $values['catalog_short_name'] ?? $catalogRow['short_name'],
+                    'family' => $catalogRow['family_code'] !== null ? (string) $catalogRow['family_code'] : null,
                 ],
-                'permanent_code' => $row['permanent_code'],
-                'official_code' => $row['official_code'] !== null ? (string) $row['official_code'] : null,
-                'preferred_term' => $row['preferred_term'],
-                'definition' => $row['definition'],
-                'clinical_criteria' => $row['clinical_criteria'] !== null ? (string) $row['clinical_criteria'] : null,
-                'category' => $row['category_name'],
-                'pricing' => $row['pricing_unit'] !== null ? [
-                    'unit_type' => $row['pricing_unit'],
-                    'unit_name' => $row['pricing_unit_name'],
-                    'units' => $row['units_amount'] !== null ? (float) $row['units_amount'] : null,
-                    'fixed_price' => $row['fixed_price'] !== null ? (float) $row['fixed_price'] : null,
-                    'expenses' => $row['expenses_amount'] !== null ? (float) $row['expenses_amount'] : null,
+                'permanent_code' => $preferred['permanent_code'],
+                'official_code' => $preferred['official_code'] !== null ? (string) $preferred['official_code'] : null,
+                'preferred_term' => $values['preferred_term'] ?? null,
+                'definition' => $values['definition'] ?? null,
+                'clinical_criteria' => $values['clinical_criteria'] ?? null,
+                'short_definition' => $values['short_definition'] ?? null,
+                'lay_terms' => $values['lay_terms'] ?? null,
+                'clinical_scope' => $values['clinical_scope'] ?? null,
+                'synonyms' => $values['synonyms'] ?? [],
+                'category' => $values['category_name'] ?? $preferred['category_native_name'],
+                'pricing' => $preferred['pricing_unit'] !== null ? [
+                    'unit_type' => $preferred['pricing_unit'],
+                    'unit_name' => $preferred['pricing_unit_name'],
+                    'units' => $preferred['units_amount'] !== null ? (float) $preferred['units_amount'] : null,
+                    'fixed_price' => $preferred['fixed_price'] !== null ? (float) $preferred['fixed_price'] : null,
+                    'expenses' => $preferred['expenses_amount'] !== null ? (float) $preferred['expenses_amount'] : null,
                 ] : null,
                 'mappings' => array_map(static fn (array $m): array => [
                     'system' => $m['system_code'],
@@ -261,9 +498,10 @@ final class CatalogEngineService
                     'rationale' => $m['clinical_rationale'],
                 ], $mappings),
             ],
-            'meta' => [
+            'meta' => $meta + [
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
             ],
+            'headers' => $headers,
         ];
     }
 

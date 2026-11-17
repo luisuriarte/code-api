@@ -29,7 +29,8 @@ final class EditorialEvaluator
      *     requested_language: string,
      *     source_language_code?: string|null,
      *     fields: array<string, list<array<string, mixed>>>
-     * } $spec
+     * } $spec Cada variante puede traer `target_id` para no heredar revisiones
+     * de otra fila (D-28).
      */
     public function evaluate(array $spec): EditorialResult
     {
@@ -62,7 +63,8 @@ final class EditorialEvaluator
                 $candidates,
                 $requestedLanguage,
                 $releaseId,
-                $targetTable
+                $targetTable,
+                $targetId
             );
 
             $values[$fieldName] = $selected['value'];
@@ -166,7 +168,8 @@ final class EditorialEvaluator
         array $candidates,
         string $requestedLanguage,
         ?int $releaseId,
-        string $targetTable
+        string $targetTable,
+        int $targetId
     ): array {
         $byLanguage = [];
 
@@ -195,9 +198,18 @@ final class EditorialEvaluator
             }
 
             $hash = isset($variant['content_hash']) ? (string) $variant['content_hash'] : '';
-            $review = $this->reviews->bestApproved($fieldName, $code, $releaseId, $hash);
+            $variantTargetId = isset($variant['target_id']) && $variant['target_id'] !== null
+                ? (int) $variant['target_id']
+                : $targetId;
+            $review = $this->reviews->bestApproved($fieldName, $code, $releaseId, $hash, $variantTargetId);
 
-            if ($review === null && $this->reviews->hasBlockingReview($fieldName, $code, $releaseId, $hash)) {
+            if ($review === null && $this->reviews->hasBlockingReview(
+                $fieldName,
+                $code,
+                $releaseId,
+                $hash,
+                $variantTargetId
+            )) {
                 continue;
             }
 

@@ -20,8 +20,36 @@
 | `Authorization` | Request | **Sí** | Token Bearer con la API Key: `Bearer <TU_API_KEY>` |
 | `X-API-Key` | Request | Alternativo | Clave API enviada directamente: `<TU_API_KEY>` |
 | `Accept` | Request | Recomendado | `application/json` |
-| `Accept-Language` | Request | Opcional | `es` (default), `es-AR` o `en` |
+| `Accept-Language` | Request | Opcional | Negociación por `q`. Seleccionables: `es-AR`, `en`, `pt-BR`. `es` y `pt` son alias de entrada; `es-MX` no es alias. |
 | `X-Request-Id` | Response | Siempre | UUID único de trazabilidad para cada solicitud |
+| `Vary` | Response | Siempre | `Accept-Language`. Se agrega sin reemplazar el `Vary: Origin` de CORS. |
+| `Content-Language` | Response | Según respuesta | Idioma efectivo del contenido cuando es único. |
+
+### Negociación de idioma (Fase 9)
+
+- Entrada: parámetro `lang` → alias → `Accept-Language` ordenado por `q` →
+  `API_DEFAULT_LANG`. Todas las entradas con `q=0` fuerzan el default con
+  `fallback_reason='no_acceptable_language'`.
+- `lang=es` resuelve a `es-AR` **como entrada**. Un código de contenido ya
+  aprobado en `es` se devuelve como `es`: nunca se reescribe a `es-AR`.
+- Solo se publican campos con `review_status='approved'` (o revisión vigente en
+  `os_field_review`). Sin contenido aprobado, el campo es `null` y se informa
+  `untranslated=true`; no se cae a la columna original.
+- `meta.requested_language` es lo que pidió el cliente.
+- `meta.effective_language` es único solo si todos los campos comparten idioma;
+  si hay mezcla es `null` y `meta.field_languages` es la fuente de verdad.
+- `meta.available_languages[].selectable` refleja `os_language.is_active`.
+- `meta.field_languages[campo]` informa `effective_language`, `source_language`,
+  `provenance`, `approval_state`, `fallback_applied`, `fallback_reason`,
+  `untranslated` y `dialect_determined`.
+- `meta.rf2_language_tag` y `meta.dialect_determined` aplican a SNOMED-CT/RF2.
+  Cuando el texto aprobado es `es` sin evidencia regional:
+  `effective_language='es'`, `fallback_reason='rf2_dialect_undetermined'`,
+  `dialect_determined=false`.
+- Las tablas SNOMED/CIE usan el tag primario (`es`/`en`); las tablas DENTAR usan
+  la etiqueta regional (`es-AR`, `en`, `pt-BR`).
+- Los mapeos `os_concept_mapping` siguen sin aprobación editorial automática
+  (D-19 pendiente): no se aprueban ni degradan las 419 filas pendientes.
 
 ---
 
