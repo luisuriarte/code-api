@@ -13,7 +13,7 @@
 --   os_concept_mapping.
 -- loinc_localized_text NO se audita aquí: se incorpora en Fase 5 (D-29).
 -- os_concept_mapping NO tiene columna language_code: se registra
---   'undetermined' en el evento, sin inventar un idioma.
+--   'undet' en el evento (cabe en VARCHAR(10)), sin inventar un idioma.
 -- =============================================================================
 
 BEGIN;
@@ -200,7 +200,7 @@ BEGIN
         v_id := CASE WHEN v_table = 'os_field_review'
                      THEN (v_old_data->>'target_id')::BIGINT
                      ELSE (v_old_data->>'id')::BIGINT END;
-        v_lang := COALESCE(v_old_data->>'language_code', 'undetermined');
+        v_lang := COALESCE(v_old_data->>'language_code', 'undet');
         v_prev := v_old_data->>v_value_col;
         v_old_status := v_old_data->>'review_status';
     ELSE
@@ -208,7 +208,7 @@ BEGIN
         v_id := CASE WHEN v_table = 'os_field_review'
                      THEN (v_data->>'target_id')::BIGINT
                      ELSE (v_data->>'id')::BIGINT END;
-        v_lang := COALESCE(v_data->>'language_code', 'undetermined');
+        v_lang := COALESCE(v_data->>'language_code', 'undet');
         v_new := v_data->>v_value_col;
         v_new_status := v_data->>'review_status';
         IF TG_OP = 'UPDATE' THEN
@@ -523,7 +523,7 @@ CREATE OR REPLACE TRIGGER trg_cie10_audit
     AFTER INSERT OR UPDATE OR DELETE ON cie10_descriptions
     FOR EACH ROW EXECUTE FUNCTION trg_audit_content('descripcion','descripcion','field_individual');
 
--- os_concept_mapping (sin language_code: se registra 'undetermined')
+-- os_concept_mapping (sin language_code: se registra 'undet', VARCHAR(10))
 CREATE OR REPLACE TRIGGER trg_ocm_hash
     BEFORE INSERT OR UPDATE ON os_concept_mapping
     FOR EACH ROW EXECUTE FUNCTION trg_content_hash_and_invalidate(

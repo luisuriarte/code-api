@@ -1,4 +1,4 @@
-# Scripts SQL — Implementación multilingüe (Fases 2 a 4)
+# Scripts SQL — Implementación multilingüe (Fases 2 a 7)
 
 Scripts ejecutables derivados del diseño aprobado en `cc803b5`. Entorno de
 **pruebas con datos no reales**. Ejecutar en la base independiente (`origen_codes`),
@@ -14,6 +14,11 @@ no en producción.
 | 4 | `04_fase3_columnas.sql` | 3 — columnas aditivas | `BEGIN/COMMIT` |
 | 5 | `05_fase3_triggers.sql` | 3 — triggers y auditoría | `BEGIN/COMMIT` |
 | 6 | `06_fase4_backfill_seguro.sql` | 4 — backfill sin inventar procedencia | `BEGIN/COMMIT` |
+| 7 | `07_fase5_loinc_tabla.sql` | 5 — tabla LOINC y regla central de prioridad | `BEGIN/COMMIT` |
+| 8 | `08_fase5_loinc_indices.sql` | 5 — índices LOINC | **FUERA de transacción** (`CONCURRENTLY`) |
+| 9 | `09_fase5_loinc_backfill.sql` | 5 — backfill EN y vista de resolución | `BEGIN/COMMIT` |
+| 10 | `10_fase6_dentar.sql` | 6 — campos clínicos DENTAR (solo SQL) | `BEGIN/COMMIT` |
+| 11 | `11_fase7_snomed_cie10.sql` | 7 — tag RF2 real de SNOMED | `BEGIN/COMMIT` |
 
 Ejecutar **en orden**. Los scripts son idempotentes (`IF NOT EXISTS`,
 `ON CONFLICT DO NOTHING`) salvo los `UPDATE` de Fase 4, que se repetirán sin
@@ -31,6 +36,11 @@ sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/0
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/04_fase3_columnas.sql
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/05_fase3_triggers.sql
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/06_fase4_backfill_seguro.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/07_fase5_loinc_tabla.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/08_fase5_loinc_indices.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/09_fase5_loinc_backfill.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/10_fase6_dentar.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/11_fase7_snomed_cie10.sql
 ```
 
 Si tu `pg_hba.conf` usa `md5`/`scram` en localhost en vez de `peer`:
@@ -43,9 +53,10 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
 
 1. Conectarse a la base `origen_codes` con el usuario `postgres`.
 2. Abrir cada archivo y ejecutarlo en orden.
-3. **Importante** para `02_fase2_indices.sql`: desactivar la opción de ejecutar
-   el script dentro de una transacción (autocommit activo). PostgreSQL no
-   permite `CREATE INDEX CONCURRENTLY` dentro de `BEGIN/COMMIT`.
+3. **Importante** para `02_fase2_indices.sql` y `08_fase5_loinc_indices.sql`:
+   desactivar la opción de ejecutar el script dentro de una transacción
+   (autocommit activo). PostgreSQL no permite `CREATE INDEX CONCURRENTLY`
+   dentro de `BEGIN/COMMIT`.
 
 ## Requisitos
 
@@ -62,8 +73,26 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   de esa tabla se gestiona en `os_field_review`.
 - Fase 4 no marca nada como `approved` ni `official_source`: cuando no hay
   evidencia se deja `unknown`/`unreviewed`/`NULL`, que no es publicable.
-- `loinc_localized_text` **no** se audita en Fase 3: se incorpora en Fase 5.
-- Las fases 5 a 14 requieren decisiones pendientes (LOINC, resolver/API/sitio,
+- `os_concept_mapping` no tiene columna `language_code`: el evento de auditoría
+  registra `language_code='undet'` (cabe en `VARCHAR(10)`), sin inventar idioma.
+- `loinc_localized_text` **no** se auditó en Fase 3: se incorpora en Fase 5
+  (matriz D-29 de 7 a 8 tablas).
+- `source_release='2.83'` está confirmado en `tools/sources/loinc/Loinc.csv`
+  (`VersionLastChanged="2.83"`) y en `importar_loinc.sql:2-5`.
+- Solo se recupera la capa EN desde la BD. Las capas es-MX/es-AR fueron
+  sobrescritas por el importador actual: reincorporarlas exige reimportar los
+  CSV con un importador actualizado (cambio de código, no de estos scripts).
+- La vista `v_loinc_resolved` aplica la prioridad D-33 y marca conflictos;
+  lo que queda `unknown`/`undetermined`/en conflicto NO es publicable.
+- La Fase 6 cubre solo la parte SQL: publicar los tres campos clínicos. Queda
+  como código (fuera de estos scripts) quitar los literales `'es-AR'` del sync,
+  usar `dentar_diagnosis.clinical_name` como `preferred_term` de `dentar-dx` y
+  reimportar los CSV LOINC es-MX/es-AR.
+- `10_fase6_dentar.sql` solo crea `uq_oct_identity` si no hay duplicados
+  preexistentes; si los hay, lo reporta y no borra nada.
+- `11_fase7_snomed_cie10.sql` omite el backfill con un NOTICE si
+  `sct2.description` no está cargada, en vez de inventar un tag dialectal.
+- Las fases 8 a 14 requieren decisiones pendientes (resolver/API/sitio,
   NN 2025) y no se incluyen aquí.
 
 **Sin backup**: decisión explícita del responsable sobre datos de prueba no
