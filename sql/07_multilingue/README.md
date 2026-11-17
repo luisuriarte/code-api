@@ -4,6 +4,14 @@ Scripts ejecutables derivados del diseño aprobado en `cc803b5`. Entorno de
 **pruebas con datos no reales**. Ejecutar en la base independiente (`origen_codes`),
 no en producción.
 
+## Estado en el entorno de pruebas
+
+Los scripts `01` a `14` ya fueron ejecutados en `origen_codes`. La validación
+Fase 12 (`12_fase12_validacion.sql`) quedó en 0 hallazgos técnicos y la matriz
+D-19 está **pendiente por decisión del responsable**: las 419 filas
+`approved` de `os_concept_mapping` se conservan sin degradar y sin aprobación
+editorial registrada. No hay nuevo script SQL para ejecutar en este punto.
+
 ## Orden de ejecución
 
 | # | Archivo | Fase | Transacción |
@@ -21,6 +29,7 @@ no en producción.
 | 11 | `11_fase7_snomed_cie10.sql` | 7 — tag RF2 real de SNOMED | `BEGIN/COMMIT` |
 | 12 | `12_fase12_validacion.sql` | 12 — reporte de validación | solo `SELECT` (sin transacción) |
 | 13 | `13_fase5b_variantes_es.sql` | 5b — recuperar capas LOINC es-MX/es-AR desde CSV | `BEGIN/COMMIT` |
+| 14 | `14_d19_matriz_pendiente.sql` | 12 / 4.3 — reporte para la matriz editorial D-19 | solo `SELECT` (sin transacción) |
 
 Ejecutar **en orden**. Los scripts son idempotentes (`IF NOT EXISTS`,
 `ON CONFLICT DO NOTHING`) salvo los `UPDATE` de Fase 4, que se repetirán sin
@@ -45,10 +54,13 @@ sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/1
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/11_fase7_snomed_cie10.sql
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -P pager=off -f sql/07_multilingue/12_fase12_validacion.sql
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/13_fase5b_variantes_es.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -P pager=off -f sql/07_multilingue/14_d19_matriz_pendiente.sql
 ```
 
 Tras ejecutar el 13, volver a correr el 12 para que la validación incluya las
-capas es-MX/es-AR recién recuperadas.
+capas es-MX/es-AR recién recuperadas. El 14 es de solo lectura y no cambia
+ningún estado: entrega las filas para que la autoridad editorial complete la
+matriz D-19 (motivo, revisor y fecha).
 
 Si tu `pg_hba.conf` usa `md5`/`scram` en localhost en vez de `peer`:
 
@@ -86,15 +98,14 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   (matriz D-29 de 7 a 8 tablas).
 - `source_release='2.83'` está confirmado en `tools/sources/loinc/Loinc.csv`
   (`VersionLastChanged="2.83"`) y en `importar_loinc.sql:2-5`.
-- Solo se recupera la capa EN desde la BD. Las capas es-MX/es-AR fueron
-  sobrescritas por el importador actual: reincorporarlas exige reimportar los
-  CSV con un importador actualizado (cambio de código, no de estos scripts).
+- La capa EN se recuperó desde la BD en `09_fase5_loinc_backfill.sql`; las
+  capas es-MX/es-AR se recuperaron desde los CSV en `13_fase5b_variantes_es.sql`
+  (sin modificar el importador). Ninguna capa se derivó de otra.
 - La vista `v_loinc_resolved` aplica la prioridad D-33 y marca conflictos;
   lo que queda `unknown`/`undetermined`/en conflicto NO es publicable.
 - La Fase 6 cubre solo la parte SQL: publicar los tres campos clínicos. Queda
-  como código (fuera de estos scripts) quitar los literales `'es-AR'` del sync,
-  usar `dentar_diagnosis.clinical_name` como `preferred_term` de `dentar-dx` y
-  reimportar los CSV LOINC es-MX/es-AR.
+  como código (fuera de estos scripts) quitar los literales `'es-AR'` del sync
+  y usar `dentar_diagnosis.clinical_name` como `preferred_term` de `dentar-dx`.
 - `10_fase6_dentar.sql` solo crea `uq_oct_identity` si no hay duplicados
   preexistentes; si los hay, lo reporta y no borra nada.
 - `11_fase7_snomed_cie10.sql` omite el backfill con un NOTICE si
@@ -112,6 +123,15 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   `version_last_changed_normalizada='(sin_version)'`. Nada queda `approved`.
   La carga va **campo por campo en transacciones separadas** (24 `INSERT`):
   imprime progreso y, si se interrumpe, reejecutar no duplica nada.
+- `14_d19_matriz_pendiente.sql` es **solo lectura**. Entrega tabla, campo,
+  idioma (`'undet'`: `os_concept_mapping` no tiene `language_code`), release,
+  fuente, motivo, revisor y fecha para las 419 filas `approved` heredadas.
+  NO aprueba nada: la aprobación es un acto editorial firmado (D-19).
+  Ejecutado: 419 filas de `os_concept_mapping` sin `os_field_review` y
+  `aprobadas_sin_os_field_review=419`. Por decisión del responsable la matriz
+  D-19 queda **PENDIENTE**; no se aprueban ni degradan automáticamente. Las 419
+  filas conservan su `review_status='approved'` heredado y seguirán apareciendo
+  en el control hasta que se registre la revisión editorial correspondiente.
 - Las fases 8 a 11 (LanguageResolver, API, sitio, dual-read/dual-write) son
   cambios de código, no SQL. Las fases 13 y 14 dependen del corte/rollback,
   en tensión con la decisión «Sin backup». No se incluyen aquí.
