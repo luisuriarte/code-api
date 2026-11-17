@@ -333,17 +333,21 @@ aplica» con evidencia si no se requiere, sin bloquear la fase.
 ### E-01 / E-02 — Entorno y versión
 
 ```text
-Fecha / hora:
-Responsable:
-Commit del repositorio:
-Entorno:              [ ] desarrollo  [ ] staging-independiente
+Fecha / hora:         2026-11-17 (ventana operativa: 10:30 GMT-3)
+Responsable:          Luis A. Uriarte
+Commit del repositorio: cc803b5
+Entorno:              [X] desarrollo  [ ] staging-independiente
                       PRODUCCIÓN QUEDA EXCLUIDA: no es opción válida.
-Versión PostgreSQL:
-Codificación:
-Collation:
+                      Observación: destino declarado en desarrollo; si se exige
+                      staging estricto, declarar el entorno real antes de ejecutar.
+Versión PostgreSQL:   <se registra en Fase 1>
+Codificación:         <se registra en Fase 1>
+Collation:            <se registra en Fase 1>
 Extensión pg_trgm:    [ ] instalada  [ ] válida  [ ] NO disponible -> detener
-Base de origen:       <registrar>
-Base independiente:   <registrar>   [ ] distinta de la original  [ ] no es esquema temporal
+Base de origen:       origen_salud @ localhost (desarrollo, no productiva)
+Base independiente:   origen_codes   [X] distinta de la original  [X] no es esquema temporal
+                      Esquema por defecto: public
+Las verificaciones técnicas se diligencian durante la ejecución de Fase 1.
 ```
 
 ### E-03 — Backup y SHA-256
@@ -361,7 +365,10 @@ Verificación SHA-256: [ ] coincide  [ ] NO coincide -> detener
 ### E-04 — Restauración en base independiente
 
 ```text
-Base destino:         <nombre registrado>
+Base destino:         origen_codes (esquema por defecto: public; entorno desarrollo)
+Rol de restauración:  origen_api (privilegio mínimo, no superuser)
+Responsable de la provisión de roles: Luis A. Uriarte
+Las casillas siguientes se verifican y marcan durante la ejecución de Fase 1.
 [ ] Extensiones verificadas      [ ] Dependencias verificadas
 [ ] Funciones verificadas        [ ] Triggers verificados
 [ ] Secuencias verificadas
@@ -452,17 +459,66 @@ Firma:
 4   Parametrización de importadores               Antes Fase 3       ABIERTA
 5   Códigos y capas LOINC en staging              Antes Fase 5       ABIERTA
 6   source_release real de CSV confirmado         Antes Fase 5       ABIERTA
-7   Identidad de aplicación y rol de auditoría    Antes Fase 2       ABIERTA
+7   Identidad de aplicación y rol de auditoría    Antes Fase 2       CERRADA       decisión 2026-11-17: aplicación "Terminología-as-a-Service para América Latina"; auditoría: Luis A. Uriarte
 8   Resolver/evaluador/API/sitio                  Fases 8-10         ABIERTA
 9   Mapeo/endpoint NN 2025                        Fase 10            ABIERTA
 10  Autorización D-34 por índice                  Condicional        NO APLICA AÚN
 
-Compuertas previas a Fase 1:
-[ ] Autorización de preparación firmada
-[ ] Origen confirmado como no productivo
-[ ] Destino independiente asignado (D-25), distinto del origen y no esquema temporal
-[ ] Acceso mínimo autorizado (solo lectura en origen; sin credenciales aquí)
-[ ] Responsable de infraestructura identificado
+Compuertas previas a Fase 1 — CERRADAS (registro 2026-11-17):
+[X] Autorización de preparación firmada — Luis A. Uriarte, 2026-11-17
+    [X] Crear base independiente
+    [X] Restaurar backup
+    [X] Queda excluido DDL/DML de Fases 2-14
+[X] Origen confirmado como no productivo
+    Base: origen_salud @ localhost; entorno: desarrollo
+    Motivo: uso para desarrollo, no producción
+    Retracción registrada: se retira la declaración previa de que era productiva
+[X] Destino independiente asignado (D-25)
+    Base: origen_codes; esquema por defecto: public; entorno: desarrollo
+    [X] Distinta de la base de origen
+    [X] No es esquema temporal dentro del origen
+    [X] No es producción
+[X] Acceso mínimo autorizado
+    Cuenta/rol para pg_dump: origen_api
+    Cuenta/rol para restauración: origen_api
+    [X] Solo lectura en la base de origen
+    [X] Rol real, no superuser; sin privilegios productivos
+    Retracción registrada: se retira la declaración previa de traslado de permisos
+[X] Responsable de infraestructura identificado: Luis A. Uriarte
+    [X] Aprovisiona roles y permisos mínimos
+
+Ventana operativa (§8.4): 2026-11-17, 10:30 GMT-3; responsable Luis A. Uriarte.
+
+Observación: el destino se declara en entorno «desarrollo», mientras el runbook
+menciona «staging». Quedan cubiertas las condiciones verificables de D-25 (base
+independiente, distinta del origen y no producción); si se exige staging en
+sentido estricto, debe declararse el entorno real antes de la ejecución.
+
+Compuerta 7 — CERRADA (declaración 2026-11-17):
+[X] Aplicación: Terminología-as-a-Service para América Latina
+[X] Rol propietario de la auditoría: Luis A. Uriarte
+[X] Mecanismo de identidad de aplicación: configuración local de sesión
+    (app.actor_id / app.importer_run_id con ámbito transaccional, D-10);
+    SESSION_USER queda solo como evidencia de respaldo, no como autor.
+
+Cierre de Fase 1 — DECLARADO por Luis A. Uriarte (2026-11-17):
+[X] Fase 1 ejecutada por el responsable; acta E-07 firmada.
+    Nota: los resultados técnicos de E-03/E-04/E-05/E-06 y E-07 no se aportaron
+    a este repositorio; quedan en poder del responsable. No se inventan aquí
+    versiones, hashes, conteos ni firmas. Esta declaración habilita el pase a
+    Fase 2; no sustituye la evidencia cuando se audite la fase.
+
+Autorización de desarrollo — DECLARADA por Luis A. Uriarte (2026-11-17):
+[X] Levantamiento de la restricción de no generar DDL/DML y de no modificar
+    código/importadores/fuentes, limitada a la Fase 2 y a los artefactos que se
+    producen en docs/architecture/. La ejecución en la base NO está autorizada
+    por este cambio: requiere autorización operativa de DDL de Fase 2.
+[X] Ámbito de modificación de importadores/fuentes/código: PENDIENTE de lista
+    concreta de archivos. Sin esa lista no se modifica ningún archivo de código.
+
+Nota: el cierre de las compuertas previas NO autorizó la ejecución de Fase 1;
+la autorización firmada lo hizo para esa fase. El pase a Fase 2 requiere además
+la autorización operativa de su DDL, que hoy NO está otorgada.
 
 Regla: cada compuerta se cierra en su momento. No se requiere 10/10 para Fase 1.
 PMO (3) pertenece a su propio trabajo (D-17) y no bloquea la migración.
@@ -547,7 +603,10 @@ vuelve al documento de decisiones; no se resuelve "sobre la marcha" en la base.
 ## 8. Para pasar de preparación a ejecución
 
 Para autorizar la **Fase 1**, con las compuertas previas a Fase 1 cerradas
-(§3.2), solicitar **por escrito**:
+(§3.2), solicitar **por escrito**. Los seis puntos siguientes quedan reunidos en
+[`autorizacion-ejecucion-fase-1.md`](autorizacion-ejecucion-fase-1.md), firmado
+por Luis A. Uriarte el `2026-11-17` en ambos campos (autorizante y responsable de
+ejecución), con efecto operativo exclusivo para Fase 1:
 
 1. Confirmación de las compuertas previas a Fase 1 con su evidencia (acta A-1).
 2. Entorno y credenciales de staging facilitados por el responsable de
@@ -581,6 +640,9 @@ Hasta que esos seis puntos estén presentes, este runbook permanece como
 | `modelo-multilingue-propuesto.md` | Contrato técnico y de salida; D-39, D-40, D-41 |
 | `plan-migracion-multilingue.md` | Fases 1-14, condiciones de avance, pruebas 1-44, §2.2 |
 | `auditoria-internacionalizacion.md` | Cierre de hallazgos y riesgos registrados |
+| `autorizacion-ejecucion-fase-1.md` | Autorización operativa de Fase 1, firmada el 2026-11-17 (alcance exclusivo de Fase 1) |
+| `guia-diligenciamiento-evidencias-fase-1.md` | Orden de registro de E-01 a E-07 durante Fase 1; guía de registro, no de ejecución |
+| `ddl-fase-2-propuesto.md` | DDL propuesto de Fase 2, derivado del diseño aprobado; artefacto documental, no aplicado ni ejecutado |
 | `manual-carga-catalogos.md` §4.2 y §14 | Ejemplos de `pg_dump`/`pg_restore` (valores de muestra) |
 
 **Fin del documento de preparación. No autoriza ejecución.**
