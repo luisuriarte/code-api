@@ -2,7 +2,8 @@
 -- FASE 12 · Validación y reconciliación (reporte de solo lectura)
 -- =============================================================================
 -- Entorno de PRUEBAS. NO contiene DDL, DML, DROP, TRUNCATE ni DELETE.
--- Ejecutar con psql o DBeaver; todas las sentencias son SELECT.
+-- Sin meta-comandos de psql: todas las sentencias son SELECT válidos,
+-- ejecutables igual con psql que con DBeaver-CE.
 -- Fuentes: plan Fase 12/13; D-10, D-14, D-19, D-23, D-24, D-29, D-33,
 --          D-34, D-35, D-36, D-41.
 --
@@ -12,7 +13,7 @@
 -- siguen siendo artefactos humanos / de aplicación.
 -- =============================================================================
 
-\echo '=== 1. Catálogo de idiomas ==='
+SELECT '=== 1. Catálogo de idiomas ===' AS seccion;
 SELECT code, display_name, is_active, is_source_only
 FROM os_language ORDER BY code;
 
@@ -22,7 +23,7 @@ SELECT count(*) AS activos_y_source_only
 FROM os_language WHERE is_active AND is_source_only;              -- DEBE SER 0 (D-39)
 SELECT alias, language_code FROM os_language_alias ORDER BY alias;
 
-\echo '=== 2. Integridad polimórfica (DEBE SER 0) ==='
+SELECT '=== 2. Integridad polimórfica (DEBE SER 0) ===' AS seccion;
 SELECT count(*) AS traducciones_huerfanas
 FROM os_localized_text l
 WHERE NOT EXISTS (
@@ -39,7 +40,7 @@ WHERE NOT EXISTS (
     UNION ALL SELECT 1 FROM os_medicinal_product WHERE l.entity_type = 'medicinal_product' AND id = l.entity_id
     UNION ALL SELECT 1 FROM os_product_package  WHERE l.entity_type = 'product_package'  AND id = l.entity_id);
 
-\echo '=== 3. Pertenencia de releases (DEBE SER 0) ==='
+SELECT '=== 3. Pertenencia de releases (DEBE SER 0) ===' AS seccion;
 SELECT count(*) AS releases_ajenos
 FROM os_localized_text l
 JOIN os_catalog_release r ON r.id = l.scope_release_id
@@ -54,7 +55,7 @@ WHERE l.entity_type = 'catalog' AND r.catalog_id <> l.entity_id
       AND r.catalog_id <> (SELECT i.catalog_id FROM os_concept_mapping m
                             JOIN os_catalog_item i ON i.id = m.item_id WHERE m.id = l.entity_id);
 
-\echo '=== 4. Índices inválidos (DEBE SER 0) ==='
+SELECT '=== 4. Índices inválidos (DEBE SER 0) ===' AS seccion;
 SELECT c.relname, i.indisvalid, i.indisready
 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
 WHERE c.relname LIKE 'uq_%' AND (NOT i.indisvalid OR NOT i.indisready);
@@ -66,7 +67,7 @@ WHERE c.relname IN ('uq_ocl_default','uq_ocl_fallback','uq_ocl_bridge',
                     'idx_llt_resolution','idx_llt_value_trgm','uq_oct_identity')
 ORDER BY c.relname;
 
-\echo '=== 5. Nullabilidad D-36 ==='
+SELECT '=== 5. Nullabilidad D-36 ===' AS seccion;
 SELECT table_name, column_name, is_nullable
 FROM information_schema.columns
 WHERE table_schema = current_schema()
@@ -80,7 +81,7 @@ WHERE table_schema = current_schema()
                             'dialect_determined')))
 ORDER BY table_name, column_name;
 
-\echo '=== 6. Hashes centinela (DEBE SER 0) ==='
+SELECT '=== 6. Hashes centinela (DEBE SER 0) ===' AS seccion;
 SELECT 'os_catalog_item_version' AS tabla, count(*) FROM os_catalog_item_version WHERE content_hash = ''
 UNION ALL SELECT 'os_catalog_term',           count(*) FROM os_catalog_term WHERE content_hash = ''
 UNION ALL SELECT 'snomed_descriptions',       count(*) FROM snomed_descriptions WHERE content_hash = ''
@@ -88,7 +89,7 @@ UNION ALL SELECT 'cie10_descriptions',        count(*) FROM cie10_descriptions W
 UNION ALL SELECT 'os_concept_mapping',        count(*) FROM os_concept_mapping WHERE content_hash = ''
 UNION ALL SELECT 'loinc_localized_text',      count(*) FROM loinc_localized_text WHERE content_hash = '';
 
-\echo '=== 7. Auditoría: 8 tablas cubiertas ==='
+SELECT '=== 7. Auditoría: 8 tablas cubiertas ===' AS seccion;
 SELECT event_object_table, count(*) AS triggers_auditoria
 FROM information_schema.triggers
 WHERE trigger_schema = current_schema()
@@ -104,7 +105,7 @@ FROM os_translation_review GROUP BY actor_type, actor_identified ORDER BY actor_
 SELECT count(*) AS eventos_sin_transaccion
 FROM os_translation_review WHERE transaction_id IS NULL;          -- DEBE SER 0
 
-\echo '=== 8. LOINC: prioridad centralizada (DEBE SER 0) ==='
+SELECT '=== 8. LOINC: prioridad centralizada (DEBE SER 0) ===' AS seccion;
 SELECT count(*) AS prioridades_divergentes
 FROM loinc_localized_text
 WHERE source_priority IS DISTINCT FROM
@@ -121,14 +122,14 @@ FROM v_loinc_resolved WHERE es_conflicto;
 SELECT count(*) AS aprobados_sin_evidencia
 FROM loinc_localized_text WHERE review_status = 'approved';       -- DEBE SER 0
 
-\echo '=== 9. Idiomas inferidos / dialectos (DEBE SER 0) ==='
+SELECT '=== 9. Idiomas inferidos / dialectos (DEBE SER 0) ===' AS seccion;
 SELECT count(*) AS source_language_inferido
 FROM os_catalog_item_version WHERE source_language_code IS NOT NULL
 UNION ALL SELECT count(*) FROM os_catalog_term WHERE source_language_code IS NOT NULL;
 SELECT count(*) AS es_ar_inferido FROM snomed_descriptions
 WHERE language_code = 'es-AR' OR dialect_determined IS TRUE;
 
-\echo '=== 10. Aprobación editorial pendiente (D-19) ==='
+SELECT '=== 10. Aprobación editorial pendiente (D-19) ===' AS seccion;
 SELECT review_status, count(*) AS filas
 FROM os_concept_mapping GROUP BY review_status ORDER BY review_status;
 
@@ -138,7 +139,7 @@ WHERE m.review_status = 'approved'
   AND NOT EXISTS (SELECT 1 FROM os_field_review f
                    WHERE f.target_table = 'os_concept_mapping' AND f.target_id = m.id);
 
-\echo '=== 11. Conteos base (informativo) ==='
+SELECT '=== 11. Conteos base (informativo) ===' AS seccion;
 SELECT 'os_catalog_item_version' AS tabla, count(*) FROM os_catalog_item_version
 UNION ALL SELECT 'os_catalog_term',           count(*) FROM os_catalog_term
 UNION ALL SELECT 'snomed_descriptions',       count(*) FROM snomed_descriptions

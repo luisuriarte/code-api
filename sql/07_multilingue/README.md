@@ -1,4 +1,4 @@
-# Scripts SQL — Implementación multilingüe (Fases 2 a 7)
+# Scripts SQL — Implementación multilingüe (Fases 2 a 7, recuperación LOINC ES y validación Fase 12)
 
 Scripts ejecutables derivados del diseño aprobado en `cc803b5`. Entorno de
 **pruebas con datos no reales**. Ejecutar en la base independiente (`origen_codes`),
@@ -19,6 +19,8 @@ no en producción.
 | 9 | `09_fase5_loinc_backfill.sql` | 5 — backfill EN y vista de resolución | `BEGIN/COMMIT` |
 | 10 | `10_fase6_dentar.sql` | 6 — campos clínicos DENTAR (solo SQL) | `BEGIN/COMMIT` |
 | 11 | `11_fase7_snomed_cie10.sql` | 7 — tag RF2 real de SNOMED | `BEGIN/COMMIT` |
+| 12 | `12_fase12_validacion.sql` | 12 — reporte de validación | solo `SELECT` (sin transacción) |
+| 13 | `13_fase5b_variantes_es.sql` | 5b — recuperar capas LOINC es-MX/es-AR desde CSV | `BEGIN/COMMIT` |
 
 Ejecutar **en orden**. Los scripts son idempotentes (`IF NOT EXISTS`,
 `ON CONFLICT DO NOTHING`) salvo los `UPDATE` de Fase 4, que se repetirán sin
@@ -41,7 +43,12 @@ sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/0
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/09_fase5_loinc_backfill.sql
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/10_fase6_dentar.sql
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/11_fase7_snomed_cie10.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -P pager=off -f sql/07_multilingue/12_fase12_validacion.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/13_fase5b_variantes_es.sql
 ```
+
+Tras ejecutar el 13, volver a correr el 12 para que la validación incluya las
+capas es-MX/es-AR recién recuperadas.
 
 Si tu `pg_hba.conf` usa `md5`/`scram` en localhost en vez de `peer`:
 
@@ -92,8 +99,22 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   preexistentes; si los hay, lo reporta y no borra nada.
 - `11_fase7_snomed_cie10.sql` omite el backfill con un NOTICE si
   `sct2.description` no está cargada, en vez de inventar un tag dialectal.
-- Las fases 8 a 14 requieren decisiones pendientes (resolver/API/sitio,
-  NN 2025) y no se incluyen aquí.
+- `12_fase12_validacion.sql` es **solo lectura**: no contiene DDL, DML ni
+  meta-comandos de psql (funciona igual en psql y en DBeaver-CE). Un valor
+  distinto de cero en una consulta marcada "DEBE SER 0" es un hallazgo a
+  revisar; el script NO corrige nada ni aprueba contenido.
+- `13_fase5b_variantes_es.sql` usa `COPY ... FROM` **lateral del servidor**
+  (SQL puro, sin `\copy`). El usuario `postgres` del servidor debe poder leer
+  los dos CSV en `/var/www/html/origen.ar/code-api/tools/sources/loinc/`.
+  Recupera 12 campos por variante sin tocar `loinc` ni el importador: las capas
+  es-MX y es-AR quedan como filas separadas, con `source_release='2.83'` tomado
+  de la cabecera del importador (los CSV de variantes no traen versión) y
+  `version_last_changed_normalizada='(sin_version)'`. Nada queda `approved`.
+  La carga va **campo por campo en transacciones separadas** (24 `INSERT`):
+  imprime progreso y, si se interrumpe, reejecutar no duplica nada.
+- Las fases 8 a 11 (LanguageResolver, API, sitio, dual-read/dual-write) son
+  cambios de código, no SQL. Las fases 13 y 14 dependen del corte/rollback,
+  en tensión con la decisión «Sin backup». No se incluyen aquí.
 
 **Sin backup**: decisión explícita del responsable sobre datos de prueba no
 reales. Estos scripts son aditivos y no destruyen tablas, columnas ni datos
