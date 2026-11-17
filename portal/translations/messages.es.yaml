@@ -4,6 +4,10 @@ meta:
 
 nav:
     label: "Navegación principal"
+    home: "Inicio"
+    browse: "Explorar códigos"
+    services: "Servicios"
+    about: "Acerca de"
     platform: "Plataforma"
     snomed: "SNOMED-CT"
     anmat: "ANMAT"

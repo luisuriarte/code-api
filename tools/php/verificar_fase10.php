@@ -12,7 +12,7 @@ declare(strict_types=1);
 $root = dirname(__DIR__, 2);
 
 require_once $root . '/bootstrap.php';
-require_once $root . '/web/includes/i18n.php';
+require_once $root . '/portal/i18n/I18n.php';
 require_once $root . '/web/includes/ApiClient.php';
 
 use OrigenSalud\Web\ApiClient;
@@ -63,14 +63,16 @@ $check(
     'los hreflang deben ser es-AR, en y pt-BR en ese orden'
 );
 foreach ($links as $link) {
-    $check(str_contains($link['href'], '?lang='), 'cada alternate debe incluir el parámetro lang');
+    $check(
+        str_starts_with($link['href'], '/' . $link['hreflang'] . '/'),
+        'cada alternate debe usar el prefijo de idioma en la ruta'
+    );
 }
 
 // ---------------------------------------------------------------------------
 // Vistas del portal: cabeceras idiomáticas y ausencia de ternarios $isEn.
 // ---------------------------------------------------------------------------
 $views = [
-    'web/index.php' => '/',
     'web/docs.php' => '/docs',
     'web/search.php' => '/search',
 ];
@@ -79,21 +81,31 @@ foreach ($views as $relative => $path) {
     $check($source !== '', "debe existir {$relative}");
     $check(str_contains($source, "header('Vary: Accept-Language')"), "{$relative} debe enviar Vary");
     $check(str_contains($source, "header('Content-Language: ' . \$locale)"), "{$relative} debe enviar Content-Language");
-    $check(str_contains($source, "I18n::alternateLinks(\$currentPath)"), "{$relative} debe emitir los tres hreflang");
     $check(str_contains($source, "I18n::metadata(\$locale)['og_locale']"), "{$relative} debe emitir og:locale por locale");
     $check(!str_contains($source, '$isEn'), "{$relative} no debe usar ternarios \$isEn");
     $check(!str_contains($source, '$languageUrl'), "{$relative} no debe usar el reductor \$languageUrl");
-    $check(str_contains($source, "includes/language-switcher.php"), "{$relative} debe usar el selector compartido");
+    $check(
+        str_contains($source, "portal/Views/partials/language-switcher.php"),
+        "{$relative} debe usar el selector compartido"
+    );
 }
+
+$frontController = $read('web/index.php');
+$check(str_contains($frontController, "header('Vary: Accept-Language"), 'el front controller debe enviar Vary');
+$check(str_contains($frontController, 'portal/bootstrap.php'), 'el front controller debe cargar el bootstrap del portal');
+
+$layout = $read('portal/Views/layouts/main.php');
+$check(str_contains($layout, "I18n::alternateLinks(\$currentPath"), 'el layout debe emitir los tres hreflang');
+$check(str_contains($layout, "I18n::metadata(\$locale)['og_locale']"), 'el layout debe emitir og:locale por locale');
 
 // ---------------------------------------------------------------------------
 // Catálogos de traducción: claves usadas y conteo de claves docs.*
 // ---------------------------------------------------------------------------
 $catalogFiles = [
-    'es-AR' => $root . '/web/translations/messages.es-AR.yaml',
-    'en' => $root . '/web/translations/messages.en.yaml',
-    'pt-BR' => $root . '/web/translations/messages.pt-BR.yaml',
-    'es' => $root . '/web/translations/messages.es.yaml',
+    'es-AR' => $root . '/portal/translations/messages.es-AR.yaml',
+    'en' => $root . '/portal/translations/messages.en.yaml',
+    'pt-BR' => $root . '/portal/translations/messages.pt-BR.yaml',
+    'es' => $root . '/portal/translations/messages.es.yaml',
 ];
 $catalogs = [];
 foreach ($catalogFiles as $locale => $file) {
@@ -139,7 +151,7 @@ foreach ($catalogs as $locale => $data) {
     }
 }
 
-$switcher = $read('web/includes/language-switcher.php');
+$switcher = $read('portal/Views/partials/language-switcher.php');
 $check(str_contains($switcher, "I18n::alternateLinks(\$currentPath)"), 'el selector debe usar alternateLinks');
 
 // ---------------------------------------------------------------------------

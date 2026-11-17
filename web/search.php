@@ -11,7 +11,7 @@ declare(strict_types=1);
  */
 
 require_once dirname(__DIR__) . '/bootstrap.php';
-require_once __DIR__ . '/includes/i18n.php';
+require_once dirname(__DIR__) . '/portal/i18n/I18n.php';
 require_once __DIR__ . '/includes/ApiClient.php';
 
 use OrigenSalud\Web\ApiClient;
@@ -129,7 +129,7 @@ foreach ($fields as $field) {
         </nav>
 
         <div class="header-actions">
-            <?php require __DIR__ . '/includes/language-switcher.php'; ?>
+            <?php require dirname(__DIR__) . '/portal/Views/partials/language-switcher.php'; ?>
         </div>
     </div>
 </header>

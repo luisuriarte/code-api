@@ -2,20 +2,12 @@
 
 declare(strict_types=1);
 
-/**
- * Selector de idioma compartido por las vistas del portal.
- *
- * Requiere que la vista haya llamado a I18n::boot() y defina $currentPath.
- */
-
 use OrigenSalud\Web\I18n;
 
-$locale = I18n::locale();
-$currentPath = $currentPath ?? '/';
 $alternates = I18n::alternateLinks($currentPath);
 $lastIndex = count($alternates) - 1;
 ?>
-<div class="lang-switch" role="group" aria-label="<?= e(trans('lang.label', [], $locale)) ?>">
+<div class="lang-switch" role="group" aria-label="<?= e($t('lang.label')) ?>">
     <?php foreach ($alternates as $index => $alternate): ?>
         <a href="<?= e($alternate['href']) ?>"
            hreflang="<?= e($alternate['hreflang']) ?>"

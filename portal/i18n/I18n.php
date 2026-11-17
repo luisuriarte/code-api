@@ -5,15 +5,15 @@ declare(strict_types=1);
 /**
  * Internacionalización del portal web (med.origen.ar).
  *
- * Usa el componente independiente symfony/translation con archivos YAML.
- * Los idiomas seleccionables son es-AR, en y pt-BR (Fase 10). Los alias es→es-AR
- * y pt→pt-BR se aplican solo a la entrada del cliente; es-MX no se aliasa.
- *
+ * Idiomas seleccionables: es-AR (por defecto), en y pt-BR.
  * El idioma se resuelve en este orden:
- *   1. Parámetro ?lang=
- *   2. Cookie persistente
- *   3. Header Accept-Language
- *   4. Idioma por defecto (WEB_DEFAULT_LOCALE)
+ *   1. Segmento de la URL (/es-AR/, /en/, /pt-BR/)
+ *   2. Parámetro legacy ?lang=
+ *   3. Cookie persistente
+ *   4. Header Accept-Language
+ *   5. WEB_DEFAULT_LOCALE
+ *
+ * Las URLs canónicas llevan prefijo de idioma; el selector ya no genera ?lang=.
  */
 
 namespace OrigenSalud\Web {
@@ -26,13 +26,13 @@ namespace OrigenSalud\Web {
         public const DEFAULT_LOCALE = 'es-AR';
         public const COOKIE_NAME = 'origen_locale';
 
-        /** Alias de entrada. Ninguno se aplica a etiquetas de origen como es-MX. */
+        /** Alias de entrada. No se aplican a etiquetas de origen como es-MX. */
         private const ALIASES = [
             'es' => 'es-AR',
             'pt' => 'pt-BR',
         ];
 
-        /** Metadatos públicos por locale seleccionable. */
+        /** @var array<string, array{hreflang: string, og_locale: string, label: string, short: string, api_language: string}> */
         private const METADATA = [
             'es-AR' => [
                 'hreflang' => 'es-AR',
@@ -57,7 +57,7 @@ namespace OrigenSalud\Web {
             ],
         ];
 
-        private const COOKIE_TTL = 31536000; // 1 año
+        private const COOKIE_TTL = 31536000;
         private const DOMAIN = 'messages';
 
         private static ?string $locale = null;
@@ -66,13 +66,15 @@ namespace OrigenSalud\Web {
         private static array $translators = [];
 
         /**
-         * Inicializa el locale de la petición y persiste la preferencia.
+         * Inicializa el locale de la petición. El locale de la URL tiene prioridad.
          */
-        public static function boot(): string
+        public static function boot(?string $routeLocale = null): string
         {
-            $requested = isset($_GET['lang']) && is_string($_GET['lang'])
-                ? $_GET['lang']
-                : null;
+            $requested = $routeLocale;
+
+            if ($requested === null && isset($_GET['lang']) && is_string($_GET['lang'])) {
+                $requested = $_GET['lang'];
+            }
 
             $locale = self::resolve($requested);
             self::$locale = $locale;
@@ -92,13 +94,6 @@ namespace OrigenSalud\Web {
             return self::SUPPORTED;
         }
 
-        /**
-         * Normaliza una entrada a un locale seleccionable.
-         *
-         * Conserva es-AR y pt-BR. Acepta los alias es y pt. No convierte es-MX
-         * ni otras variantes regionales en es-AR. en-US se reduce a en porque
-         * no existe una variante inglesa seleccionable.
-         */
         public static function canonical(?string $locale): ?string
         {
             if ($locale === null) {
@@ -133,11 +128,23 @@ namespace OrigenSalud\Web {
         }
 
         /**
+         * Construye una ruta canónica con prefijo de idioma.
+         */
+        public static function localizedPath(string $locale, string $path = '/'): string
+        {
+            $canonical = self::canonical($locale) ?? self::DEFAULT_LOCALE;
+            $suffix = self::stripLocalePrefix($path);
+
+            return '/' . $canonical . '/' . ($suffix === '' ? '' : ltrim($suffix, '/'));
+        }
+
+        /**
          * @return list<array{hreflang: string, href: string, label: string, short: string, active: bool}>
          */
         public static function alternateLinks(string $currentPath, string $baseUrl = ''): array
         {
             $active = self::locale();
+            $suffix = self::stripLocalePrefix($currentPath);
             $prefix = rtrim($baseUrl, '/');
             $links = [];
 
@@ -145,7 +152,7 @@ namespace OrigenSalud\Web {
                 $metadata = self::METADATA[$supported];
                 $links[] = [
                     'hreflang' => $metadata['hreflang'],
-                    'href' => $prefix . $currentPath . '?lang=' . rawurlencode($supported),
+                    'href' => $prefix . self::localizedPath($supported, $suffix),
                     'label' => $metadata['label'],
                     'short' => $metadata['short'],
                     'active' => $supported === $active,
@@ -155,15 +162,12 @@ namespace OrigenSalud\Web {
             return $links;
         }
 
-        /**
-         * Resuelve el idioma aplicando la cadena de prioridades.
-         */
         public static function resolve(?string $requested = null): string
         {
-            $fromQuery = self::canonical($requested);
+            $fromRoute = self::canonical($requested);
 
-            if ($fromQuery !== null) {
-                return $fromQuery;
+            if ($fromRoute !== null) {
+                return $fromRoute;
             }
 
             $cookie = $_COOKIE[self::COOKIE_NAME] ?? null;
@@ -188,9 +192,6 @@ namespace OrigenSalud\Web {
             return $configured ?? self::DEFAULT_LOCALE;
         }
 
-        /**
-         * Devuelve el Translator configurado para un locale.
-         */
         public static function translator(?string $locale = null): Translator
         {
             $locale = self::canonical($locale) ?? self::locale();
@@ -216,11 +217,7 @@ namespace OrigenSalud\Web {
             return self::$translators[$locale] = $translator;
         }
 
-        /**
-         * Traduce una clave con parámetros de sustitución.
-         *
-         * @param array<string, string|int|float> $parameters
-         */
+        /** @param array<string, string|int|float> $parameters */
         public static function trans(
             string $key,
             array $parameters = [],
@@ -231,9 +228,27 @@ namespace OrigenSalud\Web {
             return self::translator($locale)->trans($key, $parameters, self::DOMAIN, $locale);
         }
 
-        /**
-         * Negocia el idioma a partir de Accept-Language respetando los pesos q.
-         */
+        private static function stripLocalePrefix(string $path): string
+        {
+            $path = '/' . ltrim($path, '/');
+
+            if ($path === '/') {
+                return '';
+            }
+
+            foreach (self::SUPPORTED as $locale) {
+                if ($path === '/' . $locale) {
+                    return '';
+                }
+
+                if (str_starts_with($path, '/' . $locale . '/')) {
+                    return substr($path, strlen($locale) + 2);
+                }
+            }
+
+            return ltrim($path, '/');
+        }
+
         private static function fromAcceptLanguage(?string $header): ?string
         {
             if ($header === null || trim($header) === '') {
@@ -275,9 +290,6 @@ namespace OrigenSalud\Web {
             return $bestLocale;
         }
 
-        /**
-         * Persiste el idioma en una cookie HttpOnly de un año.
-         */
         private static function remember(string $locale): void
         {
             if (headers_sent()) {
@@ -318,11 +330,7 @@ namespace OrigenSalud\Web {
 
 namespace {
     if (!function_exists('trans')) {
-        /**
-         * Helper global de traducción para las vistas.
-         *
-         * @param array<string, string|int|float> $parameters
-         */
+        /** @param array<string, string|int|float> $parameters */
         function trans(string $key, array $parameters = [], ?string $locale = null): string
         {
             return \OrigenSalud\Web\I18n::trans($key, $parameters, $locale);
