@@ -133,8 +133,12 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   filas conservan su `review_status='approved'` heredado y seguirán apareciendo
   en el control hasta que se registre la revisión editorial correspondiente.
 - Las fases 8 a 11 (LanguageResolver, API, sitio, dual-read/dual-write) son
-  cambios de código, no SQL. Las fases 13 y 14 dependen del corte/rollback,
-  en tensión con la decisión «Sin backup». No se incluyen aquí.
+  cambios de código, no SQL. Fase 8 ya está implementada en `api/services/`
+  (`LanguageResolver`, `LanguageCatalog`, `FieldReviewRepository`,
+  `EditorialEvaluator`, `EditorialResult`) y se verifica con
+  `php tools/php/verificar_fase8.php`; todavía no está cableada a los
+  endpoints (eso corresponde a Fase 9). Las fases 13 y 14 dependen del
+  corte/rollback, en tensión con la decisión «Sin backup». No se incluyen aquí.
 
 **Sin backup**: decisión explícita del responsable sobre datos de prueba no
 reales. Estos scripts son aditivos y no destruyen tablas, columnas ni datos

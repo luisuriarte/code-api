@@ -26,6 +26,13 @@ final class Response
             header('Referrer-Policy: no-referrer');
 
             foreach ($headers as $name => $value) {
+                // Vary puede llegar desde CORS y desde la resolución idiomática.
+                // Se agrega como cabecera independiente para no perder "Origin".
+                if (strtolower($name) === 'vary') {
+                    header('Vary: ' . $value, false);
+                    continue;
+                }
+
                 header($name . ': ' . $value);
             }
         }
