@@ -5,8 +5,9 @@ declare(strict_types=1);
 /**
  * Origen Salud - Portal institucional (med.origen.ar)
  *
- * Vista principal bilingüe. El idioma se resuelve en includes/i18n.php y se
- * persiste en cookie; las traducciones viven en translations/*.yaml.
+ * Vista principal trilingüe (es-AR / EN / PT-BR). El idioma se resuelve en
+ * includes/i18n.php y se persiste en cookie; las traducciones viven en
+ * translations/*.yaml.
  */
 
 require_once dirname(__DIR__) . '/bootstrap.php';
@@ -14,14 +15,17 @@ require_once __DIR__ . '/includes/i18n.php';
 
 use OrigenSalud\Web\I18n;
 
-header('Content-Type: text/html; charset=UTF-8');
-
 $locale = I18n::boot();
+
+header('Content-Type: text/html; charset=UTF-8');
+header('Vary: Accept-Language');
+header('Content-Language: ' . $locale);
+
 $t = static fn (string $key, array $parameters = []): string => trans($key, $parameters, $locale);
 
 $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $currentPath = is_string($requestPath) && $requestPath !== '' ? $requestPath : '/';
-$languageUrl = static fn (string $language): string => $currentPath . '?lang=' . $language;
+$apiLocale = I18n::metadata($locale)['api_language'];
 
 $baseUrl = rtrim((string) env('WEB_BASE_URL', 'https://med.origen.ar'), '/');
 
@@ -30,9 +34,13 @@ if ($baseUrl === '') {
 }
 
 $contactEmail = 'contacto@origen.ar';
-$accessMailto = 'mailto:' . $contactEmail . '?subject=' . rawurlencode($t('nav.access'));
+$accessMailto = 'mailto:' . $contactEmail . '?subject=' . rawurlencode($t('nav.access_api'));
 $contactMailto = 'mailto:' . $contactEmail;
 $legalMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal'));
+
+$exampleLanguage = $apiLocale === 'en' ? 'en' : 'es';
+$exampleFallback = $exampleLanguage !== $apiLocale;
+$exampleFallbackReason = $exampleFallback ? 'rf2_dialect_undetermined' : null;
 
 $exampleResponse = [
     'data' => [
@@ -40,20 +48,42 @@ $exampleResponse = [
             'description_id' => '138875005',
             'concept_id' => '22298006',
             'term' => $t('api.example_term'),
-            'language' => $locale,
+            'language' => $exampleLanguage,
             'term_type' => 'synonym',
             'type_id' => '900000000000013009',
             'score' => 0.9871,
         ],
     ],
     'meta' => [
-        'query' => $locale === 'en' ? 'infarction' : 'infarto',
-        'language' => $locale,
+        'query' => $t('api.example_query'),
+        'requested_language' => $apiLocale,
+        'effective_language' => $exampleLanguage,
+        'language' => $exampleLanguage,
         'limit' => 10,
         'offset' => 0,
         'returned' => 1,
         'has_more' => false,
         'took_ms' => 12.4,
+        'fallback_applied' => $exampleFallback,
+        'fallback_reason' => $exampleFallbackReason,
+        'dialect_determined' => $exampleLanguage === 'en',
+        'available_languages' => [
+            ['code' => 'es-AR', 'selectable' => true],
+            ['code' => 'en', 'selectable' => true],
+            ['code' => 'pt-BR', 'selectable' => true],
+        ],
+        'field_languages' => [
+            'term' => [
+                'effective_language' => $exampleLanguage,
+                'source_language' => $exampleLanguage,
+                'provenance' => 'snomed_rf2',
+                'approval_state' => 'approved',
+                'fallback_applied' => $exampleFallback,
+                'fallback_reason' => $exampleFallbackReason,
+                'untranslated' => false,
+                'dialect_determined' => $exampleLanguage === 'en',
+            ],
+        ],
     ],
     'request_id' => '7f3c9a1e8b2d4f60',
 ];
@@ -73,12 +103,13 @@ $year = date('Y');
     <title><?= e($t('meta.title')) ?></title>
     <meta name="description" content="<?= e($t('meta.description')) ?>">
     <link rel="canonical" href="<?= e($baseUrl . $currentPath) ?>">
-    <link rel="alternate" hreflang="es" href="<?= e($baseUrl . $currentPath . '?lang=es') ?>">
-    <link rel="alternate" hreflang="en" href="<?= e($baseUrl . $currentPath . '?lang=en') ?>">
+    <?php foreach (I18n::alternateLinks($currentPath) as $alternate): ?>
+    <link rel="alternate" hreflang="<?= e($alternate['hreflang']) ?>" href="<?= e($baseUrl . $alternate['href']) ?>">
+    <?php endforeach; ?>
     <meta property="og:type" content="website">
     <meta property="og:title" content="<?= e($t('meta.title')) ?>">
     <meta property="og:description" content="<?= e($t('meta.description')) ?>">
-    <meta property="og:locale" content="<?= $locale === 'es' ? 'es_AR' : 'en_US' ?>">
+    <meta property="og:locale" content="<?= e(I18n::metadata($locale)['og_locale']) ?>">
     <link rel="stylesheet" href="assets/css/app.css">
 </head>
 <body>
@@ -99,24 +130,13 @@ $year = date('Y');
             <a href="#snomed"><?= e($t('nav.snomed')) ?></a>
             <a href="#anmat"><?= e($t('nav.anmat')) ?></a>
             <a href="#api"><?= e($t('nav.api')) ?></a>
+            <a href="/search"><?= e($t('nav.search')) ?></a>
             <a href="/docs"><?= e($t('nav.docs')) ?></a>
             <a href="#contacto"><?= e($t('nav.contact')) ?></a>
         </nav>
 
         <div class="header-actions">
-            <div class="lang-switch" role="group" aria-label="<?= e($t('lang.label')) ?>">
-                <a href="<?= e($languageUrl('es')) ?>"
-                   hreflang="es"
-                   lang="es"
-                   title="<?= e($t('lang.es')) ?>"
-                   <?= $locale === 'es' ? 'aria-current="true" class="is-active"' : '' ?>>ES</a>
-                <span aria-hidden="true">/</span>
-                <a href="<?= e($languageUrl('en')) ?>"
-                   hreflang="en"
-                   lang="en"
-                   title="<?= e($t('lang.en')) ?>"
-                   <?= $locale === 'en' ? 'aria-current="true" class="is-active"' : '' ?>>EN</a>
-            </div>
+            <?php require __DIR__ . '/includes/language-switcher.php'; ?>
             <a class="button button-small" href="<?= e($accessMailto) ?>"><?= e($t('nav.access')) ?></a>
         </div>
     </div>
@@ -169,6 +189,23 @@ $year = date('Y');
                 <strong><?= e($t('stats.latency_value')) ?></strong>
                 <span><?= e($t('stats.latency_label')) ?></span>
             </div>
+        </div>
+    </section>
+
+    <section class="section search-section" id="buscador">
+        <div class="container search-intro">
+            <div>
+                <span class="eyebrow"><?= e($t('api.eyebrow')) ?></span>
+                <h2><?= e($t('search.title')) ?></h2>
+                <p><?= e($t('search.lead')) ?></p>
+            </div>
+            <form class="search-form" action="/search" method="get">
+                <label for="q"><?= e($t('search.query_label')) ?></label>
+                <input id="q" name="q" type="search" required
+                       placeholder="<?= e($t('search.query_placeholder')) ?>">
+                <input type="hidden" name="lang" value="<?= e($apiLocale) ?>">
+                <button class="button" type="submit"><?= e($t('search.button')) ?></button>
+            </form>
         </div>
     </section>
 
@@ -255,8 +292,9 @@ $year = date('Y');
                     <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
                 </div>
 <pre><code>curl --request GET \
-  'https://api.origen.ar/v1/concepts/search?q=infarto&amp;lang=<?= e($locale) ?>&amp;limit=10' \
-  --header 'X-API-Key: YOUR_API_KEY'</code></pre>
+  'https://api.origen.ar/v1/concepts/search?q=<?= e(rawurlencode($t('api.example_query'))) ?>&amp;lang=<?= e($apiLocale) ?>&amp;limit=10' \
+  --header 'X-API-Key: YOUR_API_KEY' \
+  --header 'Accept-Language: <?= e($apiLocale) ?>'</code></pre>
             </div>
         </div>
     </section>

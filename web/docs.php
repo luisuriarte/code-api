@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Origen Salud - Portal de Documentación para Desarrolladores (med.origen.ar/docs)
  *
  * Documentación interactiva de la API REST v1 y del servidor de terminología HL7 FHIR R4.
- * Admite visualización bilingüe (ES / EN) y ejemplos de código en 7 lenguajes de programación:
+ * Admite visualización trilingüe (es-AR / EN / PT-BR) y ejemplos de código en 7 lenguajes de programación:
  * cURL, JavaScript, Python, PHP, C# (.NET), Java y Go.
  */
 
@@ -15,14 +15,15 @@ require_once __DIR__ . '/includes/i18n.php';
 
 use OrigenSalud\Web\I18n;
 
-header('Content-Type: text/html; charset=UTF-8');
-
 $locale = I18n::boot();
+
+header('Content-Type: text/html; charset=UTF-8');
+header('Vary: Accept-Language');
+header('Content-Language: ' . $locale);
 $t = static fn (string $key, array $parameters = []): string => trans($key, $parameters, $locale);
 
 $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/docs'), PHP_URL_PATH);
 $currentPath = is_string($requestPath) && $requestPath !== '' ? $requestPath : '/docs';
-$languageUrl = static fn (string $language): string => $currentPath . '?lang=' . $language;
 
 $baseUrl = rtrim((string) env('WEB_BASE_URL', 'https://med.origen.ar'), '/');
 if ($baseUrl === '') {
@@ -30,23 +31,27 @@ if ($baseUrl === '') {
 }
 
 $contactEmail = 'contacto@origen.ar';
-$accessMailto = 'mailto:' . $contactEmail . '?subject=' . rawurlencode($locale === 'en' ? 'API Access Request' : 'Solicitud de acceso API');
+$accessMailto = 'mailto:' . $contactEmail . '?subject=' . rawurlencode($t('nav.access_api'));
 $contactMailto = 'mailto:' . $contactEmail;
 $legalMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal'));
 $year = date('Y');
 
-$isEn = $locale === 'en';
 ?>
 <!doctype html>
 <html lang="<?= e($locale) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= $isEn ? 'API & FHIR Documentation | Origen Salud' : 'Documentación de API y FHIR | Origen Salud' ?></title>
-    <meta name="description" content="<?= $isEn ? 'Developer documentation for Origen Salud B2B Terminology API and HL7 FHIR R4 Terminology Services with multi-language code examples.' : 'Documentación para desarrolladores de la API REST de Origen Salud y servidor de terminología HL7 FHIR R4 con ejemplos en múltiples lenguajes.' ?>">
+    <title><?= e($t('docs.meta_title')) ?></title>
+    <meta name="description" content="<?= e($t('docs.meta_description')) ?>">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="<?= e($t('docs.meta_title')) ?>">
+    <meta property="og:description" content="<?= e($t('docs.meta_description')) ?>">
+    <meta property="og:locale" content="<?= e(I18n::metadata($locale)['og_locale']) ?>">
     <link rel="canonical" href="<?= e($baseUrl . '/docs') ?>">
-    <link rel="alternate" hreflang="es" href="<?= e($baseUrl . '/docs?lang=es') ?>">
-    <link rel="alternate" hreflang="en" href="<?= e($baseUrl . '/docs?lang=en') ?>">
+    <?php foreach (I18n::alternateLinks($currentPath) as $alternate): ?>
+    <link rel="alternate" hreflang="<?= e($alternate['hreflang']) ?>" href="<?= e($baseUrl . $alternate['href']) ?>">
+    <?php endforeach; ?>
     <link rel="stylesheet" href="assets/css/app.css">
     <style>
         /* Docs Layout & Components */
@@ -334,19 +339,7 @@ $isEn = $locale === 'en';
         </nav>
 
         <div class="header-actions">
-            <div class="lang-switch" role="group" aria-label="<?= e($t('lang.label')) ?>">
-                <a href="<?= e($languageUrl('es')) ?>"
-                   hreflang="es"
-                   lang="es"
-                   title="<?= e($t('lang.es')) ?>"
-                   <?= $locale === 'es' ? 'aria-current="true" class="is-active"' : '' ?>>ES</a>
-                <span aria-hidden="true">/</span>
-                <a href="<?= e($languageUrl('en')) ?>"
-                   hreflang="en"
-                   lang="en"
-                   title="<?= e($t('lang.en')) ?>"
-                   <?= $locale === 'en' ? 'aria-current="true" class="is-active"' : '' ?>>EN</a>
-            </div>
+            <?php require __DIR__ . '/includes/language-switcher.php'; ?>
             <a class="button button-small" href="<?= e($accessMailto) ?>"><?= e($t('nav.access')) ?></a>
         </div>
     </div>
@@ -355,62 +348,63 @@ $isEn = $locale === 'en';
 <main id="main">
     <div class="container docs-layout">
         <!-- Sidebar Navigation -->
-        <aside class="docs-sidebar" aria-label="<?= $isEn ? 'Documentation index' : 'Índice de documentación' ?>">
+        <aside class="docs-sidebar" aria-label="<?= e($t('docs.nav_index')) ?>">
             <div class="docs-nav-group">
-                <h3><?= $isEn ? 'Getting Started' : 'Primeros Pasos' ?></h3>
+                <h3><?= e($t('docs.nav_getting_started')) ?></h3>
                 <ul>
-                    <li><a href="#intro"><?= $isEn ? 'Overview & Base URL' : 'General y URL Base' ?></a></li>
-                    <li><a href="#auth"><?= $isEn ? 'Authentication' : 'Autenticación' ?></a></li>
-                    <li><a href="#domains"><?= $isEn ? 'Clinical Domains' : 'Dominios Clínicos' ?></a></li>
+                    <li><a href="#intro"><?= e($t('docs.nav_overview')) ?></a></li>
+                    <li><a href="#auth"><?= e($t('docs.nav_auth')) ?></a></li>
+                    <li><a href="#domains"><?= e($t('docs.nav_domains')) ?></a></li>
                 </ul>
             </div>
 
             <div class="docs-nav-group">
-                <h3><?= $isEn ? 'Catalog Engine (Argentina)' : 'Motor de Nomencladores' ?></h3>
+                <h3><?= e($t('docs.nav_catalog_engine')) ?></h3>
                 <ul>
-                    <li><a href="#catalogs"><?= $isEn ? 'Catalogs (/v1/catalogs)' : 'Catálogos (/v1/catalogs)' ?></a></li>
-                    <li><a href="#catalogs-items"><?= $isEn ? 'Procedures (/v1/catalogs/{id}/items)' : 'Prestaciones e Ítems' ?></a></li>
-                    <li><a href="#catalogs-mappings"><?= $isEn ? 'Semantic Mappings (/v1/mappings)' : 'Mapeos y Equivalencias' ?></a></li>
-                    <li><a href="#catalogs-pharma"><?= $isEn ? 'Pharma Identifiers (Troquel/GTIN)' : 'Vademécum (Troquel/GTIN)' ?></a></li>
+                    <li><a href="#catalogs"><?= e($t('docs.nav_catalogs')) ?></a></li>
+                    <li><a href="#catalogs-items"><?= e($t('docs.nav_catalog_items')) ?></a></li>
+                    <li><a href="#catalogs-mappings"><?= e($t('docs.nav_mappings')) ?></a></li>
+                    <li><a href="#catalogs-pharma"><?= e($t('docs.nav_pharma')) ?></a></li>
                 </ul>
             </div>
 
             <div class="docs-nav-group">
-                <h3><?= $isEn ? 'Unified Search' : 'Búsqueda Unificada' ?></h3>
+                <h3><?= e($t('docs.nav_unified_search')) ?></h3>
                 <ul>
-                    <li><a href="#search"><?= $isEn ? 'Multimodel Search (/v1/search)' : 'Búsqueda Multimodelo' ?></a></li>
+                    <li><a href="#search"><?= e($t('docs.nav_search')) ?></a></li>
                 </ul>
             </div>
 
             <div class="docs-nav-group">
-                <h3><?= $isEn ? 'Dental Module (DENTAR)' : 'Odontología (DENTAR)' ?></h3>
+                <h3><?= e($t('docs.nav_dental')) ?></h3>
                 <ul>
-                    <li><a href="#dental-diagnoses"><?= $isEn ? 'Dental Diagnoses & CIE-10' : 'Diagnósticos y CIE-10' ?></a></li>
-                    <li><a href="#dental-justifications"><?= $isEn ? 'Clinical Justifications (Audit)' : 'Justificación de Auditoría' ?></a></li>
-                    <li><a href="#dental-snomed"><?= $isEn ? 'SNOMED-CT Dental Lookup' : 'Búsqueda por SNOMED-CT' ?></a></li>
-                    <li><a href="#dental-procedure"><?= $isEn ? 'Procedure Rules & CDT' : 'Ficha Técnica y CDT 2025' ?></a></li>
+                    <li><a href="#dental-diagnoses"><?= e($t('docs.nav_dental_diagnoses')) ?></a></li>
+                    <li><a href="#dental-justifications"><?= e($t('docs.nav_dental_justifications')) ?></a></li>
+                    <li><a href="#dental-snomed"><?= e($t('docs.nav_dental_snomed')) ?></a></li>
+                    <li><a href="#dental-procedure"><?= e($t('docs.nav_dental_cdt')) ?></a></li>
+                    <li><a href="#cdt-nn"><?= e($t('docs.nav_cdt_nn')) ?></a></li>
                 </ul>
             </div>
 
             <div class="docs-nav-group">
-                <h3><?= $isEn ? 'Clinical Catalogs' : 'Catálogos Clínicos' ?></h3>
+                <h3><?= e($t('docs.nav_clinical_catalogs')) ?></h3>
                 <ul>
-                    <li><a href="#snomed"><?= $isEn ? 'SNOMED CT Concepts' : 'Conceptos SNOMED CT' ?></a></li>
-                    <li><a href="#cie10"><?= $isEn ? 'WHO ICD-10 (CIE-10)' : 'CIE-10 de la OMS' ?></a></li>
-                    <li><a href="#anmat"><?= $isEn ? 'ANMAT Medications' : 'Medicamentos ANMAT' ?></a></li>
-                    <li><a href="#loinc"><?= $isEn ? 'LOINC Observations' : 'Observaciones LOINC' ?></a></li>
-                    <li><a href="#local-catalogs"><?= $isEn ? 'Lab, Vaccines & Imaging' : 'Laboratorio, Vacunas e Imágenes' ?></a></li>
+                    <li><a href="#snomed"><?= e($t('docs.nav_snomed')) ?></a></li>
+                    <li><a href="#cie10"><?= e($t('docs.nav_cie10')) ?></a></li>
+                    <li><a href="#anmat"><?= e($t('docs.nav_anmat')) ?></a></li>
+                    <li><a href="#loinc"><?= e($t('docs.nav_loinc')) ?></a></li>
+                    <li><a href="#local-catalogs"><?= e($t('docs.nav_local_catalogs')) ?></a></li>
                 </ul>
             </div>
 
             <div class="docs-nav-group">
-                <h3><?= $isEn ? 'HL7® FHIR® R4' : 'HL7® FHIR® R4' ?></h3>
+                <h3><?= e($t('docs.nav_fhir')) ?></h3>
                 <ul>
-                    <li><a href="#fhir-intro"><?= $isEn ? 'FHIR Terminology Service' : 'Servidor Terminológico' ?></a></li>
-                    <li><a href="#fhir-lookup"><?= $isEn ? 'CodeSystem $lookup' : 'Operación $lookup' ?></a></li>
-                    <li><a href="#fhir-expand"><?= $isEn ? 'ValueSet $expand' : 'Operación $expand' ?></a></li>
-                    <li><a href="#fhir-translate"><?= $isEn ? 'ConceptMap $translate' : 'Operación $translate' ?></a></li>
-                    <li><a href="#fhir-resources"><?= $isEn ? 'Procedure & Condition' : 'Recursos Procedure y Condition' ?></a></li>
+                    <li><a href="#fhir-intro"><?= e($t('docs.nav_fhir_intro')) ?></a></li>
+                    <li><a href="#fhir-lookup"><?= e($t('docs.nav_fhir_lookup')) ?></a></li>
+                    <li><a href="#fhir-expand"><?= e($t('docs.nav_fhir_expand')) ?></a></li>
+                    <li><a href="#fhir-translate"><?= e($t('docs.nav_fhir_translate')) ?></a></li>
+                    <li><a href="#fhir-resources"><?= e($t('docs.nav_fhir_resources')) ?></a></li>
                 </ul>
             </div>
         </aside>
@@ -418,58 +412,52 @@ $isEn = $locale === 'en';
         <!-- Documentation Content -->
         <article class="docs-content">
             <div class="docs-header">
-                <h1><?= $isEn ? 'Developer API Documentation' : 'Documentación de la API para Desarrolladores' ?></h1>
+                <h1><?= e($t('docs.header_title')) ?></h1>
                 <p class="lead">
-                    <?= $isEn
-                        ? 'Connect your Electronic Health Records (EHR), dental billing engines, and e-prescription systems with Origen Salud B2B Terminology-as-a-Service and HL7 FHIR R4 standard services.'
-                        : 'Conecta tus Historias Clínicas Electrónicas (HCE), motores de auditoría odontológica y plataformas de receta electrónica a la infraestructura de terminología clínica unificada de Origen Salud.'
+                    <?= e($t('docs.header_lead'))
                     ?>
                 </p>
             </div>
 
             <!-- 1. GENERAL & AUTH -->
             <section id="intro" class="docs-section">
-                <h2><?= $isEn ? '1. Overview & Base URLs' : '1. Información General y URLs Base' ?></h2>
+                <h2><?= e($t('docs.overview_title')) ?></h2>
                 <p>
-                    <?= $isEn
-                        ? 'All API endpoints deliver JSON responses with UTF-8 encoding. Requests must be performed over HTTPS.'
-                        : 'Todas las solicitudes se realizan mediante HTTPS y devuelven respuestas en formato JSON codificado en UTF-8.'
+                    <?= e($t('docs.overview_text'))
                     ?>
                 </p>
                 <table class="param-table">
                     <thead>
                         <tr>
-                            <th><?= $isEn ? 'Environment' : 'Entorno' ?></th>
+                            <th><?= e($t('docs.table_environment')) ?></th>
                             <th>URL</th>
-                            <th><?= $isEn ? 'Description' : 'Descripción' ?></th>
+                            <th><?= e($t('docs.table_description')) ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td><strong>Production REST</strong></td>
                             <td><code>https://api.origen.ar/v1</code></td>
-                            <td><?= $isEn ? 'Unified REST API for terminology queries and audits.' : 'API REST unificada de consultas y auditoría terminológica.' ?></td>
+                            <td><?= e($t('docs.env_rest')) ?></td>
                         </tr>
                         <tr>
                             <td><strong>HL7 FHIR R4</strong></td>
                             <td><code>https://api.origen.ar/fhir</code></td>
-                            <td><?= $isEn ? 'Official HL7 FHIR Release 4 Terminology Server.' : 'Servidor terminológico estándar HL7 FHIR Release 4.' ?></td>
+                            <td><?= e($t('docs.env_fhir')) ?></td>
                         </tr>
                         <tr>
                             <td><strong>Health Check</strong></td>
                             <td><code>https://api.origen.ar/health</code></td>
-                            <td><?= $isEn ? 'Public monitoring endpoint for uptime and load balancers.' : 'Endpoint público para balanceadores y monitoreo de disponibilidad.' ?></td>
+                            <td><?= e($t('docs.env_health')) ?></td>
                         </tr>
                     </tbody>
                 </table>
             </section>
 
             <section id="auth" class="docs-section">
-                <h2><?= $isEn ? '2. Authentication' : '2. Autenticación' ?></h2>
+                <h2><?= e($t('docs.auth_title')) ?></h2>
                 <p>
-                    <?= $isEn
-                        ? 'Authentication is performed using a B2B API Key sent in the HTTP headers. You can pass it via standard Bearer token or direct X-API-Key header:'
-                        : 'La autenticación se realiza mediante una API Key corporativa enviada en las cabeceras HTTP. Es posible enviarla mediante Bearer token estándar o mediante la cabecera X-API-Key:'
+                    <?= e($t('docs.auth_text'))
                     ?>
                 </p>
                 <div class="endpoint-badge">
@@ -479,10 +467,8 @@ $isEn = $locale === 'en';
 
                 <div class="alert-box">
                     <p>
-                        <strong><?= $isEn ? 'Important:' : 'Importante:' ?></strong>
-                        <?= $isEn
-                            ? 'Never expose your API Key in client-side applications (SPA, public web pages, or mobile apps). All requests should originate from your secure backend servers.'
-                            : 'Nunca expongas tu API Key en aplicaciones del lado del cliente (SPAs, páginas web públicas o apps móviles sin backend intermedio). Todas las llamadas deben originarse desde servidores seguros.'
+                        <strong><?= e($t('docs.auth_important')) ?></strong>
+                        <?= e($t('docs.auth_warning'))
                         ?>
                     </p>
                 </div>
@@ -490,62 +476,60 @@ $isEn = $locale === 'en';
 
             <!-- CATALOG ENGINE -->
             <section id="catalogs" class="docs-section">
-                <h2><?= $isEn ? '3. Origen Catalog Engine & Argentine Healthcare Catalogs' : '3. Motor de Catálogos y Nomencladores Argentinos' ?></h2>
+                <h2><?= e($t('docs.catalogs_title')) ?></h2>
                 <p>
-                    <?= $isEn
-                        ? 'Origen Catalog Engine 1.0 provides decoupled, versioned access to national healthcare nomenclators, proprietary catalogs (DENTAR), pricing schedules (UB, Galenos, Modules, Pesos), and pharmaceutical identifiers (Troquel, AlfaBeta, Kairos, GTIN).'
-                        : 'Origen Catalog Engine 1.0 ofrece acceso desacoplado y versionado a los nomencladores nacionales argentinos, catálogos propios (DENTAR), esquemas arancelarios (UB, Galenos, Módulos, Pesos) e identificadores farmacéuticos (Troquel, AlfaBeta, Kairos, GTIN).'
+                    <?= e($t('docs.catalogs_text'))
                     ?>
                 </p>
 
                 <table class="param-table">
                     <thead>
                         <tr>
-                            <th><?= $isEn ? 'Scope' : 'Ámbito' ?></th>
-                            <th><?= $isEn ? 'Catalog Code' : 'Código de Catálogo' ?></th>
-                            <th><?= $isEn ? 'Description' : 'Descripción' ?></th>
+                            <th><?= e($t('docs.table_scope')) ?></th>
+                            <th><?= e($t('docs.table_catalog_code')) ?></th>
+                            <th><?= e($t('docs.table_description')) ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td><strong style="color:var(--teal-dark)">Propio</strong></td>
                             <td><code>dentar</code></td>
-                            <td><?= $isEn ? 'DENTAR-PR: procedimientos odontológicos harmonized with ADA CDT 2025 and ICD-10.' : 'Sistema DENTAR: Prestaciones odontológicas armonizadas con ADA CDT 2025 y CIE-10.' ?></td>
+                            <td><?= e($t('docs.catalog_dentar')) ?></td>
                         </tr>
                         <tr>
                             <td><strong>Argentina</strong></td>
                             <td><code>nn-pmo</code></td>
-                            <td><?= $isEn ? 'National Medical & Sanatorial Nomenclator (PMO) with Galenos.' : 'Nomenclador Nacional Médico y Quirúrgico (PMO) con Galenos.' ?></td>
+                            <td><?= e($t('docs.catalog_pmo')) ?></td>
                         </tr>
                         <tr>
                             <td><strong>Argentina</strong></td>
                             <td><code>nbu</code></td>
-                            <td><?= $isEn ? 'CUBRA Single Biochemical Nomenclator with Biochemical Units (UB) & LOINC.' : 'Nomenclador Bioquímico Único de CUBRA con Unidades Bioquímicas (UB) y LOINC.' ?></td>
+                            <td><?= e($t('docs.catalog_nbu')) ?></td>
                         </tr>
                         <tr>
                             <td><strong>Argentina</strong></td>
                             <td><code>nhpgd</code></td>
-                            <td><?= $isEn ? 'Decentralized Public Hospitals Nomenclator for cost recovery.' : 'Nomenclador de Hospitales Públicos Descentralizados (recupero hospitalario).' ?></td>
+                            <td><?= e($t('docs.catalog_hospitales')) ?></td>
                         </tr>
                         <tr>
                             <td><strong>Argentina</strong></td>
                             <td><code>andis</code></td>
-                            <td><?= $isEn ? 'Disability Basic Services Nomenclator with rehabilitation modules.' : 'Nomenclador de Prestaciones Básicas para Personas con Discapacidad (ANDIS).' ?></td>
+                            <td><?= e($t('docs.catalog_discapacidad')) ?></td>
                         </tr>
                         <tr>
                             <td><strong>Argentina</strong></td>
                             <td><code>kinesiologia</code></td>
-                            <td><?= $isEn ? 'Kinesiology and Physical Therapy sessions.' : 'Nomenclador de Fisioterapia y Kinesiología motriz y respiratoria.' ?></td>
+                            <td><?= e($t('docs.catalog_fisioterapia')) ?></td>
                         </tr>
                         <tr>
                             <td><strong>Argentina</strong></td>
                             <td><code>salud-mental</code></td>
-                            <td><?= $isEn ? 'Psychology and Mental Health sessions and psychodiagnosis.' : 'Nomenclador de Psicología y Salud Mental (psicoterapias y peritajes).' ?></td>
+                            <td><?= e($t('docs.catalog_psicologia')) ?></td>
                         </tr>
                     </tbody>
                 </table>
 
-                <h3 id="catalogs-items"><?= $isEn ? 'Browse Catalog Items & Procedures' : 'Consultar Prestaciones de un Catálogo' ?></h3>
+                <h3 id="catalogs-items"><?= e($t('docs.catalog_items_title')) ?></h3>
                 <div class="endpoint-badge">
                     <span class="method-get">GET</span>
                     <code>/v1/catalogs/{catalog_code}/items?q={query}&amp;limit={n}</code>
@@ -562,7 +546,7 @@ $isEn = $locale === 'en';
                             <button class="tab-btn" data-lang="java">Java</button>
                             <button class="tab-btn" data-lang="go">Go</button>
                         </div>
-                        <button class="copy-btn"><?= $isEn ? 'Copy' : 'Copiar' ?></button>
+                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
                     </div>
 
                     <pre class="code-pane is-active" data-lang="curl"><code># Consultar hemograma en NBU
@@ -610,79 +594,76 @@ body, _ := io.ReadAll(resp.Body)
 fmt.Println(string(body))</code></pre>
                 </div>
 
-                <h3 id="catalogs-mappings"><?= $isEn ? 'Cross-Terminology Mappings (SNOMED, CIE-10, LOINC)' : 'Mapeos Cruzados (SNOMED-CT, CIE-10, LOINC)' ?></h3>
+                <h3 id="catalogs-mappings"><?= e($t('docs.mappings_title')) ?></h3>
                 <div class="endpoint-badge">
                     <span class="method-get">GET</span>
                     <code>/v1/mappings?system={system}&amp;code={code}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Discover which procedures correspond to an international clinical concept (or vice-versa).'
-                        : 'Descubre qué prestaciones corresponden a un concepto clínico internacional (o viceversa).'
+                    <?= e($t('docs.mappings_text'))
                     ?>
                 </p>
 
-                <h3 id="catalogs-pharma"><?= $isEn ? 'Pharmacy: Commercial Identifiers (Troquel / AlfaBeta / Kairos / GTIN)' : 'Farmacia: Identificadores Comerciales (Troquel / AlfaBeta / Kairos / GTIN)' ?></h3>
+                <h3 id="catalogs-pharma"><?= e($t('docs.pharma_title')) ?></h3>
                 <div class="endpoint-badge">
                     <span class="method-get">GET</span>
                     <code>/v1/medicines/identifiers/{system}/{code}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Validate prescriptions and insurance coverage directly by Troquel number, AlfaBeta ID, Kairos ID, or GS1 GTIN barcode.'
-                        : 'Valida recetas electrónicas y coberturas de farmacia directamente por Número de Troquel, código AlfaBeta, código Kairos o código de barras GTIN.'
+                    <?= e($t('docs.pharma_text'))
                     ?>
                 </p>
             </section>
 
             <!-- 2. UNIFIED SEARCH -->
             <section id="search" class="docs-section">
-                <h2><?= $isEn ? '3. Unified Multimodel Search' : '3. Búsqueda Unificada Multimodelo' ?></h2>
-                <p>
-                    <?= $isEn
-                        ? 'Perform blazing-fast searches across multiple clinical vocabularies simultaneously. Trigram matching (pg_trgm) and phonetic ranking ensure typo tolerance.'
-                        : 'Realiza búsquedas simultáneas ultrarrápidas a través de múltiples vocabularios clínicos. La coincidencia por trigramas (pg_trgm) y ponderación fonética ofrece tolerancia ante errores ortográficos.'
-                    ?>
-                </p>
+                <h2><?= e($t('docs.search_title')) ?></h2>
+                <p><?= e($t('docs.search_text')) ?></p>
 
                 <div class="endpoint-badge">
                     <span class="method-get">GET</span>
-                    <code>/v1/search?q={query}&amp;domains={d1,d2}&amp;lang={es|en}&amp;limit={n}</code>
+                    <code>/v1/search?q={query}&amp;domains={d1,d2}&amp;lang={es-AR|en|pt-BR}&amp;limit={n}</code>
                 </div>
 
                 <table class="param-table">
                     <thead>
                         <tr>
-                            <th><?= $isEn ? 'Parameter' : 'Parámetro' ?></th>
-                            <th><?= $isEn ? 'Type' : 'Tipo' ?></th>
-                            <th><?= $isEn ? 'Default' : 'Defecto' ?></th>
-                            <th><?= $isEn ? 'Description' : 'Descripción' ?></th>
+                            <th><?= e($t('docs.table_parameter')) ?></th>
+                            <th><?= e($t('docs.table_type')) ?></th>
+                            <th><?= e($t('docs.table_default')) ?></th>
+                            <th><?= e($t('docs.table_description')) ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td><code>q</code></td>
                             <td>string</td>
-                            <td><em><?= $isEn ? 'Required' : 'Requerido' ?></em></td>
-                            <td><?= $isEn ? 'Search term, clinical keyword or exact code.' : 'Término a buscar, palabra clave clínica o código exacto.' ?></td>
+                            <td><em><?= e($t('docs.table_required')) ?></em></td>
+                            <td><?= e($t('docs.search_q')) ?></td>
                         </tr>
                         <tr>
                             <td><code>domains</code></td>
                             <td>string</td>
                             <td><code>snomed,cie10,odontologia</code></td>
-                            <td><?= $isEn ? 'Comma-separated list of domains to search.' : 'Lista separada por comas de dominios clínicos a consultar.' ?></td>
+                            <td><?= e($t('docs.search_domains')) ?></td>
                         </tr>
                         <tr>
                             <td><code>limit</code></td>
                             <td>integer</td>
                             <td><code>20</code></td>
-                            <td><?= $isEn ? 'Number of results (max 100).' : 'Cantidad de resultados por página (máximo 100).' ?></td>
+                            <td><?= e($t('docs.search_limit')) ?></td>
                         </tr>
                         <tr>
                             <td><code>lang</code></td>
                             <td>string</td>
-                            <td><code>es</code></td>
-                            <td><?= $isEn ? 'Language for descriptions (es or en).' : 'Idioma de las descripciones (es o en).' ?></td>
+                            <td><code>es-AR</code></td>
+                            <td><?= e($t('docs.search_lang')) ?></td>
+                        </tr>
+                        <tr>
+                            <td><code>Accept-Language</code></td>
+                            <td>header</td>
+                            <td><code>es-AR</code></td>
+                            <td><?= e($t('docs.search_accept_language')) ?></td>
                         </tr>
                     </tbody>
                 </table>
@@ -699,23 +680,26 @@ fmt.Println(string(body))</code></pre>
                             <button class="tab-btn" data-lang="java">Java</button>
                             <button class="tab-btn" data-lang="go">Go</button>
                         </div>
-                        <button class="copy-btn"><?= $isEn ? 'Copy' : 'Copiar' ?></button>
+                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
                     </div>
 
                     <!-- cURL -->
-                    <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/search?q=caries&domains=odontologia,snomed,cie10&limit=5" \
+                    <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/search?q=caries&amp;domains=odontologia,snomed,cie10&amp;lang=<?= e(I18n::metadata($locale)['api_language']) ?>&amp;limit=5" \
   -H "Authorization: Bearer TU_API_KEY" \
-  -H "Accept: application/json"</code></pre>
+  -H "Accept: application/json" \
+  -H "Accept-Language: <?= e(I18n::metadata($locale)['api_language']) ?>"</code></pre>
 
                     <!-- JavaScript -->
                     <pre class="code-pane" data-lang="js"><code>const apiKey = 'TU_API_KEY';
-const url = 'https://api.origen.ar/v1/search?q=caries&domains=odontologia,snomed,cie10&limit=5';
+const language = '<?= e(I18n::metadata($locale)['api_language']) ?>';
+const url = 'https://api.origen.ar/v1/search?q=caries&amp;domains=odontologia,snomed,cie10&amp;lang=' + language + '&amp;limit=5';
 
 const response = await fetch(url, {
   method: 'GET',
   headers: {
     'Authorization': `Bearer ${apiKey}`,
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'Accept-Language': language
   }
 });
 
@@ -829,15 +813,13 @@ func main() {
 
             <!-- 3. DENTAL MODULE (DENTAR) -->
             <section id="dental-diagnoses" class="docs-section">
-                <h2><?= $isEn ? '4. Dental Module (DENTAR / ADA CDT / CIE-10)' : '4. Módulo Odontológico (DENTAR / ADA CDT / CIE-10)' ?></h2>
+                <h2><?= e($t('docs.dental_title')) ?></h2>
                 <p>
-                    <?= $isEn
-                        ? 'DENTAR-PR armoniza los procedimientos dentales y DENTAR-DX los diagnósticos of the Argentine Dental Nomenclator, ADA CDT 2025 (12 categories), permanent DNT-XXXXXX codes, SNOMED-CT clinical procedures, and ICD-10 (K00–K14) diagnosis justifications.'
-                        : 'DENTAR armoniza los 11 capítulos del Nomenclador Odontológico Argentino, ADA CDT 2025 (12 categorías), códigos permanentes DNT-XXXXXX, procedimientos clínicos SNOMED-CT y justificaciones diagnósticas CIE-10 (K00–K14).'
+                    <?= e($t('docs.dental_text'))
                     ?>
                 </p>
 
-                <h3><?= $isEn ? 'Dental Diagnoses Catalog & Search' : 'Catálogo y Búsqueda de Diagnósticos Odontológicos' ?></h3>
+                <h3><?= e($t('docs.dental_diagnoses_title')) ?></h3>
                 <div class="endpoint-badge">
                     <span class="method-get">GET</span>
                     <code>/v1/odontologia/diagnosticos[?q=...&amp;snomed=...&amp;cie10=...]</code>
@@ -855,7 +837,7 @@ func main() {
                             <button class="tab-btn" data-lang="java">Java</button>
                             <button class="tab-btn" data-lang="go">Go</button>
                         </div>
-                        <button class="copy-btn"><?= $isEn ? 'Copy' : 'Copiar' ?></button>
+                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
                     </div>
 
                     <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos?snomed=80967001" \
@@ -930,11 +912,9 @@ fmt.Println(string(body))</code></pre>
 
             <!-- 4. CLINICAL JUSTIFICATIONS -->
             <section id="dental-justifications" class="docs-section">
-                <h3><?= $isEn ? 'Clinical Justification & Audit Rules for Procedures' : 'Justificación Clínica y Auditoría para Prestaciones' ?></h3>
+                <h3><?= e($t('docs.dental_justification_title')) ?></h3>
                 <p>
-                    <?= $isEn
-                        ? 'Verify which diagnoses justify a dental procedure before authorization or billing. Accepts Argentine code (02.01), CDT (D2140), DENTAR (DNT-PR-000007), internal ID, or SNOMED-CT SCTID (424759004).'
-                        : 'Consulta qué diagnósticos justifican una práctica odontológica antes de autorizarla o facturarla. Acepta indistintamente código del nomenclador argentino (02.01), código CDT (D2140), código DENTAR (DNT-PR-000007), ID numérico o SCTID de SNOMED-CT (424759004).'
+                    <?= e($t('docs.dental_justification_text'))
                     ?>
                 </p>
 
@@ -955,7 +935,7 @@ fmt.Println(string(body))</code></pre>
                             <button class="tab-btn" data-lang="java">Java</button>
                             <button class="tab-btn" data-lang="go">Go</button>
                         </div>
-                        <button class="copy-btn"><?= $isEn ? 'Copy' : 'Copiar' ?></button>
+                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
                     </div>
 
                     <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/odontologia/02.01/diagnosticos" \
@@ -1005,11 +985,9 @@ fmt.Println(string(body))</code></pre>
 
             <!-- 5. SNOMED DENTAL LOOKUP -->
             <section id="dental-snomed" class="docs-section">
-                <h3><?= $isEn ? 'Direct SNOMED-CT Dental Resolution' : 'Resolución Directa por SNOMED-CT' ?></h3>
+                <h3><?= e($t('docs.dental_snomed_title')) ?></h3>
                 <p>
-                    <?= $isEn
-                        ? 'Query any SNOMED-CT Concept ID to instantly discover if it represents a dental procedure, a diagnosis, or both, with all cross-mappings.'
-                        : 'Consulta cualquier Concept ID de SNOMED-CT para descubrir de inmediato si representa una práctica odontológica, un diagnóstico bucal o ambos, con todos sus mapeos cruzados.'
+                    <?= e($t('docs.dental_snomed_text'))
                     ?>
                 </p>
 
@@ -1029,7 +1007,7 @@ fmt.Println(string(body))</code></pre>
                             <button class="tab-btn" data-lang="java">Java</button>
                             <button class="tab-btn" data-lang="go">Go</button>
                         </div>
-                        <button class="copy-btn"><?= $isEn ? 'Copy' : 'Copiar' ?></button>
+                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
                     </div>
 
                     <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/odontologia/snomed/80967001" \
@@ -1077,9 +1055,40 @@ fmt.Println(string(body))</code></pre>
                 </div>
             </section>
 
+            <!-- CDT / NN: exposición real -->
+            <section id="cdt-nn" class="docs-section">
+                <h2><?= e($t('cdtnn.title')) ?></h2>
+                <p><?= e($t('cdtnn.intro')) ?></p>
+
+                <h3><?= e($t('cdtnn.cdt_title')) ?></h3>
+                <p><?= e($t('cdtnn.cdt_text')) ?></p>
+                <div class="endpoint-badge">
+                    <span class="method-get">GET</span>
+                    <code>/v1/search/odontologia?q={query}&amp;lang={locale}</code>
+                </div>
+                <div class="endpoint-badge" style="margin-top: 6px;">
+                    <span class="method-get">GET</span>
+                    <code>/v1/odontologia/{id}</code>
+                </div>
+                <div class="alert-box">
+                    <p><strong><?= e($t('cdtnn.no_cdt_endpoint')) ?></strong>
+                        <?= e($t('cdtnn.cdt_dialect')) ?></p>
+                </div>
+
+                <h3><?= e($t('cdtnn.nn_title')) ?></h3>
+                <p><?= e($t('cdtnn.nn_text')) ?></p>
+
+                <h3><?= e($t('cdtnn.nomenclador_title')) ?></h3>
+                <div class="endpoint-badge">
+                    <span class="method-get">GET</span>
+                    <code>/v1/nomenclador</code>
+                </div>
+                <p><?= e($t('cdtnn.nomenclador_text')) ?></p>
+            </section>
+
             <!-- 6. CLINICAL CATALOGS -->
             <section id="snomed" class="docs-section">
-                <h2><?= $isEn ? '5. Clinical Catalogs & Concept Endpoints' : '5. Catálogos Clínicos y Endpoints de Conceptos' ?></h2>
+                <h2><?= e($t('docs.clinical_title')) ?></h2>
 
                 <h3>SNOMED-CT Concept Detail (`/v1/snomed/{id}`)</h3>
                 <div class="endpoint-badge">
@@ -1087,9 +1096,7 @@ fmt.Println(string(body))</code></pre>
                     <code>/v1/snomed/{concept_id}?lang={es|en}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Returns fully specified names (FSN), active synonyms, direct hierarchy (parents and children), ICD-10 maps, and an enriched dental block if the concept relates to oral healthcare.'
-                        : 'Devuelve nombres completamente especificados (FSN), sinónimos activos, jerarquía directa (padres e hijos), mapeos a CIE-10 y un bloque dental enriquecido automáticamente si el concepto corresponde a odontología.'
+                    <?= e($t('docs.snomed_text'))
                     ?>
                 </p>
 
@@ -1099,9 +1106,7 @@ fmt.Println(string(body))</code></pre>
                     <code>/v1/cie10/{codigo}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Lookup any WHO ICD-10 code (e.g., K02.1 or K021) with bilingual English and Spanish descriptions and official SNOMED-CT cross-mappings.'
-                        : 'Consulta cualquier código CIE-10 de la OMS (ej. K02.1 o K021) con descripciones oficiales bilingües en español e inglés y equivalencias cruzadas a SNOMED-CT.'
+                    <?= e($t('docs.cie10_text'))
                     ?>
                 </p>
 
@@ -1111,9 +1116,7 @@ fmt.Println(string(body))</code></pre>
                     <code>/v1/anmat/{id}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Query medications authorized by ANMAT Argentina, including certificate number, generic/commercial brand, pharmaceutical form, presentation, lab, and mapped SNOMED-CT concept ID.'
-                        : 'Consulta especialidades medicinales autorizadas por ANMAT Argentina, incluyendo número de certificado, nombre genérico y comercial, forma farmacéutica, laboratorio y concepto SNOMED-CT vinculado.'
+                    <?= e($t('docs.anmat_text'))
                     ?>
                 </p>
 
@@ -1127,9 +1130,7 @@ fmt.Println(string(body))</code></pre>
                     <code>/v1/loinc/{code}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Search across all 112,400+ official LOINC 2.83 concepts with localized Spanish names (Mexico and Argentina), properties, UCUM units, MapTo links, and Argentine biochemical nomenclator (NBU) mappings.'
-                        : 'Búsqueda en los más de 112.400 conceptos oficiales de LOINC 2.83 con denominaciones localizadas en español (México y Argentina), propiedades analíticas, unidades UCUM, mapeos MapTo y correlación directa con el Nomenclador Bioquímico Único (NBU).'
+                    <?= e($t('docs.loinc_text'))
                     ?>
                 </p>
                 <div class="code-tabs">
@@ -1184,18 +1185,16 @@ fmt.Println(string(body))</code></pre>
 
             <!-- 7. HL7 FHIR R4 -->
             <section id="fhir-intro" class="docs-section">
-                <h2><?= $isEn ? '6. HL7® FHIR® R4 Terminology Services' : '6. Servicios de Terminología HL7® FHIR® R4' ?></h2>
+                <h2><?= e($t('docs.fhir_title')) ?></h2>
                 <p>
-                    <?= $isEn
-                        ? 'Origen Salud supports the official HL7 FHIR Release 4 standard for Terminology Servers, allowing seamless integration with EHR systems such as Epic, Cerner, GNU Health, and OpenEMR.'
-                        : 'Origen Salud soporta el estándar oficial HL7 FHIR Release 4 para servidores de terminología, permitiendo la integración directa con sistemas de Historia Clínica Electrónica como Epic, Cerner, GNU Health y OpenEMR.'
+                    <?= e($t('docs.fhir_text'))
                     ?>
                 </p>
 
                 <table class="param-table">
                     <thead>
                         <tr>
-                            <th><?= $isEn ? 'Terminology' : 'Terminología' ?></th>
+                            <th><?= e($t('docs.table_terminology')) ?></th>
                             <th>Canonical URI (System)</th>
                         </tr>
                     </thead>
@@ -1237,9 +1236,7 @@ fmt.Println(string(body))</code></pre>
                     <code>/fhir/CodeSystem/$lookup?system={uri}&amp;code={codigo}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Inspects a code and returns human-readable designations, audit properties (e.g. tooth required, pre/post-op x-rays), and category groupings in a standard FHIR Parameters resource.'
-                        : 'Inspecciona un código y devuelve designaciones legibles, propiedades de auditoría (pieza requerida, radiografías previas/posteriores) y agrupaciones categóricas en un recurso FHIR Parameters estándar.'
+                    <?= e($t('docs.fhir_lookup_text'))
                     ?>
                 </p>
 
@@ -1249,9 +1246,7 @@ fmt.Println(string(body))</code></pre>
                     <code>/fhir/ValueSet/$expand?url={valueset_url}&amp;filter={query}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Expands a ValueSet for live clinical search, dropdowns, and autocomplete in the EHR UI.'
-                        : 'Expande conjuntos de valores para búsqueda clínica en tiempo real, menús desplegables y autocompletado en la interfaz de la HCE.'
+                    <?= e($t('docs.fhir_expand_text'))
                     ?>
                 </p>
 
@@ -1261,17 +1256,13 @@ fmt.Println(string(body))</code></pre>
                     <code>/fhir/ConceptMap/$translate?code={code}&amp;system={source}&amp;target={target}</code>
                 </div>
                 <p>
-                    <?= $isEn
-                        ? 'Translates codes across systems (e.g. Argentine Nomenclator to ADA CDT 2025, or Procedure to justifying ICD-10 Diagnoses).'
-                        : 'Traduce códigos entre diferentes vocabularios (ej. Nomenclador Argentino a ADA CDT 2025, o Prestación a Diagnósticos CIE-10 que la justifican).'
+                    <?= e($t('docs.fhir_translate_text'))
                     ?>
                 </p>
 
-                <h3 id="fhir-resources"><?= $isEn ? 'Clinical Resource Modeling' : 'Modelado de Recursos Clínicos' ?></h3>
+                <h3 id="fhir-resources"><?= e($t('docs.fhir_resources_title')) ?></h3>
                 <p>
-                    <?= $isEn
-                        ? 'Example representing a restorative dental intervention in an HL7 FHIR Procedure resource with tooth 36 (FDI system) in bodySite:'
-                        : 'Ejemplo de representación de una intervención restauradora en un recurso HL7 FHIR Procedure con especificación de pieza dental 36 (sistema FDI) en bodySite:'
+                    <?= e($t('docs.fhir_resources_text'))
                     ?>
                 </p>
                 <div class="response-card">
@@ -1418,7 +1409,7 @@ fmt.Println(string(body))</code></pre>
                     try {
                         await navigator.clipboard.writeText(activePane.innerText);
                         const originalText = copyBtn.innerText;
-                        copyBtn.innerText = '<?= $isEn ? 'Copied!' : '¡Copiado!' ?>';
+                        copyBtn.innerText = <?= json_encode($t('docs.copied'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                         setTimeout(() => {
                             copyBtn.innerText = originalText;
                         }, 2000);

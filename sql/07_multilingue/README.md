@@ -139,8 +139,13 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   `php tools/php/verificar_fase8.php`. Fase 9 ya está cableada a los endpoints:
   `Accept-Language`/`lang`, `Vary`, `Content-Language`, publicación solo de
   campos aprobados y `field_languages` por campo; se verifica con
-  `php tools/php/verificar_fase9.php`. Las fases 13 y 14 dependen del
-  corte/rollback, en tensión con la decisión «Sin backup». No se incluyen aquí.
+  `php tools/php/verificar_fase9.php`. Fase 10 quedó implementada en el portal:
+  tres locales (`es-AR`, `en`, `pt-BR`), buscador que consume `GET /v1/search`
+  propagando `lang`/`Accept-Language`, visualización del contrato idiomático de
+  Fase 9 y documentación de las rutas reales de CDT/NN; se verifica con
+  `php tools/php/verificar_fase10.php`. Tampoco requiere script SQL. Las fases
+  13 y 14 dependen del corte/rollback, en tensión con la decisión «Sin backup».
+  No se incluyen aquí.
 
 **Sin backup**: decisión explícita del responsable sobre datos de prueba no
 reales. Estos scripts son aditivos y no destruyen tablas, columnas ni datos

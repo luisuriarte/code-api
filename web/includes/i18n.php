@@ -6,8 +6,11 @@ declare(strict_types=1);
  * Internacionalización del portal web (med.origen.ar).
  *
  * Usa el componente independiente symfony/translation con archivos YAML.
+ * Los idiomas seleccionables son es-AR, en y pt-BR (Fase 10). Los alias es→es-AR
+ * y pt→pt-BR se aplican solo a la entrada del cliente; es-MX no se aliasa.
+ *
  * El idioma se resuelve en este orden:
- *   1. Parámetro ?lang=es|en
+ *   1. Parámetro ?lang=
  *   2. Cookie persistente
  *   3. Header Accept-Language
  *   4. Idioma por defecto (WEB_DEFAULT_LOCALE)
@@ -19,9 +22,40 @@ namespace OrigenSalud\Web {
 
     final class I18n
     {
-        public const SUPPORTED = ['es', 'en'];
-        public const DEFAULT_LOCALE = 'es';
+        public const SUPPORTED = ['es-AR', 'en', 'pt-BR'];
+        public const DEFAULT_LOCALE = 'es-AR';
         public const COOKIE_NAME = 'origen_locale';
+
+        /** Alias de entrada. Ninguno se aplica a etiquetas de origen como es-MX. */
+        private const ALIASES = [
+            'es' => 'es-AR',
+            'pt' => 'pt-BR',
+        ];
+
+        /** Metadatos públicos por locale seleccionable. */
+        private const METADATA = [
+            'es-AR' => [
+                'hreflang' => 'es-AR',
+                'og_locale' => 'es_AR',
+                'label' => 'Español (Argentina)',
+                'short' => 'ES',
+                'api_language' => 'es-AR',
+            ],
+            'en' => [
+                'hreflang' => 'en',
+                'og_locale' => 'en_US',
+                'label' => 'English',
+                'short' => 'EN',
+                'api_language' => 'en',
+            ],
+            'pt-BR' => [
+                'hreflang' => 'pt-BR',
+                'og_locale' => 'pt_BR',
+                'label' => 'Português (Brasil)',
+                'short' => 'PT',
+                'api_language' => 'pt-BR',
+            ],
+        ];
 
         private const COOKIE_TTL = 31536000; // 1 año
         private const DOMAIN = 'messages';
@@ -50,6 +84,75 @@ namespace OrigenSalud\Web {
         public static function locale(): string
         {
             return self::$locale ?? self::DEFAULT_LOCALE;
+        }
+
+        /** @return list<string> */
+        public static function supported(): array
+        {
+            return self::SUPPORTED;
+        }
+
+        /**
+         * Normaliza una entrada a un locale seleccionable.
+         *
+         * Conserva es-AR y pt-BR. Acepta los alias es y pt. No convierte es-MX
+         * ni otras variantes regionales en es-AR. en-US se reduce a en porque
+         * no existe una variante inglesa seleccionable.
+         */
+        public static function canonical(?string $locale): ?string
+        {
+            if ($locale === null) {
+                return null;
+            }
+
+            $tag = strtolower(trim($locale));
+
+            if ($tag === '') {
+                return null;
+            }
+
+            if (isset(self::ALIASES[$tag])) {
+                return self::ALIASES[$tag];
+            }
+
+            foreach (self::SUPPORTED as $supported) {
+                if (strtolower($supported) === $tag) {
+                    return $supported;
+                }
+            }
+
+            return str_starts_with($tag, 'en-') ? 'en' : null;
+        }
+
+        /** @return array{hreflang: string, og_locale: string, label: string, short: string, api_language: string} */
+        public static function metadata(?string $locale = null): array
+        {
+            $canonical = self::canonical($locale) ?? self::locale();
+
+            return self::METADATA[$canonical] ?? self::METADATA[self::DEFAULT_LOCALE];
+        }
+
+        /**
+         * @return list<array{hreflang: string, href: string, label: string, short: string, active: bool}>
+         */
+        public static function alternateLinks(string $currentPath, string $baseUrl = ''): array
+        {
+            $active = self::locale();
+            $prefix = rtrim($baseUrl, '/');
+            $links = [];
+
+            foreach (self::SUPPORTED as $supported) {
+                $metadata = self::METADATA[$supported];
+                $links[] = [
+                    'hreflang' => $metadata['hreflang'],
+                    'href' => $prefix . $currentPath . '?lang=' . rawurlencode($supported),
+                    'label' => $metadata['label'],
+                    'short' => $metadata['short'],
+                    'active' => $supported === $active,
+                ];
+            }
+
+            return $links;
         }
 
         /**
@@ -129,20 +232,6 @@ namespace OrigenSalud\Web {
         }
 
         /**
-         * Normaliza variantes regionales (es-AR, en-US) al locale base.
-         */
-        private static function canonical(?string $locale): ?string
-        {
-            if ($locale === null) {
-                return null;
-            }
-
-            $primary = strtolower(explode('-', trim($locale))[0]);
-
-            return in_array($primary, self::SUPPORTED, true) ? $primary : null;
-        }
-
-        /**
          * Negocia el idioma a partir de Accept-Language respetando los pesos q.
          */
         private static function fromAcceptLanguage(?string $header): ?string
@@ -195,7 +284,9 @@ namespace OrigenSalud\Web {
                 return;
             }
 
-            $current = $_COOKIE[self::COOKIE_NAME] ?? null;
+            $current = isset($_COOKIE[self::COOKIE_NAME]) && is_string($_COOKIE[self::COOKIE_NAME])
+                ? self::canonical($_COOKIE[self::COOKIE_NAME])
+                : null;
 
             if ($current === $locale) {
                 return;

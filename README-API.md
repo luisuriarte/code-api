@@ -51,6 +51,26 @@
 - Los mapeos `os_concept_mapping` siguen sin aprobación editorial automática
   (D-19 pendiente): no se aprueban ni degradan las 419 filas pendientes.
 
+### Portal y exposición real de CDT/NN (Fase 10)
+
+- El portal (`med.origen.ar`) ofrece `es-AR`, `en` y `pt-BR` mediante `?lang=`
+  y negocia `Accept-Language`. Los alias `es→es-AR` y `pt→pt-BR` son de entrada;
+  `es-MX` no se aliasa. Cada vista emite `hreflang`, `og:locale`,
+  `Vary: Accept-Language` y `Content-Language`.
+- El buscador público `/search` consume `GET /v1/search` desde el servidor,
+  reenvía `lang` y `Accept-Language` con el locale seleccionado y muestra
+  `meta.requested_language`, `meta.effective_language`, `meta.field_languages`,
+  `meta.available_languages` y los avisos de fallback/sin traducir. La API Key
+  permanece en el servidor (`WEB_API_KEY` o `WEB_API_TOKEN`).
+- CDT 2025 permanece en sus tablas nativas. Se consulta por
+  `GET /v1/search/odontologia` y `GET /v1/odontologia/{id}`. No existe
+  `/v1/cdt`. `nombre_es→es` y `nombre_en→en`; un texto `es` de CDT nunca se
+  presenta como `es-AR` sin evidencia regional (`dialect_determined=false`).
+- `GET /v1/nomenclador` consulta únicamente `nomencladores_argentina`, el único
+  conjunto con `entity_type='nomenclador'`. No sirve CDT.
+- NN 2025 permanece en `nomenclador_2025`, sin endpoint propio y sin mapeo a
+  `os_*`. Su exposición futura sigue pendiente de decisión editorial.
+
 ---
 
 ## 2. Autenticación y Seguridad
