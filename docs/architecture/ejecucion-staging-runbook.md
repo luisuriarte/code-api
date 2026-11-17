@@ -7,7 +7,8 @@
 > modificación de PostgreSQL, PHP/API/web/importadores ni `tools/sources/**`.
 > Solo una autorización explícita de Fase 1 puede habilitar, sobre la base
 > independiente de staging, la creación de esa base y la restauración del
-> backup; esa autorización **no habilita el DDL de las fases posteriores**.
+> backup; esa autorización **no habilita modificar estructuras existentes ni el
+> DDL/DML de las fases posteriores**.
 > Toda orden, ruta o nombre de base que aparece aquí es una **plantilla de
 > referencia con valores de ejemplo**, no una instrucción lista para ejecutar.
 >
@@ -68,10 +69,12 @@ inferido de este documento.
 7. **Tablas originales intactas.** Después de cada fase se repiten conteos y
    checksums; las tablas originales deben estar inalteradas.
 8. **Dos límites de escritura en Fase 1.** La **base de origen** tiene cero
-   escrituras: acceso de solo lectura. La **base independiente de staging**
-   admite escrituras **exclusivamente** para crearla y restaurar el backup, con
-   autorización específica de Fase 1. Esa autorización no habilita el DDL de las
-   fases posteriores.
+   escrituras: acceso de solo lectura; no se modifica. La **base independiente
+   de staging** admite escrituras **exclusivamente** para crearla y restaurar el
+   backup, con autorización específica de Fase 1. No se permite modificar
+   estructuras existentes ni ejecutar DDL/DML de las fases posteriores: esa
+   autorización no las habilita. Las operaciones autorizadas sobre staging se
+   registran por separado (§4.2 y E-07).
 
 ---
 
@@ -95,30 +98,34 @@ de las propias fases.
 | 7 | Elegir mecanismo de identidad de aplicación y rol propietario de auditoría | Antes de Fase 2 | ⏳ ABIERTA | Decisión firmada con rol y mecanismo |
 | 8 | Implementar `LanguageResolver`, evaluador editorial, API per-field y sitio | Fases 8-10, según corresponda | ⏳ ABIERTA | Componentes y matrices de prueba verdes |
 | 9 | Decidir mapeo/endpoint futuro de NN 2025 y vocabulario FDI/caras | Fase 10 | ⏳ ABIERTA | Decisión documentada; NN sin endpoint propio hasta entonces |
-| 10 | Autorizar la excepción D-34 | **Condicional**: solo si aparece un índice inválido o duplicado concreto | ⏳ NO APLICA AÚN | Autorización escrita e individual por índice (A-2) |
+| 10 | Autorizar la excepción D-34 | **Condicional**: solo si aparece un índice inválido o duplicado concreto | ⏳ NO APLICA AÚN | Autorización escrita, individual y específica para ese índice (A-2); si no se activa, registro de «No aplica» con evidencia de la verificación de índices |
 
 > **Resultado actual:** la compuerta 1 está cerrada. Las demás se cierran en su
 > momento. La compuerta 3 pertenece al trabajo PMO (D-17) y **no bloquea la
 > migración multilingüe**; la compuerta 10 **no es una autorización genérica** y
-> solo se activa ante un índice identificado.
+> solo se activa ante un índice identificado. Si no se necesita ninguna
+> operación D-34, se registra «No aplica» con su evidencia y **la fase no queda
+> bloqueada**.
 
-### 3.2 Compuertas por momento
+### 3.2 Matriz de dependencias de compuertas por fase
 
-| Momento | Compuerta exigida | Evidencia |
+| Momento de cierre | Prerrequisito (§3.1) | Evidencia |
 |---|---|---|
-| **Antes de Fase 1** | Autorización de preparación; origen confirmado como no productivo; destino independiente asignado (D-25); acceso autorizado; responsable de infraestructura identificado | Acta A-1, E-01, E-04 y autorización firmada |
-| Antes de Fase 2 | Aprobación del diseño (1); identidad de aplicación y rol de auditoría (7); autorización específica del DDL de Fase 2 | A-1 y decisión 7 |
+| **Antes de Fase 1** | Autorización específica de preparación; fuente no productiva autorizada; destino independiente (D-25); acceso mínimo; responsable de infraestructura | A-1, E-01, E-04 y autorización firmada |
+| Antes de Fase 2 | Prerrequisitos técnicos y autorizaciones específicas de DDL: diseño aprobado (1), identidad de aplicación y rol de auditoría (7), autorización del DDL de Fase 2 | A-1 y decisión 7 |
 | Antes de Fase 3 | Importadores parametrizados (4) | A-1 y revisión de importadores |
-| Antes de Fase 4 | Matriz 4.3 firmada (2) | A-3 |
-| Antes de Fase 5 | `source_release` confirmado (6) y códigos/capas LOINC verificados en staging (5) | A-1, E-06, E-14 |
-| Antes de Fases 8-10 | Resolver y evaluador aprobados (8); decisión NN 2025 (9) según corresponda | A-1 y matrices de prueba |
-| Ante una operación D-34 | Autorización escrita e individual para **ese** índice (10) | A-2 |
-| Trabajo PMO (paralelo) | Compuerta 3, exclusiva de PMO (D-17) | Decisión PMO y corrección revisada |
+| Antes de Fase 4 | Matriz de aprobación inicial firmada, etapa 4.3 (2; D-19) | A-3 |
+| Antes de Fase 5 | `source_release` confirmado (6) y fuentes/capas LOINC confirmadas en staging (5) | A-1, E-06, E-14 |
+| Antes de Fases 8-10 | Decisiones e implementaciones correspondientes: resolver y evaluador (8), API, sitio y decisión NN 2025 (9) | A-1 y matrices de prueba |
+| Antes de cualquier operación excepcional D-34 | Autorización escrita, individual y específica para **ese** índice (10) | A-2, o registro de «No aplica» con evidencia |
+| Trabajo PMO (paralelo) | Compuerta 3, exclusiva de la carga PMO (D-17) | Decisión PMO y corrección revisada |
 
-> La matriz 4.3 es la aprobación inicial del contenido **después del backfill**
-> (Fase 4), no una condición para el inventario de la Fase 1. Del mismo modo, las
-> compuertas de las fases 8-10 no pueden cerrarse antes de que esas fases se
-> ejecuten.
+> No se adelantan a Fase 1 requisitos que corresponden a fases posteriores. La
+> matriz 4.3 es la aprobación inicial del contenido **después del backfill**
+> (Fase 4; D-19), no una condición para el inventario. Las compuertas de las
+> fases 8-10 no pueden cerrarse antes de que esas fases se ejecuten. Si no se
+> identifica ningún índice que requiera D-34, se registra «No aplica» con la
+> evidencia de la verificación de índices y la fase continúa sin bloqueo.
 
 ### 3.3 Regla para cerrar una compuerta
 
@@ -127,6 +134,10 @@ Una compuerta solo pasa a `CERRADA` cuando concurren:
 - la evidencia indicada en §3.1, con fecha y responsable;
 - su registro en el acta de compuertas (A-1), indicando el momento correspondiente;
 - la comprobación de que no reabre una decisión ya cerrada (D-01 a D-41).
+
+Para la compuerta condicional D-34, si no se identifica un índice inválido o
+duplicado, se registra «No aplica» con la evidencia de la verificación de
+índices (A-2); esa condición **no bloquea la fase**.
 
 No se exige el cierre anticipado de compuertas de fases futuras. Cerrar una
 compuerta fuera de su momento no sustituye la autorización de la fase.
@@ -142,12 +153,14 @@ escribir en la base de origen. La base independiente de staging se crea y se
 restaura únicamente bajo la autorización específica de Fase 1 (§2, punto 8).
 
 - **Entrada (compuertas de Fase 1, §3.2):** autorización de preparación firmada;
-  origen confirmado como no productivo; destino independiente asignado (D-25);
-  acceso autorizado; responsable de infraestructura identificado. No se exigen
+  fuente no productiva autorizada; destino independiente asignado (D-25); acceso
+  mínimo autorizado; responsable de infraestructura identificado. No se exigen
   aquí la matriz 4.3 ni las compuertas de fases posteriores.
-- **Alcance de escritura:** 0 escrituras en la base de origen (solo lectura); en
-  la base independiente, solo crearla y restaurar el backup. La autorización de
-  Fase 1 no habilita el DDL de las Fases 2-14.
+- **Alcance de escritura:** cero escrituras en la base de origen (solo lectura;
+  no se modifica). En la base independiente, solo crearla y restaurar el backup,
+  con autorización específica de Fase 1. Queda prohibido modificar estructuras
+  existentes y ejecutar DDL/DML de las Fases 2-14. Las operaciones autorizadas
+  sobre staging se registran por separado (§4.2 y E-07).
 - **Fuentes consultadas (solo lectura):** `sql/01_schema/design.sql`,
   `sql/02_catalogs/origen_catalog_engine.sql`, `sql/03_dentar/*`, `sql/04_pmo/*`,
   `sql/05_loinc.sql/importar_loinc.sql`, `tools/sql/snomed/*`, `tools/sources/**`,
@@ -179,7 +192,19 @@ autorización de ejecución descrita en §8.
 | F1.8 | Levantar el inventario de idiomas real (§4.4) | Inventario firmado, sin inferencias de dialecto | E-06 |
 | F1.9 | Confirmar que `os_catalog_item.observation` **no existe** y registrar el riesgo PMO como bloqueante de PMO | Hallazgo documentado, no corregido en esta fase | E-06 |
 | F1.10 | Acordar y registrar la congelación temporal de importadores durante la toma de datos | Ventana documentada; 0 escrituras en la base de origen | E-01 |
-| F1.11 | Verificar los dos límites de escritura (§2, punto 8) y firmar el acta de cierre de fase | Origen: 0 escrituras; destino: solo creación y restauración autorizadas | E-07 |
+| F1.11 | Verificar los dos límites de escritura (§2, punto 8) y firmar el acta de cierre de fase | Origen: cero escrituras; destino: solo creación y restauración autorizadas | E-07 |
+
+**Registro separado de operaciones autorizadas sobre staging (Fase 1):**
+
+| Operación | Base | Autorización | Evidencia |
+|---|---|---|---|
+| Crear la base independiente | Staging; nunca la base de origen | Específica de Fase 1 | E-04 |
+| Restaurar el backup | Staging; nunca la base de origen | Específica de Fase 1 | E-04 |
+| Provisionar roles y permisos mínimos | Staging | Responsable de infraestructura | E-04 |
+| Verificar objetos, conteos y checksums | Origen (solo lectura) y copia | Fase 1 | E-05 |
+
+**Fuera de alcance de Fase 1:** modificar estructuras existentes y ejecutar
+cualquier DDL/DML de las Fases 2-14.
 
 **Plantilla de referencia para F1.3 / F1.4** (no ejecutar):
 
@@ -254,9 +279,14 @@ Además:
 - Backup restaurable en base independiente (D-25), con SHA-256 registrado; roles
   y permisos de staging aprovisionados por separado.
 - Checksums e inventario registrados y firmados.
-- 0 escrituras en la base de origen; en la base independiente, solo crearla y
-  restaurar el backup con autorización de Fase 1 (§2, punto 8).
-- Queda registrado que la autorización de Fase 1 **no habilita DDL posterior**.
+- Cero escrituras en la base de origen; en la base independiente, solo crearla y
+  restaurar el backup con autorización de Fase 1 (§2, punto 8), registradas por
+  separado (§4.2 y E-07).
+- Queda registrado que la autorización de Fase 1 **no habilita modificar
+  estructuras existentes ni ejecutar DDL/DML de las Fases 2-14**.
+- Estas condiciones de entrada y salida reproducen
+  `plan-migracion-multilingue.md`, Fase 1 (§3): backup verificado en base
+  independiente y aprobación firmada.
 - Riesgo PMO registrado como bloqueante de PMO (D-17), no de esta migración.
 - Confusión Fase 4 del proyecto original (PMO) vs. Fase 6 del plan (DENTAR)
   explícitamente descartada.
@@ -274,9 +304,9 @@ acta de la fase esté firmada. Las condiciones de avance se toman del plan §3.
 | # | Fase | Condición de avance / cierre | Evidencia | Estado |
 |---|---|---|---|---|
 | 1 | Inventario y backup | Backup verificado en base independiente, checksums e inventario firmados; 0 escrituras en origen; destino solo creación/restauración | E-01…E-07 | ☐ Pendiente |
-| 2 | Creación de estructuras lingüísticas | Integridad, índices y permisos verificados; ninguna tabla existente alterada; `es-AR` no source-only (D-39); compuertas 1 y 7 cerradas; D-34 solo si aparece un índice concreto | E-08…E-10, A-2 | ☐ Pendiente |
+| 2 | Creación de estructuras lingüísticas | Integridad, índices y permisos verificados; ninguna tabla existente alterada; `es-AR` no source-only (D-39); compuertas 1 y 7 cerradas; D-34 solo si aparece un índice concreto, si no «No aplica» con evidencia y sin bloqueo | E-08…E-10, A-2 | ☐ Pendiente |
 | 3 | Ampliación de estructuras existentes | Definición vigente verificada; DDL aditivo e idempotente; ámbito de hash D-41 implementado (`row_shared`/`field_individual`); aprobación firmada | E-11…E-12 | ☐ Pendiente |
-| 4 | Backfill controlado y aprobación inicial | Reporte de reconciliación revisado y matriz 4.3 firmada (compuerta 2) | E-13, A-3 | ☐ Pendiente |
+| 4 | Backfill controlado y aprobación inicial | Reporte de reconciliación revisado y matriz 4.3 firmada (compuerta 2; D-19) | E-13, A-3 | ☐ Pendiente |
 | 5 | Migración de LOINC | Política de prioridad y `source_release` confirmados; `loinc_source_language(...)` validada; ninguna variante sobrescrita | E-14…E-15 | ☐ Pendiente |
 | 6 | Adaptación de DENTAR (D-09) | Mapeo `abbreviation→acronym` conservado; validaciones de términos y campos clínicos aprobadas | E-16 | ☐ Pendiente |
 | 7 | Conservación de SNOMED y CIE-10 (D-05) | Decisión D-05 aceptada; `es` sin dialecto inferido; validaciones aprobadas | E-17 | ☐ Pendiente |
@@ -291,9 +321,10 @@ acta de la fase esté firmada. Las condiciones de avance se toman del plan §3.
 **Regla de no avance:** una fase solo puede iniciarse cuando la anterior tiene
 su acta firmada **y** las compuertas de su momento están cerradas (§3.2). No se
 permite avanzar "en paralelo" ni dejar una validación pendiente para la fase
-siguiente. La compuerta PMO (3) es exclusiva del trabajo PMO y no bloquea esta
-secuencia; la compuerta D-34 (10) se abre solo si se identifica un índice
-concreto, con autorización escrita individual (A-2).
+siguiente. La compuerta PMO (3) es exclusiva del trabajo PMO (D-17) y **no
+bloquea la migración**; la compuerta D-34 (10) se abre solo si se identifica un
+índice concreto, con autorización escrita individual (A-2), y se registra «No
+aplica» con evidencia si no se requiere, sin bloquear la fase.
 
 ---
 
@@ -401,7 +432,9 @@ Escrituras en Fase 1:
   Origen:  0  [ ] verificado (acceso de solo lectura)
   Destino: solo crear la base independiente y restaurar el backup,
            con autorización específica de Fase 1  [ ] verificado
-           [ ] No se habilitó DDL de Fases 2-14
+  [ ] No se modificaron estructuras existentes
+  [ ] No se habilitó DDL/DML de Fases 2-14
+Operaciones sobre staging registradas por separado (§4.2): [ ] sí
 Validaciones ejecutadas:
 Resultado:            [ ] APTO  [ ] NO APTO
 Incidencias y resolución:
@@ -428,11 +461,13 @@ Compuertas previas a Fase 1:
 [ ] Autorización de preparación firmada
 [ ] Origen confirmado como no productivo
 [ ] Destino independiente asignado (D-25), distinto del origen y no esquema temporal
-[ ] Acceso autorizado (solo lectura en origen; sin credenciales en este documento)
+[ ] Acceso mínimo autorizado (solo lectura en origen; sin credenciales aquí)
 [ ] Responsable de infraestructura identificado
 
 Regla: cada compuerta se cierra en su momento. No se requiere 10/10 para Fase 1.
-PMO (3) pertenece a su propio trabajo; D-34 (10) se activa solo ante un índice concreto.
+PMO (3) pertenece a su propio trabajo (D-17) y no bloquea la migración.
+D-34 (10) se activa solo ante un índice concreto; si no aplica, registrar
+«No aplica» con evidencia de la verificación de índices, sin bloquear la fase.
 ```
 
 ### A-2 — Autorización individual D-34
@@ -450,6 +485,11 @@ Definición previa registrada:                       [ ] sí
 Fuera de transacción y recreado con CONCURRENTLY:   [ ] previsto
 Autorizado por:                    Fecha:
 Alcance prohibido: tablas, columnas y datos -> NUNCA
+
+Registro si NO se requiere esta excepción:
+[ ] No aplica: verificación de índices registrada en <evidencia>
+    Fecha:                    Responsable:
+    La fase NO queda bloqueada por D-34.
 ```
 
 ### A-3 — Matriz de aprobación inicial (etapa 4.3)
@@ -479,7 +519,8 @@ Compuertas previas a Fase 1 cerradas (§3.2)
         |
         v
 Autorización de Fase 1: crear base independiente + restaurar backup
-        (NO habilita DDL de Fases 2-14)
+        (origen: cero escrituras; NO modifica estructuras existentes
+         ni habilita DDL/DML de Fases 2-14)
         |
         v
 Fase 1 -> acta E-07 firmada? --no--> DETENER
@@ -494,7 +535,8 @@ Fase N -> validaciones y acta firmada? --no--> DETENER
 Fase N+1 ... hasta Fase 14
 
 PMO (compuerta 3): carril paralelo, bloquea solo su carga (D-17)
-D-34 (compuerta 10): se abre solo si aparece un índice concreto (A-2)
+D-34 (compuerta 10): solo si aparece un índice concreto (A-2);
+                     si no aplica, registrar evidencia y continuar
 ```
 
 Cualquier hallazgo que reabra una decisión D-01 a D-41 detiene la secuencia y
@@ -516,12 +558,15 @@ Para autorizar la **Fase 1**, con las compuertas previas a Fase 1 cerradas
 5. Aprovisionamiento controlado de roles y permisos en staging, sin trasladar
    credenciales ni privilegios productivos (§4.1).
 6. Autorización de ejecución de **Fase 1**, limitada a crear la base
-   independiente y restaurar el backup; **excluye explícitamente el DDL de las
+   independiente y restaurar el backup; cero escrituras en la base de origen;
+   **excluye explícitamente modificar estructuras existentes y el DDL/DML de las
    Fases 2-14**.
 
 Las compuertas de fases posteriores se solicitan en su momento (§3.2). La
-compuerta PMO (3) pertenece a su propio trabajo y no condiciona esta autorización;
-la autorización D-34 (10) se pide solo si aparece un índice concreto.
+compuerta PMO (3) pertenece a su propio trabajo (D-17) y no condiciona esta
+autorización; la autorización D-34 (10) se pide solo si aparece un índice
+concreto y, si no se requiere, se registra «No aplica» con evidencia sin
+bloquear la fase.
 
 Hasta que esos seis puntos estén presentes, este runbook permanece como
 **preparación documental** y no se ejecuta ninguna de sus plantillas.
@@ -532,7 +577,7 @@ Hasta que esos seis puntos estén presentes, este runbook permanece como
 
 | Documento | Función en este runbook |
 |---|---|
-| `decisiones-arquitectura-multilingue.md` | Origen de las 10 compuertas y de D-01 a D-41; D-17 (alcance PMO) y D-34 (alcance por índice) |
+| `decisiones-arquitectura-multilingue.md` | Origen de las 10 compuertas y de D-01 a D-41; D-17 (PMO), D-19 (aprobación inicial), D-25 (base independiente) y D-34 (excepción por índice) |
 | `modelo-multilingue-propuesto.md` | Contrato técnico y de salida; D-39, D-40, D-41 |
 | `plan-migracion-multilingue.md` | Fases 1-14, condiciones de avance, pruebas 1-44, §2.2 |
 | `auditoria-internacionalizacion.md` | Cierre de hallazgos y riesgos registrados |
