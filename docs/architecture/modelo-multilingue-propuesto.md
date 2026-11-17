@@ -12,8 +12,8 @@
 >
 > Numeración de decisiones usada en este documento: **D-05 = SNOMED/CIE-10**,
 > **D-09 = DENTAR**, **D-14 = `os_localized_text`**. Las aclaraciones finales
-> **D-27 a D-38** son parte del contrato de este modelo y prevalecen sobre
-> cualquier redacción anterior.
+> **D-27 a D-38** y las precisiones **D-39 a D-41** son parte del contrato de
+> este modelo y prevalecen sobre cualquier redacción anterior.
 
 ---
 
@@ -161,6 +161,22 @@ en `os_field_review` (§5.5). Si existe fila allí, prevalece; si no, los valore
 de fila solo se usan bajo la condición de fuente común. Ante duda: `unknown` y
 no publicable.
 
+**Ámbito del `content_hash` (D-41):** la aprobación puede ser compartida o
+individual, y el hash debe cubrir exactamente ese ámbito.
+
+| Situación | Dónde se guarda | Qué cubre | Si cambia el texto |
+|---|---|---|---|
+| Seis campos con fuente/estado común | `os_catalog_item_version.content_hash` | Los seis campos en orden fijo (nombre + valor normalizado + `language_code` + `source_reference`) | Invalida la aprobación **compartida de toda la fila** (`row_shared`) |
+| Un campo con fila propia en `os_field_review` | `os_field_review.content_hash` | Solo ese campo | Invalida **solo esa revisión** (`field_individual`); los demás estados siguen vigentes |
+
+Crear o deprecar una fila individual cambia la composición del conjunto
+compartido: se recalcula el hash agregado y se invalida una vez la aprobación
+compartida; después se re-aprueba el grupo restante. Nunca se conserva un hash
+agregado calculado sobre un conjunto de campos que ya no es el vigente. En ambos casos
+se limpian `reviewed_by`/`reviewed_at`, se fuerza `review_status='unreviewed'` y
+se registra `approval_invalidated` en la misma transacción (D-31/D-32), con el
+ámbito y los campos afectados en el evento.
+
 ### 4.2 `os_catalog_term` — sinónimos, siglas y variantes
 
 **DDL real verificado** (`origen_catalog_engine.sql:84-90`, índice en `:104`):
@@ -305,8 +321,18 @@ Propiedades:
 - `source_release='2.83'` **debe confirmarse** contra el archivo realmente usado
   en el backfill antes de escribirlo; el valor aparece en
   `importar_loinc.sql:2-5`, pero no se asume.
-- `source_language_code` no se inventa: se deriva del `source_file` declarado.
-- `es-MX` **no** se aliasa a `es-AR`.
+- **`source_language_code`: decisión D-40.** No se almacena como columna en
+  `loinc_localized_text`. Se deriva de forma determinista al construir la
+  respuesta mediante `loinc_source_language(language_code, source_file)`:
+  `Loinc.csv`/`ConsumerName.csv` → `en`, `esMX28LinguisticVariant.csv` →
+  `es-MX`, `esAR7LinguisticVariant.csv` → `es-AR`; en todos los casos devuelve
+  el propio `language_code`. Si `source_file` no corresponde a ese idioma,
+  devuelve `NULL` con `language_evidence='undetermined'` y la fila no se publica
+  hasta reconciliación. La función alimenta `meta.source_language` y
+  `field_languages[].source_language`; el nombre del archivo **acredita** la
+  capa, no inventa un idioma.
+- `es-MX` **no** se aliasa a `es-AR`. `es-AR` sigue siendo un idioma activo y
+  seleccionable aunque exista una capa LOINC en ese idioma (D-39).
 
 ---
 
@@ -320,18 +346,23 @@ os_language
   display_name  VARCHAR(80) NOT NULL
   primary_tag   VARCHAR(5) NOT NULL            -- 'es','en','pt'
   is_active     BOOLEAN NOT NULL DEFAULT TRUE   -- seleccionable por el cliente
-  is_source_only BOOLEAN NOT NULL DEFAULT FALSE -- etiqueta de origen; válida como efectiva
+  is_source_only BOOLEAN NOT NULL DEFAULT FALSE -- solo es / es-MX; válida como efectiva
 
 os_language_alias
   alias         VARCHAR(10) PRIMARY KEY        -- 'es','pt'
   language_code VARCHAR(10) NOT NULL REFERENCES os_language(code)
 ```
 
-**Tres clases (D-15, D-27):** filas con `is_active=true` son las
+**Tres clases (D-15, D-27, D-39):** filas con `is_active=true` son las
 **seleccionables por el cliente** (`es-AR`, `en`, `pt-BR`); `os_language_alias`
 contiene los alias (`es→es-AR`, `pt→pt-BR`); `es` y `es-MX` se registran con
 `is_active=false, is_source_only=true` para conservar la etiqueta real sin
-convertirla en `es-AR`.
+convertirla en `es-AR`. **Ningún código seleccionable lleva
+`is_source_only=true`**: un mismo tag no puede ser seleccionable y source-only a
+la vez. La procedencia de un registro (LOINC, SNOMED, CDT, origen) se declara en
+sus columnas `source_file`, `source_reference`, `provenance` y
+`source_language_code`, **no** en `os_language`. En particular, una fila LOINC
+`es-AR` mantiene `es-AR` activo y no source-only.
 
 `is_active` gobierna la **entrada** (`lang`, `Accept-Language`). Ni `is_active`
 ni `is_source_only` impiden que una fila aprobada con `language_code='es'` se
@@ -622,7 +653,10 @@ prefiere esta solución por coherencia con `os_localized_text`.
   condición de fuente común de §4.1) > `unknown`. Una fila específica de **otro**
   release no se aplica ni se hereda.
 - **Invalidación:** si cambia el contenido, `content_hash` cambia y la
-  aprobación se invalida en la misma transacción (D-31/D-32).
+  aprobación se invalida en la misma transacción (D-31/D-32). Si esta fila
+  representa una revisión individual, el ámbito es `field_individual` y las
+  demás aprobaciones no se tocan; la aprobación compartida de la fila de versión
+  se rige por D-41 (§4.1).
 - **Cobertura:** una sola tabla cubre los seis campos clínicos y cualquier otro
   campo que en el futuro requiera procedencia distinta.
 
@@ -662,18 +696,23 @@ prefiere esta solución por coherencia con `os_localized_text`.
 
 ## 7. Resolución idiomática y fallback
 
-### 7.1 Tres clases de etiquetas de idioma (D-15, D-27)
+### 7.1 Tres clases de etiquetas de idioma (D-15, D-27, D-39)
 
 | Clase | Definición | Ejemplos |
 |---|---|---|
-| Seleccionables por el cliente | Filas activas de `os_language` (`is_active=true`) | `es-AR`, `en`, `pt-BR` |
+| Seleccionables por el cliente | Filas activas de `os_language` (`is_active=true`, `is_source_only=false`) | `es-AR`, `en`, `pt-BR` |
 | Alias | Se convierten a una etiqueta seleccionable | `es→es-AR`, `pt→pt-BR` |
-| Etiquetas de origen | `is_source_only=true`, no pedibles como `lang`, pero **válidas como `effective_language`** si están aprobadas | `es` (SNOMED/CDT), `es-MX` y `es-AR` como variantes LOINC |
+| Etiquetas de origen | `is_source_only=true`, no pedibles como `lang`, pero **válidas como `effective_language`** si están aprobadas | `es` (SNOMED/CDT), `es-MX` (LOINC) |
 
 `es-MX` no se aliasa a `es-AR`. `es` de SNOMED/CDT no se convierte en `es-AR`.
-Una variante LOINC `es-AR` es etiqueta de origen aunque coincida textualmente
-con un locale admitido: no habilita selección automática de respuesta general,
-pero sí puede devolverse como idioma efectivo de un campo aprobado.
+
+**LOINC `es-AR` no es una etiqueta de origen (D-39).** `es-AR` pertenece a la
+clase *seleccionable*: el hecho de que exista una capa LOINC en `es-AR` se
+acredita con `source_file='esAR7LinguisticVariant.csv'` y `provenance` en la
+fila, no con un cambio en `os_language`. En consecuencia, una respuesta LOINC en
+`es-AR` devuelve `effective_language='es-AR'` y
+`available_languages[es-AR].selectable=true`, con su procedencia declarada. No
+se modifica el contrato público por este caso.
 
 ### 7.2 Entrada
 
@@ -831,8 +870,10 @@ Reglas:
 
 - `available_languages` contiene los `language_code` distintos con al menos un
   campo `approved` para el recurso/release. Cada entrada lleva
-  `selectable = os_language.is_active`. Las etiquetas `is_source_only` aprobadas
-  (por ejemplo `es`) aparecen con `selectable=false`.
+  `selectable = os_language.is_active` del código efectivo. Las etiquetas
+  `is_source_only` aprobadas (`es`, `es-MX`) aparecen con `selectable=false`;
+  una fila LOINC `es-AR` aparece con `selectable=true` y su procedencia declarada
+  (D-39).
 - `effective_language` se calcula **por campo**. Solo se informa a nivel `meta`
   si todos los campos de texto comparten idioma; si hay mezcla,
   `meta.effective_language=null` y `field_languages` es la fuente de verdad.
@@ -899,10 +940,14 @@ El detalle por fase y las pruebas están en `plan-migracion-multilingue.md`.
 - No crear catálogos/ítems por idioma ni columnas `*_en`/`*_es`/`*_pt`.
 - No inferir `es-AR` desde `es`, ni aliasar `es-MX` a `es-AR`. Sí se entrega
   `effective_language='es'` cuando esa fila `is_source_only` está aprobada.
+- No marcar `es-AR` (ni `en`/`pt-BR`) como `is_source_only`: la procedencia LOINC
+  va en la fila, no en `os_language` (D-39).
 - No dejar que el estado de `os_field_review` seleccione el idioma: resuelve el
   `LanguageResolver`, filtra el evaluador editorial (D-30).
 - No conservar silenciosamente una aprobación tras cambiar el contenido
-  (D-31/D-32).
+  (D-31/D-32). Tampoco invalidar todas las revisiones individuales cuando cambia
+  un solo campo con revisión propia, ni conservar una aprobación compartida cuyo
+  conjunto de campos cambió (D-41).
 - No servir contenido no aprobado en la API pública, con o sin
   `ALLOW_UNREVIEWED_DISPLAY`.
 - No marcar datos sin evidencia como `official_source` ni `approved`.

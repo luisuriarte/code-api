@@ -12,8 +12,9 @@
 >
 > **Nota de numeración:** **D-05 = SNOMED CT/CIE-10**, **D-09 = DENTAR**,
 > **D-14 = `os_localized_text`**. La revisión final añade las aclaraciones
-> **D-27 a D-38**, que resuelven las últimas contradicciones técnicas detectadas.
-> Las decisiones D-01 a D-26 se mantienen salvo las aclaraciones indicadas.
+> **D-27 a D-38** y las precisiones **D-39 a D-41**, que resuelven las últimas
+> contradicciones técnicas detectadas. Las decisiones D-01 a D-26 se mantienen
+> salvo las aclaraciones indicadas.
 
 ---
 
@@ -180,11 +181,12 @@
    `es-AR`, `en`, `pt-BR`.
 2. **Alias** (`os_language_alias`): `es→es-AR`, `pt→pt-BR`.
 3. **Etiquetas de origen** (`is_source_only=true`, `is_active=false`): `es`
-   (SNOMED/CDT), `es-MX` y `es-AR` como variantes LOINC. No son seleccionables
-   como `lang`, pero **sí pueden ser `effective_language`** de contenido
-   aprobado; no se convierten a `es-AR` (D-27).
-- `es-MX` no se aliasa a `es-AR`. La variante LOINC `es-AR` es origen aunque
-  coincida textualmente con un locale admitido.
+   (SNOMED/CDT) y `es-MX` (LOINC). No son seleccionables como `lang`, pero **sí
+   pueden ser `effective_language`** de contenido aprobado; no se convierten a
+   `es-AR` (D-27, D-39).
+- `es-MX` no se aliasa a `es-AR`. **La variante LOINC `es-AR` no es una etiqueta
+  de origen**: el tag `es-AR` sigue siendo seleccionable y la procedencia de la
+  capa se declara en `source_file`/`provenance` de la fila (D-39).
 - `Accept-Language` con **todos los valores `q=0`**: no se elige silenciosamente
   uno de ellos. Se aplica `API_DEFAULT_LANG` con
   `fallback_reason='no_acceptable_language'` y `q_zero_only=true`.
@@ -321,8 +323,11 @@
   aprobado es `nombre_es`/`descripcion_es`, se devuelve
   `effective_language='es'`, `source_language='es'`, `dialect_determined=false`.
   `es` no se convierte en `es-AR`.
-- Las etiquetas `is_source_only` aparecen en `available_languages` marcadas como
-  no seleccionables (D-38).
+- Las etiquetas `is_source_only` (`es`, `es-MX`) aparecen en
+  `available_languages` marcadas como no seleccionables (D-38). **`es-AR` no es
+  `is_source_only`**: una fila LOINC en `es-AR` conserva su procedencia en
+  `source_file`/`provenance`, pero el idioma `es-AR` sigue siendo seleccionable
+  (D-39).
 
 ### D-28 — Unicidad de `os_field_review` y precedencia global/release
 
@@ -392,7 +397,8 @@ los cambios de las 8 tablas.
   4. se inserta el evento `approval_invalidated` en `os_translation_review`.
 - Aplica también a `INSERT ... ON CONFLICT DO UPDATE` de importadores. Una
   aprobación anterior nunca permanece silenciosamente vigente tras un cambio de
-  texto.
+  texto. El **ámbito** de la invalidación (fila compartida vs. campo individual)
+  se rige por D-41.
 - La re-aprobación es un acto editorial posterior (D-19), con actor identificado
   y nuevo evento `approval_granted`.
 
@@ -515,6 +521,70 @@ los cambios de las 8 tablas.
 
 ---
 
+## 2bis. Precisiones finales (D-39 a D-41)
+
+### D-39 — `is_source_only` es propiedad de la etiqueta, no de la procedencia del registro
+
+- `os_language.is_active` responde a una sola pregunta: **¿el cliente puede
+  seleccionar este idioma?** `os_language.is_source_only` se reserva a códigos
+  que no son seleccionables en ningún caso (`es`, `es-MX`). Un mismo código no
+  puede ser a la vez `is_active=true` e `is_source_only=true`.
+- La condición de fuente (LOINC, SNOMED, CDT, origen) es una propiedad del
+  **registro**, no de la etiqueta lingüística global. Se declara en
+  `source_file`, `source_reference`, `provenance`, `source_language_code` y
+  `language_evidence` de la fila de contenido; no se escribe en `os_language`.
+- Una fila LOINC con `language_code='es-AR'` conserva su procedencia LOINC y se
+  devuelve con `effective_language='es-AR'`. El tag `es-AR` permanece
+  `is_active=true, is_source_only=false`. **No** se convierte a `es-AR` en
+  etiqueta de origen, y **no** hace falta cambiar el contrato público.
+- `available_languages[].selectable` se deriva de `os_language.is_active` del
+  **código efectivo**, no de la procedencia: `es-AR` de LOINC → `true`; `es` de
+  SNOMED/CDT y `es-MX` de LOINC → `false`.
+- En consecuencia, se retira la afirmación anterior de §7.1 del modelo que
+  clasificaba a `es-AR` como "variante LOINC source-only".
+
+### D-40 — `source_language_code` en `loinc_localized_text`: derivación determinista
+
+- **Se decide no almacenar** `source_language_code` como columna nueva. Se deriva
+  al construir la respuesta mediante una única función
+  `loinc_source_language(language_code, source_file)`, invocada por la vista de
+  resolución que alimenta `meta.source_language` y `field_languages[].source_language`.
+- Regla: si `source_file` pertenece al conjunto declarado para ese
+  `language_code` (`Loinc.csv`/`ConsumerName.csv` → `en`,
+  `esMX28LinguisticVariant.csv` → `es-MX`, `esAR7LinguisticVariant.csv` →
+  `es-AR`), la función devuelve el propio `language_code`. Si no coincide,
+  devuelve `NULL` con `language_evidence='undetermined'` y la fila no se
+  publica hasta reconciliación.
+- El nombre del archivo **acredita** la capa; no se inventa un idioma distinto a
+  partir de él. `source_file`, `source_release` y `source_reference` siguen
+  preservando la procedencia (D-33). Un cambio posterior a "columna almacenada"
+  sería un DDL aditivo nuevo, no una reinterpretación de este contrato.
+
+### D-41 — Ámbito del `content_hash`: aprobación compartida vs. revisión individual
+
+- **Aprobación compartida de fila:** cuando los seis campos clínicos de
+  `os_catalog_item_version` comparten fuente, publicación y estado (D-07), el
+  hash se guarda en `os_catalog_item_version.content_hash` y se calcula sobre el
+  conjunto canónico de los seis campos (nombre de campo + valor normalizado +
+  `language_code` + `source_reference`), en orden fijo.
+- **Revisión individual:** si un campo tiene fila propia en `os_field_review`, su
+  hash se guarda en `os_field_review.content_hash` y cubre **solo ese campo**.
+- **Invalidación:** cambiar cualquier campo del conjunto compartido invalida la
+  aprobación compartida **de toda la fila** (`review_status='unreviewed'`, se
+  limpian `reviewed_by`/`reviewed_at`, evento `approval_invalidated` con ámbito
+  `row_shared`). Cambiar un campo con revisión individual invalida **solo esa
+  revisión** (ámbito `field_individual`); las demás aprobaciones siguen vigentes.
+- Crear o deprecar una fila individual cambia la composición del conjunto
+  compartido: se recalcula el hash agregado y se invalida una vez la aprobación
+  compartida; después se re-aprueba el grupo restante. Nunca se conserva un hash
+  agregado calculado sobre un conjunto de campos que ya no es el vigente.
+- El evento de `os_translation_review` identifica el ámbito (`row_shared` o
+  `field_individual`) y los campos afectados, además del `transaction_id`
+  compartido (D-32). La re-aprobación sigue siendo un acto editorial posterior
+  (D-19).
+
+---
+
 ## 3. Matriz de coherencia entre documentos
 
 | Tema | Auditoría | Modelo | Plan | Decisiones |
@@ -532,6 +602,9 @@ los cambios de las 8 tablas.
 | Nullabilidad final | §6 | §5.6 | Fases 2/3/13 | D-36 |
 | CDT/NN reales | §3.6, §7 | §6 | Fase 10 | D-22, D-37 |
 | Contrato API | §8 | §7.6 | Fase 9, pruebas | D-03, D-38 |
+| `is_source_only` vs. procedencia | §1 h. 39 | §5.1, §7.1 | Fases 2/5/8 | D-27, D-39 |
+| `source_language_code` LOINC | §1 h. 40 | §4.4 | Fase 5 | D-33, D-40 |
+| Ámbito de `content_hash` | §1 h. 41 | §4.1, §5.5 | Fases 3/11 | D-31, D-41 |
 
 ---
 

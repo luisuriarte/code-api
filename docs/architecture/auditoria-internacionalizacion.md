@@ -10,7 +10,7 @@
 > Reauditoría realizada el 2026-11-17 contra las definiciones reales del
 > repositorio, con una última pasada de consistencia técnica. La referencia de
 > decisiones es [`decisiones-arquitectura-multilingue.md`](decisiones-arquitectura-multilingue.md),
-> incluidas las aclaraciones **D-27 a D-38**.
+> incluidas las aclaraciones **D-27 a D-38** y las precisiones **D-39 a D-41**.
 > Complementa [`modelo-multilingue-propuesto.md`](modelo-multilingue-propuesto.md)
 > y [`plan-migracion-multilingue.md`](plan-migracion-multilingue.md).
 
@@ -58,6 +58,9 @@
 | 36 | Fase 13 aplicaba `SET NOT NULL`, contradiciendo la nullabilidad prevista en Fases 2/3. | D-36: `NOT NULL DEFAULT` desde la creación; Fase 13 solo verifica. |
 | 37 | El modelo proyectaba CDT a `entity_type='nomenclador'` y a `/v1/nomenclador`, y a NN por rutas de nomenclador. | D-37: `nomenclador` = `nomencladores_argentina`; CDT usa tablas nativas y `/v1/search/odontologia`; NN sin endpoint. |
 | 38 | `available_languages`, `effective_language` y `field_languages` no tenían cálculo preciso ni trataban idiomas efectivos mezclados. | D-38: `selectable`, efectivo por campo, `meta.effective_language=null` si hay mezcla y `field_languages` calculado por el evaluador. |
+| 39 | §7.1 clasificaba `es-AR` como "etiqueta de origen LOINC" mientras `os_language` lo definía como idioma activo: un mismo código era seleccionable y no seleccionable a la vez. | D-39: `is_source_only` solo para `es`/`es-MX`; la procedencia LOINC se declara en la fila (`source_file`, `provenance`), no en `os_language`; `es-AR` sigue activo y `selectable=true`. |
+| 40 | `loinc_localized_text` no tenía `source_language_code` y el documento solo decía implícitamente que se derivaba del archivo. | D-40: decisión explícita de **no almacenar** la columna; derivación determinista con `loinc_source_language(language_code, source_file)` para `meta.source_language`/`field_languages`; archivo no coincidente → `NULL` y fila no publicable. |
+| 41 | No estaba definido si un cambio en un campo clínico compartido invalidaba la aprobación de toda la fila o solo la del campo; tampoco cómo interactuaban con `os_field_review`. | D-41: hash agregado en `os_catalog_item_version.content_hash` para los seis campos compartidos (`row_shared`) y hash individual en `os_field_review.content_hash` (`field_individual`); crear/deprecar una fila individual recalcula el agregado e invalida una vez la aprobación compartida. |
 
 ---
 
@@ -325,6 +328,9 @@ por `os_field_review` cuando no compartan fuente/estado.
 | Nullabilidad final | Fase 13 introducía `NOT NULL` | ✅ Cerrado (D-36, plan Fase 13) |
 | CDT/NN reales | `/v1/nomenclador` no es CDT | ✅ Cerrado (D-37, modelo §6, plan Fase 10) |
 | Contrato API | `meta.effective_language` único con campos mezclados | ✅ Cerrado (D-38, modelo §7.6, plan Fase 8) |
+| `es-AR` marcado como fuente | Misma etiqueta activa y source-only en §7.1 | ✅ Cerrado (D-39, modelo §5.1/§7.1, plan Fases 2/8) |
+| `source_language_code` LOINC implícito | Sin columna ni regla declarada | ✅ Cerrado (D-40, modelo §4.4, plan Fase 5) |
+| Ámbito de invalidación | Aprobación compartida vs. campo individual sin definir | ✅ Cerrado (D-41, modelo §4.1/§5.5, plan Fases 3/11) |
 
 ---
 
@@ -378,7 +384,14 @@ por `os_field_review` cuando no compartan fuente/estado.
   `field_languages` es la fuente de verdad (D-27, D-38).
 - Un cambio de contenido recalcula `content_hash`, invalida la aprobación y
   registra `content_changed`/`approval_invalidated` en la misma transacción; los
-  cambios de estado quedan trazados con actor real (D-31, D-32).
+  cambios de estado quedan trazados con actor real (D-31, D-32). El ámbito es
+  `row_shared` si los seis campos comparten aprobación (invalida toda la fila) y
+  `field_individual` si hay fila en `os_field_review` (invalida solo ese campo);
+  crear/deprecar una fila individual recalcula el agregado (D-41).
+- `is_source_only` queda reservado a `es`/`es-MX`. Una fila LOINC `es-AR` conserva
+  su procedencia en la fila y se sirve como `effective_language='es-AR'` con
+  `selectable=true`; `source_language_code` se deriva con
+  `loinc_source_language(...)`, sin columna nueva (D-39, D-40).
 - La API pública sirve solo `approved`; sin aprobado, `null` + `untranslated=true`.
   La administración es un canal separado con estado y procedencia explícitos.
 - La etapa 4.3 documenta la aprobación inicial: autoridad demostrable o

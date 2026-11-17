@@ -12,8 +12,9 @@
 > y [`modelo-multilingue-propuesto.md`](modelo-multilingue-propuesto.md).
 >
 > Numeración de decisiones: **D-05 = SNOMED CT/CIE-10**, **D-09 = DENTAR**,
-> **D-14 = `os_localized_text`**. Las aclaraciones finales **D-27 a D-38** son
-> parte del plan y corrigen cualquier redacción anterior.
+> **D-14 = `os_localized_text`**. Las aclaraciones finales **D-27 a D-38** y las
+> precisiones **D-39 a D-41** son parte del plan y corrigen cualquier redacción
+> anterior.
 
 ---
 
@@ -48,6 +49,9 @@ contra filas existentes en staging: no se inventan códigos (D-26).
 | Dual-read condicionado | Compatibilidad de esquema, **nunca** excepción a `review_status` (D-20). |
 | Idioma ≠ editorial (D-30) | `LanguageResolver` produce candidatos; el evaluador editorial filtra por `approved`. El estado de `os_field_review` no selecciona idioma. |
 | Invalidación transaccional (D-31/D-32) | Cambiar contenido recalcula `content_hash`, fuerza `unreviewed`, limpia revisión y escribe `approval_invalidated` en la misma transacción. |
+| Ámbito del hash (D-41) | Aprobación compartida: un cambio invalida toda la fila (`row_shared`); revisión individual: un cambio invalida solo ese campo (`field_individual`). |
+| Etiqueta vs. procedencia (D-39) | `is_source_only` solo para `es`/`es-MX`; LOINC `es-AR` conserva procedencia en la fila y sigue seleccionable. |
+| Idioma de origen LOINC (D-40) | `source_language_code` se deriva con `loinc_source_language(...)`; no se almacena como columna nueva. |
 | Auditoría por fase (D-29) | Fase 2: `os_field_review`; Fase 3: 7 tablas; Fase 5: se incorpora `loinc_localized_text` y completa 8. |
 | Diferenciación transaccional | DDL y datos en transacción; índices concurrentes **fuera** de transacción. |
 | Aprobación por fase | No se avanza sin validar la fase anterior. |
@@ -120,10 +124,13 @@ inalteradas.
   `os_translation_review`, `os_field_review`.
 - **Dependencias:** Fase 1.
 - **Operaciones previstas:** crear `os_language` con `is_active`
-  (**seleccionable por el cliente**) e `is_source_only` (etiqueta de origen no
-  pedible como `lang`, pero válida como `effective_language` aprobada): activas
-  `es-AR`/`en`/`pt-BR`, etiquetas de origen inactivas `es`/`es-MX` (D-15,
-  D-27); aliases `es→es-AR`, `pt→pt-BR` (sin `es-MX`);
+  (**seleccionable por el cliente**) e `is_source_only` (solo `es`/`es-MX`: no
+  pedibles como `lang`, pero válidas como `effective_language` aprobada): activas
+  `es-AR`/`en`/`pt-BR` con `is_source_only=false`, etiquetas de origen inactivas
+  `es`/`es-MX` (D-15, D-27, D-39). **No se marca `es-AR` como source-only**
+  aunque exista una capa LOINC en ese idioma: la procedencia se guarda en la fila
+  de contenido, no en `os_language`; aliases `es→es-AR`, `pt→pt-BR` (sin
+  `es-MX`);
   `scope_release_id ... ON DELETE RESTRICT` (nunca `SET NULL`); trigger de
   existencia polimórfica con validación de `field_name` por `entity_type`,
   inmutabilidad de `entity_type`/`entity_id`, RESTRICT en borrado de entidad y
@@ -196,7 +203,14 @@ locks de D-35.
   (`provenance`, `review_status`, `language_evidence`, `content_hash`,
   `updated_at`); las de D-36 permanecen nullable. Triggers de consistencia de
   idioma en `os_catalog_term` y de invalidación de aprobación por cambio de
-  `content_hash` en todas las tablas de contenido (D-31/D-32). Instalar la
+  `content_hash` en todas las tablas de contenido (D-31/D-32). El trigger de
+  `os_catalog_item_version` distingue el ámbito D-41: si los seis campos
+  comparten fuente/estado, el hash agregado de la fila cubre los seis y un
+  cambio en cualquiera invalida la aprobación compartida (`row_shared`); si un
+  campo tiene fila en `os_field_review`, su hash individual solo invalida esa
+  revisión (`field_individual`). Crear/deprecar una fila individual recalcula el
+  agregado e invalida una vez la aprobación compartida. El evento registra el
+  ámbito y los campos afectados. Instalar la
   auditoría sobre **7 de las 8 tablas** de la matriz D-23: en esta fase quedan
   cubiertas `os_catalog_item_version`, `os_catalog_term`, `os_localized_text`,
   `os_field_review`, `snomed_descriptions`, `cie10_descriptions` y
@@ -284,7 +298,14 @@ locks de D-35.
   sin marcar `approved`. `source_priority` se calcula con la función central
   `loinc_source_priority(language_code, source_file, field_name)` y se
   materializa en la columna (D-33); no se reparte la regla entre importadores.
-  Las capas es-MX/es-AR originales **no se recuperan desde la BD** (fueron
+  **`source_language_code` no se almacena como columna** (D-40): se deriva al
+  construir la respuesta con `loinc_source_language(language_code, source_file)`
+  para `meta.source_language` y `field_languages[].source_language`; si el
+  archivo no corresponde al idioma, devuelve `NULL` con
+  `language_evidence='undetermined'` y la fila no se publica. `es-AR` permanece
+  como idioma activo y seleccionable en `os_language` (D-39); la capa LOINC se
+  acredita con `source_file`/`provenance`. Las capas es-MX/es-AR originales
+  **no se recuperan desde la BD** (fueron
   sobrescritas por `ON CONFLICT DO UPDATE` en `:170-182` y `:218-230`): su
   reincorporación requiere reimportar CSV en un cambio de importador aprobado.
   Duplicados exactos con `ON CONFLICT DO NOTHING`; valores distintos bajo la
@@ -408,11 +429,11 @@ locks de D-35.
      aprobado → `null` + `untranslated=true` +
      `fallback_reason='no_approved_content'`. Campos sin registro editorial
      **no** caen a columna original.
-  3. **Contrato (D-27, D-38):** `requested_language`, `available_languages` con
-     `selectable = os_language.is_active` (incluye etiquetas `is_source_only`
-     aprobadas como `selectable=false`), `effective_language` por campo y
+  3. **Contrato (D-27, D-38, D-39, D-40):** `requested_language`, `available_languages` con
+     `selectable = os_language.is_active` (etiquetas `is_source_only` `es`/`es-MX` → `selectable=false`; LOINC `es-AR` → `selectable=true`;
+     solo para contenido aprobado), `effective_language` por campo y
      `null` en `meta` si hay mezcla, `field_languages` siempre presente,
-     `source_language`, `provenance`, `approval_state`, `fallback_applied`,
+     `source_language` (derivado con `loinc_source_language(...)`, D-40), `provenance`, `approval_state`, `fallback_applied`,
      `fallback_reason`, `untranslated`, `dialect_determined`. Un contenido
      `es` aprobado se devuelve como `effective_language='es'`, nunca reescrito.
      `Content-Language` solo si todos los campos comparten idioma;
@@ -420,7 +441,9 @@ locks de D-35.
 - **Validaciones:** todas las pruebas de la §7 pasan en staging; `lang=es`
   sigue resolviendo a `es-AR` como entrada; el resolvedor no consulta tablas de
   contenido; `field_languages` explica cada campo; una fila `is_source_only`
-  aprobada aparece como efectiva y como `selectable=false`.
+  aprobada aparece como efectiva y como `selectable=false`; una fila LOINC
+  `es-AR` aparece como `effective_language='es-AR'` con `selectable=true` y su
+  procedencia, sin marcar `es-AR` como source-only (D-39).
 - **Criterios de aceptación:** dos componentes con responsabilidades
   separadas; una sola implementación de cada uno; sin duplicar lógica en
   controladores; API pública nunca consulta estados no aprobados.
@@ -507,8 +530,10 @@ locks de D-35.
   identidad de proceso importador (`importer_run_id`); monitoreo de
   divergencias. Todo `UPDATE` o `ON CONFLICT DO UPDATE` que cambie texto
   recalcula `content_hash`, fuerza `unreviewed`, limpia revisor/fecha y registra
-  `content_changed` + `approval_invalidated` en la misma transacción (D-31).
-  Todo cambio de estado en `os_field_review` registra `review_state_changed` o
+  `content_changed` + `approval_invalidated` en la misma transacción (D-31),
+  con el ámbito `row_shared`/`field_individual` de D-41: un cambio bajo
+  aprobación compartida retira toda la fila, un cambio con revisión individual
+  retira solo ese campo. Todo cambio de estado en `os_field_review` registra `review_state_changed` o
   `approval_granted` con el actor de aplicación/`importer_run_id` (D-32).
 - **Validaciones:** 0 divergencias no explicadas entre original y copia;
   0 respuestas públicas servidas desde columna original sin `approved`
@@ -703,6 +728,9 @@ no cumple, se elige otro código real y se documenta. Igual criterio para
 | 39 | Nullabilidad final | Fase 13 solo verifica: columnas de D-36 conservan su estado; no se ejecuta ningún `SET NOT NULL` nuevo y las columnas con semántica conocida ya eran `NOT NULL DEFAULT`. |
 | 40 | Rutas y entidades CDT/NN | `entity_type='nomenclador'` solo resuelve `nomencladores_argentina`; CDT responde por `/v1/search/odontologia` y `/v1/odontologia/{id}`; `/v1/cdt` no existe; NN 2025 no tiene endpoint ni mapeo (D-37). |
 | 41 | Contrato API con mezcla de campos | `available_languages` informa `selectable`; `meta.effective_language=null` si hay mezcla; `field_languages` describe cada campo; `Content-Language` se omite y `Vary: Accept-Language` se emite (D-38). |
+| 42 | LOINC `es-AR` frente a `is_source_only` | `os_language.es-AR` sigue `is_active=true, is_source_only=false`; la fila LOINC conserva `source_file='esAR7LinguisticVariant.csv'`/`provenance`; la respuesta declara `effective_language='es-AR'` y `available_languages[es-AR].selectable=true`. Ningún tag se marca source-only por procedencia (D-39). |
+| 43 | `source_language_code` de LOINC | No existe columna nueva: `meta.source_language` y `field_languages[].source_language` salen de `loinc_source_language(language_code, source_file)`; con `language_code='es-AR'` y ese `source_file` devuelve `es-AR`; con archivo no coincidente devuelve `null`, `language_evidence='undetermined'` y la fila no se publica (D-40). |
+| 44 | Ámbito de invalidación `content_hash` | Si cambia `definition` bajo aprobación compartida, se invalida toda la fila (`row_shared`) y los seis campos dejan de servirse hasta re-aprobación; si cambia un campo con fila en `os_field_review`, solo se invalida esa revisión (`field_individual`) y los demás siguen `approved`; crear/deprecar una fila individual recalcula el agregado e invalida una vez la aprobación compartida. El evento registra ámbito y campos (D-41). |
 
 ---
 
