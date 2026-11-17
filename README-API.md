@@ -48,8 +48,12 @@
   `dialect_determined=false`.
 - Las tablas SNOMED/CIE usan el tag primario (`es`/`en`); las tablas DENTAR usan
   la etiqueta regional (`es-AR`, `en`, `pt-BR`).
-- Los mapeos `os_concept_mapping` siguen sin aprobación editorial automática
-  (D-19 pendiente): no se aprueban ni degradan las 419 filas pendientes.
+- D-19 quedó aprobada por la autoridad editorial y registrada con
+  `sql/07_multilingue/15_d19_aprobacion_editorial.sql`. `display` y `rationale`
+  de los mapeos se publican solo si existe revisión vigente en
+  `os_field_review` (`language_code='undet'`) y el `content_hash` coincide. Sin
+  esa revisión el valor es `null` con `untranslated=true`; nunca se sirve la
+  columna original como atajo.
 
 ### Portal y exposición real de CDT/NN (Fase 10)
 
@@ -242,6 +246,15 @@ curl -s -X GET "https://api.origen.ar/v1/mappings?system=LOINC&code=58410-2" \
 curl -s -X GET "https://api.origen.ar/v1/mappings?system=CIE-10&code=K02.1" \
   -H "Authorization: Bearer <TU_API_KEY>"
 ```
+
+`target_display` y `rationale` usan el mismo dual-read condicionado que
+`GET /v1/catalogs/{catalogCode}/items/{code}`: requieren aprobación D-19 vigente
+en `os_field_review`. Cada resultado incluye `field_languages` y `untranslated`.
+Cuando se publica, `effective_language` es `undet`: `os_concept_mapping` no tiene
+`language_code` y no se inventa `es-AR`. Un cambio de texto o `source_reference`
+retira la aprobación del campo y registra `approval_invalidated` (D-31). El modo
+de escritura de importadores permanece `OS_IMPORT_MODE=dual`; `new_only` no se
+activa automáticamente.
 
 ### 3.5. Farmacia: Consulta Directa por Troquel, AlfaBeta, Kairos o GTIN
 #### `GET /v1/medicines/identifiers/{system}/{code}`

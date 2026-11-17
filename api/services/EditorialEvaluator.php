@@ -157,6 +157,80 @@ final class EditorialEvaluator
     }
 
     /**
+     * Código de contenido. 'undet' es una etiqueta de ausencia de idioma, no un
+     * código de os_language: se acepta literalmente para os_concept_mapping
+     * (D-19) sin pasar por el catálogo ni inventar una variante regional.
+     */
+    private function contentCode(?string $input): ?string
+    {
+        if ($input !== null && strtolower(trim($input)) === 'undet') {
+            return 'undet';
+        }
+
+        return $this->catalog->canonical($input);
+    }
+
+    /**
+     * Publicación de un campo de os_concept_mapping aprobado bajo D-19.
+     *
+     * La tabla no tiene language_code: su revisión usa 'undet'. El texto solo
+     * se devuelve si existe revisión aprobada y su hash coincide con el valor
+     * actual; si no, se devuelve null + untranslated=true (D-20).
+     *
+     * @param array{
+     *     target_id: int,
+     *     requested_language: string,
+     *     field_name: string,
+     *     variants: list<array<string, mixed>>
+     * } $spec
+     */
+    public function evaluateUndet(array $spec): EditorialResult
+    {
+        $fieldName = (string) ($spec['field_name'] ?? '');
+        $targetId = (int) ($spec['target_id'] ?? 0);
+        $requestedLanguage = (string) ($spec['requested_language'] ?? '');
+        $variants = is_array($spec['variants'] ?? null) ? $spec['variants'] : [];
+
+        $selected = $this->selectVariant(
+            $fieldName,
+            $variants,
+            [['code' => 'undet', 'reason' => null]],
+            $requestedLanguage,
+            null,
+            'os_concept_mapping',
+            $targetId
+        );
+
+        // 'undet' no es un idioma seleccionable ni un fallback del cliente:
+        // se declara con precisión, sin convertirlo en es-AR ni marcarlo como
+        // traducción exitosa en otro idioma.
+        if ($selected['language']['effective_language'] === 'undet') {
+            $selected['language']['fallback_applied'] = false;
+            $selected['language']['fallback_reason'] = null;
+        }
+
+        $values = [$fieldName => $selected['value']];
+        $fieldLanguages = [$fieldName => $selected['language']];
+
+        return new EditorialResult(
+            $values,
+            $fieldLanguages,
+            [
+                'requested_language' => $requestedLanguage,
+                'effective_language' => $selected['language']['effective_language'],
+                'source_language' => $selected['language']['source_language'],
+                'provenance' => $selected['language']['provenance'],
+                'approval_state' => $selected['language']['approval_state'],
+                'fallback_applied' => $selected['language']['fallback_applied'],
+                'fallback_reason' => $selected['language']['fallback_reason'],
+                'untranslated' => $selected['language']['untranslated'],
+            ],
+            [],
+            null
+        );
+    }
+
+    /**
      * @param list<array<string, mixed>> $variants
      * @param list<array{code: string, reason: string|null}> $candidates
      *
@@ -178,7 +252,7 @@ final class EditorialEvaluator
                 continue;
             }
 
-            $code = $this->catalog->canonical(isset($variant['language_code'])
+            $code = $this->contentCode(isset($variant['language_code'])
                 ? (string) $variant['language_code']
                 : null);
 
@@ -203,6 +277,13 @@ final class EditorialEvaluator
                 : $targetId;
             $review = $this->reviews->bestApproved($fieldName, $code, $releaseId, $hash, $variantTargetId);
 
+            if ($code === 'undet' && $review === null) {
+                // D-19/D-20: os_concept_mapping conserva un review_status
+                // heredado 'approved', pero sin os_field_review NO es
+                // publicable. La columna original no es evidencia editorial.
+                continue;
+            }
+
             if ($review === null && $this->reviews->hasBlockingReview(
                 $fieldName,
                 $code,
@@ -217,7 +298,7 @@ final class EditorialEvaluator
                 continue;
             }
 
-            $effectiveLanguage = $this->catalog->canonical(isset($variant['language_code'])
+            $effectiveLanguage = $this->contentCode(isset($variant['language_code'])
                 ? (string) $variant['language_code']
                 : $code) ?? $code;
 

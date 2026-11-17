@@ -26,6 +26,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use OrigenSalud\Api\Config\Database;
+use OrigenSalud\Tools\Php\ImporterIdentity;
 
 if ($argc < 3) {
     fwrite(STDERR, "Uso: php tools/php/import_nomenclador_csv.php <archivo.csv> <TIPO_NOMENCLADOR>\n");
@@ -52,6 +53,8 @@ try {
     fwrite(STDERR, "Error de conexión a la base de datos: " . $e->getMessage() . "\n");
     exit(1);
 }
+
+$importerRunId = ImporterIdentity::newRunId('import_nomenclador_csv');
 
 $handle = fopen($csvFile, 'r');
 if ($handle === false) {
@@ -160,6 +163,7 @@ if ($tipoNomenclador === 'VADEMECUM') {
     $count = 0;
     $omitidos = 0;
     $db->beginTransaction();
+    ImporterIdentity::bind($db, $importerRunId);
 
     while (($row = fgetcsv($handle, 0, $delimiter, '"', '')) !== false) {
         if (empty($row) || (count($row) === 1 && $row[0] === null)) {
@@ -228,6 +232,7 @@ $stmt = $db->prepare($sql);
 
 $count = 0;
 $db->beginTransaction();
+ImporterIdentity::bind($db, $importerRunId);
 
 while (($row = fgetcsv($handle, 0, $delimiter, '"', '')) !== false) {
     if (empty($row) || (count($row) === 1 && $row[0] === null)) {

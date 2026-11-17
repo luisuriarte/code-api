@@ -7,10 +7,10 @@ no en producción.
 ## Estado en el entorno de pruebas
 
 Los scripts `01` a `14` ya fueron ejecutados en `origen_codes`. La validación
-Fase 12 (`12_fase12_validacion.sql`) quedó en 0 hallazgos técnicos y la matriz
-D-19 está **pendiente por decisión del responsable**: las 419 filas
-`approved` de `os_concept_mapping` se conservan sin degradar y sin aprobación
-editorial registrada. No hay nuevo script SQL para ejecutar en este punto.
+Fase 12 (`12_fase12_validacion.sql`) quedó en 0 hallazgos técnicos. La matriz
+D-19 fue **aprobada por el responsable**: ejecutar `15` para registrar esa
+aprobación por campo, luego `16` y `17` como reportes de verificación. El corte
+de Fase 13 queda preparado pero **no activo** (`OS_IMPORT_MODE=dual`).
 
 ## Orden de ejecución
 
@@ -30,6 +30,10 @@ editorial registrada. No hay nuevo script SQL para ejecutar en este punto.
 | 12 | `12_fase12_validacion.sql` | 12 — reporte de validación | solo `SELECT` (sin transacción) |
 | 13 | `13_fase5b_variantes_es.sql` | 5b — recuperar capas LOINC es-MX/es-AR desde CSV | `BEGIN/COMMIT` |
 | 14 | `14_d19_matriz_pendiente.sql` | 12 / 4.3 — reporte para la matriz editorial D-19 | solo `SELECT` (sin transacción) |
+| 15 | `15_d19_aprobacion_editorial.sql` | 12 / 4.3 — registro aditivo de la aprobación D-19 | `BEGIN/COMMIT` |
+| 16 | `18_fase11_invalidacion_mapeos.sql` | 11 — invalidación D-31 de revisiones D-19 | `BEGIN/COMMIT` |
+| 17 | `16_fase12_post_d19.sql` | 12 — validación posterior a D-19 | solo `SELECT` (sin transacción) |
+| 18 | `17_fase13_verificacion_final.sql` | 13 — nulabilidad D-36 y estado del corte | solo `SELECT` (sin transacción) |
 
 Ejecutar **en orden**. Los scripts son idempotentes (`IF NOT EXISTS`,
 `ON CONFLICT DO NOTHING`) salvo los `UPDATE` de Fase 4, que se repetirán sin
@@ -55,12 +59,16 @@ sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/1
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -P pager=off -f sql/07_multilingue/12_fase12_validacion.sql
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/13_fase5b_variantes_es.sql
 sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -P pager=off -f sql/07_multilingue/14_d19_matriz_pendiente.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/15_d19_aprobacion_editorial.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/07_multilingue/18_fase11_invalidacion_mapeos.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -P pager=off -f sql/07_multilingue/16_fase12_post_d19.sql
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -P pager=off -f sql/07_multilingue/17_fase13_verificacion_final.sql
 ```
 
 Tras ejecutar el 13, volver a correr el 12 para que la validación incluya las
-capas es-MX/es-AR recién recuperadas. El 14 es de solo lectura y no cambia
-ningún estado: entrega las filas para que la autoridad editorial complete la
-matriz D-19 (motivo, revisor y fecha).
+capas es-MX/es-AR recién recuperadas. El 14 es de solo lectura: entregó las
+filas de la matriz D-19. El 15 registra la aprobación ya decidida por la
+autoridad editorial; el 16 y el 17 solo verifican, no cambian estados.
 
 Si tu `pg_hba.conf` usa `md5`/`scram` en localhost en vez de `peer`:
 
@@ -123,15 +131,16 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   `version_last_changed_normalizada='(sin_version)'`. Nada queda `approved`.
   La carga va **campo por campo en transacciones separadas** (24 `INSERT`):
   imprime progreso y, si se interrumpe, reejecutar no duplica nada.
-- `14_d19_matriz_pendiente.sql` es **solo lectura**. Entrega tabla, campo,
+- `14_d19_matriz_pendiente.sql` es **solo lectura**. Entregó tabla, campo,
   idioma (`'undet'`: `os_concept_mapping` no tiene `language_code`), release,
   fuente, motivo, revisor y fecha para las 419 filas `approved` heredadas.
-  NO aprueba nada: la aprobación es un acto editorial firmado (D-19).
   Ejecutado: 419 filas de `os_concept_mapping` sin `os_field_review` y
-  `aprobadas_sin_os_field_review=419`. Por decisión del responsable la matriz
-  D-19 queda **PENDIENTE**; no se aprueban ni degradan automáticamente. Las 419
-  filas conservan su `review_status='approved'` heredado y seguirán apareciendo
-  en el control hasta que se registre la revisión editorial correspondiente.
+  `aprobadas_sin_os_field_review=419`. La autoridad editorial **aprobó D-19**;
+  el script `15` registra esa decisión sin degradar ni cambiar el
+  `review_status` heredado de las 419 filas.
+- `18_fase11_invalidacion_mapeos.sql` instala el trigger que retira la
+  aprobación D-19 de un campo cuando cambia su texto o `source_reference`, con
+  evento `approval_invalidated` en la misma transacción (D-31). No borra datos.
 - Las fases 8 a 11 (LanguageResolver, API, sitio, dual-read/dual-write) son
   cambios de código, no SQL. Fase 8 quedó implementada en `api/services/`
   (`LanguageResolver`, `LanguageCatalog`, `FieldReviewRepository`,
@@ -143,9 +152,17 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   tres locales (`es-AR`, `en`, `pt-BR`), buscador que consume `GET /v1/search`
   propagando `lang`/`Accept-Language`, visualización del contrato idiomático de
   Fase 9 y documentación de las rutas reales de CDT/NN; se verifica con
-  `php tools/php/verificar_fase10.php`. Tampoco requiere script SQL. Las fases
-  13 y 14 dependen del corte/rollback, en tensión con la decisión «Sin backup».
-  No se incluyen aquí.
+  `php tools/php/verificar_fase10.php`. Fase 11 agregó `MappingReviewReader`,
+  `EditorialEvaluator::evaluateUndet()` e `ImporterIdentity`, y se verifica con
+  `php tools/php/verificar_fase11.php`.
+- `16_fase12_post_d19.sql` y `17_fase13_verificacion_final.sql` son solo
+  lectura. El primero confirma cobertura D-19, vigencia de hash y auditoría; el
+  segundo comprueba D-36 sin introducir `NOT NULL`. Se verifican con
+  `php tools/php/verificar_fase12.php` y `verificar_fase13.php`.
+- La Fase 13 queda preparada con `OS_IMPORT_MODE=dual`; el modo `new_only` falla
+  explícitamente hasta existir una implementación write-only verificada. No se
+  activa corte, no se pide backup y la reversión se documenta por auditoría y
+  reproceso en `docs/architecture/corte-controlado-multilingue.md`.
 
 **Sin backup**: decisión explícita del responsable sobre datos de prueba no
 reales. Estos scripts son aditivos y no destruyen tablas, columnas ni datos

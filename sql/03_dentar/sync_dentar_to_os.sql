@@ -37,6 +37,18 @@
 -- =============================================================================
 SET client_encoding = 'UTF8';
 
+-- Fase 11: identidad de importador para la auditoría de os_* (D-23, D-32).
+-- Si el importador PHP ya fijó un run_id, se conserva; si el script se ejecuta
+-- suelto, se genera uno alfanumérico sin usar SESSION_USER como actor real.
+SELECT set_config(
+    'app.importer_run_id',
+    COALESCE(
+        NULLIF(current_setting('app.importer_run_id', TRUE), ''),
+        'sync_dentar_to_os:' || txid_current()::TEXT
+    ),
+    TRUE
+);
+
 -- -----------------------------------------------------------------------------
 -- 0. Verificación de catálogos
 -- -----------------------------------------------------------------------------

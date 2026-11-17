@@ -49,6 +49,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use OrigenSalud\Api\Config\Database;
+use OrigenSalud\Tools\Php\ImporterIdentity;
 
 /** @var array<string, array<string, string>> catálogo => columna CSV => system_code */
 const DENTAR_MAPEOS = [
@@ -417,9 +418,14 @@ $avisos = [];
 $procesadas = 0;
 $huboErrores = false;
 
+$importerRunId = ImporterIdentity::newRunId('import_dentar_csv');
+
 $db->beginTransaction();
+ImporterIdentity::bind($db, $importerRunId);
 
 try {
+    ImporterIdentity::assertWritableMode();
+
     $fila = 1;
     while (($datos = fgetcsv($handle, 0, $delimitador, '"', '')) !== false) {
         $fila++;
@@ -809,6 +815,7 @@ echo 'DENTAR · familia importada'
     . PHP_EOL;
 echo str_repeat('=', 60) . PHP_EOL;
 echo "Versión:      {$version} (por catálogo)\n";
+echo "Run ID:       {$importerRunId}\n";
 echo "Procesadas:   {$procesadas}\n";
 echo 'DENTAR-PR:    ' . ($creados['dentar-pr'] + $actualizados['dentar-pr'])
     . " filas ({$creados['dentar-pr']} nuevos, {$actualizados['dentar-pr']} actualizados)\n";

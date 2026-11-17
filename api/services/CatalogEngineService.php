@@ -447,15 +447,25 @@ final class CatalogEngineService
         $meta['source_language_code'] = $preferred['version_source_language'];
         $meta['provenance'] = (string) $preferred['version_provenance'];
 
-        // Mappings: D-19 sigue pendiente; no se aprueban ni degradan filas.
+        // Mappings: dual-read condicionado (Fase 11). La columna original solo
+        // se publica si D-19 dejó una revisión aprobada y vigente; si no,
+        // display/rationale son null con untranslated=true.
         $mapStmt = $this->db->prepare(
-            'SELECT sys.code AS system_code, sys.uri AS system_uri, m.external_code, m.external_display, m.mapping_type, m.relationship_role, m.clinical_rationale
+            'SELECT m.id, sys.code AS system_code, sys.uri AS system_uri,
+                    m.external_code, m.external_display, m.mapping_type,
+                    m.relationship_role, m.clinical_rationale,
+                    m.review_status, m.provenance, m.source_reference,
+                    m.source_language_code, m.source_language_code_display,
+                    m.language_evidence
                FROM os_concept_mapping m
                JOIN os_terminology_system sys ON sys.id = m.terminology_system_id
               WHERE m.item_id = :item_id'
         );
         $mapStmt->execute([':item_id' => $itemId]);
         $mappings = $mapStmt->fetchAll();
+
+        $mappingReader = new MappingReviewReader($this->db, $catalog);
+        $mappingResolution = $mappingReader->resolve($mappings, $requestedLanguage);
 
         $headers = ['Vary' => 'Accept-Language'];
 
@@ -488,15 +498,26 @@ final class CatalogEngineService
                     'fixed_price' => $preferred['fixed_price'] !== null ? (float) $preferred['fixed_price'] : null,
                     'expenses' => $preferred['expenses_amount'] !== null ? (float) $preferred['expenses_amount'] : null,
                 ] : null,
-                'mappings' => array_map(static fn (array $m): array => [
-                    'system' => $m['system_code'],
-                    'uri' => $m['system_uri'],
-                    'code' => $m['external_code'],
-                    'display' => $m['external_display'],
-                    'equivalence' => $m['mapping_type'],
-                    'role' => $m['relationship_role'],
-                    'rationale' => $m['clinical_rationale'],
-                ], $mappings),
+                'mappings' => array_map(
+                    static function (array $m) use ($mappingResolution): array {
+                        $id = (int) $m['id'];
+                        $resolved = $mappingResolution[$id] ?? null;
+                        $languages = $resolved['field_languages'] ?? [];
+
+                        return [
+                            'system' => $m['system_code'],
+                            'uri' => $m['system_uri'],
+                            'code' => $m['external_code'],
+                            'display' => $resolved['external_display'] ?? null,
+                            'equivalence' => $m['mapping_type'],
+                            'role' => $m['relationship_role'],
+                            'rationale' => $resolved['clinical_rationale'] ?? null,
+                            'field_languages' => $languages,
+                            'untranslated' => (bool) ($resolved['untranslated'] ?? true),
+                        ];
+                    },
+                    $mappings
+                ),
             ],
             'meta' => $meta + [
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
@@ -515,7 +536,8 @@ final class CatalogEngineService
         $code = trim((string) ($request->query['code'] ?? ''));
         $catalog = trim((string) ($request->query['catalog'] ?? ''));
 
-        $sql = 'SELECT cat.code AS catalog_code,
+        $sql = 'SELECT m.id,
+                        cat.code AS catalog_code,
                        ident.value AS official_code,
                        ver.preferred_term,
                        sys.code AS target_system,
@@ -524,7 +546,10 @@ final class CatalogEngineService
                        m.external_display,
                        m.mapping_type,
                        m.relationship_role,
-                       m.clinical_rationale
+                       m.clinical_rationale,
+                       m.review_status, m.provenance, m.source_reference,
+                       m.source_language_code, m.source_language_code_display,
+                       m.language_evidence
                   FROM os_concept_mapping m
                   JOIN os_catalog_item item ON item.id = m.item_id
                   JOIN os_catalog cat ON cat.id = item.catalog_id
@@ -555,23 +580,50 @@ final class CatalogEngineService
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
+        $catalog = LanguageCatalog::fromPdo($this->db, null);
+        $requestedLanguage = LanguageResolver::fromPdo(
+            $this->db,
+            null,
+            (string) env('API_DEFAULT_LANG', 'es')
+        )->resolve($request)->requestedLanguage;
+        $mappingReader = new MappingReviewReader($this->db, $catalog);
+        $mappingResolution = $mappingReader->resolve($rows, $requestedLanguage);
+
         return [
-            'data' => array_map(static fn (array $r): array => [
-                'catalog' => $r['catalog_code'],
-                'catalog_code' => $r['official_code'] !== null ? (string) $r['official_code'] : null,
-                'term' => $r['preferred_term'],
-                'target_system' => $r['target_system'],
-                'target_uri' => $r['target_uri'],
-                'target_code' => $r['external_code'],
-                'target_display' => $r['external_display'],
-                'equivalence' => $r['mapping_type'],
-                'role' => $r['relationship_role'],
-                'rationale' => $r['clinical_rationale'],
-            ], $rows),
+            'data' => array_map(
+                static function (array $r) use ($mappingResolution): array {
+                    $id = (int) $r['id'];
+                    $resolved = $mappingResolution[$id] ?? null;
+
+                    return [
+                        'catalog' => $r['catalog_code'],
+                        'catalog_code' => $r['official_code'] !== null ? (string) $r['official_code'] : null,
+                        'term' => $r['preferred_term'],
+                        'target_system' => $r['target_system'],
+                        'target_uri' => $r['target_uri'],
+                        'target_code' => $r['external_code'],
+                        'target_display' => $resolved['external_display'] ?? null,
+                        'equivalence' => $r['mapping_type'],
+                        'role' => $r['relationship_role'],
+                        'rationale' => $resolved['clinical_rationale'] ?? null,
+                        'field_languages' => $resolved['field_languages'] ?? [],
+                        'untranslated' => (bool) ($resolved['untranslated'] ?? true),
+                    ];
+                },
+                $rows
+            ),
             'meta' => [
                 'total' => count($rows),
+                'requested_language' => $requestedLanguage,
+                'untranslated' => array_reduce(
+                    $rows,
+                    static fn (bool $carry, array $r): bool => $carry
+                        || ($mappingResolution[(int) $r['id']]['untranslated'] ?? true),
+                    false
+                ),
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
             ],
+            'headers' => ['Vary' => 'Accept-Language'],
         ];
     }
 

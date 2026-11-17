@@ -521,6 +521,10 @@ final class Rf2Importer
 
         try {
             $this->db->beginTransaction();
+            ImporterIdentity::bind(
+                $this->db,
+                ImporterIdentity::newRunId('import_snomed_rf2')
+            );
 
             try {
                 $statement->execute();

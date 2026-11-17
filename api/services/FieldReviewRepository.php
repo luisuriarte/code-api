@@ -129,6 +129,23 @@ final class FieldReviewRepository
     }
 
     /**
+     * Hash individual calculado por trg_field_review_hash (D-31, D-41).
+     *
+     * Se usa antes de publicar para comprobar que la aprobación sigue vigente:
+     * si el texto cambió, el hash guardado ya no coincide y el campo queda
+     * sin contenido publicable. No es una firma criptográfica.
+     */
+    public function contentHash(
+        string $value,
+        string $languageCode,
+        ?string $sourceReference
+    ): string {
+        return md5(
+            $value . "\x1f" . $languageCode . "\x1f" . ($sourceReference ?? '')
+        );
+    }
+
+    /**
      * Indica si existe una revisión aplicable que impide usar la aprobación
      * compartida de la fila (D-07/D-28) o cuyo hash fue invalidado (D-31).
      */
