@@ -17,12 +17,20 @@ use OrigenSalud\Web\I18n;
     <link rel="alternate" hreflang="<?= e($alternate['hreflang']) ?>" href="<?= e($alternate['href']) ?>">
     <?php endforeach; ?>
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Origen Salud">
+    <meta property="og:url" content="<?= e($baseUrl . $currentPath) ?>">
     <meta property="og:title" content="<?= e($pageTitle) ?>">
     <meta property="og:description" content="<?= e($pageDescription) ?>">
     <meta property="og:locale" content="<?= e(I18n::metadata($locale)['og_locale']) ?>">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="<?= e($pageTitle) ?>">
+    <meta name="twitter:description" content="<?= e($pageDescription) ?>">
+    <?php if (!empty($structuredData)): ?>
+    <script type="application/ld+json"><?= json_encode($structuredData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+    <?php endif; ?>
     <link rel="stylesheet" href="/assets/css/app.css">
 </head>
-<body>
+<body<?= isset($bodyClass) && $bodyClass !== '' ? ' class="' . e($bodyClass) . '"' : '' ?>>
 <a class="skip-link" href="#main"><?= e($t('a11y.skip')) ?></a>
 <?php require __DIR__ . '/../partials/header.php'; ?>
 <main id="main">

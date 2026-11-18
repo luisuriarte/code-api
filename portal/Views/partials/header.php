@@ -6,6 +6,7 @@ use OrigenSalud\Web\I18n;
 
 $navItems = [
     ['label' => $t('nav.home'), 'href' => I18n::localizedPath($locale, '/')],
+    ['label' => $t('nav.dentar'), 'href' => I18n::localizedPath($locale, '/dentar'), 'class' => 'nav-dentar'],
     ['label' => $t('nav.browse'), 'href' => I18n::localizedPath($locale, '/browse')],
     ['label' => $t('nav.docs'), 'href' => I18n::localizedPath($locale, '/docs')],
     ['label' => $t('nav.services'), 'href' => I18n::localizedPath($locale, '/cart')],
@@ -25,7 +26,7 @@ $navItems = [
 
         <nav class="site-nav" aria-label="<?= e($t('nav.label')) ?>">
             <?php foreach ($navItems as $item): ?>
-                <a href="<?= e($item['href']) ?>"><?= e($item['label']) ?></a>
+                <a class="<?= e($item['class'] ?? '') ?>" href="<?= e($item['href']) ?>"><?= e($item['label']) ?></a>
             <?php endforeach; ?>
         </nav>
 

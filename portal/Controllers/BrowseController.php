@@ -18,10 +18,11 @@ final class BrowseController
 
         $query = Validator::text($_GET['q'] ?? '', 200);
         $domain = Validator::text($_GET['domain'] ?? '', 64);
+        $catalog = self::catalogParam();
         $page = self::pageParam();
         $limit = self::limitParam();
 
-        $result = BrowseService::search($query, $domain, $apiLocale, $page, $limit);
+        $result = BrowseService::search($query, $domain, $apiLocale, $page, $limit, $catalog);
         $domains = BrowseService::domains($locale);
 
         View::render('browse', [
@@ -31,6 +32,7 @@ final class BrowseController
             'currentPath' => $currentPath,
             'query' => $query,
             'domain' => $domain,
+            'catalog' => $catalog,
             'domains' => $domains,
             'result' => $result,
             'apiLocale' => $apiLocale,
@@ -43,8 +45,20 @@ final class BrowseController
         $t = static fn (string $key, array $parameters = []): string => trans($key, $parameters, $locale);
         $apiLocale = I18n::metadata($locale)['api_language'];
         $id = Validator::text(rawurldecode($id), 200);
+        $catalog = self::catalogParam();
+        $backPage = self::pageParam();
 
-        $result = BrowseService::detail($id, $apiLocale);
+        $result = BrowseService::detail($id, $apiLocale, $catalog);
+
+        $backParams = array_filter([
+            'q' => Validator::text($_GET['q'] ?? '', 200),
+            'domain' => Validator::text($_GET['domain'] ?? '', 64),
+            'catalog' => $catalog,
+            'page' => $backPage > 1 ? $backPage : null,
+        ], static fn ($value) => $value !== '' && $value !== null);
+        $backPath = I18n::localizedPath($locale, '/browse');
+        $backUrl = $backPath
+            . ($backParams === [] ? '' : '?' . http_build_query($backParams, '', '&', PHP_QUERY_RFC3986));
 
         View::render('browse-detail', [
             'pageTitle' => ($result['item'] !== null ? self::itemTitle($result['item']) : $t('browse.detail_title'))
@@ -55,8 +69,17 @@ final class BrowseController
             'id' => $id,
             'result' => $result,
             'apiLocale' => $apiLocale,
-            'backUrl' => I18n::localizedPath($locale, '/browse'),
+            'catalog' => $catalog,
+            'backUrl' => $backUrl,
         ]);
+    }
+
+    private static function catalogParam(): ?string
+    {
+        $raw = $_GET['catalog'] ?? '';
+        $catalog = is_scalar($raw) ? Validator::text($raw, 32) : '';
+
+        return $catalog === '' ? null : $catalog;
     }
 
     private static function pageParam(): int

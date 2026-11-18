@@ -8,22 +8,31 @@ $result = $result ?? ['ok' => false, 'error' => null, 'items' => [], 'total' => 
 $items = is_array($result['items'] ?? null) ? $result['items'] : [];
 $page = (int) ($result['page'] ?? 1);
 $pages = (int) ($result['pages'] ?? 1);
+$catalog = $catalog ?? null;
+$dentarFilter = in_array($catalog, ['dentar-pr', 'dentar-dx'], true);
 
-$pageUrl = static function (int $targetPage) use ($baseBrowsePath, $query, $domain, $apiLocale): string {
-    $params = array_filter([
+$queryParams = static function (int $targetPage = 1) use ($query, $domain, $catalog, $apiLocale): array {
+    return array_filter([
         'q' => $query,
         'domain' => $domain,
+        'catalog' => $catalog,
         'lang' => $apiLocale === 'es-AR' || $apiLocale === 'en' || $apiLocale === 'pt-BR' ? null : $apiLocale,
         'page' => $targetPage > 1 ? $targetPage : null,
     ], static fn ($value) => $value !== '' && $value !== null);
+};
+
+$pageUrl = static function (int $targetPage) use ($baseBrowsePath, $queryParams): string {
+    $params = $queryParams($targetPage);
 
     return $baseBrowsePath . ($params === [] ? '' : '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986));
 };
 
-$itemUrl = static function (array $item) use ($locale): string {
+$itemUrl = static function (array $item) use ($locale, $queryParams, $page): string {
     $code = (string) ($item['id'] ?? $item['code'] ?? '');
+    $params = $queryParams($page);
+    $path = I18n::localizedPath($locale, '/browse/' . rawurlencode($code));
 
-    return I18n::localizedPath($locale, '/browse/' . rawurlencode($code));
+    return $path . ($params === [] ? '' : '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986));
 };
 ?>
 <section class="section">
@@ -31,6 +40,18 @@ $itemUrl = static function (array $item) use ($locale): string {
         <span class="eyebrow"><?= e($t('browse.eyebrow')) ?></span>
         <h1><?= e($t('browse.title')) ?></h1>
         <p class="lead"><?= e($t('browse.lead')) ?></p>
+
+        <?php if ($dentarFilter): ?>
+            <div class="browse-dentar-banner">
+                <strong><?= e($t('browse.dentar_badge')) ?></strong>
+                <p><?= e($t('browse.dentar_intro', [
+                    '%catalog%' => $t('dentar.' . ($catalog === 'dentar-pr' ? 'pr_badge' : 'dx_badge')),
+                ])) ?></p>
+                <a class="dentar-text-link" href="<?= e(I18n::localizedPath($locale, '/dentar')) ?>">
+                    <?= e($t('browse.dentar_back')) ?> →
+                </a>
+            </div>
+        <?php endif; ?>
 
         <form class="browse-form" method="get" action="<?= e($baseBrowsePath) ?>">
             <input type="hidden" name="lang" value="<?= e($apiLocale) ?>">
@@ -50,6 +71,18 @@ $itemUrl = static function (array $item) use ($locale): string {
                                 <?= e($option['label']) ?>
                             </option>
                         <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="field field-full">
+                    <label for="browse-catalog"><?= e($t('browse.catalog')) ?></label>
+                    <select id="browse-catalog" name="catalog">
+                        <option value=""><?= e($t('browse.catalog_all')) ?></option>
+                        <option value="dentar-pr" <?= $catalog === 'dentar-pr' ? 'selected' : '' ?>>
+                            <?= e($t('dentar.pr_badge')) ?>
+                        </option>
+                        <option value="dentar-dx" <?= $catalog === 'dentar-dx' ? 'selected' : '' ?>>
+                            <?= e($t('dentar.dx_badge')) ?>
+                        </option>
                     </select>
                 </div>
             </div>

@@ -7,6 +7,7 @@ namespace OrigenSalud\Portal;
 use OrigenSalud\Portal\Controllers\AboutController;
 use OrigenSalud\Portal\Controllers\BrowseController;
 use OrigenSalud\Portal\Controllers\ContactController;
+use OrigenSalud\Portal\Controllers\DentarController;
 use OrigenSalud\Portal\Controllers\HomeController;
 use OrigenSalud\Web\I18n;
 
@@ -59,6 +60,12 @@ final class Router
 
         if ($section === 'docs') {
             $this->legacy('/docs', $locale);
+
+            return;
+        }
+
+        if ($section === 'dentar') {
+            DentarController::index($locale, $currentPath);
 
             return;
         }

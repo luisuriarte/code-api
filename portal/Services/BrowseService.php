@@ -18,14 +18,30 @@ final class BrowseService
     public const MAX_LIMIT = 100;
 
     /** @return array{ok: bool, error: ?string, items: list<array<string, mixed>>, total: int, page: int, pages: int, has_more: bool} */
-    public static function search(string $query, string $domain, string $language, int $page, int $limit): array
-    {
+    public static function search(
+        string $query,
+        string $domain,
+        string $language,
+        int $page,
+        int $limit,
+        ?string $catalog = null
+    ): array {
         $limit = max(1, min(self::MAX_LIMIT, $limit));
         $page = max(1, $page);
         $offset = min(5000, ($page - 1) * $limit);
+        $catalog = ($catalog ?? '') !== '' ? $catalog : null;
 
         if ($domain !== '' && !CatalogRepository::isValidDomain($domain)) {
             return self::empty('invalid_domain', $page);
+        }
+
+        if ($catalog !== null) {
+            if (!CatalogRepository::isValidCatalog($catalog)) {
+                return self::empty('invalid_catalog', $page);
+            }
+            if ($domain !== '' && $domain !== 'odontologia') {
+                return self::empty('invalid_catalog', $page);
+            }
         }
 
         if (!CatalogRepository::available()) {
@@ -40,7 +56,14 @@ final class BrowseService
         }
 
         try {
-            $result = CatalogRepository::search($query, $domain, $language, $limit, $offset);
+            $result = CatalogRepository::search(
+                $query,
+                $domain,
+                $language,
+                $limit,
+                $offset,
+                CatalogRepository::normalizeCatalog($catalog)
+            );
         } catch (RepositoryException) {
             return self::empty('error_query', $page);
         }
@@ -57,14 +80,24 @@ final class BrowseService
     }
 
     /** @return array{ok: bool, error: ?string, item: ?array<string, mixed>} */
-    public static function detail(string $id, string $language): array
+    public static function detail(string $id, string $language, ?string $catalog = null): array
     {
+        $catalog = ($catalog ?? '') !== '' ? $catalog : null;
+
+        if ($catalog !== null && !CatalogRepository::isValidCatalog($catalog)) {
+            return ['ok' => false, 'error' => 'invalid_catalog', 'item' => null];
+        }
+
         if (!CatalogRepository::available()) {
             return ['ok' => false, 'error' => 'not_configured', 'item' => null];
         }
 
         try {
-            $item = CatalogRepository::find($id, $language);
+            $item = CatalogRepository::find(
+                $id,
+                $language,
+                CatalogRepository::normalizeCatalog($catalog)
+            );
         } catch (RepositoryException) {
             return ['ok' => false, 'error' => 'error_query', 'item' => null];
         }

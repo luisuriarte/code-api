@@ -24,6 +24,9 @@ final class CatalogRepository
 
     public const DEFAULT_DOMAINS = ['snomed', 'cie10', 'anmat'];
 
+    /** Catálogos DENTAR publicados que pueden usarse como filtro del explorador. */
+    public const DENTAR_CATALOGS = ['dentar-pr', 'dentar-dx'];
+
     private const SNOMED_FSN = '900000000000003001';
     private const SNOMED_SYNONYM = '900000000000013009';
     private const MAX_OFFSET = 5000;
@@ -211,6 +214,19 @@ final class CatalogRepository
         return in_array($domain, self::DOMAINS, true);
     }
 
+    public static function isValidCatalog(string $catalog): bool
+    {
+        return in_array($catalog, self::DENTAR_CATALOGS, true);
+    }
+
+    /** Normaliza el parámetro opcional de catálogo DENTAR. */
+    public static function normalizeCatalog(?string $catalog): ?string
+    {
+        $catalog = $catalog === null ? '' : strtolower(trim($catalog));
+
+        return self::isValidCatalog($catalog) ? $catalog : null;
+    }
+
     /**
      * @return list<array{code: string, label: string}>
      */
@@ -239,19 +255,35 @@ final class CatalogRepository
         string $domain,
         string $requestedLanguage,
         int $limit,
-        int $offset
+        int $offset,
+        ?string $catalog = null
     ): array {
         $pdo = PortalDatabase::connection();
         $term = self::normalizeTerm($query);
         $language = self::contentLanguage($pdo, $requestedLanguage);
         $domains = $domain === '' ? self::DEFAULT_DOMAINS : [$domain];
+        $catalog = self::normalizeCatalog($catalog);
+        if ($catalog !== null) {
+            // El filtro DENTAR implica el dominio odontología aunque el usuario
+            // no haya elegido explícitamente ese dominio en el formulario.
+            $domains = ['odontologia'];
+        }
         $offset = max(0, min(self::MAX_OFFSET, $offset));
 
         if ($term === '') {
             return ['items' => [], 'total' => 0, 'has_more' => false];
         }
 
-        [$union, $parameters] = self::buildUnion($pdo, $domains, $term, $language, false, null, $requestedLanguage);
+        [$union, $parameters] = self::buildUnion(
+            $pdo,
+            $domains,
+            $term,
+            $language,
+            false,
+            null,
+            $requestedLanguage,
+            $catalog
+        );
         if ($union === '') {
             return ['items' => [], 'total' => 0, 'has_more' => false];
         }
@@ -289,8 +321,11 @@ final class CatalogRepository
      *
      * @throws RepositoryException
      */
-    public static function find(string $resultKey, string $requestedLanguage): ?array
-    {
+    public static function find(
+        string $resultKey,
+        string $requestedLanguage,
+        ?string $catalog = null
+    ): ?array {
         if (preg_match('/^([a-z0-9_]+):([A-Za-z0-9_.:-]{1,100})$/', $resultKey, $matches) !== 1) {
             return null;
         }
@@ -304,7 +339,16 @@ final class CatalogRepository
 
         $pdo = PortalDatabase::connection();
         $language = self::contentLanguage($pdo, $requestedLanguage);
-        [$sql, $parameters] = self::buildUnion($pdo, [$domain], '', $language, true, $key, $requestedLanguage);
+        [$sql, $parameters] = self::buildUnion(
+            $pdo,
+            [$domain],
+            '',
+            $language,
+            true,
+            $key,
+            $requestedLanguage,
+            self::normalizeCatalog($catalog)
+        );
 
         if ($sql === '') {
             return null;
@@ -340,14 +384,23 @@ final class CatalogRepository
         string $language,
         bool $byKey,
         ?string $key,
-        string $requestedLanguage = ''
+        string $requestedLanguage = '',
+        ?string $catalog = null
     ): array {
         $branches = [];
         $parameters = [];
         $index = 0;
+        $catalog = self::normalizeCatalog($catalog);
 
         foreach ($domains as $domain) {
             if (!self::isValidDomain($domain)) {
+                continue;
+            }
+
+            // Los catálogos DENTAR viven en os_catalog con domain_type 'dental'.
+            // Con filtro de producto solo se consulta esa rama y se excluyen las
+            // tablas nativas de odontología para no mezclar fuentes.
+            if ($catalog !== null && $domain !== 'odontologia') {
                 continue;
             }
 
@@ -360,7 +413,7 @@ final class CatalogRepository
                 continue;
             }
 
-            if ($nativeExists) {
+            if ($nativeExists && $catalog === null) {
                 $p = 'p' . $index++;
                 [$sql, $params] = self::branch(
                     $p,
@@ -384,7 +437,8 @@ final class CatalogRepository
                     $language,
                     $requestedLanguage,
                     $byKey,
-                    $key
+                    $key,
+                    $catalog
                 );
                 $branches[] = $sql;
                 $parameters += $params;
@@ -451,13 +505,18 @@ final class CatalogRepository
         string $language,
         string $requestedLanguage,
         bool $byKey,
-        ?string $key
+        ?string $key,
+        ?string $catalog = null
     ): array {
+        $catalog = self::normalizeCatalog($catalog);
         $typeNames = [];
         $params = [
             ":{$p}_lang" => $language,
             ":{$p}_req_lang" => $requestedLanguage !== '' ? $requestedLanguage : $language,
         ];
+        if ($catalog !== null) {
+            $params[":{$p}_catalog"] = $catalog;
+        }
 
         foreach ($domainTypes as $i => $type) {
             $name = ":{$p}_type{$i}";
@@ -480,7 +539,8 @@ final class CatalogRepository
             ? "(item.permanent_code = :{$p}_key"
                 . " OR coalesce(ident.value, '') = :{$p}_key"
                 . " OR replace(coalesce(ident.value, ''), '.', '') = :{$p}_key_clean"
-                . " OR 'os_catalog:' || cat.code || ':' || CAST(item.id AS text) = :{$p}_key)"
+                . " OR 'os_catalog:' || cat.code || ':' || CAST(item.id AS text) = :{$p}_key"
+                . " OR '{$domain}:os_catalog:' || cat.code || ':' || CAST(item.id AS text) = :{$p}_full_key)"
             : "(ver.preferred_term ILIKE :{$p}_contains"
                 . " OR item.permanent_code ILIKE :{$p}_contains"
                 . " OR coalesce(ident.value, '') ILIKE :{$p}_contains"
@@ -525,11 +585,15 @@ final class CatalogRepository
             . " )\n"
             . " WHERE cat.is_active = TRUE AND item.status = 'active'\n"
             . "   AND cat.domain_type IN (" . implode(', ', $typeNames) . ")\n"
+            . ($catalog !== null ? "   AND cat.code = :{$p}_catalog\n" : '')
             . "   AND {$where}";
 
         if ($byKey) {
             $params[":{$p}_key"] = (string) $key;
             $params[":{$p}_key_clean"] = str_replace(['.', ' ', '-'], '', (string) $key);
+            $params[":{$p}_full_key"] = str_starts_with((string) $key, 'os_catalog:')
+                ? $domain . ':' . $key
+                : (string) $key;
         } else {
             $params += self::termParams($p, $term);
             $params[":{$p}_code_prefix"] = self::escapeLike($term) . '%';
@@ -1076,6 +1140,7 @@ final class CatalogRepository
                 'score' => round((float) ($row['score'] ?? 0), 4),
                 'description' => $editorial['description'] ?? self::description($metadata),
                 'concept_id' => isset($metadata['concept_id']) ? (string) $metadata['concept_id'] : null,
+                'catalog_code' => isset($metadata['catalog_code']) ? (string) $metadata['catalog_code'] : null,
             ] + $editorial;
 
             $items[] = $item;

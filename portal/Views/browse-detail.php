@@ -6,6 +6,10 @@ use OrigenSalud\Web\I18n;
 
 $result = $result ?? ['ok' => false, 'error' => null, 'item' => null];
 $item = is_array($result['item'] ?? null) ? $result['item'] : null;
+$catalogCode = is_array($item) && isset($item['catalog_code'])
+    ? (string) $item['catalog_code']
+    : null;
+$isDentar = in_array($catalogCode, ['dentar-pr', 'dentar-dx'], true);
 $formatValue = static function (mixed $value): string {
     if (is_bool($value)) {
         return $value ? 'true' : 'false';
@@ -26,6 +30,16 @@ $formatValue = static function (mixed $value): string {
     <div class="container narrow">
         <a class="back-link" href="<?= e($backUrl) ?>">← <?= e($t('browse.back_results')) ?></a>
         <span class="eyebrow"><?= e($t('browse.detail_title')) ?></span>
+
+        <?php if ($isDentar): ?>
+            <div class="browse-dentar-banner">
+                <strong><?= e($t('browse.dentar_badge')) ?> · <?= e(strtoupper((string) $catalogCode)) ?></strong>
+                <p><?= e($t('browse.dentar_detail_note')) ?></p>
+                <a class="dentar-text-link" href="<?= e(I18n::localizedPath($locale, '/dentar')) ?>">
+                    <?= e($t('browse.dentar_back')) ?> →
+                </a>
+            </div>
+        <?php endif; ?>
 
         <?php if ($item === null): ?>
             <div class="alert alert-warning" role="status">
@@ -53,6 +67,7 @@ $formatValue = static function (mixed $value): string {
                     'term' => 'term',
                     'description' => 'description',
                     'domain' => 'domain',
+                    'catalog_code' => 'catalog',
                     'concept_id' => 'concept_id',
                     'score' => 'score',
                     'language' => 'language',

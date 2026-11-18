@@ -1291,3 +1291,538 @@ svg {
         animation-duration: 0.01ms !important;
     }
 }
+
+/* ------------------------------------------------------------------
+   Portal: DENTAR (sección de primer nivel)
+   Reutiliza variables, botones, contenedores y breakpoint del sitio.
+   ------------------------------------------------------------------ */
+.page-dentar {
+    --dentar-navy: #071e31;
+    --dentar-teal: #0c7c86;
+    --dentar-mint: #d9f2ec;
+    --dentar-line: #cfe2df;
+}
+
+.site-nav a.nav-dentar {
+    color: var(--teal-dark);
+    font-weight: 750;
+}
+
+.site-nav a.nav-dentar::after {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: #34c7b2;
+    vertical-align: middle;
+}
+
+.page-dentar .site-nav a.nav-dentar {
+    border-bottom-color: var(--teal);
+}
+
+.dentar-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 84px 0 72px;
+    background:
+        radial-gradient(700px 420px at 85% -10%, rgba(52, 199, 178, 0.2), transparent 65%),
+        linear-gradient(145deg, #071e31 0%, #0b3048 58%, #0a3b47 100%);
+    color: #e8f3f2;
+}
+
+.dentar-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+}
+
+.dentar-hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 56px;
+    align-items: center;
+}
+
+.dentar-eyebrow {
+    display: inline-block;
+    margin-bottom: 18px;
+    color: #7fe6d2;
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+.dentar-hero h1 {
+    margin-bottom: 6px;
+    font-size: clamp(3rem, 8vw, 5.4rem);
+    line-height: 1;
+    letter-spacing: -0.06em;
+}
+
+.dentar-subtitle {
+    margin-bottom: 22px;
+    color: #bfe9df;
+    font-size: clamp(1.05rem, 2.2vw, 1.4rem);
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.dentar-lead {
+    max-width: 62ch;
+    margin-bottom: 30px;
+    color: #cfe0e6;
+    font-size: 1rem;
+}
+
+.dentar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 22px;
+}
+
+.dentar-hero .button-ghost {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.38);
+    box-shadow: none;
+}
+
+.dentar-hero .button-ghost:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.dentar-text-link {
+    color: var(--teal-dark);
+    font-size: 0.9rem;
+    font-weight: 650;
+}
+
+.dentar-hero .dentar-text-link,
+.dentar-cta .dentar-text-link {
+    color: #d6f1ef;
+}
+
+.dentar-text-link:hover {
+    text-decoration: underline;
+}
+
+.dentar-hero-note {
+    margin: 26px 0 0;
+    color: #8fb0c0;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+}
+
+.dentar-identity {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 24px;
+    background: rgba(4, 24, 39, 0.55);
+    box-shadow: 0 28px 64px rgba(0, 0, 0, 0.28);
+}
+
+.dentar-identity-art {
+    padding: 18px 18px 0;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.dentar-identity-art svg {
+    width: 100%;
+    height: auto;
+}
+
+.dentar-grid path {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.07);
+    stroke-width: 1;
+}
+
+.dentar-links path {
+    fill: none;
+    stroke: rgba(127, 230, 210, 0.45);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 5;
+}
+
+.dentar-tooth {
+    fill: rgba(52, 199, 178, 0.14);
+    stroke: #7fe6d2;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+}
+
+.dentar-nodes circle {
+    fill: #34c7b2;
+}
+
+.dentar-chips rect {
+    fill: rgba(255, 255, 255, 0.08);
+    stroke: rgba(127, 230, 210, 0.45);
+}
+
+.dentar-identity-body {
+    padding: 18px 24px 24px;
+}
+
+.dentar-identity-body strong {
+    display: block;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.dentar-identity-body > span {
+    display: block;
+    margin-bottom: 12px;
+    color: #8fb0c0;
+    font-size: 0.75rem;
+}
+
+.dentar-identity-body ul {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 0;
+    list-style: none;
+    font-size: 0.86rem;
+}
+
+.dentar-identity-body li::before {
+    content: "■";
+    margin-right: 8px;
+    color: #34c7b2;
+    font-size: 0.6rem;
+}
+
+.dentar-identity-body p {
+    margin: 0;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    color: #8fb0c0;
+    font-size: 0.74rem;
+}
+
+.dentar-two-col {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 64px;
+    align-items: start;
+}
+
+.dentar-problems {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: dentar-problem;
+}
+
+.dentar-problems li {
+    position: relative;
+    padding: 18px 18px 16px 52px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--white);
+}
+
+.dentar-problems li::before {
+    counter-increment: dentar-problem;
+    content: counter(dentar-problem, decimal-leading-zero);
+    position: absolute;
+    top: 18px;
+    left: 16px;
+    color: var(--teal);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.dentar-problems strong {
+    color: var(--ink);
+    font-size: 0.92rem;
+}
+
+.dentar-problems p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 0.84rem;
+}
+
+.dentar-catalog-grid,
+.dentar-detail-grid,
+.dentar-interop-grid,
+.dentar-cards-three {
+    display: grid;
+    gap: 22px;
+}
+
+.dentar-catalog-grid,
+.dentar-detail-grid,
+.dentar-interop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dentar-cards-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dentar-catalog-card,
+.dentar-info-card,
+.dentar-detail-card,
+.dentar-interop-card {
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+}
+
+.dentar-catalog-card {
+    border-top: 4px solid var(--teal);
+}
+
+.dentar-catalog-dx {
+    border-top-color: #2c6ea5;
+}
+
+.dentar-badge {
+    display: inline-block;
+    margin-bottom: 14px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--mint);
+    color: var(--teal-dark);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.dentar-catalog-dx .dentar-badge {
+    background: #e8f1fa;
+    color: #2c6ea5;
+}
+
+.dentar-catalog-card h3,
+.dentar-info-card h3,
+.dentar-detail-card h3,
+.dentar-interop-card h3 {
+    margin-bottom: 10px;
+    font-size: 1.16rem;
+}
+
+.dentar-catalog-card h4 {
+    margin: 22px 0 10px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.dentar-catalog-card p {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.dentar-prefix {
+    margin: 4px 0 0;
+    font-size: 0.74rem;
+}
+
+.dentar-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 16px;
+    margin: 0 0 24px;
+    padding: 0;
+    list-style: none;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+}
+
+.dentar-fields li::before {
+    content: "✓";
+    margin-right: 7px;
+    color: var(--teal);
+    font-weight: 700;
+}
+
+.dentar-search-layout {
+    align-items: center;
+}
+
+.dentar-search-form {
+    display: grid;
+    gap: 18px;
+    padding: 28px;
+    border: 1px solid var(--dentar-line);
+    border-radius: var(--radius);
+    background: var(--paper);
+}
+
+.dentar-map {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dentar-map li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 0.86rem;
+}
+
+.dentar-map li span:first-child {
+    color: var(--muted);
+}
+
+.dentar-map li strong {
+    color: var(--teal-dark);
+}
+
+.dentar-legend {
+    margin-top: 26px;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+}
+
+.dentar-legend h3 {
+    margin-bottom: 14px;
+    font-size: 1rem;
+}
+
+.dentar-legend ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 0;
+    list-style: none;
+}
+
+.dentar-legend p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.84rem;
+}
+
+.dentar-chip {
+    display: inline-block;
+    padding: 5px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+}
+
+.dentar-chip-internal { border-color: #9ed4cd; background: var(--mint); color: #075b63; }
+.dentar-chip-external { border-color: #bcd6ea; background: #e8f1fa; color: #2c6ea5; }
+.dentar-chip-exact { border-color: #bfe3d5; background: #eef9f3; color: #125c3f; }
+.dentar-chip-approx { border-color: #ecd6a8; background: #fff8e7; color: #8a5a10; }
+.dentar-chip-pending { border-color: #d8dde3; background: #f2f4f6; color: var(--muted); }
+
+.dentar-ecosystem {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dentar-ecosystem a {
+    display: inline-block;
+    padding: 10px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--ink-soft);
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.dentar-ecosystem a:hover {
+    border-color: var(--teal);
+    color: var(--teal-dark);
+}
+
+.dentar-cta-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.browse-dentar-banner {
+    margin-bottom: 28px;
+    padding: 18px 22px;
+    border: 1px solid var(--dentar-line);
+    border-left: 4px solid var(--teal);
+    border-radius: 12px;
+    background: var(--mint);
+}
+
+.browse-dentar-banner p {
+    margin: 6px 0;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 1020px) {
+    .dentar-hero-grid,
+    .dentar-two-col,
+    .dentar-catalog-grid,
+    .dentar-detail-grid,
+    .dentar-interop-grid,
+    .dentar-cards-three {
+        grid-template-columns: 1fr;
+        gap: 36px;
+    }
+
+    .dentar-identity {
+        max-width: 620px;
+    }
+}
+
+@media (max-width: 640px) {
+    .dentar-hero {
+        padding: 60px 0 48px;
+    }
+
+    .dentar-problems,
+    .dentar-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .dentar-catalog-card,
+    .dentar-info-card,
+    .dentar-detail-card,
+    .dentar-interop-card,
+    .dentar-search-form {
+        padding: 22px;
+    }
+}
