@@ -5,6 +5,9 @@
     var MAX_COMPARE = 4;
     var HISTORY_PARAM = 'history';
     var CONTEXT_PARAMS = ['tab', 'rel_view'];
+    var CACHE_TTL_MS = 300000;
+    var CACHE_MAX_ENTRIES = 60;
+    var fragmentCache = Object.create(null);
 
     function ready(fn) {
         if (document.readyState === 'loading') {
@@ -131,6 +134,65 @@
             if (current.has(name)) {
                 params.set(name, current.get(name));
             }
+        });
+    }
+
+    function cacheFragment(key, html) {
+        var now = Date.now ? Date.now() : new Date().getTime();
+        var keys = Object.keys(fragmentCache);
+
+        keys.forEach(function (cachedKey) {
+            if (now - fragmentCache[cachedKey].time >= CACHE_TTL_MS) {
+                delete fragmentCache[cachedKey];
+            }
+        });
+
+        keys = Object.keys(fragmentCache);
+        while (keys.length >= CACHE_MAX_ENTRIES && keys.length > 0) {
+            delete fragmentCache[keys.shift()];
+        }
+
+        fragmentCache[key] = { time: now, html: html };
+    }
+
+    function fetchHtml(url, options) {
+        var settings = options || {};
+        var key = String(url || '');
+        var now = Date.now ? Date.now() : new Date().getTime();
+        var cached = fragmentCache[key];
+        var fetchOptions = {
+            headers: { 'X-Requested-With': 'fetch' },
+            credentials: 'same-origin'
+        };
+
+        if (settings.signal) {
+            fetchOptions.signal = settings.signal;
+        }
+
+        if (!settings.skipCache && cached && now - cached.time < CACHE_TTL_MS) {
+            return Promise.resolve(cached.html);
+        }
+
+        if (cached) {
+            delete fragmentCache[key];
+        }
+
+        if (typeof window.fetch !== 'function') {
+            return Promise.reject(new Error('fetch unavailable'));
+        }
+
+        return window.fetch.call(window, key, fetchOptions).then(function (response) {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+
+            return response.text();
+        }).then(function (html) {
+            if (!settings.skipCache && !(settings.signal && settings.signal.aborted)) {
+                cacheFragment(key, html);
+            }
+
+            return html;
         });
     }
 
@@ -428,16 +490,7 @@
             return;
         }
 
-        window.fetch.call(window, fragmentUrl, {
-            headers: { 'X-Requested-With': 'fetch' },
-            credentials: 'same-origin'
-        }).then(function (response) {
-            if (!response.ok) {
-                throw new Error('HTTP ' + response.status);
-            }
-
-            return response.text();
-        }).then(function (html) {
+        fetchHtml(fragmentUrl).then(function (html) {
             var pane = root.querySelector('[data-pane="detail"]');
             var detail;
             var focus;
@@ -660,10 +713,14 @@
         copyValue(root, (detail.innerText || detail.textContent || '').replace(/\n{3,}/g, '\n\n').trim());
     }
 
+    var RESULT_PARAMS = [
+        'q', 'domain', 'catalog', 'family', 'type', 'category', 'status', 'version', 'validity', 'page'
+    ];
+
     function resultsSignature(params) {
         var values = params || new URLSearchParams(window.location.search);
 
-        return ['q', 'domain', 'catalog', 'page'].map(function (name) {
+        return RESULT_PARAMS.map(function (name) {
             return name + '=' + (values.get(name) || '');
         }).join('&');
     }
@@ -673,13 +730,26 @@
         var current = new URLSearchParams(window.location.search);
         var base = form.getAttribute('action') || window.location.pathname;
         var data = new FormData(form);
+        var catalogValues = [];
 
         data.forEach(function (value, key) {
             var clean = String(value).trim();
+            if (key === 'catalog' || key === 'catalog[]') {
+                splitValues(clean, catalogValues);
+                return;
+            }
             if (clean !== '') {
                 params.set(key, clean);
             }
         });
+
+        var catalogs = dedupe(catalogValues).filter(function (code) {
+            return code === 'dentar-pr' || code === 'dentar-dx';
+        }).sort();
+        if (catalogs.length > 0) {
+            params.set('catalog', catalogs.join(','));
+        }
+
         params.delete('page');
         ['history', 'compare', 'tab', 'rel_view'].forEach(function (name) {
             if (current.has(name)) {
@@ -687,11 +757,12 @@
             }
         });
 
-        var fragment = new URLSearchParams(params.toString());
+        var query = params.toString();
+        var fragment = new URLSearchParams(query);
         fragment.set('fragment', 'results');
 
         return {
-            stable: base + '?' + params.toString(),
+            stable: base + (query === '' ? '' : '?' + query),
             fragment: base + '?' + fragment.toString(),
             signature: resultsSignature(params)
         };
@@ -713,20 +784,18 @@
             return;
         }
 
-        window.fetch.call(window, fragmentUrl, {
-            headers: { 'X-Requested-With': 'fetch' },
-            credentials: 'same-origin'
-        }).then(function (response) {
-            if (!response.ok) {
-                throw new Error('HTTP ' + response.status);
-            }
-            return response.text();
-        }).then(function (html) {
-            var pane = root.querySelector('[data-pane="results"]');
-            if (!pane) {
+        var pane = root.querySelector('[data-pane="results"]');
+        if (pane) {
+            pane.setAttribute('aria-busy', 'true');
+        }
+
+        fetchHtml(fragmentUrl).then(function (html) {
+            var resultsPane = root.querySelector('[data-pane="results"]');
+            if (!resultsPane) {
                 return;
             }
-            pane.innerHTML = html;
+            resultsPane.innerHTML = html;
+            resultsPane.removeAttribute('aria-busy');
             updateSelection(root, root.dataset.focus);
             root.__browseResultsSignature = resultsSignature(new URLSearchParams(window.location.search));
             if (push && stableUrl) {
@@ -734,7 +803,64 @@
             }
             announce(root, message(root, 'results-updated', 'Resultados actualizados.'));
         }).catch(function () {
+            if (pane) {
+                pane.removeAttribute('aria-busy');
+            }
             // Sin resultados nuevos: se conserva el listado anterior.
+        });
+    }
+
+    function appendResults(root, fragmentUrl, link) {
+        var pane = root.querySelector('[data-pane="results"]');
+        var list;
+        var doc;
+        var nextLoad;
+        var currentLoad;
+
+        if (typeof window.fetch !== 'function' || typeof window.DOMParser !== 'function') {
+            if (link && link.getAttribute('href')) {
+                window.location.assign(link.getAttribute('href'));
+            }
+            return;
+        }
+
+        list = pane ? pane.querySelector('.browse-results--explorer') : null;
+        if (!pane || !list) {
+            window.location.assign(link ? (link.getAttribute('href') || fragmentUrl) : fragmentUrl);
+            return;
+        }
+
+        pane.setAttribute('aria-busy', 'true');
+        fetchHtml(fragmentUrl).then(function (html) {
+            doc = new window.DOMParser().parseFromString(html, 'text/html');
+            Array.prototype.forEach.call(
+                doc.querySelectorAll('.browse-results--explorer > li'),
+                function (node) {
+                    list.appendChild(document.importNode(node, true));
+                }
+            );
+
+            currentLoad = pane.querySelector('[data-load-more]');
+            nextLoad = doc.querySelector('[data-load-more]');
+            if (currentLoad && currentLoad.parentNode) {
+                if (nextLoad) {
+                    currentLoad.parentNode.replaceChild(document.importNode(nextLoad, true), currentLoad);
+                } else {
+                    currentLoad.parentNode.removeChild(currentLoad);
+                }
+            }
+
+            pane.removeAttribute('aria-busy');
+            updateSelection(root, root.dataset.focus);
+            announce(root, message(root, 'results-updated', 'Resultados actualizados.'));
+            if (nextLoad && currentLoad && currentLoad.parentNode) {
+                var replacement = pane.querySelector('[data-load-more]');
+                if (replacement && typeof replacement.focus === 'function') {
+                    replacement.focus();
+                }
+            }
+        }).catch(function () {
+            pane.removeAttribute('aria-busy');
         });
     }
 
@@ -778,17 +904,12 @@
                     return;
                 }
 
-                options = { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } };
+                options = {};
                 if (typeof window.AbortController === 'function') {
                     controller = new window.AbortController();
                     options.signal = controller.signal;
                 }
-                window.fetch.call(window, urls.fragment, options).then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('HTTP ' + response.status);
-                    }
-                    return response.text();
-                }).then(function (html) {
+                fetchHtml(urls.fragment, options).then(function (html) {
                     var pane = root.querySelector('[data-pane="results"]');
                     if (!pane) {
                         return;
@@ -807,7 +928,9 @@
             }, 350);
         });
 
-        form.addEventListener('submit', function () {
+        form.addEventListener('submit', function (event) {
+            var urls;
+
             if (timer !== null) {
                 window.clearTimeout(timer);
                 timer = null;
@@ -816,6 +939,12 @@
                 controller.abort();
                 controller = null;
             }
+
+            urls = searchUrls(form);
+            if (event && typeof event.preventDefault === 'function') {
+                event.preventDefault();
+            }
+            window.location.assign(urls.stable);
         });
     }
 
@@ -884,6 +1013,7 @@
                 var copyRecordButton;
                 var compareLink;
                 var fragmentLink;
+                var loadMoreLink;
                 var resultLink;
                 var diagramLink;
 
@@ -926,7 +1056,22 @@
                     return;
                 }
 
-                resultLink = closestFromEvent(event, '.browse-result-link[data-focus-url]', root);
+                loadMoreLink = closestFromEvent(event, '[data-load-more][data-load-more-url]', root);
+                if (loadMoreLink) {
+                    event.preventDefault();
+                    appendResults(
+                        root,
+                        loadMoreLink.getAttribute('data-load-more-url'),
+                        loadMoreLink
+                    );
+                    return;
+                }
+
+                resultLink = closestFromEvent(
+                    event,
+                    '.browse-result-link[data-focus-url], .browse-relations-link[data-focus-url]',
+                    root
+                );
                 if (resultLink) {
                     event.preventDefault();
                     onResultClick(root, resultLink);

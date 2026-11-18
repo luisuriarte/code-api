@@ -33,6 +33,16 @@ $sections = is_array($detail['sections'] ?? null) ? $detail['sections'] : [];
 $compareItems = is_array($compareItems ?? null) ? $compareItems : [];
 $historyKeys = is_array($historyKeys ?? null) ? $historyKeys : [];
 $catalog = is_string($catalog ?? null) ? $catalog : '';
+$catalogs = is_array($catalogs ?? null)
+    ? BrowseService::normalizeCatalogs(implode(',', array_map('strval', $catalogs)))
+    : BrowseService::normalizeCatalogs($catalog);
+$filters = is_array($filters ?? null) ? BrowseService::normalizeFilters($filters) : [];
+$facets = is_array($facets ?? null) ? $facets : [];
+foreach (['families', 'types', 'categories', 'versions', 'statuses'] as $facetKey) {
+    if (!isset($facets[$facetKey]) || !is_array($facets[$facetKey])) {
+        $facets[$facetKey] = [];
+    }
+}
 $query = is_string($query ?? null) ? $query : '';
 $domains = is_array($domains ?? null) ? $domains : [];
 
@@ -85,6 +95,17 @@ $stateParams = static function (array $overrides = [], array $remove = []) use (
 
 $pageUrl = static function (int $target) use ($stateParams, $paramsUrl, $baseBrowsePath): string {
     return $paramsUrl($stateParams(['page' => $target > 1 ? $target : null]), $baseBrowsePath);
+};
+
+$filterUrl = static function (string $key, ?string $value) use ($stateParams, $paramsUrl, $baseBrowsePath): string {
+    return $paramsUrl($stateParams([$key => $value, 'page' => null]), $baseBrowsePath);
+};
+
+$resultsFragmentUrl = static function (int $target) use ($stateParams, $paramsUrl, $baseBrowsePath): string {
+    $params = $stateParams(['page' => $target > 1 ? $target : null], ['fragment']);
+    $params['fragment'] = 'results';
+
+    return $paramsUrl($params, $baseBrowsePath);
 };
 
 $stableItemUrl = static function (string $key, array $overrides = []) use ($stateParams, $paramsUrl, $locale): string {

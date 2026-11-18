@@ -4,8 +4,26 @@ declare(strict_types=1);
 
 require __DIR__ . '/partials/browse/context.php';
 
-$dentarFilter = in_array($catalog, ['dentar-pr', 'dentar-dx'], true);
+$dentarFilter = $catalogs !== [];
 $mobileView = $focus !== '' ? 'detail' : 'results';
+$catalogOptions = [
+    ['code' => 'dentar-pr', 'label' => $t('dentar.pr_badge')],
+    ['code' => 'dentar-dx', 'label' => $t('dentar.dx_badge')],
+];
+$facetSelects = [
+    ['key' => 'family', 'label' => 'browse.family', 'options' => $facets['families']],
+    ['key' => 'type', 'label' => 'browse.type', 'options' => $facets['types']],
+    ['key' => 'category', 'label' => 'browse.category', 'options' => $facets['categories']],
+    ['key' => 'version', 'label' => 'browse.version', 'options' => $facets['versions']],
+    ['key' => 'status', 'label' => 'browse.status', 'options' => $facets['statuses']],
+];
+$hasFacetFilters = $filters !== [];
+foreach ($facetSelects as $facetSelect) {
+    if ($facetSelect['options'] !== []) {
+        $hasFacetFilters = true;
+        break;
+    }
+}
 ?>
 <section class="section browse-section">
     <div class="container">
@@ -18,7 +36,7 @@ $mobileView = $focus !== '' ? 'detail' : 'results';
             <div class="browse-dentar-banner">
                 <strong><?= e($t('browse.dentar_badge')) ?></strong>
                 <p><?= e($t('browse.dentar_intro', [
-                    '%catalog%' => $t('dentar.' . ($catalog === 'dentar-pr' ? 'pr_badge' : 'dx_badge')),
+                    '%catalog%' => $t('dentar.' . ($catalogs[0] === 'dentar-dx' ? 'dx_badge' : 'pr_badge')),
                 ])) ?></p>
                 <a class="dentar-text-link" href="<?= e($dentarUrl) ?>"><?= e($t('browse.dentar_back')) ?> →</a>
             </div>
@@ -44,18 +62,56 @@ $mobileView = $focus !== '' ? 'detail' : 'results';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="field field-full">
-                    <label for="browse-catalog"><?= e($t('browse.catalog')) ?></label>
-                    <select id="browse-catalog" name="catalog">
-                        <option value=""><?= e($t('browse.catalog_all')) ?></option>
-                        <option value="dentar-pr" <?= $catalog === 'dentar-pr' ? 'selected' : '' ?>>
-                            <?= e($t('dentar.pr_badge')) ?>
-                        </option>
-                        <option value="dentar-dx" <?= $catalog === 'dentar-dx' ? 'selected' : '' ?>>
-                            <?= e($t('dentar.dx_badge')) ?>
-                        </option>
-                    </select>
-                </div>
+                <fieldset class="field field-full browse-filter-group">
+                    <legend><?= e($t('browse.catalogs')) ?></legend>
+                    <div class="browse-check-grid">
+                        <?php foreach ($catalogOptions as $option): ?>
+                            <?php $isChecked = in_array($option['code'], $catalogs, true); ?>
+                            <label class="browse-check">
+                                <input type="checkbox" name="catalog[]"
+                                       value="<?= e($option['code']) ?>" <?= $isChecked ? 'checked' : '' ?>>
+                                <span><?= e($option['label']) ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </fieldset>
+                <?php if ($hasFacetFilters): ?>
+                    <fieldset class="field field-full browse-filter-group">
+                        <legend><?= e($t('browse.filters')) ?></legend>
+                        <div class="browse-filter-grid">
+                            <?php foreach ($facetSelects as $facetSelect): ?>
+                                <?php if ($facetSelect['options'] === []) { continue; } ?>
+                                <div class="field">
+                                    <label for="browse-filter-<?= e($facetSelect['key']) ?>">
+                                        <?= e($t($facetSelect['label'])) ?>
+                                    </label>
+                                    <select id="browse-filter-<?= e($facetSelect['key']) ?>"
+                                            name="<?= e($facetSelect['key']) ?>">
+                                        <option value=""><?= e($t('browse.filter_all')) ?></option>
+                                        <?php foreach ($facetSelect['options'] as $option): ?>
+                                            <?php $code = (string) ($option['code'] ?? ''); ?>
+                                            <?php if ($code === '') { continue; } ?>
+                                            <option value="<?= e($code) ?>"
+                                                <?= ($filters[$facetSelect['key']] ?? '') === $code ? 'selected' : '' ?>>
+                                                <?= e((string) ($option['label'] ?? $code)) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            <?php endforeach; ?>
+                            <div class="field">
+                                <label for="browse-filter-validity"><?= e($t('browse.validity')) ?></label>
+                                <select id="browse-filter-validity" name="validity">
+                                    <option value=""><?= e($t('browse.filter_all')) ?></option>
+                                    <option value="current"
+                                        <?= ($filters['validity'] ?? '') === 'current' ? 'selected' : '' ?>>
+                                        <?= e($t('browse.validity_current')) ?>
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+                <?php endif; ?>
             </div>
             <button class="button" type="submit"><?= e($t('browse.button')) ?></button>
         </form>

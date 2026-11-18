@@ -62,6 +62,22 @@ $error = is_string($result['error'] ?? null) ? (string) $result['error'] : '';
                             <?php endif; ?>
                         </span>
                         <span class="browse-result-meta">
+                            <?php
+                            $matchType = (string) ($entry['match_type'] ?? '');
+                            $relationCount = max(0, (int) ($entry['relation_count'] ?? 0));
+                            ?>
+                            <?php if ($matchType === 'exact' || $matchType === 'partial'): ?>
+                                <span class="browse-badge <?= $matchType === 'exact' ? 'browse-badge--current' : 'browse-badge--neutral' ?>">
+                                    <?= e($t('browse.match_' . $matchType)) ?>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($relationCount > 0): ?>
+                                <span class="browse-badge browse-badge--neutral">
+                                    <?= e($relationCount === 1
+                                        ? $t('browse.relations_count_one')
+                                        : $t('browse.relations_count', ['%count%' => $relationCount])) ?>
+                                </span>
+                            <?php endif; ?>
                             <?php if ($itemDomain !== ''): ?>
                                 <span><?= e($t('browse.domain')) ?>: <?= e($itemDomain) ?></span>
                             <?php endif; ?>
@@ -102,6 +118,16 @@ $error = is_string($result['error'] ?? null) ? (string) $result['error'] : '';
                     </a>
                 <?php endif; ?>
             </nav>
+            <?php if ($page < $pages): ?>
+                <div class="browse-loadmore">
+                    <a class="button button-small button-ghost"
+                       href="<?= e($pageUrl($page + 1)) ?>"
+                       data-load-more
+                       data-load-more-url="<?= e($resultsFragmentUrl($page + 1)) ?>">
+                        <?= e($t('browse.load_more')) ?>
+                    </a>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
     <?php endif; ?>
 </div>

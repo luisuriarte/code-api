@@ -99,10 +99,22 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                             $badgeClass = $pending
                                 ? 'browse-badge--pending'
                                 : ($status === 'approved' ? 'browse-badge--current' : 'browse-badge--neutral');
+                            $targetKey = BrowseService::normalizeResultKey($relation['result_key'] ?? '');
                             ?>
                             <tr>
                                 <td><?= e((string) ($relation['system'] ?? '')) ?></td>
-                                <td><strong><?= e((string) ($relation['code'] ?? '')) ?></strong></td>
+                                <td>
+                                    <?php if ($targetKey !== ''): ?>
+                                        <a class="browse-relations-link"
+                                           href="<?= e($stableItemUrl($targetKey)) ?>"
+                                           data-focus-url="<?= e($fragmentUrl($targetKey)) ?>"
+                                           data-result-key="<?= e($targetKey) ?>">
+                                            <strong><?= e((string) ($relation['code'] ?? '')) ?></strong>
+                                        </a>
+                                    <?php else: ?>
+                                        <strong><?= e((string) ($relation['code'] ?? '')) ?></strong>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= e((string) ($relation['display'] ?? '')) ?></td>
                                 <td><?= e($relationTypeLabel((string) ($relation['type'] ?? ''))) ?></td>
                                 <td><?= e($relationRoleLabel((string) ($relation['role'] ?? ''))) ?></td>

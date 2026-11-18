@@ -1,0 +1,117 @@
+Notas sobre el script Argentina_dental_sdt_2025_postgres.sql:
+Criterios de traducción aplicados
+Inglés	Español (Argentina)
+Diagnostic	Diagnóstico
+Preventive	Preventivo
+Restorative	Restaurador
+oral evaluation	evaluación oral
+established patient	paciente ya conocido
+new patient	paciente nuevo
+bitewing	aleta de mordida
+periapical	periapical
+panoramic	panorámica
+comprehensive series	serie completa
+covered benefit	prestación cubierta
+by report	según informe
+primary tooth	pieza temporaria
+permanent tooth	pieza permanente
+surface (O,M,D,B,L)	superficie (O, M, D, V, L) — B → V (Vestibular)
+member	afiliado
+dentist	odontólogo
+prophylaxis	profilaxis
+sealant	sellador
+space maintainer	mantenedor de espacio
+crown	corona
+stainless-steel crown	corona de acero inoxidable
+denture	prótesis (total/parcial)
+amalgam	amalgama
+resin-based composite	resina compuesta
+TMJ	ATM (articulación temporomandibular)
+cone beam CT	CBCT / tomografía computarizada de haz cónico
+LEAT	prestación alternativa
+waiting period	período de espera
+lifetime	por vida
+Notas técnicas para tener en cuenta
+B (Buccal) lo traduje como V (Vestibular), que es la nomenclatura habitual en Argentina; si preferís mantener B, avisame y lo cambio en todo el script.
+Dejé Oral Health for Total Health sin traducir porque es el nombre propio de un plan; si querés lo reemplazamos por una traducción o por el nombre genérico.
+Los campos id los mantuve explícitos en el INSERT para preservar la correspondencia con el script original.
+Si en algún momento necesitás que la tabla use GENERATED ALWAYS en lugar de BY DEFAULT, es un cambio de una línea.
+service_type traducido: RESTORATIVE → RESTAURADOR, ENDODONTIC → ENDODÓNCICO, PERIODONTIC → PERIODÓNCICO, PROSTHODONTICS, REMOVABLE → PROSTODONCIA, REMOVIBLE.
+D3425 aparece duplicado en el original (registros 248 y 249). Lo dejé tal cual para no alterar los datos; probablemente el original tenga un error de volcado. Si querés, lo elimino o lo corrijo.
+D3110: el original dice 'ENDODONTIC'; mantenemos la categoría traducida igual que el resto.
+D5221/D5222 en el original tenían 'immediate maxillary partial denture - resin base'; respeté el contenido.
+D5421 quedó como ajuste de prótesis parcial - maxilar; el original decía adjust partial denture - maxillary, sin especificar si era total o parcial. Lo dejé genérico.
+D4910 conserva la referencia a Oral Health for Overall Health tal como en el original (a diferencia de otros registros que dicen Total Health); no lo corregí para no alterar el dato.
+service_type nuevos traducidos:
+MAXILLOFACIAL PROSTHETICS → PRÓTESIS MAXILOFACIAL
+IMPLANT → IMPLANTE
+PROSTHODONTICS, FIXED → PROSTODONCIA, FIJA
+D5511 / D5512: ambos dicen mandibular en el original (probablemente un error de volcado; uno debería ser maxilar). Lo dejé tal cual para no alterar los datos.
+D6090: el texto original termina truncado en "...within a 5- year period of t". Lo reproduje tal cual.
+D6001: el original tenía D6010 fuera de orden (después de D6068); respeté el orden del archivo.
+D6080 / D6081 / D6180: el original usa "Frequency limitations" con guion; lo traduje como "Limitaciones de frecuencia".
+D6110/D6111/etc.: mantuve las referencias cruzadas a códigos D5110, D5120, D5213, D5214 tal como aparecen.
+D6193: el original dice "Once (1) per tooth per 3- year period"; respeté la redacción.
+Error en el registro 557: el original dice (557,'D7111','ORAL & MAXILLOFACIAL SURGERY','extraction, coronal remnants - primary tooth',... — el id está bien, pero el cdt_code se perdió al inicio de la línea (quedó 'D7111' en la columna de service_type). Lo corregí colocando 'D7111' como cdt_code y 'CIRUGÍA ORAL Y MAXILOFACIAL' como service_type. Verificá si en tu archivo original realmente falta ese código.
+Registros duplicados / con errores en el original (los dejé tal cual para no alterar los datos, pero conviene revisarlos):
+D3425 (248 y 249) — ya visto.
+D7871 (655 y 656) — duplicado exacto.
+D7948 (680 y 684) — duplicado exacto.
+D7949 (681 y 685) — duplicado exacto.
+D7950 (682 y 687) — duplicado exacto.
+D7951 (683 y 688) — duplicado (uno con mayúscula inicial distinta).
+id 572 y id 686: registros vacíos de datos (solo tienen service_type). Probablemente fragmentos de líneas partidas. Los dejé como están.
+D7252: el texto original tiene un \r\n seguido de un espacio y same Dentist...; lo reproduje con E''. Además termina truncado en "...same date, same tooth,".
+D7310/D7311/D7320/D7321: el original tenía espacios múltiples y saltos de línea dentro de los literales; los normalicé a texto continuo conservando el contenido.
+D7410–D7415 y D7440–D7441 y D7460–D7461: traduje "to be paid by Medical" como "a pagar por medicina" (es decir, derivado a cobertura médica, no odontológica).
+D7473: el original dice "One per site per lifetime." sin el (1); lo mantuve así.
+D7259: el original dice "Limited to one (1) Nerve dissection..."; respeté la mayúscula.
+D7310 y D7311 comparten el mismo texto de notes; es correcto según el original.
+service_type nuevos traducidos:
+
+ORTHODONTICS → ORTODONCIA
+
+ADJUNCTIVE GENERAL SERVICES → SERVICIOS GENERALES COMPLEMENTARIOS
+
+ORAL & MAXILLOFACIAL SURGERY → CIRUGÍA ORAL Y MAXILOFACIAL (ya venía de la tanda anterior)
+
+D9985: mantuve HMSA sin traducir (es el nombre de la aseguradora/plan, Hawaii Medical Service Association).
+
+D7979: el original dice "non - surgical sialolithotomy" (con espacios alrededor del guion); lo traduje como "sialolitotomía no quirúrgica".
+
+D740: el procedure original dice "The patient must be age fifteen\r\n(15) and older" sin punto final; lo dejé con el punto para consistencia con el resto.
+
+D794 (D9959): el original dice "Not Covered." (con mayúscula); lo traduje como "No cubierto." y mantuve el punto.
+
+D802–D804: los dejé con la traducción literal de "missed appointment" / "cancelled appointment" como "cita no asistida" / "cita cancelada".
+
+D739: el req original tiene tres líneas separadas por \r\n; lo reproduje con E'' y los mismos saltos.
+
+D794: el req original es una sola línea ('Tooth Quadrant or Arch identification and a detailed narrative.'); respeté eso.
+
+Resumen general del trabajo
+Con esta última tanda cerramos el script completo. Resumen de lo hecho en las 5 partes:
+
+Parte	Registros	Categorías cubiertas
+1	1–150	DIAGNÓSTICO, PREVENTIVO, RESTAURADOR
+2	151–330	RESTAURADOR, ENDODÓNCICO, PERIODÓNCICO, PROSTODONCIA REMOVIBLE
+3	331–499	PROSTODONCIA REMOVIBLE, PRÓTESIS MAXILOFACIAL, IMPLANTE, PROSTODONCIA FIJA
+4	500–699	PROSTODONCIA FIJA, CIRUGÍA ORAL Y MAXILOFACIAL
+5	700–813	CIRUGÍA ORAL Y MAXILOFACIAL, ORTODONCIA, SERVICIOS GENERALES COMPLEMENTARIOS
+Total: 813 registros (con algunos duplicados y errores propios del volcado original que conservé y señalé).
+Pendientes / a revisar antes de ejecutar en PostgreSQL
+Duplicados exactos (conviene eliminarlos o corregirlos):
+D3425 (ids 248 y 249)
+D7871 (ids 655 y 656)
+D7948 (ids 680 y 684)
+D7949 (ids 681 y 685)
+D7950 (ids 682 y 687)
+D7951 (ids 683 y 688)
+Registros vacíos (ids 572 y 686): solo tienen service_type y datos vacíos. Probablemente fragmentos de líneas partidas del volcado original. Conviene eliminarlos.
+Registro 557 (D7111): el cdt_code y service_type estaban desalineados en el original; lo corregí, pero conviene verificar contra tu fuente.
+D5511 y D5512: ambos dicen "mandibular" en el original (probablemente uno debería ser maxilar).
+D6090: el texto original termina truncado ("...within a 5- year period of t").
+D7252: el texto original termina truncado ("...same date, same tooth,").
+D6001/orden: el D6010 aparece después de D6068 en el original; respeté ese orden.
+
+

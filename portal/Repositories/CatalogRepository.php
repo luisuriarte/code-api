@@ -32,12 +32,13 @@ final class CatalogRepository
     private const MAX_OFFSET = 5000;
 
     /**
-     * Las secciones Relaciones y Valores requieren SELECT sobre tablas sin
-     * grant autorizado (os_concept_mapping, os_terminology_system, os_fee_*,
-     * os_pricing_values). Permanecen desactivadas hasta que se autoricen los
-     * permisos; mientras tanto devuelven [] sin ejecutar SQL.
+     * Las secciones Relaciones y Valores consultan os_concept_mapping,
+     * os_terminology_system, os_fee_* y os_pricing_unit únicamente con SELECT.
+     * Autorizado por el usuario; los métodos comprueban que las tablas
+     * existan y capturan PDOException, por lo que sin GRANT devuelven [] sin
+     * exponer errores de base de datos.
      */
-    private const ALLOW_RESTRICTED_SELECTS = false;
+    private const ALLOW_RESTRICTED_SELECTS = true;
 
     /**
      * Mapeo del motor os_catalog a dominios ya aprobados por el portal.
@@ -230,9 +231,229 @@ final class CatalogRepository
     /** Normaliza el parámetro opcional de catálogo DENTAR. */
     public static function normalizeCatalog(?string $catalog): ?string
     {
-        $catalog = $catalog === null ? '' : strtolower(trim($catalog));
+        return self::normalizeCatalogs($catalog)[0] ?? null;
+    }
 
-        return self::isValidCatalog($catalog) ? $catalog : null;
+    /**
+     * Acepta uno o varios catálogos en un único parámetro CSV y devuelve una
+     * lista canónica (sin duplicados y ordenada). Nunca interpolated valores
+     * del request en SQL: solo pasan los códigos de la whitelist.
+     *
+     * @return list<string>
+     */
+    public static function normalizeCatalogs(?string $catalog): array
+    {
+        if ($catalog === null || trim($catalog) === '') {
+            return [];
+        }
+
+        $values = [];
+        foreach (explode(',', $catalog) as $candidate) {
+            $code = strtolower(trim($candidate));
+            if (self::isValidCatalog($code)) {
+                $values[$code] = true;
+            }
+        }
+
+        $values = array_keys($values);
+        sort($values, SORT_STRING);
+
+        return array_slice($values, 0, count(self::DENTAR_CATALOGS));
+    }
+
+    /**
+     * Filtros estructurados. Los valores se validan contra whitelists o formatos
+     * estrictos; la UI obtiene las opciones reales desde catalogFacets().
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @return array<string, string>
+     */
+    public static function normalizeFilters(array $filters): array
+    {
+        $normalized = [];
+        $allowed = [
+            'family' => '/^[A-Za-z0-9_-]{1,50}$/',
+            'type' => '/^[a-z_]{1,30}$/',
+            'category' => '/^[A-Za-z0-9_.-]{1,50}$/',
+            'version' => '/^[A-Za-z0-9_.-]{1,50}$/',
+        ];
+
+        foreach ($allowed as $key => $pattern) {
+            $value = isset($filters[$key]) && is_scalar($filters[$key])
+                ? trim((string) $filters[$key])
+                : '';
+            if ($value !== '' && preg_match($pattern, $value) === 1) {
+                $normalized[$key] = $value;
+            }
+        }
+
+        if (isset($filters['status']) && is_string($filters['status'])
+            && self::isValidItemStatus($filters['status'])) {
+            $normalized['status'] = $filters['status'];
+        }
+
+        if (isset($filters['validity']) && is_string($filters['validity'])
+            && in_array($filters['validity'], ['all', 'current'], true)
+            && $filters['validity'] !== 'all') {
+            $normalized['validity'] = 'current';
+        }
+
+        return $normalized;
+    }
+
+    /** Estado de ítem permitido por el CHECK de os_catalog_item. */
+    private static function isValidItemStatus(string $status): bool
+    {
+        return in_array($status, ['active', 'retired', 'superseded'], true);
+    }
+
+    /**
+     * Opciones reales para los filtros, leídas de os_catalog. No inventa
+     * valores: si no hay filas, la interfaz no muestra el filtro.
+     *
+     * @return array{families: list<array{code: string, label: string}>, types: list<array{code: string, label: string}>, categories: list<array{code: string, label: string}>, versions: list<array{code: string, label: string}>, statuses: list<array{code: string, label: string}>}
+     */
+    public static function catalogFacets(): array
+    {
+        $empty = ['families' => [], 'types' => [], 'categories' => [], 'versions' => [], 'statuses' => []];
+        if (!self::available()) {
+            return $empty;
+        }
+
+        $pdo = PortalDatabase::connection();
+        $tables = ['os_catalog', 'os_catalog_release', 'os_catalog_category', 'os_catalog_item'];
+        foreach ($tables as $table) {
+            if (!self::tableExists($pdo, $table)) {
+                return $empty;
+            }
+        }
+
+        try {
+            $rows = $pdo->query(
+                'SELECT DISTINCT family_code FROM os_catalog'
+                . ' WHERE is_active = TRUE AND family_code IS NOT NULL'
+                . ' ORDER BY family_code ASC'
+            )->fetchAll();
+            $domainTypes = $pdo->query(
+                'SELECT DISTINCT domain_type FROM os_catalog'
+                . ' WHERE is_active = TRUE AND domain_type IS NOT NULL'
+                . ' ORDER BY domain_type ASC'
+            )->fetchAll();
+            $categories = $pdo->query(
+                'SELECT DISTINCT c.code, c.name FROM os_catalog_category c'
+                . ' JOIN os_catalog cat ON cat.id = c.catalog_id'
+                . ' WHERE cat.is_active = TRUE ORDER BY c.code ASC'
+            )->fetchAll();
+            $versions = $pdo->query(
+                'SELECT DISTINCT r.version_tag FROM os_catalog_release r'
+                . ' JOIN os_catalog cat ON cat.id = r.catalog_id'
+                . " WHERE cat.is_active = TRUE AND r.status = 'published'"
+                . ' ORDER BY r.version_tag DESC'
+            )->fetchAll();
+            $statuses = $pdo->query(
+                'SELECT DISTINCT status FROM os_catalog_item'
+                . ' WHERE status IS NOT NULL ORDER BY status ASC'
+            )->fetchAll();
+        } catch (PDOException) {
+            return $empty;
+        }
+
+        $families = [];
+        $types = [];
+        foreach ($rows as $row) {
+            $family = (string) ($row['family_code'] ?? '');
+            if ($family !== '' && !isset($families[$family])) {
+                $families[$family] = ['code' => $family, 'label' => $family];
+            }
+        }
+        foreach ($domainTypes as $row) {
+            $type = (string) ($row['domain_type'] ?? '');
+            if ($type !== '' && !isset($types[$type])) {
+                $types[$type] = ['code' => $type, 'label' => $type];
+            }
+        }
+
+        $categoryOptions = [];
+        foreach ($categories as $row) {
+            $code = (string) ($row['code'] ?? '');
+            if ($code !== '') {
+                $categoryOptions[] = [
+                    'code' => $code,
+                    'label' => (string) ($row['name'] ?? $code),
+                ];
+            }
+        }
+
+        $versionOptions = [];
+        foreach ($versions as $row) {
+            $code = (string) ($row['version_tag'] ?? '');
+            if ($code !== '') {
+                $versionOptions[] = ['code' => $code, 'label' => $code];
+            }
+        }
+
+        $statusOptions = [];
+        foreach ($statuses as $row) {
+            $code = (string) ($row['status'] ?? '');
+            if ($code !== '' && self::isValidItemStatus($code)) {
+                $statusOptions[] = ['code' => $code, 'label' => $code];
+            }
+        }
+
+        return [
+            'families' => array_values($families),
+            'types' => array_values($types),
+            'categories' => $categoryOptions,
+            'versions' => $versionOptions,
+            'statuses' => $statusOptions,
+        ];
+    }
+
+    /**
+     * Conteo de relaciones por ítem en una sola consulta (evita N+1).
+     *
+     * @param list<int> $itemIds
+     *
+     * @return array<int, int>
+     */
+    public static function relationCounts(array $itemIds): array
+    {
+        if (!self::ALLOW_RESTRICTED_SELECTS) {
+            return [];
+        }
+
+        $itemIds = array_values(array_unique(array_filter(
+            array_map('intval', $itemIds),
+            static fn (int $id): bool => $id > 0
+        )));
+        if ($itemIds === []) {
+            return [];
+        }
+
+        $pdo = PortalDatabase::connection();
+        if (!self::tableExists($pdo, 'os_concept_mapping')) {
+            return [];
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($itemIds), '?'));
+        try {
+            $statement = $pdo->prepare(
+                'SELECT item_id, count(*) AS total FROM os_concept_mapping'
+                . " WHERE item_id IN ({$placeholders}) GROUP BY item_id"
+            );
+            $statement->execute($itemIds);
+            $rows = $statement->fetchAll();
+        } catch (PDOException) {
+            return [];
+        }
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[(int) $row['item_id']] = (int) $row['total'];
+        }
+
+        return $counts;
     }
 
     /**
@@ -264,17 +485,25 @@ final class CatalogRepository
         string $requestedLanguage,
         int $limit,
         int $offset,
-        ?string $catalog = null
+        ?string $catalog = null,
+        array $filters = []
     ): array {
         $pdo = PortalDatabase::connection();
         $term = self::normalizeTerm($query);
         $language = self::contentLanguage($pdo, $requestedLanguage);
         $domains = $domain === '' ? self::DEFAULT_DOMAINS : [$domain];
-        $catalog = self::normalizeCatalog($catalog);
-        if ($catalog !== null) {
+        $catalogs = self::normalizeCatalogs($catalog);
+        $filters = self::normalizeFilters($filters);
+        if ($catalogs !== []) {
             // El filtro DENTAR implica el dominio odontología aunque el usuario
             // no haya elegido explícitamente ese dominio en el formulario.
             $domains = ['odontologia'];
+        } elseif ($filters !== []) {
+            // Los filtros estructurados solo existen en el motor os_catalog.
+            $domains = array_values(array_intersect(
+                $domains,
+                array_keys(self::OS_CATALOG_DOMAIN_TYPES)
+            ));
         }
         $offset = max(0, min(self::MAX_OFFSET, $offset));
 
@@ -290,7 +519,8 @@ final class CatalogRepository
             false,
             null,
             $requestedLanguage,
-            $catalog
+            $catalogs,
+            $filters
         );
         if ($union === '') {
             return ['items' => [], 'total' => 0, 'has_more' => false];
@@ -355,7 +585,7 @@ final class CatalogRepository
             true,
             $key,
             $requestedLanguage,
-            self::normalizeCatalog($catalog)
+            self::normalizeCatalogs($catalog)
         );
 
         if ($sql === '') {
@@ -393,12 +623,14 @@ final class CatalogRepository
         bool $byKey,
         ?string $key,
         string $requestedLanguage = '',
-        ?string $catalog = null
+        array $catalogs = [],
+        array $filters = []
     ): array {
         $branches = [];
         $parameters = [];
         $index = 0;
-        $catalog = self::normalizeCatalog($catalog);
+        $catalogs = self::normalizeCatalogs(implode(',', $catalogs));
+        $filters = self::normalizeFilters($filters);
 
         foreach ($domains as $domain) {
             if (!self::isValidDomain($domain)) {
@@ -408,7 +640,10 @@ final class CatalogRepository
             // Los catálogos DENTAR viven en os_catalog con domain_type 'dental'.
             // Con filtro de producto solo se consulta esa rama y se excluyen las
             // tablas nativas de odontología para no mezclar fuentes.
-            if ($catalog !== null && $domain !== 'odontologia') {
+            if ($catalogs !== [] && $domain !== 'odontologia') {
+                continue;
+            }
+            if ($filters !== [] && !isset(self::OS_CATALOG_DOMAIN_TYPES[$domain])) {
                 continue;
             }
 
@@ -421,7 +656,7 @@ final class CatalogRepository
                 continue;
             }
 
-            if ($nativeExists && $catalog === null) {
+            if ($nativeExists && $catalogs === [] && $filters === []) {
                 $p = 'p' . $index++;
                 [$sql, $params] = self::branch(
                     $p,
@@ -446,7 +681,8 @@ final class CatalogRepository
                     $requestedLanguage,
                     $byKey,
                     $key,
-                    $catalog
+                    $catalogs,
+                    $filters
                 );
                 $branches[] = $sql;
                 $parameters += $params;
@@ -514,16 +750,21 @@ final class CatalogRepository
         string $requestedLanguage,
         bool $byKey,
         ?string $key,
-        ?string $catalog = null
+        array $catalogs = [],
+        array $filters = []
     ): array {
-        $catalog = self::normalizeCatalog($catalog);
+        $catalogs = self::normalizeCatalogs(implode(',', $catalogs));
+        $filters = self::normalizeFilters($filters);
         $typeNames = [];
+        $catalogNames = [];
         $params = [
             ":{$p}_lang" => $language,
             ":{$p}_req_lang" => $requestedLanguage !== '' ? $requestedLanguage : $language,
         ];
-        if ($catalog !== null) {
-            $params[":{$p}_catalog"] = $catalog;
+        foreach ($catalogs as $i => $code) {
+            $name = ":{$p}_catalog{$i}";
+            $catalogNames[] = $name;
+            $params[$name] = $code;
         }
 
         foreach ($domainTypes as $i => $type) {
@@ -542,6 +783,37 @@ final class CatalogRepository
                 "ver.preferred_term ILIKE :{$p}_contains" => '0.78',
                 "similarity(ver.preferred_term, :{$p}_sim)" => null,
             ], $p);
+
+        $releaseFilter = '';
+        if (isset($filters['version'])) {
+            $releaseFilter .= " AND r.version_tag = :{$p}_version";
+            $params[":{$p}_version"] = $filters['version'];
+        }
+        if (isset($filters['validity'])) {
+            $releaseFilter .= " AND r.valid_from <= :{$p}_today"
+                . " AND (r.valid_to IS NULL OR r.valid_to >= :{$p}_today)";
+            $params[":{$p}_today"] = gmdate('Y-m-d');
+        }
+
+        $extraWhere = '';
+        if ($catalogNames !== []) {
+            $extraWhere .= '   AND cat.code IN (' . implode(', ', $catalogNames) . ")\n";
+        }
+        foreach ([
+            'family' => 'cat.family_code',
+            'type' => 'cat.domain_type',
+        ] as $filterKey => $column) {
+            if (isset($filters[$filterKey])) {
+                $name = ":{$p}_filter_{$filterKey}";
+                $extraWhere .= "   AND {$column} = {$name}\n";
+                $params[$name] = $filters[$filterKey];
+            }
+        }
+        if (isset($filters['category'])) {
+            $extraWhere .= "   AND catcat.code = :{$p}_filter_category\n";
+            $params[":{$p}_filter_category"] = $filters['category'];
+        }
+        $params[":{$p}_filter_status"] = $filters['status'] ?? 'active';
 
         $where = $byKey
             ? "(item.permanent_code = :{$p}_key"
@@ -577,7 +849,7 @@ final class CatalogRepository
             . " JOIN os_catalog cat ON cat.id = item.catalog_id\n"
             . " JOIN os_catalog_release rel ON rel.id = (\n"
             . "     SELECT r.id FROM os_catalog_release r\n"
-            . "      WHERE r.catalog_id = cat.id AND r.status = 'published'\n"
+            . "      WHERE r.catalog_id = cat.id AND r.status = 'published'{$releaseFilter}\n"
             . "      ORDER BY r.valid_from DESC, r.id DESC LIMIT 1\n"
             . " )\n"
             . " JOIN os_catalog_item_version ver ON ver.id = (\n"
@@ -591,9 +863,12 @@ final class CatalogRepository
             . "      WHERE i.item_id = item.id AND i.is_primary = TRUE\n"
             . "      ORDER BY i.id LIMIT 1\n"
             . " )\n"
-            . " WHERE cat.is_active = TRUE AND item.status = 'active'\n"
+            . (isset($filters['category'])
+                ? " JOIN os_catalog_category catcat ON catcat.id = ver.category_id\n"
+                : '')
+            . " WHERE cat.is_active = TRUE AND item.status = :{$p}_filter_status\n"
             . "   AND cat.domain_type IN (" . implode(', ', $typeNames) . ")\n"
-            . ($catalog !== null ? "   AND cat.code = :{$p}_catalog\n" : '')
+            . $extraWhere
             . "   AND {$where}";
 
         if ($byKey) {
@@ -1115,6 +1390,16 @@ final class CatalogRepository
         $osVariants = self::loadOsCatalogVariants($pdo, $rows);
         $reviews = self::loadReviews($pdo, $rows, $osVariants);
         $languageChain = self::languageChain($pdo, $requestedLanguage, $contentLanguage);
+
+        $relationIds = [];
+        foreach ($rows as $candidate) {
+            $candidateMetadata = self::decodeMetadata($candidate['metadata'] ?? null);
+            if (!empty($candidateMetadata['os_catalog']) && !empty($candidateMetadata['item_id'])) {
+                $relationIds[] = (int) $candidateMetadata['item_id'];
+            }
+        }
+        $relationCounts = self::relationCounts($relationIds);
+
         $items = [];
 
         foreach ($rows as $row) {
@@ -1137,6 +1422,7 @@ final class CatalogRepository
                     $languageChain,
                     $requestedLanguage
                 );
+            $score = round((float) ($row['score'] ?? 0), 4);
             $item = [
                 'id' => (string) ($row['result_key'] ?? ''),
                 'source_id' => (string) ($row['source_id'] ?? ''),
@@ -1145,7 +1431,9 @@ final class CatalogRepository
                 'subtitle' => $row['subtitle'] !== null ? (string) $row['subtitle'] : null,
                 'domain' => (string) ($row['domain'] ?? ''),
                 'kind' => (string) ($row['kind'] ?? ''),
-                'score' => round((float) ($row['score'] ?? 0), 4),
+                'score' => $score,
+                'match_type' => $score >= 1.0 ? 'exact' : 'partial',
+                'relation_count' => $isOsCatalog && $itemId > 0 ? ($relationCounts[$itemId] ?? 0) : 0,
                 'description' => $editorial['description'] ?? self::description($metadata),
                 'concept_id' => isset($metadata['concept_id']) ? (string) $metadata['concept_id'] : null,
                 'catalog_code' => isset($metadata['catalog_code']) ? (string) $metadata['catalog_code'] : null,
@@ -2038,18 +2326,33 @@ final class CatalogRepository
             return [];
         }
 
-        if (!self::tableExists(PortalDatabase::connection(), 'os_concept_mapping')
-            || !self::tableExists(PortalDatabase::connection(), 'os_terminology_system')) {
+        $pdo = PortalDatabase::connection();
+        if (!self::tableExists($pdo, 'os_concept_mapping')
+            || !self::tableExists($pdo, 'os_terminology_system')
+            || !self::tableExists($pdo, 'os_catalog_identifier')
+            || !self::tableExists($pdo, 'os_catalog_item')
+            || !self::tableExists($pdo, 'os_catalog')) {
             return [];
         }
 
         try {
-            $statement = PortalDatabase::connection()->prepare(
+            $statement = $pdo->prepare(
                 'SELECT sys.code AS system_code, sys.uri AS system_uri,'
                 . ' sys.default_version AS system_version, m.external_code, m.external_display,'
-                . ' m.mapping_type, m.relationship_role, m.review_status, m.provenance'
+                . ' m.mapping_type, m.relationship_role, m.review_status, m.provenance,'
+                . ' linked.matches AS linked_matches, linked.item_id AS linked_item,'
+                . ' linked.catalog_code AS linked_catalog, linked.domain_type AS linked_domain_type'
                 . ' FROM os_concept_mapping m'
                 . ' JOIN os_terminology_system sys ON sys.id = m.terminology_system_id'
+                . ' LEFT JOIN LATERAL ('
+                . '   SELECT count(*) AS matches, min(li.item_id) AS item_id,'
+                . '          min(lcat.code) AS catalog_code, min(lcat.domain_type) AS domain_type'
+                . '   FROM os_catalog_identifier li'
+                . '   JOIN os_catalog_item litem ON litem.id = li.item_id'
+                . '   JOIN os_catalog lcat ON lcat.id = litem.catalog_id'
+                . '   WHERE li.value = m.external_code AND li.system_name = sys.code'
+                . ' AND lcat.is_active = TRUE'
+                . ' ) linked ON TRUE'
                 . ' WHERE m.item_id = ?'
                 . ' ORDER BY sys.code ASC, m.external_code ASC'
             );
@@ -2061,6 +2364,26 @@ final class CatalogRepository
 
         $relations = [];
         foreach ($rows as $row) {
+            $targetKey = '';
+            if ((int) ($row['linked_matches'] ?? 0) === 1) {
+                $linkedType = (string) ($row['linked_domain_type'] ?? '');
+                $domain = '';
+                foreach (self::OS_CATALOG_DOMAIN_TYPES as $portalDomain => $types) {
+                    if (in_array($linkedType, $types, true)) {
+                        $domain = (string) $portalDomain;
+                        break;
+                    }
+                }
+                $catalogCode = (string) ($row['linked_catalog'] ?? '');
+                $targetId = (int) ($row['linked_item'] ?? 0);
+                if ($domain !== '' && self::isValidDomain($domain) && $catalogCode !== '' && $targetId > 0) {
+                    $candidate = $domain . ':os_catalog:' . $catalogCode . ':' . $targetId;
+                    if (preg_match('/^[a-z0-9_]+:([A-Za-z0-9_.:-]{1,100})$/', $candidate) === 1) {
+                        $targetKey = $candidate;
+                    }
+                }
+            }
+
             $relations[] = [
                 'system' => (string) $row['system_code'],
                 'uri' => $row['system_uri'] !== null ? (string) $row['system_uri'] : null,
@@ -2071,6 +2394,7 @@ final class CatalogRepository
                 'role' => (string) $row['relationship_role'],
                 'review_status' => (string) $row['review_status'],
                 'provenance' => $row['provenance'] !== null ? (string) $row['provenance'] : null,
+                'result_key' => $targetKey,
             ];
         }
 

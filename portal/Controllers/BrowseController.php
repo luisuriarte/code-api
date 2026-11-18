@@ -14,6 +14,7 @@ final class BrowseController
 {
     private const TABS = ['concept', 'relations', 'values', 'validity', 'clinical', 'trace'];
     private const REL_VIEWS = ['table', 'diagram'];
+    private const FILTER_KEYS = ['family', 'type', 'category', 'status', 'version', 'validity'];
 
     public static function index(string $locale, string $currentPath): void
     {
@@ -35,7 +36,11 @@ final class BrowseController
 
         $query = Validator::text($_GET['q'] ?? '', 80);
         $domain = Validator::text($_GET['domain'] ?? '', 64);
-        $catalog = self::catalogParam();
+        $rawCatalog = self::catalogParam();
+        $catalogs = BrowseService::normalizeCatalogs($rawCatalog);
+        $catalog = implode(',', $catalogs);
+        $filters = BrowseService::normalizeFilters(self::filtersParam());
+        $facets = $fragmentMode === '' ? BrowseService::facets() : [];
         $page = self::pageParam();
         $limit = min(BrowseService::MAX_LIMIT, self::limitParam());
 
@@ -52,39 +57,49 @@ final class BrowseController
 
         $result = $isDetailFragment
             ? self::emptySearch($page)
-            : BrowseService::search($query, $domain, $apiLocale, $page, $limit, $catalog);
+            : BrowseService::search($query, $domain, $apiLocale, $page, $limit, $rawCatalog, $filters);
         $domains = $fragmentMode !== '' ? [] : BrowseService::domains($locale);
 
         $detail = self::emptyDetail();
         if ($focus !== '' && !$isResultsFragment) {
-            $detail = BrowseService::detail($focus, $apiLocale, $catalog);
+            $detail = BrowseService::detail($focus, $apiLocale, $rawCatalog);
         }
 
         $compareItems = (!$isResultsFragment && count($compare) >= 2)
-            ? BrowseService::compareItems(implode(',', $compare), $apiLocale, $catalog)
+            ? BrowseService::compareItems(implode(',', $compare), $apiLocale, $rawCatalog)
             : [];
 
         $baseBrowsePath = I18n::localizedPath($locale, '/browse');
         $stablePath = $focus !== ''
             ? I18n::localizedPath($locale, '/browse/' . rawurlencode($focus))
             : $baseBrowsePath;
-        $canonicalPath = $focus !== '' ? $stablePath : $currentPath;
 
-        $state = array_filter([
+        $filterState = [];
+        foreach (self::FILTER_KEYS as $key) {
+            $filterState[$key] = $filters[$key] ?? null;
+        }
+
+        $state = array_filter(array_merge([
             'q' => $query,
             'domain' => $domain,
             'catalog' => $catalog,
+        ], $filterState, [
             'page' => $page > 1 ? $page : null,
             'limit' => $limit !== BrowseService::DEFAULT_LIMIT ? $limit : null,
             'tab' => $tab !== 'concept' ? $tab : null,
             'rel_view' => $relView !== 'table' ? $relView : null,
             'compare' => $compare !== [] ? implode(',', $compare) : null,
             'history' => $history !== [] ? implode(',', $history) : null,
-        ], static fn ($value) => $value !== '' && $value !== null);
+        ]), static fn ($value) => $value !== '' && $value !== null);
 
-        $backParams = array_intersect_key($state, array_flip(['q', 'domain', 'catalog', 'page', 'limit']));
-        $backUrl = $baseBrowsePath
-            . ($backParams === [] ? '' : '?' . http_build_query($backParams, '', '&', PHP_QUERY_RFC3986));
+        $contentKeys = array_flip(array_merge(['q', 'domain', 'catalog'], self::FILTER_KEYS, ['page', 'limit']));
+        $contentParams = array_intersect_key($state, $contentKeys);
+        $canonicalQuery = $contentParams === []
+            ? ''
+            : '?' . http_build_query($contentParams, '', '&', PHP_QUERY_RFC3986);
+        $canonicalPath = $stablePath . $canonicalQuery;
+
+        $backUrl = $baseBrowsePath . $canonicalQuery;
 
         $structuredData = self::structuredData($detail, $stablePath);
         $title = $detail['ok'] && is_array($detail['item'])
@@ -100,6 +115,9 @@ final class BrowseController
             'query' => $query,
             'domain' => $domain,
             'catalog' => $catalog,
+            'catalogs' => $catalogs,
+            'filters' => $filters,
+            'facets' => $facets,
             'domains' => $domains,
             'result' => $result,
             'detail' => $detail,
@@ -129,9 +147,42 @@ final class BrowseController
     private static function catalogParam(): ?string
     {
         $raw = $_GET['catalog'] ?? '';
-        $catalog = is_scalar($raw) ? Validator::text($raw, 32) : '';
+
+        if (is_array($raw)) {
+            $values = [];
+            foreach ($raw as $value) {
+                if (!is_scalar($value)) {
+                    continue;
+                }
+                $code = Validator::text($value, 32);
+                if ($code !== '') {
+                    $values[] = $code;
+                }
+            }
+            $catalog = implode(',', $values);
+        } else {
+            $catalog = is_scalar($raw) ? Validator::text($raw, 64) : '';
+        }
 
         return $catalog === '' ? null : $catalog;
+    }
+
+    /** @return array<string, string> */
+    private static function filtersParam(): array
+    {
+        $filters = [];
+        foreach (self::FILTER_KEYS as $key) {
+            $value = $_GET[$key] ?? '';
+            if (!is_scalar($value)) {
+                continue;
+            }
+            $text = Validator::text($value, 64);
+            if ($text !== '') {
+                $filters[$key] = $text;
+            }
+        }
+
+        return $filters;
     }
 
     private static function pageParam(): int

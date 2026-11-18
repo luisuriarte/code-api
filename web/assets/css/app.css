@@ -1169,6 +1169,46 @@ svg {
     margin-top: 20px;
 }
 
+.browse-form .browse-filter-group {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.browse-form .browse-filter-group legend {
+    margin-bottom: 8px;
+    padding: 0;
+    color: var(--ink);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.browse-form .browse-check-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+}
+
+.browse-form .browse-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.browse-form .browse-check input {
+    width: auto;
+}
+
+.browse-form .browse-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px 18px;
+}
+
 .results-count {
     color: var(--muted);
     font-size: 0.9rem;
@@ -1233,6 +1273,12 @@ svg {
     margin-top: 32px;
     color: var(--muted);
     font-size: 0.88rem;
+}
+
+.browse-loadmore {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
 }
 
 .back-link {
@@ -1867,6 +1913,11 @@ svg {
     margin-top: 12px;
     color: var(--muted);
     font-size: 0.82rem;
+}
+
+.browse-explorer [aria-busy="true"] {
+    opacity: 0.65;
+    cursor: progress;
 }
 
 .browse-explorer a:focus-visible,

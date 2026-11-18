@@ -18,6 +18,16 @@ final class BrowseService
     public const MAX_LIMIT = 100;
     public const MAX_COMPARE = 4;
     public const MAX_HISTORY = 8;
+    private const CACHE_TTL = 60;
+
+    /** @var array<string, array{time: int, value: array<string, mixed>}> */
+    private static array $searchCache = [];
+
+    /** @var array<string, array{time: int, value: array<string, mixed>}> */
+    private static array $facetCache = [];
+
+    /** @var array<string, array{time: int, value: array<string, mixed>}> */
+    private static array $detailCache = [];
 
     /** @return array{ok: bool, error: ?string, items: list<array<string, mixed>>, total: int, page: int, pages: int, has_more: bool} */
     public static function search(
@@ -26,24 +36,25 @@ final class BrowseService
         string $language,
         int $page,
         int $limit,
-        ?string $catalog = null
+        ?string $catalog = null,
+        array $filters = []
     ): array {
         $limit = max(1, min(self::MAX_LIMIT, $limit));
         $page = max(1, $page);
         $offset = min(5000, ($page - 1) * $limit);
-        $catalog = ($catalog ?? '') !== '' ? $catalog : null;
+        $catalogs = CatalogRepository::normalizeCatalogs($catalog);
+        $filters = CatalogRepository::normalizeFilters($filters);
 
         if ($domain !== '' && !CatalogRepository::isValidDomain($domain)) {
             return self::empty('invalid_domain', $page);
         }
 
-        if ($catalog !== null) {
-            if (!CatalogRepository::isValidCatalog($catalog)) {
-                return self::empty('invalid_catalog', $page);
-            }
-            if ($domain !== '' && $domain !== 'odontologia') {
-                return self::empty('invalid_catalog', $page);
-            }
+        if (($catalog ?? '') !== '' && $catalogs === []) {
+            return self::empty('invalid_catalog', $page);
+        }
+
+        if ($catalogs !== [] && $domain !== '' && $domain !== 'odontologia') {
+            return self::empty('invalid_catalog', $page);
         }
 
         if (!CatalogRepository::available()) {
@@ -57,6 +68,14 @@ final class BrowseService
             }
         }
 
+        $cacheKey = self::cacheKey('search', [
+            $query, $domain, $language, $page, $limit, $catalogs, $filters,
+        ]);
+        $cached = self::cacheRead(self::$searchCache, $cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         try {
             $result = CatalogRepository::search(
                 $query,
@@ -64,13 +83,14 @@ final class BrowseService
                 $language,
                 $limit,
                 $offset,
-                CatalogRepository::normalizeCatalog($catalog)
+                implode(',', $catalogs),
+                $filters
             );
         } catch (RepositoryException) {
             return self::empty('error_query', $page);
         }
 
-        return [
+        $response = [
             'ok' => true,
             'error' => null,
             'items' => $result['items'],
@@ -79,6 +99,9 @@ final class BrowseService
             'pages' => max(1, (int) ceil($result['total'] / $limit)),
             'has_more' => $result['has_more'],
         ];
+        self::$searchCache[$cacheKey] = ['time' => time(), 'value' => $response];
+
+        return $response;
     }
 
     /**
@@ -92,7 +115,7 @@ final class BrowseService
         $catalog = ($catalog ?? '') !== '' ? $catalog : null;
         $emptySections = self::emptySections();
 
-        if ($catalog !== null && !CatalogRepository::isValidCatalog($catalog)) {
+        if ($catalog !== null && self::normalizeCatalogs($catalog) === []) {
             return ['ok' => false, 'error' => 'invalid_catalog', 'item' => null, 'sections' => $emptySections];
         }
 
@@ -100,11 +123,18 @@ final class BrowseService
             return ['ok' => false, 'error' => 'not_configured', 'item' => null, 'sections' => $emptySections];
         }
 
+        $catalogs = self::normalizeCatalogs($catalog);
+        $cacheKey = self::cacheKey('detail', [$id, $language, $catalogs]);
+        $cached = self::cacheRead(self::$detailCache, $cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         try {
             $item = CatalogRepository::find(
                 $id,
                 $language,
-                CatalogRepository::normalizeCatalog($catalog)
+                implode(',', $catalogs)
             );
         } catch (RepositoryException) {
             return ['ok' => false, 'error' => 'error_query', 'item' => null, 'sections' => $emptySections];
@@ -118,14 +148,17 @@ final class BrowseService
             $sections = CatalogRepository::detailSections(
                 $id,
                 $language,
-                CatalogRepository::normalizeCatalog($catalog)
+                implode(',', $catalogs)
             );
         } catch (RepositoryException) {
             // La ficha básica sigue siendo válida aunque fall una sección optativa.
             $sections = $emptySections;
         }
 
-        return ['ok' => true, 'error' => null, 'item' => $item, 'sections' => $sections];
+        $response = ['ok' => true, 'error' => null, 'item' => $item, 'sections' => $sections];
+        self::$detailCache[$cacheKey] = ['time' => time(), 'value' => $response];
+
+        return $response;
     }
 
     /**
@@ -139,7 +172,8 @@ final class BrowseService
         }
 
         $catalog = ($catalog ?? '') !== '' ? $catalog : null;
-        if ($catalog !== null && !CatalogRepository::isValidCatalog($catalog)) {
+        $catalogs = self::normalizeCatalogs($catalog);
+        if (($catalog ?? '') !== '' && $catalogs === []) {
             return [];
         }
         if (!CatalogRepository::available()) {
@@ -152,7 +186,7 @@ final class BrowseService
                 $item = CatalogRepository::find(
                     $key,
                     $language,
-                    CatalogRepository::normalizeCatalog($catalog)
+                    implode(',', $catalogs)
                 );
                 if ($item !== null) {
                     $items[] = ['key' => $key, 'item' => $item];
@@ -177,6 +211,75 @@ final class BrowseService
         } catch (RepositoryException) {
             return [];
         }
+    }
+
+    /**
+     * Opciones reales de los filtros. Se cachean porque cambian con mucha
+     * menos frecuencia que los resultados de búsqueda.
+     *
+     * @return array{families: list<array{code: string, label: string}>, types: list<array{code: string, label: string}>, categories: list<array{code: string, label: string}>, versions: list<array{code: string, label: string}>, statuses: list<array{code: string, label: string}>}
+     */
+    public static function facets(): array
+    {
+        $empty = ['families' => [], 'types' => [], 'categories' => [], 'versions' => [], 'statuses' => []];
+        if (!CatalogRepository::available()) {
+            return $empty;
+        }
+
+        $cacheKey = self::cacheKey('facets', []);
+        $cached = self::cacheRead(self::$facetCache, $cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        try {
+            $facets = CatalogRepository::catalogFacets();
+        } catch (RepositoryException) {
+            return $empty;
+        }
+
+        self::$facetCache[$cacheKey] = ['time' => time(), 'value' => $facets];
+
+        return $facets;
+    }
+
+    /** @param array<string, mixed> $parts */
+    private static function cacheKey(string $prefix, array $parts): string
+    {
+        return $prefix . ':' . md5((string) json_encode($parts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    /**
+     * @param array<string, array{time: int, value: array<string, mixed>}> $store
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function cacheRead(array &$store, string $key): ?array
+    {
+        $entry = $store[$key] ?? null;
+        if ($entry === null || time() - $entry['time'] >= self::CACHE_TTL) {
+            unset($store[$key]);
+
+            return null;
+        }
+
+        return $entry['value'];
+    }
+
+    /** @return list<string> */
+    public static function normalizeCatalogs(?string $catalog): array
+    {
+        return CatalogRepository::normalizeCatalogs($catalog);
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     *
+     * @return array<string, string>
+     */
+    public static function normalizeFilters(array $filters): array
+    {
+        return CatalogRepository::normalizeFilters($filters);
     }
 
     /** Valida una clave de resultado sin normalizar el código que contiene. */
