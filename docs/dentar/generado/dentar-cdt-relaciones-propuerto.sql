@@ -11,6 +11,14 @@ SET client_encoding = 'UTF8';
 BEGIN;
 
 -- 1. Sistemas terminológicos necesarios para que las relaciones sean navegables.
+-- El bootstrap cargó esta tabla con ids explícitos (1..4) sin avanzar el SERIAL,
+-- por lo que un INSERT sin id choca con la PK. Se alinea la secuencia primero.
+SELECT setval(
+    pg_get_serial_sequence('os_terminology_system', 'id'),
+    (SELECT COALESCE(max(id), 1) FROM os_terminology_system),
+    true
+);
+
 INSERT INTO os_terminology_system (code, name, uri)
 VALUES
     ('NOMENCLADOR-AR', 'Nomenclador Odontológico Único de Argentina', 'https://fopba.org.ar'),
