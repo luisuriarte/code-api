@@ -1,0 +1,157 @@
+tipo,codigo,dnt_dx,detalle
+dx_existente_cie_ausente_edicion_2026,K02.0,DNT-DX-000005,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K02.1,DNT-DX-000006,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K02.2,DNT-DX-000007,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K03.8,DNT-DX-000012,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K04.0,DNT-DX-000013,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K04.0,DNT-DX-000014,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K05.0,DNT-DX-000021,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K05.1,DNT-DX-000022,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K05.3,DNT-DX-000023,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K05.3,DNT-DX-000024,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K06.0,DNT-DX-000025,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_fuera_k00_k14,K07.3,DNT-DX-000027,Se conserva; no se genera un DNT-DX nuevo.
+dx_existente_fuera_k00_k14,K07.4,DNT-DX-000028,Se conserva; no se genera un DNT-DX nuevo.
+dx_existente_fuera_k00_k14,K07.6,DNT-DX-000029,Se conserva; no se genera un DNT-DX nuevo.
+dx_existente_cie_ausente_edicion_2026,K08.1,DNT-DX-000030,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_cie_ausente_edicion_2026,K08.2,DNT-DX-000031,El código CIE-10 vigente en DENTAR no existe en CIE-10-ES 2026; no se reutiliza el DNT-DX.
+dx_existente_fuera_k00_k14,K10.2,DNT-DX-000033,Se conserva; no se genera un DNT-DX nuevo.
+dx_existente_fuera_k00_k14,S02.5,DNT-DX-000035,Se conserva; no se genera un DNT-DX nuevo.
+dx_existente_fuera_k00_k14,S03.2,DNT-DX-000036,Se conserva; no se genera un DNT-DX nuevo.
+dx_existente_fuera_k00_k14,F45.8,DNT-DX-000037,Se conserva; no se genera un DNT-DX nuevo.
+dx_existente_fuera_k00_k14,Z01.2,DNT-DX-000038,Se conserva; no se genera un DNT-DX nuevo.
+cie10_sin_mapa_snomed,K02.51,DNT-DX-000048,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K02.52,DNT-DX-000049,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K02.53,DNT-DX-000050,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K02.61,DNT-DX-000051,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K02.62,DNT-DX-000052,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K02.63,DNT-DX-000053,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K02.7,DNT-DX-000054,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K03.81,DNT-DX-000060,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K03.89,DNT-DX-000061,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K03.9,DNT-DX-000062,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K04.01,DNT-DX-000063,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K04.02,DNT-DX-000064,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K04.1,DNT-DX-000015,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K04.90,DNT-DX-000067,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K04.99,DNT-DX-000068,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.00,DNT-DX-000069,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.01,DNT-DX-000070,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.10,DNT-DX-000071,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.11,DNT-DX-000072,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.20,DNT-DX-000073,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.211,DNT-DX-000074,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.212,DNT-DX-000075,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.213,DNT-DX-000076,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.219,DNT-DX-000077,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.221,DNT-DX-000078,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.222,DNT-DX-000079,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.223,DNT-DX-000080,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.229,DNT-DX-000081,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.30,DNT-DX-000082,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.311,DNT-DX-000083,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.312,DNT-DX-000084,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.313,DNT-DX-000085,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.319,DNT-DX-000086,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.321,DNT-DX-000087,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.322,DNT-DX-000088,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.323,DNT-DX-000089,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.329,DNT-DX-000090,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K05.4,DNT-DX-000091,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.010,DNT-DX-000094,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.011,DNT-DX-000095,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.012,DNT-DX-000096,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.013,DNT-DX-000097,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.020,DNT-DX-000098,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.021,DNT-DX-000099,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.022,DNT-DX-000100,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.023,DNT-DX-000101,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K06.3,DNT-DX-000103,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.101,DNT-DX-000107,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.102,DNT-DX-000108,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.103,DNT-DX-000109,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.104,DNT-DX-000110,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.109,DNT-DX-000111,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.111,DNT-DX-000112,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.112,DNT-DX-000113,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.113,DNT-DX-000114,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.114,DNT-DX-000115,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.119,DNT-DX-000116,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.121,DNT-DX-000117,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.122,DNT-DX-000118,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.123,DNT-DX-000119,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.124,DNT-DX-000120,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.129,DNT-DX-000121,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.131,DNT-DX-000122,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.132,DNT-DX-000123,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.133,DNT-DX-000124,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.134,DNT-DX-000125,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.139,DNT-DX-000126,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.191,DNT-DX-000127,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.192,DNT-DX-000128,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.193,DNT-DX-000129,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.194,DNT-DX-000130,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.199,DNT-DX-000131,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.20,DNT-DX-000132,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.21,DNT-DX-000133,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.22,DNT-DX-000134,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.23,DNT-DX-000135,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.24,DNT-DX-000136,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.25,DNT-DX-000137,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.26,DNT-DX-000138,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.401,DNT-DX-000139,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.402,DNT-DX-000140,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.403,DNT-DX-000141,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.404,DNT-DX-000142,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.409,DNT-DX-000143,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.411,DNT-DX-000144,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.412,DNT-DX-000145,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.413,DNT-DX-000146,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.414,DNT-DX-000147,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.419,DNT-DX-000148,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.421,DNT-DX-000149,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.422,DNT-DX-000150,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.423,DNT-DX-000151,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.424,DNT-DX-000152,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.429,DNT-DX-000153,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.431,DNT-DX-000154,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.432,DNT-DX-000155,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.433,DNT-DX-000156,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.434,DNT-DX-000157,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.439,DNT-DX-000158,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.491,DNT-DX-000159,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.492,DNT-DX-000160,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.493,DNT-DX-000161,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.494,DNT-DX-000162,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.499,DNT-DX-000163,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.50,DNT-DX-000164,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.51,DNT-DX-000165,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.52,DNT-DX-000166,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.530,DNT-DX-000167,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.531,DNT-DX-000168,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.539,DNT-DX-000169,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.54,DNT-DX-000170,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.55,DNT-DX-000171,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.56,DNT-DX-000172,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.59,DNT-DX-000173,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.81,DNT-DX-000174,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.82,DNT-DX-000175,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K08.89,DNT-DX-000176,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K11.20,DNT-DX-000184,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K11.21,DNT-DX-000185,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K11.22,DNT-DX-000186,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K11.23,DNT-DX-000187,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K12.30,DNT-DX-000197,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K12.31,DNT-DX-000198,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K12.32,DNT-DX-000199,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K12.33,DNT-DX-000200,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K12.39,DNT-DX-000201,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K13.21,DNT-DX-000204,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K13.22,DNT-DX-000205,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K13.23,DNT-DX-000206,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K13.24,DNT-DX-000207,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K13.29,DNT-DX-000208,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K13.70,DNT-DX-000213,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K13.79,DNT-DX-000214,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K14.8,DNT-DX-000222,SCTID queda vacío en el CSV candidato.
+cie10_sin_mapa_snomed,K14.9,DNT-DX-000223,SCTID queda vacío en el CSV candidato.

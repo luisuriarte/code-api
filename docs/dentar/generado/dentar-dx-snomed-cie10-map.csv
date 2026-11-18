@@ -1,0 +1,362 @@
+sctid,termino,cie10,grupo,prioridad,regla,consejo,dnt_dx
+14901003,anquilosis de diente (trastorno),K03.5,1,1,TRUE,ALWAYS K03.5,
+7826003,enfermedad de Mikulicz (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+83412009,absceso periodontal (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+196503004,sialodocolitiasis submandibular (trastorno),K11.5,1,1,TRUE,ALWAYS K11.5,
+33727006,lesión por fricción causada por dentífrico (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+34282009,trastorno del tejido periapical de los dientes (trastorno),K04.9,1,1,TRUE,ALWAYS K04.9,
+414376003,leucoplasia vellosa de la lengua asociada con enfermedad por virus de la inmunodeficiencia humana (trastorno),K13.3,1,1,TRUE,ALWAYS K13.3,
+234986004,coloración dental intrínseca inducida por drogas (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,
+278617002,caída de diente de prótesis dental (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+717062009,lesión no cariada en margen cervical de diente (trastorno),K08.9,1,1,TRUE,ALWAYS K08.9,
+109764005,sialoadenitis aguda (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+109769000,sialometaplasia necrosante (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+75260002,fístula de glándula salival (trastorno),K11.4,1,1,TRUE,ALWAYS K11.4 | MAPPED FOLLOWING WHO GUIDANCE,
+84752003,dientes moteados congénitos (trastorno),K00.3,1,1,TRUE,ALWAYS K00.3,
+95249000,caries dental por disfunción salival (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+1386336008,caries dental posterior a defecto congénito de estructura de diente (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+713236007,enfermedad gingival alérgica por contacto con material dental de acrílico (trastorno),K05.0,1,1,TRUE,ALWAYS K05.0,DNT-DX-000021
+235122006,sialoadenitis viral aguda (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+95303006,parotitis supurativa (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+234976000,caries dental agresiva múltiple (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+66522001,obstrucción de conducto salival (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+1826005,granuloma de labio (trastorno),K13.4,1,1,TRUE,ALWAYS K13.4,
+80567007,sialodocolitiasis (trastorno),K11.5,1,1,TRUE,ALWAYS K11.5,
+196479004,hipertrofia de glándula sublingual (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+718066009,periodontitis moderada aguda generalizada (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+699701005,obliteración de conducto radicular de diente debido a mineralización anormal de pulpa dental (trastorno),K04.2,1,1,TRUE,ALWAYS K04.2,
+109729001,saliente en una restauración dental (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+91950000,atrofia de cresta alveolar desdentada (trastorno),K08.2,1,1,TRUE,ALWAYS K08.2,DNT-DX-000031
+703401001,fijación supracrestal insuficiente (trastorno),K08.8,1,1,TRUE,ALWAYS K08.8,
+196518003,sialectasia submandibular (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+109603007,absceso apical crónico (trastorno),K04.7,1,1,TRUE,ALWAYS K04.7,DNT-DX-000019
+64969001,ausencia parcial congénita de los dientes (trastorno),K00.0,1,1,TRUE,ALWAYS K00.0,
+45338009,hipertrofia de glándula salival (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+28826002,sialolitiasis (trastorno),K11.5,1,1,TRUE,ALWAYS K11.5,
+1370925005,absceso de encía (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+713245008,gingivitis debida a placa dental (trastorno),K03.6,1,1,TRUE,ALWAYS K03.6,DNT-DX-000011
+109709002,pérdida horizontal de hueso alveolar (trastorno),K08.8,1,1,TRUE,ALWAYS K08.8,
+196523003,estenosis de conducto sublingual (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+4749004,quiste de conducto nasopalatino (trastorno),K09.1,1,1,TRUE,ALWAYS K09.1,
+1170355009,exfoliación precoz generalizada de dientes debida a enfermedad sistémica (trastorno),K08.0,1,1,TRUE,ALWAYS K08.0,
+235001002,pólipo fibroepitelial gingival (trastorno),K06.8,1,1,TRUE,ALWAYS K06.8,
+234980005,manchado dentario extrínseco - negro (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+718053009,periodontitis periapical sintomática (trastorno),K04.5,2,1,TRUE,ALWAYS K04.5,DNT-DX-000017
+66123000,úlcera de la lengua (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+95249000,caries dental por disfunción salival (trastorno),K11.9,2,1,TRUE,ALWAYS K11.9,
+52368004,lengua escrotal (trastorno),K14.5,1,1,TRUE,ALWAYS K14.5 | MAPPED FOLLOWING WHO GUIDANCE,
+714249007,gingivitis leve (trastorno),K05.1,1,1,TRUE,ALWAYS K05.1,DNT-DX-000022
+109728009,restauración dental defectuosa (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+698032005,ránula hundida (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+234973008,diente sumergido (trastorno),K00.6,1,1,TRUE,ALWAYS K00.6,DNT-DX-000002
+196320004,manchado dental por sangrado pulpar (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+403455006,úlcera granulomatosa traumática de lengua con eosinofilia estromal (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+196475005,atrofia de glándula submaxilar (trastorno),K11.0,1,1,TRUE,ALWAYS K11.0,
+733971007,caries dental primaria inactiva que se extiende hasta el esmalte (trastorno),K02.3,1,1,TRUE,ALWAYS K02.3,
+402901009,leucoplasia vellosa bucal asociada a enfermedad por virus de la inmunodeficiencia humana (trastorno),K13.3,1,1,TRUE,ALWAYS K13.3,
+26558007,parotitis tóxica (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+95247003,caries por disfunción salival causada por medicación (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+713256008,periodontitis debida a resorción de raíz cervical (trastorno),K03.3,1,1,TRUE,ALWAYS K03.3,
+235128005,quiste por extravasación de la glándula salival menor (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+81543006,formación de tejido duro anormal en la pulpa (trastorno),K04.3,1,1,TRUE,ALWAYS K04.3,
+66569006,raíz dental retenida (trastorno),K08.3,1,1,TRUE,ALWAYS K08.3,DNT-DX-000032
+32883009,fibrosis submucosa oral (trastorno),K13.5,1,1,TRUE,ALWAYS K13.5,
+64268004,quiste palatino mediano (trastorno),K09.1,1,1,TRUE,ALWAYS K09.1,
+109766007,sialoadenitis de la glándula salival menor (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+110314001,altura clínicamente insuficiente de corona de diente por erupción pasiva anómala (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+1137562007,hiperplasia fibroepitelial inflamatoria de membrana mucosa oral causada por prótesis dental (trastorno),K13.6,1,1,TRUE,ALWAYS K13.6 | POSSIBLE REQUIREMENT FOR ADDITIONAL CODE TO FULLY DESCRIBE DISEASE OR CONDITION,
+48128006,atrofia de glándula salival (trastorno),K11.0,1,1,TRUE,ALWAYS K11.0,
+63210009,manchado posteruptivo de diente causado por metal (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+234983007,decoloración intrínseca de diente (trastorno),K00.8,1,1,TRUE,ALWAYS K00.8,
+403450001,pelo bucal (trastorno),K13.3,1,1,TRUE,ALWAYS K13.3,
+109763004,hiperplasia adenomatoide de la glándula salival menor (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+29553002,dientes con forma de clavija (trastorno),K00.2,1,1,TRUE,ALWAYS K00.2,
+20674003,fístula oral (trastorno),K12.2,1,1,TRUE,ALWAYS K12.2,
+196575007,mordedura de labio (trastorno),K13.1,1,1,TRUE,ALWAYS K13.1,
+711641004,pulpitis reversible sintomática (trastorno),K04.0,1,1,TRUE,ALWAYS K04.0,DNT-DX-000013
+733982004,caries dental activa secundaria que se extiende hasta la pulpa (trastorno),K02.5,1,1,TRUE,ALWAYS K02.5,
+235104008,diente impactado (trastorno),K01.1,1,1,TRUE,ALWAYS K01.1,DNT-DX-000004
+235002009,granuloma piogénico de encía (trastorno),K06.8,1,1,TRUE,ALWAYS K06.8,
+718064007,periodontitis aguda generalizada leve (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+196476006,atrofia de glándula sublingual (trastorno),K11.0,1,1,TRUE,ALWAYS K11.0,
+110314001,altura clínicamente insuficiente de corona de diente por erupción pasiva anómala (hallazgo),K00.6,2,1,TRUE,ALWAYS K00.6,DNT-DX-000002
+307011000119108,infrallenado endodóncico (trastorno),K04.9,1,1,TRUE,ALWAYS K04.9,
+1386302002,falla de exfoliación de diente debida a erupción ectópica de diente sucedáneo (trastorno),K00.4,2,1,TRUE,ALWAYS K00.4,
+715838001,deformidad mucogingival sobre cresta alveolar desdentada debida a falta de encía queratinizada (trastorno),K13.2,2,1,TRUE,ALWAYS K13.2,
+699684005,mucositis periimplante dental (trastorno),K12.3,1,1,TRUE,ALWAYS K12.3,
+109553005,quiste de paladar neonatal (trastorno),K09.1,1,1,TRUE,ALWAYS K09.1,
+716296001,perforación de restauración dental (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+735129008,granuloma fisurado de membranas mucosas (trastorno),K13.4,1,1,TRUE,ALWAYS K13.4,
+439849002,lesión traumática por fricción dental extendida hasta la dentina (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+403454005,glositis por deficiencia de hierro (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+718053009,periodontitis periapical sintomática (trastorno),K04.4,1,1,TRUE,ALWAYS K04.4,DNT-DX-000016
+26884006,manchado posteruptivo del diente por hemorragia de la pulpa (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+110313007,altura clínica insuficiente de corona de diente (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+234988003,quiste radicular lateral (trastorno),K04.8,1,1,TRUE,ALWAYS K04.8,DNT-DX-000020
+414116002,perla palatina de Epstein (trastorno),K09.8,1,1,TRUE,ALWAYS K09.8,
+4264000,pericoronitis crónica (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+449780004,enfermedad de Riga-Fede (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,
+414375004,leucoplasia vellosa lingual (trastorno),K13.3,1,1,TRUE,ALWAYS K13.3,
+109552000,quiste de bifurcación bucal (trastorno),K09.8,1,1,TRUE,ALWAYS K09.8,
+234979007,coloración extrínseca de diente (trastorno),K03.6,1,1,TRUE,ALWAYS K03.6,DNT-DX-000011
+274106005,parotiditis no urliana (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+45517002,lesión linfoepitelial benigna de la glándula salival (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+57650002,diente primario persistente (trastorno),K00.6,1,1,TRUE,ALWAYS K00.6,DNT-DX-000002
+66383009,gingivitis (trastorno),K05.1,1,1,TRUE,ALWAYS K05.1,DNT-DX-000022
+278618007,ruptura de gancho de retención de prótesis dental (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+109794004,profundidad vestibular inadecuada luego de la pérdida dentaria (trastorno),K08.8,1,1,TRUE,ALWAYS K08.8,
+49123007,glositis causada por aceite de canela (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,
+448131008,sialadenitis esclerosante crónica (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+426190008,quiste maxilar (trastorno),K09.2,1,1,TRUE,ALWAYS K09.2,
+172697005,úlcera aguda de estructura gingival debida a gingivitis (trastorno),K05.0,1,1,TRUE,ALWAYS K05.0,DNT-DX-000021
+698030002,anomalía de la cresta alveolar del maxilar superior (trastorno),K08.9,1,1,TRUE,ALWAYS K08.9,
+235013007,anormalidad de cresta alveolar (trastorno),K08.9,1,1,TRUE,ALWAYS K08.9,
+235035004,mordedura de la mucosa oral (trastorno),K13.1,1,1,TRUE,ALWAYS K13.1,
+74598008,absceso periapical con tracto sinusal (trastorno),K04.6,1,1,TRUE,ALWAYS K04.6,DNT-DX-000018
+37320007,pérdida de dientes (trastorno),K08.1,1,1,TRUE,ALWAYS K08.1,DNT-DX-000030
+196376007,lesión de encía y cresta alveolar desdentada debida a traumatismo (trastorno),K06.2,1,1,TRUE,ALWAYS K06.2 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,
+38285004,apófisis alveolar irregular (trastorno),K08.8,1,1,TRUE,ALWAYS K08.8,
+8004003,síndrome de dentición (hallazgo),K00.7,1,1,TRUE,ALWAYS K00.7,
+733980007,caries dental activa primaria que se extiende hasta la pulpa (trastorno),K02.5,1,1,TRUE,ALWAYS K02.5,
+240529006,sialoadenitis sublingual por parotiditis (trastorno),K11.2,2,1,TRUE,ALWAYS K11.2,
+718065008,periodontitis aguda severa generalizada (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+109736000,fracaso de restauración dental que afecta la integridad anatómica periodontal (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+2556008,enfermedad de las estructuras de sostén de los dientes (trastorno),K05.6,1,1,TRUE,ALWAYS K05.6,
+109743006,restauración dental que ya no puede repararse (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+698524005,abrasión generalizada de diente (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+235017008,mucocele bucal (trastorno),K13.7,1,1,TRUE,ALWAYS K13.7,
+105995000,trastorno de los dientes Y/O estructuras de sostén (trastorno),K08.9,1,1,TRUE,ALWAYS K08.9,
+18755003,cálculo dental supragingival (trastorno),K03.6,1,1,TRUE,ALWAYS K03.6,DNT-DX-000011
+196486007,sialoadenitis de glándula sublingual (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+235010005,periodontitis ulcerosa necrosante aguda (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+18718003,enfermedad gingival (trastorno),K06.9,1,1,TRUE,ALWAYS K06.9,
+370484007,exposición de la pulpa dental (trastorno),K04.9,1,1,TRUE,ALWAYS K04.9,
+699192000,hiperplasia oncocítica nodular multifocal de glándula parótida (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+715859008,periodontitis aguda moderada localizada (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+109735001,fracaso de restauración dental que afecta la integridad dental marginal (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+109585008,abrasión de cuello dental (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+196474009,atrofia de glándula parótida (trastorno),K11.0,1,1,TRUE,ALWAYS K11.0,
+90377008,sialectasia (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+9984005,exfoliación de dientes por enfermedad sistémica (trastorno),K08.0,1,1,TRUE,ALWAYS K08.0,
+109734002,fracaso de restauración dental que afecta la integridad de los dientes adyacentes (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+26624006,anodoncia (trastorno),K00.0,1,1,TRUE,ALWAYS K00.0,
+81934005,lengua pilosa negra (trastorno),K14.3,1,1,TRUE,ALWAYS K14.3,
+414952002,leucoplasia vellosa oral (trastorno),K13.3,1,1,TRUE,ALWAYS K13.3,
+733977006,caries dental inactiva secundaria que se extiende hasta la dentina (trastorno),K02.3,1,1,TRUE,ALWAYS K02.3,
+367534004,diente supernumerario (trastorno),K00.1,1,1,TRUE,ALWAYS K00.1,DNT-DX-000001
+360431007,diente embutido (trastorno),K01.0,1,1,TRUE,ALWAYS K01.0,DNT-DX-000003
+426965005,úlcera aftosa de la cavidad bucal (trastorno),K12.0,1,1,TRUE,ALWAYS K12.0,DNT-DX-000034
+109741008,fractura de restauración dental (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+9491003,atrofia de papila lingual (trastorno),K14.4,1,1,TRUE,ALWAYS K14.4,
+54553003,estenosis de conducto salival (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+7522008,tubérculo impar persistente (trastorno),K14.2,1,1,TRUE,ALWAYS K14.2,
+413678004,nódulo de Bohn (trastorno),K09.8,1,1,TRUE,ALWAYS K09.8,
+80483009,absceso de glándula salival (trastorno),K11.3,1,1,TRUE,ALWAYS K11.3,
+711639000,pulpitis irreversible asintomática (trastorno),K04.0,1,1,TRUE,ALWAYS K04.0,DNT-DX-000013
+702645001,falla de cohesión de restauración dental (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+1085521000119100,edentulismo completo de clase IV debido a caries (trastorno),K08.1,1,1,TRUE,ALWAYS K08.1,DNT-DX-000030
+787447005,periodontitis generalizada (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3 | MAPPED FOLLOWING WHO GUIDANCE,DNT-DX-000023
+61170000,estomatitis (trastorno),K12.1,1,1,TRUE,ALWAYS K12.1,
+713245008,gingivitis debida a placa dental (trastorno),K05.1,2,1,TRUE,ALWAYS K05.1,DNT-DX-000022
+698055008,sialadenitis necrosante subaguda (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+196452003,quiste mandibular del desarrollo no odontogénico (trastorno),K09.1,1,1,TRUE,ALWAYS K09.1,
+109807006,glositis aguda (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+698070009,hiperplasia de glándula salival (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+5126000,hipertrofia de las papilas foliadas (trastorno),K14.3,1,1,TRUE,ALWAYS K14.3,
+109564008,caries dental con hipomineralización de esmalte (trastorno),K00.4,2,1,TRUE,ALWAYS K00.4,
+235014001,cresta alveolar flácida (trastorno),K06.8,1,1,TRUE,ALWAYS K06.8,
+50882004,úlcera traumática de la mucosa oral (trastorno),K12.1,1,1,TRUE,ALWAYS K12.1 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,
+15977991000119101,quiste de ambas glándulas parótidas (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+30731004,glosodinia (trastorno),K14.6,1,1,TRUE,ALWAYS K14.6,
+307001000119105,sobrellenado endodóncico (trastorno),K04.9,1,1,TRUE,ALWAYS K04.9,
+109597009,manchado dental extrínseco debido a higiene oral inadecuada (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7 | POSSIBLE REQUIREMENT FOR ADDITIONAL CODE TO FULLY DESCRIBE DISEASE OR CONDITION,
+128285007,enfermedad crónica de los dientes Y/O de las estructuras de soporte (trastorno),K08.9,1,1,TRUE,ALWAYS K08.9,
+414603003,leucoplasia de la mucosa oral (trastorno),K13.2,1,1,TRUE,ALWAYS K13.2,
+28401004,hipertrofia de glándula submaxilar (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+73197002,defecto en cuña de los dientes (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+24140005,quiste mandibular mediano (trastorno),K09.1,1,1,TRUE,ALWAYS K09.1,
+52994003,resorción interna de diente (trastorno),K03.3,1,1,TRUE,ALWAYS K03.3,
+196548000,quiste epidermoide de la boca (trastorno),K09.8,1,1,TRUE,ALWAYS K09.8,
+300259002,quiste de glándula parótida (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+6971002,hipertrofia de las papilas linguales (trastorno),K14.3,1,1,TRUE,ALWAYS K14.3,
+91851002,alteración adquirida de la coloración del esmalte dental (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+95246007,caries por disfunción salival secundaria a envejecimiento (trastorno),K11.9,2,1,TRUE,ALWAYS K11.9,
+718060003,periodontitis crónica generalizada leve (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+713879003,gingivitis debida a placa dental con factor contribuyente local (trastorno),K05.1,2,1,TRUE,ALWAYS K05.1 | MAPPED FOLLOWING WHO GUIDANCE,DNT-DX-000022
+234975001,caries de raíz (trastorno),K02.2,1,1,TRUE,ALWAYS K02.2,DNT-DX-000007
+82770004,absceso de labio (trastorno),K12.2,2,1,TRUE,ALWAYS K12.2,
+700046006,caries dental que se extiende hasta la pulpa (trastorno),K02.5,1,1,TRUE,ALWAYS K02.5,
+90516007,quiste nasolabial (trastorno),K09.8,1,1,TRUE,ALWAYS K09.8,
+196517008,sialectasia parotídea (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+196504005,sialodocolitiasis sublingual (trastorno),K11.5,1,1,TRUE,ALWAYS K11.5,
+708013001,xantoma verruciforme de mucosa bucal (trastorno),K13.4,1,1,TRUE,ALWAYS K13.4,
+733973005,caries dental primaria inactiva que se extiende hasta la dentina (trastorno),K02.1,2,1,TRUE,ALWAYS K02.1,DNT-DX-000006
+711640003,pulpitis reversible asintomática (trastorno),K04.0,1,1,TRUE,ALWAYS K04.0,DNT-DX-000013
+78537008,hipercementosis (trastorno),K03.4,1,1,TRUE,ALWAYS K03.4,
+702402003,caries en la primera infancia (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+109808001,glositis crónica (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+235125008,parotitis recurrente (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+109473003,"amelogénesis imperfecta, tipo hipoplásica con microdoncia (trastorno)",K00.5,2,1,TRUE,ALWAYS K00.5,
+334831000,quiste mucoso por extravasación de glándula salival (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+90316008,lesión traumática por abrasión ritual de diente (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+702745006,falla de adhesivo de restauración dental (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+196496003,fístula de glándula submaxilar (trastorno),K11.4,1,1,TRUE,ALWAYS K11.4,
+733978001,caries dental primaria inactiva que se extiende hasta la pulpa (trastorno),K02.5,1,1,TRUE,ALWAYS K02.5,
+69254008,estomatitis por prótesis dental (trastorno),K12.1,1,1,TRUE,ALWAYS K12.1,
+109730006,restauración dental estéticamente inadecuada o desagradable (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+59818004,dentina secundaria (trastorno),K04.3,1,1,TRUE,ALWAYS K04.3,
+95212006,enfermedad gingival causada por el embarazo (trastorno),K06.9,2,1,TRUE,ALWAYS K06.9,
+109798001,falta de distancia vertical intermaxilar adecuada (trastorno),K08.8,1,1,TRUE,ALWAYS K08.8,
+733975003,caries dental inactiva secundaria que se extiende hasta el esmalte (trastorno),K02.0,2,1,TRUE,ALWAYS K02.0,DNT-DX-000005
+713256008,periodontitis debida a resorción de raíz cervical (trastorno),K05.3,2,1,TRUE,ALWAYS K05.3 | MAPPED FOLLOWING WHO GUIDANCE,DNT-DX-000023
+711638008,pulpitis irreversible sintomática (trastorno),K04.0,1,1,TRUE,ALWAYS K04.0,DNT-DX-000013
+196493006,absceso de glándula sublingual (trastorno),K11.3,1,1,TRUE,ALWAYS K11.3,
+4356008,recesión gingival (trastorno),K06.0,1,1,TRUE,ALWAYS K06.0,DNT-DX-000025
+109602002,absceso apical agudo (trastorno),K04.7,1,1,TRUE,ALWAYS K04.7,DNT-DX-000019
+31642005,gingivitis aguda (trastorno),K05.0,1,1,TRUE,ALWAYS K05.0,DNT-DX-000021
+41565005,periodontitis (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+45534005,glositis (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+44283002,absceso de lengua (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+13468005,dentina sensible (trastorno),K03.8,1,1,TRUE,ALWAYS K03.8 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,DNT-DX-000012
+403452009,glositis por deficiencia de folato (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+711469000,restauración dental biológicamente inaceptable (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+733975003,caries dental inactiva secundaria que se extiende hasta el esmalte (trastorno),K02.3,1,1,TRUE,ALWAYS K02.3,
+54711002,agrandamiento gingival (trastorno),K06.1,1,1,TRUE,ALWAYS K06.1,DNT-DX-000026
+78753008,quiste globulomaxilar (trastorno),K09.1,1,1,TRUE,ALWAYS K09.1,
+29330004,cólico salival (hallazgo),K11.8,1,1,TRUE,ALWAYS K11.8,
+196499005,sialolitiasis parotídea (trastorno),K11.5,1,1,TRUE,ALWAYS K11.5,
+707219007,ausencia de encía queratinizada (trastorno),K06.8,1,1,TRUE,ALWAYS K06.8,
+196491008,absceso de glándula parótida (trastorno),K11.3,1,1,TRUE,ALWAYS K11.3,
+196492001,absceso de glándula submaxilar (trastorno),K11.3,1,1,TRUE,ALWAYS K11.3,
+716362006,enfermedad gingival concomitante con diabetes mellitus (trastorno),K06.9,1,1,TRUE,ALWAYS K06.9,
+109644008,supraoclusión dental (trastorno),K00.6,1,1,TRUE,ALWAYS K00.6,DNT-DX-000002
+196318002,tinción de dientes causada por fármacos (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+1386335007,caries dental posterior a defecto adquirido de estructura de diente (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9 | POSSIBLE REQUIREMENT FOR ADDITIONAL CODE TO FULLY DESCRIBE DISEASE OR CONDITION,DNT-DX-000008
+718062006,periodontitis crónica moderada generalizada (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+715287007,periodontitis crónica localizada severa (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+733973005,caries dental primaria inactiva que se extiende hasta la dentina (trastorno),K02.3,1,1,TRUE,ALWAYS K02.3,
+9665009,lesión traumática por fricción ocupacional de diente (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+716294003,restauración dental oclusal inadecuada (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+109608003,quiste residual (trastorno),K04.8,1,1,TRUE,ALWAYS K04.8,DNT-DX-000020
+82770004,absceso de labio (trastorno),K13.0,1,1,TRUE,ALWAYS K13.0,
+57203004,trastorno de la pulpa dental (trastorno),K04.9,1,1,TRUE,ALWAYS K04.9,
+30265004,fluorosis dental (trastorno),K00.3,1,1,TRUE,ALWAYS K00.3,
+707237008,enfermedad gingival debida a placa dental (trastorno),K03.6,2,1,TRUE,ALWAYS K03.6,DNT-DX-000011
+91863007,pericoronitis aguda (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+1085521000119100,edentulismo completo de clase IV debido a caries (trastorno),K02.9,2,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+42982001,sialoadenitis (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+714478005,gingivitis moderada (trastorno),K05.1,1,1,TRUE,ALWAYS K05.1,DNT-DX-000022
+5639000,erupción tardía de diente (trastorno),K00.6,1,1,TRUE,ALWAYS K00.6,DNT-DX-000002
+234947003,trastorno de diente (trastorno),K08.9,1,1,TRUE,ALWAYS K08.9,
+59901004,mordedura de carrillo (hallazgo),K13.1,1,1,TRUE,ALWAYS K13.1,
+109810004,celulitis de la lengua (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+82212003,erosión de los dientes (trastorno),K03.2,1,1,TRUE,ALWAYS K03.2,DNT-DX-000010
+438627000,lesión traumática por fricción dental limitada al esmalte (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+1370926006,párulis (trastorno),K04.7,1,1,TRUE,ALWAYS K04.7,DNT-DX-000019
+109750005,abfracción (trastorno),K03.8,1,1,TRUE,ALWAYS K03.8 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,DNT-DX-000012
+53963006,fricción excesiva de los dientes (trastorno),K03.0,1,1,TRUE,ALWAYS K03.0,
+196495004,fístula de glándula parótida (trastorno),K11.4,1,1,TRUE,ALWAYS K11.4,
+196317007,manchado dental poseruptivo (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+787446001,periodontitis localizada (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3 | MAPPED FOLLOWING WHO GUIDANCE,DNT-DX-000023
+300261006,conducto salival ocluidos (hallazgo),K11.8,1,1,TRUE,ALWAYS K11.8,
+95247003,caries por disfunción salival causada por medicación (trastorno),K11.9,2,1,TRUE,ALWAYS K11.9,
+48269007,parotitis alérgica (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+120541000119103,dientes moteados (trastorno),K00.3,1,1,TRUE,ALWAYS K00.3,
+278549007,filtración en restauración dental (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+715843008,periodontitis aguda localizada leve (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+196500001,sialolitiasis de glándula submaxilar (trastorno),K11.5,1,1,TRUE,ALWAYS K11.5,
+196489000,sialoadenitis infecciosa (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+41366005,cálculo dental subgingival (trastorno),K03.6,1,1,TRUE,ALWAYS K03.6,DNT-DX-000011
+235121004,hipertrofia de glándulas salivales menores (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+196519006,sialectasia sublingual (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+1386281005,leucoplasia vellosa oral con inmunodeficiencia (trastorno),K13.3,1,1,TRUE,ALWAYS K13.3,
+235005006,engrosamiento de folículo dental (trastorno),K05.6,1,1,TRUE,ALWAYS K05.6,
+767855004,caries dental secundaria inactiva que se extiende hasta la pulpa (trastorno),K02.5,1,1,TRUE,ALWAYS K02.5,
+715286003,periodontitis crónica moderada localizada (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+707237008,enfermedad gingival debida a placa dental (trastorno),K06.9,1,1,TRUE,ALWAYS K06.9,
+715285004,periodontitis crónica localizada leve (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+699685006,surco oclusal profundo (hallazgo),K00.2,1,1,TRUE,ALWAYS K00.2,
+112481000119103,restauración dental insatisfactoria (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+733971007,caries dental primaria inactiva que se extiende hasta el esmalte (trastorno),K02.0,2,1,TRUE,ALWAYS K02.0,DNT-DX-000005
+715838001,deformidad mucogingival sobre cresta alveolar desdentada debida a falta de encía queratinizada (trastorno),K06.8,1,1,TRUE,ALWAYS K06.8,
+196319005,tinción dental causada por metales (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+196501002,sialolitiasis sublingual (trastorno),K11.5,1,1,TRUE,ALWAYS K11.5,
+715860003,periodontitis aguda severa localizada (trastorno),K05.2,1,1,TRUE,ALWAYS K05.2,
+10480003,quiste de extravasación de la glándula salival (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+196419009,dientes retenidos (trastorno),K01.0,1,1,TRUE,ALWAYS K01.0,DNT-DX-000003
+422775003,malformación de diente (trastorno),K00.9,1,1,TRUE,ALWAYS K00.9,
+196485006,sialoadenitis de glándula submaxilar (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+441935006,pérdida de todos los dientes (trastorno),K08.1,1,1,TRUE,ALWAYS K08.1,DNT-DX-000030
+10017004,desgaste oclusal de los dientes (trastorno),K03.0,1,1,TRUE,ALWAYS K03.0,
+109573000,"caries dental primaria, origen en superficie lisa proximal (trastorno)",K02.0,1,1,TRUE,ALWAYS K02.0,DNT-DX-000005
+1137560004,hiperplasia fibroepitelial inflamatoria de membrana mucosa oral (trastorno),K13.6,1,1,TRUE,ALWAYS K13.6,
+234972003,trastorno de la erupción o caída dentaria (trastorno),K00.6,1,1,TRUE,ALWAYS K00.6,DNT-DX-000002
+109564008,caries dental con hipomineralización de esmalte (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+3797007,quiste periodontal (trastorno),K04.8,1,1,TRUE,ALWAYS K04.8,DNT-DX-000020
+22240003,pericoronitis (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+49414002,opacidades del esmalte no causadas por flúor (trastorno),K00.3,1,1,TRUE,ALWAYS K00.3,
+196522008,estenosis de conducto submandibular (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+240527008,sialoadenitis submaxilar por parotiditis (trastorno),K11.2,2,1,TRUE,ALWAYS K11.2,
+710003004,papilitis lingual transitoria (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+41569004,sialodoquitis (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+266417001,enfermedad de pulpa y tejido periapical (trastorno),K04.9,1,1,TRUE,ALWAYS K04.9,
+702714007,sialoadenitis crónica reagudizada (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+80967001,caries dental (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+698008003,neumoparótida (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+109710007,pérdida vertical de hueso alveolar (trastorno),K08.8,1,1,TRUE,ALWAYS K08.8,
+69825009,mucocele de la glándula salival (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+59032001,lengua geográfica (trastorno),K14.1,1,1,TRUE,ALWAYS K14.1,
+1386336008,caries dental posterior a defecto congénito de estructura de diente (trastorno),K00.9,2,1,TRUE,ALWAYS K00.9,
+91843000,lesión dental por fricción debida a prácticas orales deletéreas (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+8090002,granuloma eosinofílico de la mucosa oral (trastorno),K13.4,1,1,TRUE,ALWAYS K13.4,
+698071008,hiperplasia oncocítica nodular multifocal de glándula salival (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+300258005,quiste de glándula salival (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+196521001,estenosis de conducto parotídeo (trastorno),K11.8,1,1,TRUE,ALWAYS K11.8,
+399044006,glosopirosis (trastorno),K14.6,1,1,TRUE,ALWAYS K14.6,
+449773001,glositis intersticial (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+109768008,sialoadenitis obstructiva de glándula salival mayor (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+234974002,caída dentaria prematura (trastorno),K00.6,1,1,TRUE,ALWAYS K00.6,DNT-DX-000002
+718052004,periodontitis periapical asintomática (trastorno),K04.5,1,1,TRUE,ALWAYS K04.5,DNT-DX-000017
+235127000,sialoadenitis obstructiva (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+698525006,abrasión localizada de diente (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,DNT-DX-000009
+109554004,quiste gastrointestinal oral ectópico (trastorno),K09.8,1,1,TRUE,ALWAYS K09.8,
+300262004,textura arenosa de conducto salival (hallazgo),K11.8,1,1,TRUE,ALWAYS K11.8,
+733977006,caries dental inactiva secundaria que se extiende hasta la dentina (trastorno),K02.1,2,1,TRUE,ALWAYS K02.1,DNT-DX-000006
+698193000,revestimiento de membrana mucosa de la lengua (hallazgo),K14.3,1,1,TRUE,ALWAYS K14.3,
+42323001,quiste de erupción (trastorno),K09.0,1,1,TRUE,ALWAYS K09.0,
+52367009,manchado poseruptivo de diente causado por fármaco (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7 | POSSIBLE REQUIREMENT FOR AN EXTERNAL CAUSE CODE,
+76719002,veteado de esmalte dental (trastorno),K00.3,1,1,TRUE,ALWAYS K00.3,
+278616006,prótesis dental fracturada (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+235006007,lesión periodóncica y endodóncica (trastorno),K05.5,1,1,TRUE,ALWAYS K05.5,
+427779000,masa de glándula salival (hallazgo),K11.8,1,1,TRUE,ALWAYS K11.8,
+196546001,quiste de partes blandas de la boca (trastorno),K09.9,1,1,TRUE,ALWAYS K09.9,
+235124007,sialoadenitis bacteriana aguda (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+714477000,gingivitis severa (trastorno),K05.1,1,1,TRUE,ALWAYS K05.1 | MAPPED FOLLOWING WHO GUIDANCE,DNT-DX-000022
+249411008,depósito en encía (trastorno),K06.8,1,1,TRUE,ALWAYS K06.8,
+196502009,sialodocolitiasis parotídea (trastorno),K11.5,1,1,TRUE,ALWAYS K11.5,
+29748005,hipertrofia de glándula parótida (trastorno),K11.1,1,1,TRUE,ALWAYS K11.1,
+89988002,quiste radicular (trastorno),K04.8,1,1,TRUE,ALWAYS K04.8,DNT-DX-000020
+249384007,grandes papilas fungiformes (hallazgo),K14.3,1,1,TRUE,ALWAYS K14.3,
+109566005,caries dental con hipoplasia de esmalte (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+87715008,xerostomía (hallazgo),K11.7,1,1,TRUE,ALWAYS K11.7,
+4654002,alteración de la coloración dental poseruptiva (trastorno),K03.7,1,1,TRUE,ALWAYS K03.7,
+416673002,arreglo dental perdido (hallazgo),K08.8,1,1,TRUE,ALWAYS K08.8,
+1386302002,falla de exfoliación de diente debida a erupción ectópica de diente sucedáneo (trastorno),K00.6,1,1,TRUE,ALWAYS K00.6,DNT-DX-000002
+14756005,parotitis (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+109765006,sialoadenitis infecciosa de glándula salival mayor (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+235048000,granulomatosis bucofacial (trastorno),K13.4,1,1,TRUE,ALWAYS K13.4,
+109566005,caries dental con hipoplasia de esmalte (trastorno),K00.4,2,1,TRUE,ALWAYS K00.4,
+235126009,sialoadenitis crónica (trastorno),K11.2,1,1,TRUE,ALWAYS K11.2,
+196497007,fístula de glándula sublingual (trastorno),K11.4,1,1,TRUE,ALWAYS K11.4,
+67045005,quiste linfoepitelial de la boca (trastorno),K09.8,1,1,TRUE,ALWAYS K09.8,
+109473003,"amelogénesis imperfecta, tipo hipoplásica con microdoncia (trastorno)",K00.2,1,1,TRUE,ALWAYS K00.2,
+713879003,gingivitis debida a placa dental con factor contribuyente local (trastorno),K03.6,1,1,TRUE,ALWAYS K03.6,DNT-DX-000011
+318161000119106,pellizcamiento posterior de partes blandas sobre los dientes (trastorno),K13.7,1,1,TRUE,ALWAYS K13.7,
+14919007,ránula (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+12779007,úlcera de lengua debida a evento traumático (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+235129002,quiste por retención mucosa de la glándula salival menor (trastorno),K11.6,1,1,TRUE,ALWAYS K11.6,
+403453004,glositis por deficiencia de vitamina B12 (trastorno),K14.0,1,1,TRUE,ALWAYS K14.0,
+27160009,lesión traumática habitual por fricción de diente (trastorno),K03.1,1,1,TRUE,ALWAYS K03.1,DNT-DX-000009
+718061004,periodontitis crónica generalizada severa (trastorno),K05.3,1,1,TRUE,ALWAYS K05.3,DNT-DX-000023
+95246007,caries por disfunción salival secundaria a envejecimiento (trastorno),K02.9,1,1,TRUE,ALWAYS K02.9,DNT-DX-000008
+109639001,limitación para abrir la boca (hallazgo),K08.9,1,1,TRUE,ALWAYS K08.9,

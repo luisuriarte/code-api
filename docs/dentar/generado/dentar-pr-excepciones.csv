@@ -1,0 +1,9 @@
+id_cdt,cdt_code,motivo,description
+249,D3425,duplicado_de_codigo,apicectomía - molar (primera raíz)
+572,,cdt_code_vacio,otro y ferulización y/o estabilización)
+656,D7871,duplicado_de_codigo,lisis y lavado no artroscópico
+684,D7948,duplicado_de_codigo,LeFort II o LeFort III (osteoplastia de huesos faciales para hipoplasia o retrusión del tercio medio facial) - sin injerto óseo
+685,D7949,duplicado_de_codigo,LeFort II o LeFort III - con injerto óseo
+686,,cdt_code_vacio,
+687,D7950,duplicado_de_codigo,"injerto óseo, osteoperióstico o de cartílago del maxilar o la mandíbula - autógeno o no autógeno, según informe"
+688,D7951,duplicado_de_codigo,elevación de seno con hueso o sustitutos óseos mediante abordaje lateral abierto

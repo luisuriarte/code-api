@@ -53,9 +53,10 @@ SELECT 'statuses', count(DISTINCT i.status)
  ORDER BY facet;
 
 \echo '== 4. Detalle de facetas =='
-SELECT family_code, domain_type, count(*) AS catalogos
+SELECT coalesce(family_code, '(sin family)') AS family_code,
+       domain_type, count(*) AS catalogos
   FROM public.os_catalog
- WHERE is_active = TRUE AND family_code IS NOT NULL
+ WHERE is_active = TRUE
  GROUP BY family_code, domain_type
  ORDER BY family_code, domain_type;
 
@@ -90,13 +91,22 @@ SELECT m.item_id,
        linked.domain_type,
        CASE
            WHEN linked.matches = 1
-                AND coalesce(linked.domain_type, '') <> ''
-                AND coalesce(linked.catalog_code, '') <> ''
+                AND linked.catalog_code IS NOT NULL
                 AND linked.item_id IS NOT NULL
-           THEN coalesce(linked.domain_type, '') || ':os_catalog:'
-                || linked.catalog_code || ':' || linked.item_id
+                AND linked.domain_type IN (
+                    'dental', 'biochemical', 'medical',
+                    'mental_health', 'rehabilitation', 'pharma'
+                )
+           THEN (CASE linked.domain_type
+                    WHEN 'dental' THEN 'odontologia'
+                    WHEN 'biochemical' THEN 'laboratorio'
+                    WHEN 'medical' THEN 'prestaciones'
+                    WHEN 'mental_health' THEN 'prestaciones'
+                    WHEN 'rehabilitation' THEN 'programas'
+                    WHEN 'pharma' THEN 'vademecum'
+                 END) || ':os_catalog:' || linked.catalog_code || ':' || linked.item_id
            ELSE ''
-       END AS result_key_candidato
+       END AS result_key_app
   FROM public.os_concept_mapping m
   JOIN public.os_terminology_system sys ON sys.id = m.terminology_system_id
   LEFT JOIN LATERAL (
