@@ -28,9 +28,24 @@ use OrigenSalud\Web\I18n;
     <?php if (!empty($structuredData)): ?>
     <script type="application/ld+json"><?= json_encode($structuredData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
     <?php endif; ?>
-    <link rel="stylesheet" href="/assets/css/app.css">
+    <?php
+    // Cache busting por fecha de modificación: evita que un CSS/JS viejo quede
+    // sirviéndose desde el navegador o la CDN después de publicar cambios.
+    $assetRoot = dirname(__DIR__, 3) . '/web';
+    $assetUrl = static function (string $path) use ($assetRoot): string {
+        $file = $assetRoot . $path;
+        $version = is_file($file) ? @filemtime($file) : false;
+
+        if ($version === false) {
+            return $path;
+        }
+
+        return $path . (strpos($path, '?') === false ? '?' : '&') . 'v=' . $version;
+    };
+    ?>
+    <link rel="stylesheet" href="<?= e($assetUrl('/assets/css/app.css')) ?>">
     <?php foreach ((array) ($scripts ?? []) as $script): ?>
-    <script src="<?= e($script) ?>" defer></script>
+    <script src="<?= e($assetUrl((string) $script)) ?>" defer></script>
     <?php endforeach; ?>
 </head>
 <body<?= isset($bodyClass) && $bodyClass !== '' ? ' class="' . e($bodyClass) . '"' : '' ?>>

@@ -481,6 +481,8 @@ datos ni el OpenAPI ya publicado.
   intercambiar fragmentos.
 - `web/assets/css/app.css`: bloque scoped `.browse-*` al final del archivo, con
   los tokens institucionales existentes y media queries para 900 px y 640 px.
+- `portal/Views/layouts/main.php`: versión automática de CSS/JS por `filemtime`
+  para evitar que navegador o CDN sirvan archivos estáticos anteriores.
 - `portal/translations/messages.{es-AR,en,pt-BR}.yaml`: claves nuevas
   sincronizadas en los tres idiomas canónicos.
 
