@@ -11,6 +11,7 @@ $mobileView = $focus !== '' ? 'detail' : 'results';
     <div class="container">
         <span class="eyebrow"><?= e($t('browse.eyebrow')) ?></span>
         <h1><?= e($t('browse.title')) ?></h1>
+        <p class="browse-subtitle"><?= e($t('browse.subtitle')) ?></p>
         <p class="lead"><?= e($t('browse.lead')) ?></p>
 
         <?php if ($dentarFilter): ?>
@@ -73,6 +74,7 @@ $mobileView = $focus !== '' ? 'detail' : 'results';
              data-msg-compared="<?= e($t('browse.compared')) ?>"
              data-msg-view="<?= e($t('browse.view')) ?>"
              data-msg-restored="<?= e($t('browse.restored')) ?>"
+             data-msg-results-updated="<?= e($t('browse.results_updated')) ?>"
              data-msg-copied="<?= e($t('browse.copied')) ?>"
              data-msg-copy-error="<?= e($t('browse.copy_error')) ?>">
             <div class="browse-explorer__mobile" role="group" aria-label="<?= e($t('browse.detail_title')) ?>">

@@ -52,10 +52,19 @@ $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
                 <button type="button" class="button button-small button-ghost"
                         data-copy="<?= e($code) ?>"><?= e($t('browse.copy_code')) ?></button>
             <?php endif; ?>
+            <?php if (($item['concept_id'] ?? '') !== ''): ?>
+                <button type="button" class="button button-small button-ghost"
+                        data-copy="<?= e((string) $item['concept_id']) ?>"><?= e($t('browse.copy_identifier')) ?></button>
+            <?php endif; ?>
+            <button type="button" class="button button-small button-ghost"
+                    data-copy-record><?= e($t('browse.copy_record')) ?></button>
             <button type="button" class="button button-small button-ghost"
                     data-copy="<?= e($stableCurrentUrl) ?>"><?= e($t('browse.copy_link')) ?></button>
             <a class="button button-small button-ghost" href="<?= e($stableCurrentUrl) ?>">
                 <?= e($t('browse.stable_link')) ?>
+            </a>
+            <a class="button button-small button-ghost" href="<?= e($docsUrl) ?>">
+                <?= e($t('browse.api_docs')) ?>
             </a>
         </div>
 

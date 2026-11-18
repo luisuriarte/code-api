@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use OrigenSalud\Portal\Services\BrowseService;
+
 $relations = is_array($sections['relations'] ?? null) ? $sections['relations'] : [];
 $groups = [];
 foreach ($relations as $relation) {
@@ -40,17 +42,24 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                 </div>
                 <div class="browse-diagram__groups">
                     <?php foreach ($groups as $system => $entries): ?>
-                        <div class="browse-diagram__group">
-                            <div class="browse-diagram__system">
+                        <details class="browse-diagram__group" <?= count($entries) <= 3 ? 'open' : '' ?>>
+                            <summary class="browse-diagram__system">
                                 <?= e($system !== '' ? (string) $system : $t('browse.relation_system')) ?>
-                            </div>
+                                <span class="browse-diagram__count"><?= count($entries) ?></span>
+                            </summary>
+                            <div class="browse-diagram__nodes">
                             <?php foreach ($entries as $relation): ?>
                                 <?php
                                 $type = (string) ($relation['type'] ?? '');
                                 $status = (string) ($relation['review_status'] ?? '');
                                 $pending = in_array($status, $pendingReviews, true);
+                                $targetKey = BrowseService::normalizeResultKey($relation['result_key'] ?? '');
+                                $nodeTag = $targetKey !== '' ? 'a' : 'div';
+                                $nodeAttrs = $targetKey !== ''
+                                    ? ' href="' . e($stableItemUrl($targetKey)) . '" data-focus-url="' . e($fragmentUrl($targetKey)) . '"'
+                                    : '';
                                 ?>
-                                <div class="browse-diagram__node">
+                                <<?= $nodeTag ?> class="browse-diagram__node"<?= $nodeAttrs ?>>
                                     <strong><?= e((string) ($relation['code'] ?? '')) ?></strong>
                                     <?php if (!empty($relation['display'])): ?>
                                         <span><?= e((string) $relation['display']) ?></span>
@@ -58,9 +67,10 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                                     <span class="browse-badge<?= $pending ? ' browse-badge--pending' : ' browse-badge--neutral' ?>">
                                         <?= e($relationTypeLabel($type)) ?>
                                     </span>
-                                </div>
+                                </<?= $nodeTag ?>>
                             <?php endforeach; ?>
-                        </div>
+                            </div>
+                        </details>
                     <?php endforeach; ?>
                 </div>
             </div>

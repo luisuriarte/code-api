@@ -20,7 +20,13 @@ $ecosystem = [
 <section class="dentar-hero">
     <div class="container dentar-hero-grid">
         <div class="dentar-hero-copy">
-            <span class="dentar-eyebrow"><?= e($t('dentar.hero_eyebrow')) ?></span>
+            <div class="dentar-hero-brand">
+                <picture class="dentar-brand-mark">
+                    <source srcset="/assets/logos/dentar-logo1.svg" type="image/svg+xml">
+                    <img src="/assets/logos/dentar-logo1.png" width="245" height="234" alt="DENTAR">
+                </picture>
+                <span class="dentar-eyebrow"><?= e($t('dentar.hero_eyebrow')) ?></span>
+            </div>
             <h1><?= e($t('dentar.hero_title')) ?></h1>
             <p class="dentar-subtitle"><?= e($t('dentar.hero_subtitle')) ?></p>
             <p class="dentar-lead"><?= e($t('dentar.hero_lead')) ?></p>
@@ -33,27 +39,11 @@ $ecosystem = [
         </div>
 
         <aside class="dentar-identity" aria-label="<?= e($t('dentar.hero_card_title')) ?>">
-            <div class="dentar-identity-art" aria-hidden="true">
-                <svg viewBox="0 0 220 180" role="presentation" focusable="false">
-                    <g class="dentar-grid">
-                        <path d="M10 30H210M10 90H210M10 150H210M50 10V170M110 10V170M170 10V170"/>
-                    </g>
-                    <g class="dentar-links">
-                        <path d="M110 88 L48 40M110 88 L172 40M110 88 L48 142M110 88 L172 142"/>
-                    </g>
-                    <path class="dentar-tooth" d="M110 34c-14-14-38-9-42 12-3 14 3 26 10 40l9 28c3 10 15 10 18 0l6-22 6 22c3 10 15 10 18 0l9-28c7-14 13-26 10-40-4-21-28-26-42-12-2 2-4 2-6 0-2-2-4-2-6 0z"/>
-                    <g class="dentar-nodes">
-                        <circle cx="48" cy="40" r="6"/><circle cx="172" cy="40" r="6"/>
-                        <circle cx="48" cy="142" r="6"/><circle cx="172" cy="142" r="6"/>
-                        <circle cx="110" cy="88" r="8"/>
-                    </g>
-                    <g class="dentar-chips">
-                        <rect x="16" y="14" width="64" height="18" rx="9"/>
-                        <rect x="140" y="14" width="64" height="18" rx="9"/>
-                        <rect x="16" y="148" width="64" height="18" rx="9"/>
-                        <rect x="140" y="148" width="64" height="18" rx="9"/>
-                    </g>
-                </svg>
+            <div class="dentar-identity-art">
+                <picture class="dentar-logo-lockup">
+                    <source srcset="/assets/logos/dentar-logo0.svg" type="image/svg+xml">
+                    <img src="/assets/logos/dentar-logo0.png" width="779" height="230" alt="DENTAR">
+                </picture>
             </div>
             <div class="dentar-identity-body">
                 <strong><?= e($t('dentar.hero_card_title')) ?></strong>

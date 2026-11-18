@@ -29,7 +29,9 @@ final class BrowseController
     {
         $t = static fn (string $key, array $parameters = []): string => trans($key, $parameters, $locale);
         $apiLocale = I18n::metadata($locale)['api_language'];
-        $fragment = Validator::choice($_GET['fragment'] ?? '', ['detail']) === 'detail';
+        $fragmentMode = Validator::choice($_GET['fragment'] ?? '', ['detail', 'results']);
+        $isDetailFragment = $fragmentMode === 'detail';
+        $isResultsFragment = $fragmentMode === 'results';
 
         $query = Validator::text($_GET['q'] ?? '', 80);
         $domain = Validator::text($_GET['domain'] ?? '', 64);
@@ -48,17 +50,17 @@ final class BrowseController
         $compare = BrowseService::normalizeCompare($_GET['compare'] ?? '');
         $history = BrowseService::normalizeHistory($_GET['history'] ?? '');
 
-        $result = $fragment
+        $result = $isDetailFragment
             ? self::emptySearch($page)
             : BrowseService::search($query, $domain, $apiLocale, $page, $limit, $catalog);
-        $domains = $fragment ? [] : BrowseService::domains($locale);
+        $domains = $fragmentMode !== '' ? [] : BrowseService::domains($locale);
 
         $detail = self::emptyDetail();
-        if ($focus !== '') {
+        if ($focus !== '' && !$isResultsFragment) {
             $detail = BrowseService::detail($focus, $apiLocale, $catalog);
         }
 
-        $compareItems = count($compare) >= 2
+        $compareItems = (!$isResultsFragment && count($compare) >= 2)
             ? BrowseService::compareItems(implode(',', $compare), $apiLocale, $catalog)
             : [];
 
@@ -114,11 +116,14 @@ final class BrowseController
             'structuredData' => $structuredData,
         ];
 
-        if (!$fragment) {
+        if ($fragmentMode === '') {
             $data['scripts'] = ['/assets/js/browse-explorer.js'];
         }
 
-        View::render($fragment ? 'browse-fragment' : 'browse', $data, $fragment ? null : 'main');
+        $template = $isResultsFragment
+            ? 'browse-results-fragment'
+            : ($isDetailFragment ? 'browse-fragment' : 'browse');
+        View::render($template, $data, $fragmentMode === '' ? 'main' : null);
     }
 
     private static function catalogParam(): ?string

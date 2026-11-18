@@ -449,7 +449,9 @@
 
             pane.innerHTML = html;
             detail = pane.querySelector('.browse-detail');
-            focus = settings.focus || focusFromUrl(fragmentUrl) || root.dataset.focus || '';
+            focus = settings.focus !== undefined
+                ? settings.focus
+                : (focusFromUrl(fragmentUrl) || root.dataset.focus || '');
 
             setFocus(root, focus, detail);
             updateSelection(root, focus);
@@ -634,9 +636,7 @@
         return copied;
     }
 
-    function onCopy(root, button) {
-        var value = button.getAttribute('data-copy') || '';
-
+    function copyValue(root, value) {
         copyToClipboard(value).then(function () {
             announce(root, message(root, 'copied', 'Copiado'));
         }).catch(function () {
@@ -648,22 +648,203 @@
         });
     }
 
-    function handlePopState() {
-        Array.prototype.forEach.call(document.querySelectorAll('[data-browse-explorer]'), function (root) {
-            var key = focusFromUrl(window.location.href) || root.dataset.focus || '';
-            var fragmentUrl;
+    function onCopy(root, button) {
+        copyValue(root, button.getAttribute('data-copy') || '');
+    }
 
-            if (!key) {
+    function onCopyRecord(root, button) {
+        var detail = button.closest('.browse-detail') || root.querySelector('.browse-detail');
+        if (!detail) {
+            return;
+        }
+        copyValue(root, (detail.innerText || detail.textContent || '').replace(/\n{3,}/g, '\n\n').trim());
+    }
+
+    function resultsSignature(params) {
+        var values = params || new URLSearchParams(window.location.search);
+
+        return ['q', 'domain', 'catalog', 'page'].map(function (name) {
+            return name + '=' + (values.get(name) || '');
+        }).join('&');
+    }
+
+    function searchUrls(form) {
+        var params = new URLSearchParams();
+        var current = new URLSearchParams(window.location.search);
+        var base = form.getAttribute('action') || window.location.pathname;
+        var data = new FormData(form);
+
+        data.forEach(function (value, key) {
+            var clean = String(value).trim();
+            if (clean !== '') {
+                params.set(key, clean);
+            }
+        });
+        params.delete('page');
+        ['history', 'compare', 'tab', 'rel_view'].forEach(function (name) {
+            if (current.has(name)) {
+                params.set(name, current.get(name));
+            }
+        });
+
+        var fragment = new URLSearchParams(params.toString());
+        fragment.set('fragment', 'results');
+
+        return {
+            stable: base + '?' + params.toString(),
+            fragment: base + '?' + fragment.toString(),
+            signature: resultsSignature(params)
+        };
+    }
+
+    function resultsFragmentFromUrl(url) {
+        var parsed = parseUrl(url);
+        parsed.searchParams.delete('fragment');
+        parsed.searchParams.set('fragment', 'results');
+
+        return serializeLike(url, parsed);
+    }
+
+    function fetchResults(root, fragmentUrl, stableUrl, push) {
+        if (typeof window.fetch !== 'function') {
+            if (stableUrl) {
+                window.location.assign(stableUrl);
+            }
+            return;
+        }
+
+        window.fetch.call(window, fragmentUrl, {
+            headers: { 'X-Requested-With': 'fetch' },
+            credentials: 'same-origin'
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            return response.text();
+        }).then(function (html) {
+            var pane = root.querySelector('[data-pane="results"]');
+            if (!pane) {
+                return;
+            }
+            pane.innerHTML = html;
+            updateSelection(root, root.dataset.focus);
+            root.__browseResultsSignature = resultsSignature(new URLSearchParams(window.location.search));
+            if (push && stableUrl) {
+                window.history.pushState({}, '', stableUrl);
+            }
+            announce(root, message(root, 'results-updated', 'Resultados actualizados.'));
+        }).catch(function () {
+            // Sin resultados nuevos: se conserva el listado anterior.
+        });
+    }
+
+    function initReactiveSearch(root, form) {
+        var input = form.querySelector('input[name="q"]');
+        if (!input || typeof window.fetch !== 'function') {
+            return;
+        }
+
+        var timer = null;
+        var controller = null;
+        var lastQuery = (new URLSearchParams(window.location.search).get('q') || '').trim();
+        root.__browseResultsSignature = resultsSignature();
+
+        input.addEventListener('input', function () {
+            var value = input.value.trim();
+            if (value === lastQuery) {
                 return;
             }
 
-            fragmentUrl = buildFragmentUrl(window.location.href, { focus: key });
+            if (timer !== null) {
+                window.clearTimeout(timer);
+                timer = null;
+            }
+            if (controller) {
+                controller.abort();
+                controller = null;
+            }
+            lastQuery = value;
 
-            requestFragment(root, fragmentUrl, window.location.href, {
-                focus: key,
-                push: false,
-                messageKey: 'restored'
-            });
+            if (value.length < 2 || value.length > 80) {
+                return;
+            }
+
+            timer = window.setTimeout(function () {
+                var urls;
+                var options;
+                timer = null;
+                urls = searchUrls(form);
+                if (urls.signature === root.__browseResultsSignature) {
+                    return;
+                }
+
+                options = { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } };
+                if (typeof window.AbortController === 'function') {
+                    controller = new window.AbortController();
+                    options.signal = controller.signal;
+                }
+                window.fetch.call(window, urls.fragment, options).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    return response.text();
+                }).then(function (html) {
+                    var pane = root.querySelector('[data-pane="results"]');
+                    if (!pane) {
+                        return;
+                    }
+                    pane.innerHTML = html;
+                    updateSelection(root, root.dataset.focus);
+                    root.__browseResultsSignature = urls.signature;
+                    window.history.pushState({}, '', urls.stable);
+                    announce(root, message(root, 'results-updated', 'Resultados actualizados.'));
+                    controller = null;
+                }).catch(function (error) {
+                    if (!error || error.name !== 'AbortError') {
+                        controller = null;
+                    }
+                });
+            }, 350);
+        });
+
+        form.addEventListener('submit', function () {
+            if (timer !== null) {
+                window.clearTimeout(timer);
+                timer = null;
+            }
+            if (controller) {
+                controller.abort();
+                controller = null;
+            }
+        });
+    }
+
+    function handlePopState() {
+        var form = document.querySelector('form.browse-form');
+        var signature = resultsSignature();
+
+        Array.prototype.forEach.call(document.querySelectorAll('[data-browse-explorer]'), function (root) {
+            var key = focusFromUrl(window.location.href);
+
+            if (signature !== root.__browseResultsSignature && form) {
+                fetchResults(root, resultsFragmentFromUrl(window.location.href), null, false);
+                root.__browseResultsSignature = signature;
+            }
+
+            if (key && key !== root.dataset.focus) {
+                requestFragment(root, buildFragmentUrl(window.location.href, { focus: key }), window.location.href, {
+                    focus: key,
+                    push: false,
+                    messageKey: 'restored'
+                });
+            } else if (!key && root.dataset.focus) {
+                requestFragment(root, buildFragmentUrl(window.location.href), window.location.href, {
+                    focus: '',
+                    push: false,
+                    messageKey: 'restored',
+                    focusPane: false
+                });
+            }
         });
     }
 
@@ -692,12 +873,19 @@
                 syncRelView(root, window.location.href);
             }
 
+            var form = document.querySelector('form.browse-form');
+            if (form) {
+                initReactiveSearch(root, form);
+            }
+
             root.addEventListener('click', function (event) {
                 var mobileButton;
                 var copyButton;
+                var copyRecordButton;
                 var compareLink;
                 var fragmentLink;
                 var resultLink;
+                var diagramLink;
 
                 if (!isPlainClick(event)) {
                     return;
@@ -714,6 +902,13 @@
                 if (copyButton) {
                     event.preventDefault();
                     onCopy(root, copyButton);
+                    return;
+                }
+
+                copyRecordButton = closestFromEvent(event, '[data-copy-record]', root);
+                if (copyRecordButton) {
+                    event.preventDefault();
+                    onCopyRecord(root, copyRecordButton);
                     return;
                 }
 
@@ -735,6 +930,13 @@
                 if (resultLink) {
                     event.preventDefault();
                     onResultClick(root, resultLink);
+                    return;
+                }
+
+                diagramLink = closestFromEvent(event, 'a.browse-diagram__node[data-focus-url]', root);
+                if (diagramLink) {
+                    event.preventDefault();
+                    onResultClick(root, diagramLink);
                 }
             });
         });

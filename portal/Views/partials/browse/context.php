@@ -236,6 +236,9 @@ $compareFields = [
     ['label' => 'browse.term', 'key' => 'term'],
     ['label' => 'browse.domain', 'key' => 'domain'],
     ['label' => 'browse.catalog', 'key' => 'catalog_code'],
+    ['label' => 'browse.catalog_name', 'key' => 'subtitle'],
+    ['label' => 'browse.concept_type', 'key' => 'kind'],
+    ['label' => 'browse.description', 'key' => 'description'],
     ['label' => 'browse.effective_language', 'key' => 'effective_language'],
     ['label' => 'browse.approval_state', 'key' => 'approval_state'],
     ['label' => 'browse.provenance', 'key' => 'provenance'],
@@ -248,3 +251,4 @@ if ($focus !== '' && !in_array($focus, $historyDisplay, true)) {
 }
 
 $dentarUrl = I18n::localizedPath($locale, '/dentar');
+$docsUrl = I18n::localizedPath($locale, '/docs');
