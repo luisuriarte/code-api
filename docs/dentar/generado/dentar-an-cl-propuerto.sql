@@ -1090,13 +1090,30 @@ ON CONFLICT (item_id, release_id, language_code) DO UPDATE
        preferred_term = EXCLUDED.preferred_term,
        definition = EXCLUDED.definition;
 
+-- Publicación del término inglés del RF2: §4.2 exige que el idioma del término
+-- coincida con el de su versión. Por eso se crea una versión 'en' y el sinónimo
+-- se asocia a esa versión, nunca a la versión 'es-AR'. No se traduce ningún texto.
+INSERT INTO os_catalog_item_version
+    (item_id, release_id, category_id, preferred_term, definition, language_code)
+SELECT i.id, rel.id, cat.id, s.termino_en, s.termino_en, 'en'
+  FROM _dentar_an_cl_import s
+  JOIN os_catalog c ON c.code = s.catalog_code
+  JOIN os_catalog_item i ON i.catalog_id = c.id AND i.permanent_code = s.codigo
+  JOIN os_catalog_release rel ON rel.catalog_id = c.id AND rel.version_tag = 'snomed-ar-20260820'
+  JOIN os_catalog_category cat ON cat.catalog_id = c.id AND cat.code = s.categoria
+ON CONFLICT (item_id, release_id, language_code) DO UPDATE
+   SET category_id = EXCLUDED.category_id,
+       preferred_term = EXCLUDED.preferred_term,
+       definition = EXCLUDED.definition;
+
 INSERT INTO os_catalog_term (item_version_id, term, term_type, language_code)
 SELECT v.id, s.termino_en, 'synonym', 'en'
   FROM _dentar_an_cl_import s
   JOIN os_catalog c ON c.code = s.catalog_code
   JOIN os_catalog_item i ON i.catalog_id = c.id AND i.permanent_code = s.codigo
   JOIN os_catalog_release rel ON rel.catalog_id = c.id AND rel.version_tag = 'snomed-ar-20260820'
-  JOIN os_catalog_item_version v ON v.item_id = i.id AND v.release_id = rel.id AND v.language_code = 'es-AR'
+  JOIN os_catalog_item_version v
+    ON v.item_id = i.id AND v.release_id = rel.id AND v.language_code = 'en'
  WHERE NOT EXISTS (
     SELECT 1 FROM os_catalog_term t
      WHERE t.item_version_id = v.id AND t.term = s.termino_en AND t.language_code = 'en'

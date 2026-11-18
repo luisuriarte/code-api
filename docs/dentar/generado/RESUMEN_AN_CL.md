@@ -34,6 +34,9 @@ tablas ni datos de PostgreSQL. Todo lo producido queda en `docs/dentar/generado/
 3. Se excluyeron 5 estructuras dentales porque ya pertenecen a DENTAR-AN y 1 procedimiento (`38592005`) porque permanece en DENTAR-PR.
 4. Conjunto final: **218** conceptos, `DNT-CL-000001`…`DNT-CL-000218`, categoría `CAT-CL`, tipo `clinical_finding`.
 5. `SNOMED-CT` es obligatorio en ambos catálogos; no hay CIE-10, Nomenclador ni CDT en AN/CL.
+6. En `os_*` el término `en` se publica en su propia versión `language_code='en'`; el
+   trigger §4.2 impide mezclarlo como sinónimo dentro de la versión `es-AR`. En
+   `dentar_term` sigue siendo preferido `es` y sinónimo `en`, sin traducciones.
 
 ## Duplicados y solapes
 
