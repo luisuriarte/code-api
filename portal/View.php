@@ -12,7 +12,7 @@ use OrigenSalud\Web\I18n;
 final class View
 {
     /** @param array<string, mixed> $data */
-    public static function render(string $template, array $data = [], string $layout = 'main'): void
+    public static function render(string $template, array $data = [], ?string $layout = 'main'): void
     {
         $locale = I18n::locale();
         $data['locale'] ??= $locale;
@@ -29,6 +29,10 @@ final class View
         require __DIR__ . '/Views/' . $template . '.php';
         $content = (string) ob_get_clean();
 
-        require __DIR__ . '/Views/layouts/' . $layout . '.php';
+        if ($layout !== null && $layout !== '') {
+            require __DIR__ . '/Views/layouts/' . $layout . '.php';
+        } else {
+            echo $content;
+        }
     }
 }

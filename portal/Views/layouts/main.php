@@ -29,6 +29,9 @@ use OrigenSalud\Web\I18n;
     <script type="application/ld+json"><?= json_encode($structuredData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
     <?php endif; ?>
     <link rel="stylesheet" href="/assets/css/app.css">
+    <?php foreach ((array) ($scripts ?? []) as $script): ?>
+    <script src="<?= e($script) ?>" defer></script>
+    <?php endforeach; ?>
 </head>
 <body<?= isset($bodyClass) && $bodyClass !== '' ? ' class="' . e($bodyClass) . '"' : '' ?>>
 <a class="skip-link" href="#main"><?= e($t('a11y.skip')) ?></a>

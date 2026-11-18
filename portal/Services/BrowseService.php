@@ -16,6 +16,8 @@ final class BrowseService
 {
     public const DEFAULT_LIMIT = 20;
     public const MAX_LIMIT = 100;
+    public const MAX_COMPARE = 4;
+    public const MAX_HISTORY = 8;
 
     /** @return array{ok: bool, error: ?string, items: list<array<string, mixed>>, total: int, page: int, pages: int, has_more: bool} */
     public static function search(
@@ -79,17 +81,23 @@ final class BrowseService
         ];
     }
 
-    /** @return array{ok: bool, error: ?string, item: ?array<string, mixed>} */
+    /**
+     * Ficha integral del concepto. Las secciones sin datos reales quedan vacías
+     * para que la vista omita la pestaña correspondiente.
+     *
+     * @return array{ok: bool, error: ?string, item: ?array<string, mixed>, sections: array<string, mixed>}
+     */
     public static function detail(string $id, string $language, ?string $catalog = null): array
     {
         $catalog = ($catalog ?? '') !== '' ? $catalog : null;
+        $emptySections = self::emptySections();
 
         if ($catalog !== null && !CatalogRepository::isValidCatalog($catalog)) {
-            return ['ok' => false, 'error' => 'invalid_catalog', 'item' => null];
+            return ['ok' => false, 'error' => 'invalid_catalog', 'item' => null, 'sections' => $emptySections];
         }
 
         if (!CatalogRepository::available()) {
-            return ['ok' => false, 'error' => 'not_configured', 'item' => null];
+            return ['ok' => false, 'error' => 'not_configured', 'item' => null, 'sections' => $emptySections];
         }
 
         try {
@@ -99,10 +107,62 @@ final class BrowseService
                 CatalogRepository::normalizeCatalog($catalog)
             );
         } catch (RepositoryException) {
-            return ['ok' => false, 'error' => 'error_query', 'item' => null];
+            return ['ok' => false, 'error' => 'error_query', 'item' => null, 'sections' => $emptySections];
         }
 
-        return ['ok' => $item !== null, 'error' => $item === null ? 'no_results' : null, 'item' => $item];
+        if ($item === null) {
+            return ['ok' => false, 'error' => 'no_results', 'item' => null, 'sections' => $emptySections];
+        }
+
+        try {
+            $sections = CatalogRepository::detailSections(
+                $id,
+                $language,
+                CatalogRepository::normalizeCatalog($catalog)
+            );
+        } catch (RepositoryException) {
+            // La ficha básica sigue siendo válida aunque fall una sección optativa.
+            $sections = $emptySections;
+        }
+
+        return ['ok' => true, 'error' => null, 'item' => $item, 'sections' => $sections];
+    }
+
+    /**
+     * @return list<array{key: string, item: array<string, mixed>}>
+     */
+    public static function compareItems(string $keys, string $language, ?string $catalog = null): array
+    {
+        $normalized = self::normalizeCompare($keys);
+        if (count($normalized) < 2) {
+            return [];
+        }
+
+        $catalog = ($catalog ?? '') !== '' ? $catalog : null;
+        if ($catalog !== null && !CatalogRepository::isValidCatalog($catalog)) {
+            return [];
+        }
+        if (!CatalogRepository::available()) {
+            return [];
+        }
+
+        $items = [];
+        try {
+            foreach ($normalized as $key) {
+                $item = CatalogRepository::find(
+                    $key,
+                    $language,
+                    CatalogRepository::normalizeCatalog($catalog)
+                );
+                if ($item !== null) {
+                    $items[] = ['key' => $key, 'item' => $item];
+                }
+            }
+        } catch (RepositoryException) {
+            return [];
+        }
+
+        return $items;
     }
 
     /** @return list<array{code: string, label: string}> */
@@ -117,6 +177,65 @@ final class BrowseService
         } catch (RepositoryException) {
             return [];
         }
+    }
+
+    /** Valida una clave de resultado sin normalizar el código que contiene. */
+    public static function normalizeResultKey(mixed $value): string
+    {
+        $value = Validator::text(is_string($value) ? rawurldecode($value) : '', 200);
+
+        if (preg_match('/^([a-z0-9_]+):([A-Za-z0-9_.:-]{1,100})$/', $value, $matches) !== 1) {
+            return '';
+        }
+
+        return CatalogRepository::isValidDomain($matches[1]) ? $value : '';
+    }
+
+    /** @return list<string> */
+    public static function normalizeCompare(mixed $raw): array
+    {
+        return self::normalizeKeyList($raw, self::MAX_COMPARE);
+    }
+
+    /** @return list<string> */
+    public static function normalizeHistory(mixed $raw): array
+    {
+        return self::normalizeKeyList($raw, self::MAX_HISTORY);
+    }
+
+    /** @return array<string, list<array<string, mixed>>> */
+    private static function emptySections(): array
+    {
+        return [
+            'concept' => [],
+            'relations' => [],
+            'values' => [],
+            'validity' => [],
+            'clinical' => [],
+            'trace' => [],
+        ];
+    }
+
+    /** @return list<string> */
+    private static function normalizeKeyList(mixed $raw, int $max): array
+    {
+        if (!is_scalar($raw)) {
+            return [];
+        }
+
+        $keys = [];
+        foreach (explode(',', (string) $raw) as $piece) {
+            $key = self::normalizeResultKey($piece);
+            if ($key === '' || in_array($key, $keys, true)) {
+                continue;
+            }
+            $keys[] = $key;
+            if (count($keys) >= $max) {
+                break;
+            }
+        }
+
+        return $keys;
     }
 
     /** @return array{ok: bool, error: ?string, items: list<array<string, mixed>>, total: int, page: int, pages: int, has_more: bool} */

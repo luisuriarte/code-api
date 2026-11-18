@@ -1,0 +1,749 @@
+(function () {
+    'use strict';
+
+    var MAX_HISTORY = 8;
+    var MAX_COMPARE = 4;
+    var HISTORY_PARAM = 'history';
+    var CONTEXT_PARAMS = ['tab', 'rel_view'];
+
+    function ready(fn) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fn);
+        } else {
+            fn();
+        }
+    }
+
+    function parseUrl(value) {
+        return new URL(value || window.location.href, window.location.href);
+    }
+
+    function paramsFrom(input) {
+        var value;
+
+        if (typeof URLSearchParams !== 'undefined' && input instanceof URLSearchParams) {
+            return input;
+        }
+
+        if (input === undefined || input === null) {
+            value = window.location.search;
+        } else if (typeof input === 'string') {
+            value = input;
+        } else {
+            value = String(input || '');
+        }
+
+        if (value.indexOf('?') !== -1 || value.indexOf('/') !== -1 || /^[a-z][a-z0-9+.-]*:/i.test(value)) {
+            return parseUrl(value).searchParams;
+        }
+
+        return new URLSearchParams(value);
+    }
+
+    function serializeLike(original, url) {
+        var absolute = /^[a-z][a-z0-9+.-]*:/i.test(original) || original.indexOf('//') === 0;
+
+        if (absolute) {
+            return url.href;
+        }
+
+        if (original.charAt(0) === '?') {
+            return url.search + url.hash;
+        }
+
+        return url.pathname + url.search + url.hash;
+    }
+
+    function dedupe(values) {
+        var seen = Object.create(null);
+        var out = [];
+
+        (values || []).forEach(function (value) {
+            var key = String(value == null ? '' : value).trim();
+
+            if (key && !seen[key]) {
+                seen[key] = true;
+                out.push(key);
+            }
+        });
+
+        return out;
+    }
+
+    function splitValues(value, out) {
+        String(value == null ? '' : value).split(',').forEach(function (part) {
+            out.push(part);
+        });
+    }
+
+    function readValues(params, name) {
+        var values = [];
+
+        params.getAll(name).forEach(function (value) {
+            splitValues(value, values);
+        });
+
+        return dedupe(values);
+    }
+
+    function readHistory(search) {
+        return readValues(paramsFrom(search === undefined ? window.location.search : search), HISTORY_PARAM);
+    }
+
+    // El portal serializa history y compare como listas separadas por comas.
+    function detectHistoryStyle() {
+        return 'csv';
+    }
+
+    function setHistoryOnParams(params, list, style) {
+        params.delete(HISTORY_PARAM);
+        params.delete('history');
+
+        if (!list || !list.length) {
+            return;
+        }
+
+        if (style === 'csv') {
+            params.set('history', list.join(','));
+        } else if (style === 'plain') {
+            list.forEach(function (value) {
+                params.append('history', value);
+            });
+        } else {
+            list.forEach(function (value) {
+                params.append(HISTORY_PARAM, value);
+            });
+        }
+    }
+
+    function withHistory(url, list, style) {
+        var parsed = parseUrl(url);
+
+        setHistoryOnParams(parsed.searchParams, list, style || detectHistoryStyle(parsed.searchParams, ''));
+
+        return serializeLike(url, parsed);
+    }
+
+    function copyContextParams(params) {
+        var current = new URLSearchParams(window.location.search);
+
+        CONTEXT_PARAMS.forEach(function (name) {
+            if (current.has(name)) {
+                params.set(name, current.get(name));
+            }
+        });
+    }
+
+    function buildFragmentUrl(source, settings) {
+        var options = settings || {};
+        var parsed = parseUrl(source);
+
+        parsed.searchParams.set('fragment', 'detail');
+
+        if (options.focus) {
+            parsed.searchParams.set('focus', options.focus);
+        }
+
+        if (options.history) {
+            setHistoryOnParams(
+                parsed.searchParams,
+                options.history,
+                options.historyStyle || detectHistoryStyle(parsed.searchParams, '') || 'bracket'
+            );
+        }
+
+        copyContextParams(parsed.searchParams);
+
+        return serializeLike(source, parsed);
+    }
+
+    function focusFromUrl(value) {
+        var parsed = parseUrl(value);
+        var focus = parsed.searchParams.get('focus');
+        var match;
+
+        if (focus) {
+            return focus;
+        }
+
+        match = parsed.pathname.match(/\/browse\/([^/]+)\/?$/);
+
+        if (match) {
+            try {
+                return decodeURIComponent(match[1]);
+            } catch (err) {
+                return match[1];
+            }
+        }
+
+        return '';
+    }
+
+    function setFocus(root, focus, detail) {
+        var key = focus || '';
+
+        root.dataset.focus = key;
+
+        if (detail) {
+            detail.dataset.focus = key;
+        }
+    }
+
+    function updateSelection(root, focus) {
+        var items = root.querySelectorAll('.browse-result[data-result-key]');
+
+        Array.prototype.forEach.call(items, function (item) {
+            var selected = !!focus && item.getAttribute('data-result-key') === focus;
+            var link = item.querySelector('.browse-result-link');
+
+            item.classList.toggle('is-selected', selected);
+
+            if (!link) {
+                return;
+            }
+
+            if (selected) {
+                link.setAttribute('aria-current', 'true');
+            } else {
+                link.removeAttribute('aria-current');
+            }
+        });
+    }
+
+    function rewriteAttribute(element, attribute, mutator) {
+        var original = element.getAttribute(attribute);
+        var parsed;
+
+        if (!original) {
+            return;
+        }
+
+        parsed = parseUrl(original);
+        mutator(parsed.searchParams);
+        element.setAttribute(attribute, serializeLike(original, parsed));
+    }
+
+    function setCompareParam(params, key) {
+        if (key) {
+            params.set('compare', key);
+        } else {
+            params.delete('compare');
+        }
+    }
+
+    function updateResultLinks(root, historyList, previousKey, currentKey) {
+        var style = 'csv';
+        var list = (historyList || []).slice();
+        var baseCompare = readValues(paramsFrom(window.location.search), 'compare');
+
+        if (previousKey) {
+            baseCompare.push(previousKey);
+        }
+        if (currentKey) {
+            baseCompare.push(currentKey);
+        }
+        baseCompare = dedupe(baseCompare);
+
+        Array.prototype.forEach.call(root.querySelectorAll('.browse-result-link'), function (link) {
+            rewriteAttribute(link, 'href', function (params) {
+                var item;
+                var key;
+
+                setHistoryOnParams(params, list, style);
+
+                if (params.has('focus')) {
+                    item = link.closest('.browse-result');
+                    key = link.getAttribute('data-result-key') || (item && item.getAttribute('data-result-key')) || currentKey;
+
+                    if (key) {
+                        params.set('focus', key);
+                    }
+                }
+            });
+        });
+
+        Array.prototype.forEach.call(root.querySelectorAll('.browse-result-link[data-focus-url]'), function (link) {
+            rewriteAttribute(link, 'data-focus-url', function (params) {
+                setHistoryOnParams(params, list, style);
+                params.set('fragment', 'detail');
+
+                if (link.getAttribute('data-result-key') || currentKey) {
+                    params.set('focus', link.getAttribute('data-result-key') || currentKey);
+                }
+
+                copyContextParams(params);
+            });
+        });
+
+        Array.prototype.forEach.call(root.querySelectorAll('.browse-compare-link'), function (link) {
+            var compareKey = link.getAttribute('data-compare-key') || '';
+            var compareList = dedupe(baseCompare.concat([compareKey])).slice(0, MAX_COMPARE);
+
+            rewriteAttribute(link, 'href', function (params) {
+                setHistoryOnParams(params, list, style);
+                setCompareParam(params, compareList.join(','));
+            });
+
+            if (link.hasAttribute('data-compare-url')) {
+                rewriteAttribute(link, 'data-compare-url', function (params) {
+                    setHistoryOnParams(params, list, style);
+                    setCompareParam(params, compareList.join(','));
+                });
+            }
+        });
+    }
+
+    function setMobileView(root, view) {
+        var buttons;
+
+        if (!view) {
+            return;
+        }
+
+        root.dataset.mobileView = view;
+        buttons = root.querySelectorAll('[data-mobile-view-target]');
+
+        Array.prototype.forEach.call(buttons, function (button) {
+            var active = button.getAttribute('data-mobile-view-target') === view;
+
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+
+    function announce(root, text) {
+        var status = root.querySelector('[data-live-status]');
+
+        if (status) {
+            status.textContent = text;
+        }
+    }
+
+    function message(root, key, fallback) {
+        return root.getAttribute('data-msg-' + key) || fallback;
+    }
+
+    function focusPane(root) {
+        var pane = root.querySelector('[data-pane="detail"]');
+
+        if (!pane) {
+            return;
+        }
+
+        try {
+            pane.focus({ preventScroll: true });
+        } catch (err) {
+            pane.focus();
+        }
+    }
+
+    function syncTabs(root, url) {
+        var detail = root.querySelector('.browse-detail');
+        var tabs;
+        var active;
+        var selected;
+
+        if (!detail) {
+            return;
+        }
+
+        tabs = Array.prototype.slice.call(detail.querySelectorAll('[data-tab]'));
+        active = paramsFrom(url).get('tab');
+
+        if (!active && !tabs.length) {
+            return;
+        }
+
+        if (!active) {
+            selected = tabs.filter(function (tab) {
+                return tab.getAttribute('aria-selected') === 'true';
+            })[0];
+
+            active = selected
+                ? selected.getAttribute('data-tab')
+                : (tabs[0] ? tabs[0].getAttribute('data-tab') : '');
+        }
+
+        tabs.forEach(function (tab) {
+            var isActive = tab.getAttribute('data-tab') === active;
+
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            tab.setAttribute('tabindex', isActive ? '0' : '-1');
+            tab.classList.toggle('is-active', isActive);
+        });
+
+        Array.prototype.forEach.call(detail.querySelectorAll('[data-tab-panel]'), function (panel) {
+            panel.hidden = panel.getAttribute('data-tab-panel') !== active;
+        });
+    }
+
+    function syncRelView(root, url) {
+        var detail = root.querySelector('.browse-detail');
+        var links;
+        var active;
+        var pressed;
+
+        if (!detail) {
+            return;
+        }
+
+        links = Array.prototype.slice.call(detail.querySelectorAll('[data-rel-view]'));
+
+        if (!links.length) {
+            return;
+        }
+
+        active = paramsFrom(url).get('rel_view');
+
+        if (!active) {
+            pressed = links.filter(function (link) {
+                return link.getAttribute('aria-pressed') === 'true' || link.classList.contains('is-active');
+            })[0];
+
+            active = pressed ? pressed.getAttribute('data-rel-view') : 'table';
+        }
+
+        links.forEach(function (link) {
+            var isActive = link.getAttribute('data-rel-view') === active;
+
+            link.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            link.classList.toggle('is-active', isActive);
+        });
+
+        Array.prototype.forEach.call(detail.querySelectorAll('.browse-relations-table'), function (table) {
+            table.hidden = active !== 'table';
+        });
+
+        Array.prototype.forEach.call(detail.querySelectorAll('.browse-relations-diagram'), function (diagram) {
+            diagram.hidden = active !== 'diagram';
+        });
+    }
+
+    function requestFragment(root, fragmentUrl, stableUrl, options) {
+        var settings = options || {};
+        var fallback = stableUrl || fragmentUrl || window.location.href;
+
+        if (typeof window.fetch !== 'function') {
+            window.location.assign(fallback);
+            return;
+        }
+
+        window.fetch.call(window, fragmentUrl, {
+            headers: { 'X-Requested-With': 'fetch' },
+            credentials: 'same-origin'
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+
+            return response.text();
+        }).then(function (html) {
+            var pane = root.querySelector('[data-pane="detail"]');
+            var detail;
+            var focus;
+
+            if (!pane) {
+                window.location.assign(fallback);
+                return;
+            }
+
+            pane.innerHTML = html;
+            detail = pane.querySelector('.browse-detail');
+            focus = settings.focus || focusFromUrl(fragmentUrl) || root.dataset.focus || '';
+
+            setFocus(root, focus, detail);
+            updateSelection(root, focus);
+
+            if (settings.history) {
+                updateResultLinks(root, settings.history, settings.previousFocus, focus);
+            }
+
+            syncTabs(root, fragmentUrl);
+            syncRelView(root, fragmentUrl);
+            setMobileView(root, 'detail');
+
+            if (settings.push !== false) {
+                window.history.pushState({}, '', fallback);
+            }
+
+            if (settings.focusPane !== false) {
+                focusPane(root);
+            }
+
+            announce(root, message(root, settings.messageKey || 'updated', 'Ficha actualizada'));
+        }).catch(function () {
+            window.location.assign(fallback);
+        });
+    }
+
+    function isPlainClick(event) {
+        if (typeof event.button === 'number' && event.button !== 0) {
+            return false;
+        }
+
+        return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey);
+    }
+
+    function closestFromEvent(event, selector, root) {
+        var target = event.target;
+        var match;
+
+        if (!target) {
+            return null;
+        }
+
+        if (target.nodeType !== 1) {
+            target = target.parentElement;
+        }
+
+        if (!target || !root.contains(target)) {
+            return null;
+        }
+
+        match = target.closest(selector);
+
+        return match && root.contains(match) ? match : null;
+    }
+
+    function onResultClick(root, link) {
+        var item = link.closest('.browse-result');
+        var key = link.getAttribute('data-result-key')
+            || (item && item.getAttribute('data-result-key'))
+            || focusFromUrl(link.getAttribute('href') || link.href);
+        var stableHref;
+        var fragmentSource;
+        var previousFocus;
+        var currentHistory;
+        var nextHistory;
+        var style;
+        var stableUrl;
+        var fragmentStyle;
+        var fragmentUrl;
+
+        if (!key) {
+            return;
+        }
+
+        stableHref = link.getAttribute('href') || link.href;
+        fragmentSource = link.getAttribute('data-focus-url') || stableHref;
+        previousFocus = root.dataset.focus || '';
+        currentHistory = readHistory(window.location.search);
+        nextHistory = dedupe(currentHistory.slice());
+
+        if (previousFocus && previousFocus !== key) {
+            nextHistory.unshift(previousFocus);
+        }
+
+        nextHistory = dedupe(nextHistory).slice(0, MAX_HISTORY);
+        style = detectHistoryStyle(window.location.search, '')
+            || detectHistoryStyle(stableHref, '')
+            || detectHistoryStyle(fragmentSource, '')
+            || 'bracket';
+        stableUrl = withHistory(stableHref, nextHistory, style);
+        fragmentStyle = detectHistoryStyle(fragmentSource, '') || style;
+        fragmentUrl = buildFragmentUrl(fragmentSource, {
+            focus: key,
+            history: nextHistory,
+            historyStyle: fragmentStyle
+        });
+
+        requestFragment(root, fragmentUrl, stableUrl, {
+            focus: key,
+            history: nextHistory,
+            previousFocus: previousFocus,
+            messageKey: 'updated'
+        });
+    }
+
+    function onCompareClick(root, link) {
+        var stableHref = link.getAttribute('data-compare-url');
+        var focus;
+        var currentHistory;
+        var style;
+        var stableUrl;
+        var fragmentUrl;
+
+        if (!stableHref) {
+            return;
+        }
+
+        focus = focusFromUrl(stableHref) || root.dataset.focus || focusFromUrl(window.location.href);
+        currentHistory = readHistory(window.location.search);
+        style = detectHistoryStyle(stableHref, '')
+            || detectHistoryStyle(window.location.search, '')
+            || 'bracket';
+        stableUrl = currentHistory.length ? withHistory(stableHref, currentHistory, style) : stableHref;
+        fragmentUrl = buildFragmentUrl(stableUrl, {
+            focus: focus,
+            history: currentHistory,
+            historyStyle: style
+        });
+
+        requestFragment(root, fragmentUrl, stableUrl, {
+            focus: focus,
+            messageKey: 'compared'
+        });
+    }
+
+    function onFragmentLink(root, link) {
+        var fragmentUrl = link.getAttribute('data-url');
+        var stableUrl;
+        var focus;
+
+        if (!fragmentUrl) {
+            return;
+        }
+
+        stableUrl = link.getAttribute('data-stable-url') || link.getAttribute('href') || fragmentUrl;
+        focus = root.dataset.focus || focusFromUrl(fragmentUrl) || focusFromUrl(stableUrl);
+
+        requestFragment(root, fragmentUrl, stableUrl, {
+            focus: focus,
+            messageKey: 'view'
+        });
+    }
+
+    function copyToClipboard(value) {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            return navigator.clipboard.writeText(value);
+        }
+
+        return Promise.reject(new Error('clipboard unavailable'));
+    }
+
+    function legacyCopy(value) {
+        var textarea = document.createElement('textarea');
+        var copied = false;
+
+        textarea.value = value;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+            copied = document.execCommand('copy');
+        } catch (err) {
+            copied = false;
+        }
+
+        document.body.removeChild(textarea);
+
+        return copied;
+    }
+
+    function onCopy(root, button) {
+        var value = button.getAttribute('data-copy') || '';
+
+        copyToClipboard(value).then(function () {
+            announce(root, message(root, 'copied', 'Copiado'));
+        }).catch(function () {
+            if (legacyCopy(value)) {
+                announce(root, message(root, 'copied', 'Copiado'));
+            } else {
+                announce(root, message(root, 'copy-error', 'No se pudo copiar'));
+            }
+        });
+    }
+
+    function handlePopState() {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-browse-explorer]'), function (root) {
+            var key = focusFromUrl(window.location.href) || root.dataset.focus || '';
+            var fragmentUrl;
+
+            if (!key) {
+                return;
+            }
+
+            fragmentUrl = buildFragmentUrl(window.location.href, { focus: key });
+
+            requestFragment(root, fragmentUrl, window.location.href, {
+                focus: key,
+                push: false,
+                messageKey: 'restored'
+            });
+        });
+    }
+
+    function init() {
+        var roots = document.querySelectorAll('[data-browse-explorer]');
+        var initialParams = new URLSearchParams(window.location.search);
+
+        Array.prototype.forEach.call(roots, function (root) {
+            var initialFocus;
+
+            if (root.__browseExplorerReady) {
+                return;
+            }
+
+            root.__browseExplorerReady = true;
+            initialFocus = root.dataset.focus || '';
+
+            setFocus(root, initialFocus, root.querySelector('.browse-detail'));
+            updateSelection(root, initialFocus);
+
+            if (initialParams.has('tab')) {
+                syncTabs(root, window.location.href);
+            }
+
+            if (initialParams.has('rel_view')) {
+                syncRelView(root, window.location.href);
+            }
+
+            root.addEventListener('click', function (event) {
+                var mobileButton;
+                var copyButton;
+                var compareLink;
+                var fragmentLink;
+                var resultLink;
+
+                if (!isPlainClick(event)) {
+                    return;
+                }
+
+                mobileButton = closestFromEvent(event, '[data-mobile-view-target]', root);
+                if (mobileButton) {
+                    event.preventDefault();
+                    setMobileView(root, mobileButton.getAttribute('data-mobile-view-target'));
+                    return;
+                }
+
+                copyButton = closestFromEvent(event, '[data-copy]', root);
+                if (copyButton) {
+                    event.preventDefault();
+                    onCopy(root, copyButton);
+                    return;
+                }
+
+                compareLink = closestFromEvent(event, '.browse-compare-link[data-compare-url]', root);
+                if (compareLink) {
+                    event.preventDefault();
+                    onCompareClick(root, compareLink);
+                    return;
+                }
+
+                fragmentLink = closestFromEvent(event, '[data-tab][data-url], [data-rel-view][data-url]', root);
+                if (fragmentLink) {
+                    event.preventDefault();
+                    onFragmentLink(root, fragmentLink);
+                    return;
+                }
+
+                resultLink = closestFromEvent(event, '.browse-result-link[data-focus-url]', root);
+                if (resultLink) {
+                    event.preventDefault();
+                    onResultClick(root, resultLink);
+                }
+            });
+        });
+
+        if (!window.__browseExplorerPopstateReady) {
+            window.__browseExplorerPopstateReady = true;
+            window.addEventListener('popstate', handlePopState);
+        }
+    }
+
+    ready(init);
+})();

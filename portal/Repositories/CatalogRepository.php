@@ -32,6 +32,14 @@ final class CatalogRepository
     private const MAX_OFFSET = 5000;
 
     /**
+     * Las secciones Relaciones y Valores requieren SELECT sobre tablas sin
+     * grant autorizado (os_concept_mapping, os_terminology_system, os_fee_*,
+     * os_pricing_values). Permanecen desactivadas hasta que se autoricen los
+     * permisos; mientras tanto devuelven [] sin ejecutar SQL.
+     */
+    private const ALLOW_RESTRICTED_SELECTS = false;
+
+    /**
      * Mapeo del motor os_catalog a dominios ya aprobados por el portal.
      * No crea dominios nuevos: solo asocia domain_type existente con la
      * etiqueta de interfaz que ya figura en DOMAINS.
@@ -1675,5 +1683,458 @@ final class CatalogRepository
     private static function contentHash(string $value, string $language, ?string $sourceReference = null): string
     {
         return md5($value . "\x1f" . $language . "\x1f" . ($sourceReference ?? ''));
+    }
+
+    /**
+     * Secciones de la ficha integral. Solo expone datos del repositorio real.
+     * Si una tabla no existe o el rol no tiene SELECT, la sección queda vacía
+     * y la vista omite la pestaña: nunca se rellena con datos inventados.
+     *
+     * @return array{concept: array<string, mixed>, relations: list<array<string, mixed>>, values: list<array<string, mixed>>, validity: list<array<string, mixed>>, clinical: array<string, mixed>, trace: array<string, mixed>}
+     */
+    public static function detailSections(
+        string $resultKey,
+        string $requestedLanguage,
+        ?string $catalog = null
+    ): array {
+        $sections = [
+            'concept' => [],
+            'relations' => [],
+            'values' => [],
+            'validity' => [],
+            'clinical' => [],
+            'trace' => [],
+        ];
+
+        $item = self::find($resultKey, $requestedLanguage, $catalog);
+        if ($item === null) {
+            return $sections;
+        }
+
+        $sections['concept'] = [
+            'code' => $item['code'] ?? null,
+            'term' => $item['term'] ?? null,
+            'catalog_code' => $item['catalog_code'] ?? null,
+            'catalog_name' => $item['subtitle'] ?? null,
+            'domain' => $item['domain'] ?? null,
+            'kind' => $item['kind'] ?? null,
+            'description' => $item['description'] ?? null,
+            'language' => $item['language'] ?? null,
+            'effective_language' => $item['effective_language'] ?? null,
+            'source_language' => $item['source_language'] ?? null,
+            'provenance' => $item['provenance'] ?? null,
+            'approval_state' => $item['approval_state'] ?? null,
+            'untranslated' => !empty($item['untranslated']),
+            'fallback_applied' => !empty($item['fallback_applied']),
+            'fallback_reason' => $item['fallback_reason'] ?? null,
+            'dialect_determined' => !empty($item['dialect_determined']),
+        ];
+
+        $isOsCatalog = str_contains((string) ($item['id'] ?? ''), ':os_catalog:');
+        $itemId = ctype_digit((string) ($item['source_id'] ?? '')) ? (int) $item['source_id'] : 0;
+        if (!$isOsCatalog || $itemId === 0) {
+            return $sections;
+        }
+
+        $rich = self::osCatalogDetail($itemId, $requestedLanguage, $item);
+        $sections['concept'] = array_merge($sections['concept'], $rich['concept']);
+        $sections['validity'] = $rich['validity'];
+        $sections['clinical'] = $rich['clinical'];
+        $sections['trace'] = $rich['trace'];
+        $sections['relations'] = self::itemRelations($itemId);
+        $sections['values'] = self::itemValues($itemId);
+
+        return $sections;
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     *
+     * @return array{concept: array<string, mixed>, validity: list<array<string, mixed>>, clinical: array<string, mixed>, trace: array<string, mixed>}
+     *
+     * @throws RepositoryException
+     */
+    private static function osCatalogDetail(int $itemId, string $requestedLanguage, array $item): array
+    {
+        $pdo = PortalDatabase::connection();
+        $contentLanguage = self::contentLanguage($pdo, $requestedLanguage);
+        $fakeRows = [[
+            'metadata' => json_encode(['os_catalog' => true, 'item_id' => $itemId]),
+            'domain' => (string) ($item['domain'] ?? ''),
+            'source_id' => (string) $itemId,
+        ]];
+        $variants = self::loadOsCatalogVariants($pdo, $fakeRows);
+        $reviews = self::loadReviews($pdo, $fakeRows, $variants);
+        $chain = self::languageChain($pdo, $requestedLanguage, $contentLanguage);
+
+        $fieldCandidates = [];
+        $clinicalFields = [
+            'definition',
+            'clinical_criteria',
+            'short_definition',
+            'lay_terms',
+            'clinical_scope',
+        ];
+
+        foreach ($variants['versions'] as $version) {
+            foreach ($clinicalFields as $field) {
+                $value = $version[$field] ?? null;
+                if (!is_string($value) || $value === '') {
+                    continue;
+                }
+                $fieldCandidates[] = [
+                    'table' => 'os_catalog_item_version',
+                    'id' => (int) $version['id'],
+                    'field' => $field,
+                    'value' => $value,
+                    'language' => (string) ($version['language_code'] ?? 'es'),
+                    'source_language' => $version['source_language_code'] ?? null,
+                    'provenance' => (string) ($version['provenance'] ?? 'unknown'),
+                    'review_status' => (string) ($version['review_status'] ?? 'unknown'),
+                    'content_hash' => (string) ($version['content_hash'] ?? ''),
+                    'release_id' => (int) ($version['release_id'] ?? 0),
+                    'type' => null,
+                ];
+            }
+        }
+
+        $termCandidates = [];
+        foreach ($variants['terms'] as $term) {
+            $value = (string) ($term['term'] ?? '');
+            if ($value === '') {
+                continue;
+            }
+            $termCandidates[] = [
+                'table' => 'os_catalog_term',
+                'id' => (int) $term['id'],
+                'field' => 'term',
+                'value' => $value,
+                'language' => (string) ($term['language_code'] ?? 'es'),
+                'source_language' => $term['source_language_code'] ?? null,
+                'provenance' => (string) ($term['provenance'] ?? 'unknown'),
+                'review_status' => (string) ($term['review_status'] ?? 'unknown'),
+                'content_hash' => (string) ($term['content_hash'] ?? ''),
+                'release_id' => 0,
+                'type' => (string) ($term['term_type'] ?? 'synonym'),
+            ];
+        }
+
+        $clinical = [];
+        foreach ($clinicalFields as $field) {
+            $selected = self::selectApproved($fieldCandidates, $reviews, $chain, $field);
+            if ($selected !== null) {
+                $clinical[$field] = $selected;
+            }
+        }
+
+        $synonyms = [];
+        $wanted = [];
+        foreach ($chain as $entry) {
+            $wanted[$entry['code']] = true;
+        }
+        foreach ($termCandidates as $candidate) {
+            if ($candidate['source_language'] !== null && $candidate['source_language'] !== '') {
+                $wanted[(string) $candidate['source_language']] = true;
+            }
+        }
+        foreach (array_keys($wanted) as $language) {
+            $selected = self::selectApproved($termCandidates, $reviews, $chain, null, (string) $language);
+            if ($selected !== null) {
+                $synonyms[] = [
+                    'term' => $selected['value'],
+                    'language' => $selected['language'],
+                    'type' => $selected['type'] ?? 'synonym',
+                    'source_language' => $selected['source_language'],
+                ];
+            }
+        }
+
+        $identifiers = [];
+        try {
+            $statement = $pdo->prepare(
+                'SELECT system_name, value, is_primary FROM os_catalog_identifier'
+                . ' WHERE item_id = ? ORDER BY is_primary DESC, id ASC'
+            );
+            $statement->execute([$itemId]);
+            foreach ($statement->fetchAll() as $row) {
+                $identifiers[] = [
+                    'system' => (string) $row['system_name'],
+                    'value' => (string) $row['value'],
+                    'primary' => (bool) $row['is_primary'],
+                ];
+            }
+        } catch (PDOException) {
+            $identifiers = [];
+        }
+
+        $validity = [];
+        $itemRow = null;
+        try {
+            $statement = $pdo->prepare(
+                'SELECT status, created_at, permanent_code FROM os_catalog_item WHERE id = ?'
+            );
+            $statement->execute([$itemId]);
+            $row = $statement->fetch();
+            $itemRow = is_array($row) ? $row : null;
+
+            $statement = $pdo->prepare(
+                'SELECT r.id AS release_id, r.version_tag, r.valid_from AS release_valid_from,'
+                . ' r.valid_to AS release_valid_to, r.status AS release_status,'
+                . ' r.official_norm_reference, v.id AS version_id, v.language_code,'
+                . ' v.review_status, v.provenance, v.content_hash, v.source_language_code,'
+                . ' v.valid_from AS version_valid_from, v.valid_to AS version_valid_to'
+                . ' FROM os_catalog_item_version v'
+                . ' JOIN os_catalog_release r ON r.id = v.release_id'
+                . ' WHERE v.item_id = ?'
+                . ' ORDER BY r.valid_from DESC NULLS LAST, v.id DESC'
+            );
+            $statement->execute([$itemId]);
+            foreach ($statement->fetchAll() as $row) {
+                $validity[] = [
+                    'release_id' => (string) $row['release_id'],
+                    'version' => (string) $row['version_tag'],
+                    'release_status' => (string) $row['release_status'],
+                    'release_valid_from' => $row['release_valid_from'] !== null ? (string) $row['release_valid_from'] : null,
+                    'release_valid_to' => $row['release_valid_to'] !== null ? (string) $row['release_valid_to'] : null,
+                    'normative' => $row['official_norm_reference'] !== null ? (string) $row['official_norm_reference'] : null,
+                    'version_id' => (string) $row['version_id'],
+                    'language' => (string) $row['language_code'],
+                    'source_language' => $row['source_language_code'] !== null ? (string) $row['source_language_code'] : null,
+                    'review_status' => (string) $row['review_status'],
+                    'provenance' => (string) $row['provenance'],
+                    'content_hash' => (string) $row['content_hash'],
+                    'version_valid_from' => $row['version_valid_from'] !== null ? (string) $row['version_valid_from'] : null,
+                    'version_valid_to' => $row['version_valid_to'] !== null ? (string) $row['version_valid_to'] : null,
+                    'item_status' => $itemRow !== null ? (string) $itemRow['status'] : null,
+                ];
+            }
+        } catch (PDOException) {
+            $validity = [];
+        }
+
+        $primary = null;
+        foreach ($identifiers as $identifier) {
+            if ($identifier['primary']) {
+                $primary = $identifier['value'];
+                break;
+            }
+        }
+        $firstVersion = $validity[0] ?? [];
+
+        $trace = [
+            'source' => $item['subtitle'] ?? $item['catalog_code'] ?? null,
+            'system' => $item['catalog_code'] ?? null,
+            'external_id' => $primary ?? ($itemRow['permanent_code'] ?? null),
+            'version' => $firstVersion['version'] ?? null,
+            'release_status' => $firstVersion['release_status'] ?? null,
+            'normative' => $firstVersion['normative'] ?? null,
+            'created_at' => $itemRow['created_at'] ?? null,
+            'provenance' => $firstVersion['provenance'] ?? ($item['provenance'] ?? null),
+            'review_status' => $firstVersion['review_status'] ?? null,
+            'content_hash' => $firstVersion['content_hash'] ?? null,
+        ];
+
+        return [
+            'concept' => [
+                'definition' => $clinical['definition']['value'] ?? null,
+                'short_definition' => $clinical['short_definition']['value'] ?? null,
+                'synonyms' => $synonyms,
+                'identifiers' => $identifiers,
+            ],
+            'validity' => $validity,
+            'clinical' => $clinical,
+            'trace' => $trace,
+        ];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $candidates
+     * @param array<string, list<array<string, mixed>>> $reviews
+     * @param list<array{code: string, reason: ?string, primary: string}> $chain
+     *
+     * @return array{value: string, language: string, source_language: ?string, provenance: string, type: ?string}|null
+     */
+    private static function selectApproved(
+        array $candidates,
+        array $reviews,
+        array $chain,
+        ?string $field = null,
+        ?string $onlyLanguage = null
+    ): ?array {
+        $order = [];
+        foreach ($chain as $position => $entry) {
+            $order[] = ['code' => $entry['code'], 'position' => $position];
+        }
+        foreach ($candidates as $candidate) {
+            $source = $candidate['source_language'] ?? null;
+            if (!is_string($source) || $source === '') {
+                continue;
+            }
+            foreach ($order as $entry) {
+                if (strtolower($entry['code']) === strtolower($source)) {
+                    continue 2;
+                }
+            }
+            $order[] = ['code' => $source, 'position' => count($order)];
+        }
+
+        foreach ($order as $want) {
+            if ($onlyLanguage !== null && strtolower($want['code']) !== strtolower($onlyLanguage)) {
+                continue;
+            }
+            foreach ($candidates as $candidate) {
+                if ($field !== null && $candidate['field'] !== $field) {
+                    continue;
+                }
+                if (strtolower((string) $candidate['language']) !== strtolower($want['code'])) {
+                    continue;
+                }
+                if ($candidate['review_status'] !== 'approved') {
+                    continue;
+                }
+                $key = $candidate['table'] . '|' . $candidate['id'] . '|' . $candidate['field'];
+                foreach ($reviews[$key] ?? [] as $review) {
+                    if ((string) $review['review_status'] !== 'approved') {
+                        continue;
+                    }
+                    $scope = $review['scope_release_id'] ?? null;
+                    if ($scope !== null && $candidate['release_id'] !== 0 && (int) $scope !== $candidate['release_id']) {
+                        continue;
+                    }
+                    $language = (string) $review['language_code'];
+                    $reference = $review['source_reference'] ?? null;
+                    $expected = self::contentHash(
+                        (string) $candidate['value'],
+                        $language,
+                        $reference !== null ? (string) $reference : null
+                    );
+                    if ((string) ($review['content_hash'] ?? '') !== $expected) {
+                        continue;
+                    }
+
+                    return [
+                        'value' => (string) $candidate['value'],
+                        'language' => $language,
+                        'source_language' => $review['source_language_code'] ?? $candidate['source_language'],
+                        'provenance' => (string) ($review['provenance'] ?? $candidate['provenance']),
+                        'type' => $candidate['type'],
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Relaciones registradas en os_concept_mapping. Sin SELECT sobre esas
+     * tablas (o sin filas) devuelve [] y la pestaña no se muestra.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function itemRelations(int $itemId): array
+    {
+        if (!self::ALLOW_RESTRICTED_SELECTS) {
+            return [];
+        }
+
+        if (!self::tableExists(PortalDatabase::connection(), 'os_concept_mapping')
+            || !self::tableExists(PortalDatabase::connection(), 'os_terminology_system')) {
+            return [];
+        }
+
+        try {
+            $statement = PortalDatabase::connection()->prepare(
+                'SELECT sys.code AS system_code, sys.uri AS system_uri,'
+                . ' sys.default_version AS system_version, m.external_code, m.external_display,'
+                . ' m.mapping_type, m.relationship_role, m.review_status, m.provenance'
+                . ' FROM os_concept_mapping m'
+                . ' JOIN os_terminology_system sys ON sys.id = m.terminology_system_id'
+                . ' WHERE m.item_id = ?'
+                . ' ORDER BY sys.code ASC, m.external_code ASC'
+            );
+            $statement->execute([$itemId]);
+            $rows = $statement->fetchAll();
+        } catch (PDOException) {
+            return [];
+        }
+
+        $relations = [];
+        foreach ($rows as $row) {
+            $relations[] = [
+                'system' => (string) $row['system_code'],
+                'uri' => $row['system_uri'] !== null ? (string) $row['system_uri'] : null,
+                'version' => $row['system_version'] !== null ? (string) $row['system_version'] : null,
+                'code' => (string) $row['external_code'],
+                'display' => $row['external_display'] !== null ? (string) $row['external_display'] : null,
+                'type' => (string) $row['mapping_type'],
+                'role' => (string) $row['relationship_role'],
+                'review_status' => (string) $row['review_status'],
+                'provenance' => $row['provenance'] !== null ? (string) $row['provenance'] : null,
+            ];
+        }
+
+        return $relations;
+    }
+
+    /**
+     * Valores vigentes e históricos del esquema arancelario. Sin SELECT sobre
+     * esas tablas devuelve [] y la pestaña no se muestra.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function itemValues(int $itemId): array
+    {
+        if (!self::ALLOW_RESTRICTED_SELECTS) {
+            return [];
+        }
+
+        $pdo = PortalDatabase::connection();
+        foreach (['os_fee_item', 'os_fee_schedule', 'os_pricing_unit'] as $table) {
+            if (!self::tableExists($pdo, $table)) {
+                return [];
+            }
+        }
+
+        try {
+            $statement = $pdo->prepare(
+                'SELECT f.name AS schedule_name, f.currency, f.valid_from, f.valid_to,'
+                . ' f.unit_monetary_value, p.code AS unit_code, p.name AS unit_name,'
+                . ' fi.units_amount, fi.fixed_price, fi.expenses_amount'
+                . ' FROM os_fee_item fi'
+                . ' JOIN os_fee_schedule f ON f.id = fi.fee_schedule_id'
+                . ' LEFT JOIN os_pricing_unit p ON p.id = fi.pricing_unit_id'
+                . ' WHERE fi.item_id = ?'
+                . ' ORDER BY f.valid_from DESC NULLS LAST, f.id DESC'
+            );
+            $statement->execute([$itemId]);
+            $rows = $statement->fetchAll();
+        } catch (PDOException) {
+            return [];
+        }
+
+        $today = gmdate('Y-m-d');
+        $values = [];
+        foreach ($rows as $row) {
+            $from = $row['valid_from'] !== null ? (string) $row['valid_from'] : null;
+            $to = $row['valid_to'] !== null ? (string) $row['valid_to'] : null;
+            $values[] = [
+                'schedule' => (string) $row['schedule_name'],
+                'currency' => (string) $row['currency'],
+                'valid_from' => $from,
+                'valid_to' => $to,
+                'current' => ($from === null || $from <= $today) && ($to === null || $to >= $today),
+                'unit_code' => $row['unit_code'] !== null ? (string) $row['unit_code'] : null,
+                'unit_name' => $row['unit_name'] !== null ? (string) $row['unit_name'] : null,
+                'units' => $row['units_amount'] !== null ? (string) $row['units_amount'] : null,
+                'fixed_price' => $row['fixed_price'] !== null ? (string) $row['fixed_price'] : null,
+                'expenses' => $row['expenses_amount'] !== null ? (string) $row['expenses_amount'] : null,
+                'unit_monetary_value' => $row['unit_monetary_value'] !== null
+                    ? (string) $row['unit_monetary_value']
+                    : null,
+            ];
+        }
+
+        return $values;
     }
 }
