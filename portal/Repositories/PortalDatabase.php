@@ -47,8 +47,10 @@ final class PortalDatabase
                 PDO::ATTR_PERSISTENT => false,
             ]);
 
-            $statement = $pdo->prepare('SET statement_timeout = :timeout');
-            $statement->execute([':timeout' => max(1, $config['timeout']) * 1000]);
+            // PostgreSQL no permite parámetros ligados dentro de SET; set_config()
+            // sí acepta el valor como texto y mantiene la consulta parametrizada.
+            $statement = $pdo->prepare("SELECT set_config('statement_timeout', :timeout, false)");
+            $statement->execute([':timeout' => (max(1, $config['timeout']) * 1000) . 'ms']);
         } catch (PDOException) {
             throw new RepositoryException('database_unavailable');
         }

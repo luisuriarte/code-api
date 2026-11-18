@@ -28,6 +28,21 @@ final class CatalogRepository
     private const SNOMED_SYNONYM = '900000000000013009';
     private const MAX_OFFSET = 5000;
 
+    /**
+     * Mapeo del motor os_catalog a dominios ya aprobados por el portal.
+     * No crea dominios nuevos: solo asocia domain_type existente con la
+     * etiqueta de interfaz que ya figura en DOMAINS.
+     *
+     * @var array<string, list<string>>
+     */
+    private const OS_CATALOG_DOMAIN_TYPES = [
+        'odontologia' => ['dental'],
+        'laboratorio' => ['biochemical'],
+        'prestaciones' => ['medical', 'mental_health'],
+        'programas' => ['rehabilitation'],
+        'vademecum' => ['pharma'],
+    ];
+
     /** @var array<string, array{table: string, field: string}> */
     private const SOURCE_TABLE = [
         'snomed' => ['table' => 'snomed_descriptions', 'field' => 'term'],
@@ -236,7 +251,7 @@ final class CatalogRepository
             return ['items' => [], 'total' => 0, 'has_more' => false];
         }
 
-        [$union, $parameters] = self::buildUnion($pdo, $domains, $term, $language, false, null);
+        [$union, $parameters] = self::buildUnion($pdo, $domains, $term, $language, false, null, $requestedLanguage);
         if ($union === '') {
             return ['items' => [], 'total' => 0, 'has_more' => false];
         }
@@ -289,7 +304,7 @@ final class CatalogRepository
 
         $pdo = PortalDatabase::connection();
         $language = self::contentLanguage($pdo, $requestedLanguage);
-        [$sql, $parameters] = self::buildUnion($pdo, [$domain], '', $language, true, $key);
+        [$sql, $parameters] = self::buildUnion($pdo, [$domain], '', $language, true, $key, $requestedLanguage);
 
         if ($sql === '') {
             return null;
@@ -324,7 +339,8 @@ final class CatalogRepository
         string $term,
         string $language,
         bool $byKey,
-        ?string $key
+        ?string $key,
+        string $requestedLanguage = ''
     ): array {
         $branches = [];
         $parameters = [];
@@ -336,21 +352,43 @@ final class CatalogRepository
             }
 
             $source = self::SOURCE_TABLE[$domain];
-            if (!self::tableExists($pdo, $source['table'])) {
+            $nativeExists = self::tableExists($pdo, $source['table']);
+            $osTypes = self::OS_CATALOG_DOMAIN_TYPES[$domain] ?? [];
+            $osExists = $osTypes !== [] && self::osCatalogTablesExist($pdo);
+
+            if (!$nativeExists && !$osExists) {
                 continue;
             }
 
-            $p = 'p' . $index++;
-            [$sql, $params] = self::branch(
-                $p,
-                $domain,
-                $term,
-                $language,
-                $byKey,
-                $key
-            );
-            $branches[] = $sql;
-            $parameters += $params;
+            if ($nativeExists) {
+                $p = 'p' . $index++;
+                [$sql, $params] = self::branch(
+                    $p,
+                    $domain,
+                    $term,
+                    $language,
+                    $byKey,
+                    $key
+                );
+                $branches[] = $sql;
+                $parameters += $params;
+            }
+
+            if ($osExists) {
+                $p = 'p' . $index++;
+                [$sql, $params] = self::osCatalogBranch(
+                    $p,
+                    $domain,
+                    $osTypes,
+                    $term,
+                    $language,
+                    $requestedLanguage,
+                    $byKey,
+                    $key
+                );
+                $branches[] = $sql;
+                $parameters += $params;
+            }
         }
 
         return [implode("\nUNION ALL\n", $branches), $parameters];
@@ -384,6 +422,120 @@ final class CatalogRepository
         }
 
         return self::catalogBranch($p, $domain, $term, $language, $byKey, $key);
+    }
+
+    private static function osCatalogTablesExist(PDO $pdo): bool
+    {
+        foreach (['os_catalog', 'os_catalog_item', 'os_catalog_item_version', 'os_catalog_release', 'os_catalog_identifier', 'os_catalog_term'] as $table) {
+            if (!self::tableExists($pdo, $table)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Rama de búsqueda sobre el motor os_catalog. Consulta solo tablas os_*
+     * reales y respeta los dominios ya aprobados mediante OS_CATALOG_DOMAIN_TYPES.
+     *
+     * @param list<string> $domainTypes
+     *
+     * @return array{0: string, 1: array<string, string|int>}
+     */
+    private static function osCatalogBranch(
+        string $p,
+        string $domain,
+        array $domainTypes,
+        string $term,
+        string $language,
+        string $requestedLanguage,
+        bool $byKey,
+        ?string $key
+    ): array {
+        $typeNames = [];
+        $params = [
+            ":{$p}_lang" => $language,
+            ":{$p}_req_lang" => $requestedLanguage !== '' ? $requestedLanguage : $language,
+        ];
+
+        foreach ($domainTypes as $i => $type) {
+            $name = ":{$p}_type{$i}";
+            $typeNames[] = $name;
+            $params[$name] = $type;
+        }
+
+        $score = $byKey
+            ? 'CAST(1.0 AS float8)'
+            : self::scoreSql([
+                "lower(ver.preferred_term) = lower(:{$p}_exact)" => '1.0',
+                "item.permanent_code ILIKE :{$p}_code_prefix" => '0.96',
+                "coalesce(ident.value, '') ILIKE :{$p}_code_prefix" => '0.96',
+                "ver.preferred_term ILIKE :{$p}_prefix" => '0.92',
+                "ver.preferred_term ILIKE :{$p}_contains" => '0.78',
+                "similarity(ver.preferred_term, :{$p}_sim)" => null,
+            ], $p);
+
+        $where = $byKey
+            ? "(item.permanent_code = :{$p}_key"
+                . " OR coalesce(ident.value, '') = :{$p}_key"
+                . " OR replace(coalesce(ident.value, ''), '.', '') = :{$p}_key_clean"
+                . " OR 'os_catalog:' || cat.code || ':' || CAST(item.id AS text) = :{$p}_key)"
+            : "(ver.preferred_term ILIKE :{$p}_contains"
+                . " OR item.permanent_code ILIKE :{$p}_contains"
+                . " OR coalesce(ident.value, '') ILIKE :{$p}_contains"
+                . " OR EXISTS (SELECT 1 FROM os_catalog_term ot"
+                . " WHERE ot.item_version_id = ver.id AND ot.term ILIKE :{$p}_contains))";
+
+        $metadata = "CAST(json_build_object("
+            . "'os_catalog', TRUE, "
+            . "'catalog_code', cat.code, "
+            . "'catalog_name', cat.name, "
+            . "'item_id', CAST(item.id AS text), "
+            . "'release_id', CAST(rel.id AS text), "
+            . "'primary_code', coalesce(ident.value, item.permanent_code)"
+            . ") AS text) AS metadata";
+
+        $sql = "SELECT '{$domain}' AS domain, 'os_catalog' AS source,\n"
+            . " '{$domain}:os_catalog:' || cat.code || ':' || CAST(item.id AS text) AS result_key,\n"
+            . " CAST(item.id AS text) AS source_id,\n"
+            . " coalesce(ident.value, item.permanent_code) AS code,\n"
+            . " ver.preferred_term AS term,\n"
+            . " cat.short_name AS subtitle,\n"
+            . " ver.language_code AS language,\n"
+            . " 'os_catalog_item' AS kind, {$score} AS score,\n"
+            . " {$metadata}\n"
+            . " FROM os_catalog_item item\n"
+            . " JOIN os_catalog cat ON cat.id = item.catalog_id\n"
+            . " JOIN os_catalog_release rel ON rel.id = (\n"
+            . "     SELECT r.id FROM os_catalog_release r\n"
+            . "      WHERE r.catalog_id = cat.id AND r.status = 'published'\n"
+            . "      ORDER BY r.valid_from DESC, r.id DESC LIMIT 1\n"
+            . " )\n"
+            . " JOIN os_catalog_item_version ver ON ver.id = (\n"
+            . "     SELECT v.id FROM os_catalog_item_version v\n"
+            . "      WHERE v.item_id = item.id AND v.release_id = rel.id\n"
+            . "      ORDER BY (v.language_code = :{$p}_req_lang) DESC,"
+            . " (v.language_code = :{$p}_lang) DESC, v.id DESC LIMIT 1\n"
+            . " )\n"
+            . " LEFT JOIN os_catalog_identifier ident ON ident.id = (\n"
+            . "     SELECT i.id FROM os_catalog_identifier i\n"
+            . "      WHERE i.item_id = item.id AND i.is_primary = TRUE\n"
+            . "      ORDER BY i.id LIMIT 1\n"
+            . " )\n"
+            . " WHERE cat.is_active = TRUE AND item.status = 'active'\n"
+            . "   AND cat.domain_type IN (" . implode(', ', $typeNames) . ")\n"
+            . "   AND {$where}";
+
+        if ($byKey) {
+            $params[":{$p}_key"] = (string) $key;
+            $params[":{$p}_key_clean"] = str_replace(['.', ' ', '-'], '', (string) $key);
+        } else {
+            $params += self::termParams($p, $term);
+            $params[":{$p}_code_prefix"] = self::escapeLike($term) . '%';
+        }
+
+        return [$sql, $params];
     }
 
     /** @return array{0: string, 1: array<string, string|int>} */
@@ -888,12 +1040,31 @@ final class CatalogRepository
         string $requestedLanguage,
         string $contentLanguage
     ): array {
-        $reviews = self::loadReviews($pdo, $rows);
+        $osVariants = self::loadOsCatalogVariants($pdo, $rows);
+        $reviews = self::loadReviews($pdo, $rows, $osVariants);
         $languageChain = self::languageChain($pdo, $requestedLanguage, $contentLanguage);
         $items = [];
 
         foreach ($rows as $row) {
             $metadata = self::decodeMetadata($row['metadata'] ?? null);
+            $isOsCatalog = !empty($metadata['os_catalog']);
+            $itemId = (int) ($metadata['item_id'] ?? 0);
+            $editorial = $isOsCatalog
+                ? self::editorialOsCatalog(
+                    $row,
+                    $metadata,
+                    $osVariants[$itemId] ?? ['versions' => [], 'terms' => []],
+                    $reviews,
+                    $languageChain,
+                    $requestedLanguage
+                )
+                : self::editorial(
+                    $row,
+                    $metadata,
+                    $reviews,
+                    $languageChain,
+                    $requestedLanguage
+                );
             $item = [
                 'id' => (string) ($row['result_key'] ?? ''),
                 'source_id' => (string) ($row['source_id'] ?? ''),
@@ -903,15 +1074,9 @@ final class CatalogRepository
                 'domain' => (string) ($row['domain'] ?? ''),
                 'kind' => (string) ($row['kind'] ?? ''),
                 'score' => round((float) ($row['score'] ?? 0), 4),
-                'description' => self::description($metadata),
+                'description' => $editorial['description'] ?? self::description($metadata),
                 'concept_id' => isset($metadata['concept_id']) ? (string) $metadata['concept_id'] : null,
-            ] + self::editorial(
-                $row,
-                $metadata,
-                $reviews,
-                $languageChain,
-                $requestedLanguage
-            );
+            ] + $editorial;
 
             $items[] = $item;
         }
@@ -945,13 +1110,90 @@ final class CatalogRepository
     }
 
     /**
+     * Carga todas las versiones y términos de los ítems os_catalog presentes en
+     * la página. Así la evaluación editorial puede elegir un texto aprobado en
+     * cualquier idioma declarado, sin asumir que la fila de búsqueda ya es la
+     * versión aprobada (D-30).
+     *
      * @param list<array<string, mixed>> $rows
+     *
+     * @return array<int, array{versions: list<array<string, mixed>>, terms: list<array<string, mixed>>}>
+     *
+     * @throws RepositoryException
+     */
+    private static function loadOsCatalogVariants(PDO $pdo, array $rows): array
+    {
+        $itemIds = [];
+        foreach ($rows as $row) {
+            $metadata = self::decodeMetadata($row['metadata'] ?? null);
+            if (!empty($metadata['os_catalog']) && ctype_digit((string) ($metadata['item_id'] ?? ''))) {
+                $itemIds[(int) $metadata['item_id']] = true;
+            }
+        }
+
+        if ($itemIds === []) {
+            return [];
+        }
+
+        $ids = array_keys($itemIds);
+        $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+        $variants = [];
+
+        foreach ($ids as $id) {
+            $variants[$id] = ['versions' => [], 'terms' => []];
+        }
+
+        try {
+            $versionSql = 'SELECT id, item_id, release_id, language_code, source_language_code,'
+                . ' provenance, review_status, content_hash, preferred_term, definition,'
+                . ' clinical_criteria, short_definition, lay_terms, clinical_scope'
+                . ' FROM os_catalog_item_version'
+                . ' WHERE item_id IN (' . $placeholders . ') ORDER BY item_id, id';
+            $statement = $pdo->prepare($versionSql);
+            $statement->execute($ids);
+            foreach ($statement->fetchAll() as $row) {
+                $itemId = (int) $row['item_id'];
+                if (isset($variants[$itemId])) {
+                    $variants[$itemId]['versions'][] = $row;
+                }
+            }
+
+            $termSql = 'SELECT id, item_version_id, term, term_type, language_code,'
+                . ' source_language_code, provenance, review_status, content_hash'
+                . ' FROM os_catalog_term'
+                . ' WHERE item_version_id IN ('
+                . ' SELECT id FROM os_catalog_item_version WHERE item_id IN (' . $placeholders . ')'
+                . ') ORDER BY item_version_id, id';
+            $statement = $pdo->prepare($termSql);
+            $statement->execute($ids);
+            foreach ($statement->fetchAll() as $row) {
+                foreach ($variants as $itemId => &$bucket) {
+                    foreach ($bucket['versions'] as $version) {
+                        if ((int) $version['id'] === (int) $row['item_version_id']) {
+                            $row['release_id'] = $version['release_id'];
+                            $bucket['terms'][] = $row;
+                            break 2;
+                        }
+                    }
+                }
+                unset($bucket);
+            }
+        } catch (PDOException) {
+            throw new RepositoryException('error_query');
+        }
+
+        return $variants;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @param array<int, array{versions: list<array<string, mixed>>, terms: list<array<string, mixed>>}> $osVariants
      *
      * @return array<string, array<string, list<array<string, mixed>>>>
      *
      * @throws RepositoryException
      */
-    private static function loadReviews(PDO $pdo, array $rows): array
+    private static function loadReviews(PDO $pdo, array $rows, array $osVariants = []): array
     {
         if ($rows === [] || !self::tableExists($pdo, 'os_field_review')) {
             return [];
@@ -962,6 +1204,27 @@ final class CatalogRepository
         $fieldNames = [];
 
         foreach ($rows as $row) {
+            $metadata = self::decodeMetadata($row['metadata'] ?? null);
+            if (!empty($metadata['os_catalog']) && ctype_digit((string) ($metadata['item_id'] ?? ''))) {
+                $itemId = (int) $metadata['item_id'];
+                foreach ($osVariants[$itemId]['versions'] ?? [] as $variant) {
+                    $targetTables['os_catalog_item_version'] = true;
+                    $targetIds[(int) $variant['id']] = true;
+                    $fieldNames['preferred_term'] = true;
+                    $fieldNames['definition'] = true;
+                    $fieldNames['clinical_criteria'] = true;
+                    $fieldNames['short_definition'] = true;
+                    $fieldNames['lay_terms'] = true;
+                    $fieldNames['clinical_scope'] = true;
+                }
+                foreach ($osVariants[$itemId]['terms'] ?? [] as $variant) {
+                    $targetTables['os_catalog_term'] = true;
+                    $targetIds[(int) $variant['id']] = true;
+                    $fieldNames['term'] = true;
+                }
+                continue;
+            }
+
             $domain = (string) ($row['domain'] ?? '');
             $source = self::SOURCE_TABLE[$domain] ?? null;
             if ($source === null || !ctype_digit((string) ($row['source_id'] ?? ''))) {
@@ -980,7 +1243,7 @@ final class CatalogRepository
         $ids = array_keys($targetIds);
         $fields = array_keys($fieldNames);
         $sql = 'SELECT target_table, target_id, field_name, language_code, scope_release_id,'
-            . ' source_language_code, provenance, review_status, content_hash'
+            . ' source_language_code, provenance, review_status, content_hash, source_reference'
             . ' FROM os_field_review'
             . ' WHERE target_table IN (' . implode(', ', array_fill(0, count($tables), '?')) . ')'
             . ' AND target_id IN (' . implode(', ', array_fill(0, count($ids), '?')) . ')'
@@ -1082,7 +1345,13 @@ final class CatalogRepository
                 if ((string) $review['review_status'] !== 'approved') {
                     continue;
                 }
-                $hash = self::contentHash($term, $candidate['code']);
+                $hash = self::contentHash(
+                    $term,
+                    $candidate['code'],
+                    isset($review['source_reference']) && $review['source_reference'] !== null
+                        ? (string) $review['source_reference']
+                        : null
+                );
                 $stored = (string) ($review['content_hash'] ?? '');
                 if ($stored !== '' && $stored !== $hash) {
                     continue;
@@ -1126,8 +1395,220 @@ final class CatalogRepository
         ];
     }
 
-    private static function contentHash(string $value, string $language): string
+    /**
+     * Evaluación editorial específica del motor os_catalog (D-30).
+     *
+     * Selecciona el primer texto aprobado de la cadena de idiomas, validando
+     * `os_field_review` vigente, ámbito de release y hash. No publica la columna
+     * original cuando no hay revisión aprobada (D-20).
+     *
+     * @param array<string, mixed> $metadata
+     * @param array{versions: list<array<string, mixed>>, terms: list<array<string, mixed>>} $variants
+     * @param array<string, array<string, list<array<string, mixed>>>> $reviews
+     * @param list<array{code: string, reason: ?string, primary: string}> $chain
+     *
+     * @return array<string, mixed>
+     */
+    private static function editorialOsCatalog(
+        array $row,
+        array $metadata,
+        array $variants,
+        array $reviews,
+        array $chain,
+        string $requested
+    ): array {
+        $rowLanguage = (string) ($row['language'] ?? 'es');
+        $tags = self::primaryTags(PortalDatabase::connection());
+        $requestedCode = self::canonicalLanguageCode($requested);
+        $requestedPrimary = $tags[$requestedCode] ?? 'es';
+        $rowPrimary = $tags[$rowLanguage] ?? strtolower($rowLanguage);
+        $description = self::description($metadata);
+
+        $base = [
+            'language' => $rowLanguage,
+            'effective_language' => $rowLanguage,
+            'source_language' => null,
+            'provenance' => 'official_source',
+            'approval_state' => null,
+            'untranslated' => $rowPrimary !== $requestedPrimary,
+            'description' => $description,
+            'fallback_applied' => false,
+            'fallback_reason' => null,
+            'dialect_determined' => str_contains($rowLanguage, '-') && $rowLanguage === $requestedCode,
+        ];
+
+        $candidates = [];
+
+        foreach ($variants['versions'] as $variant) {
+            $value = (string) ($variant['preferred_term'] ?? '');
+            if ($value === '') {
+                continue;
+            }
+            $candidates[] = [
+                'table' => 'os_catalog_item_version',
+                'id' => (int) $variant['id'],
+                'field' => 'preferred_term',
+                'value' => $value,
+                'language' => (string) ($variant['language_code'] ?? 'es'),
+                'source_language' => $variant['source_language_code'] ?? null,
+                'provenance' => (string) ($variant['provenance'] ?? 'unknown'),
+                'review_status' => (string) ($variant['review_status'] ?? 'unknown'),
+                'content_hash' => (string) ($variant['content_hash'] ?? ''),
+                'release_id' => (int) ($variant['release_id'] ?? 0),
+                'description' => self::firstText([
+                    $variant['definition'] ?? null,
+                    $variant['clinical_criteria'] ?? null,
+                    $variant['short_definition'] ?? null,
+                    $variant['lay_terms'] ?? null,
+                    $variant['clinical_scope'] ?? null,
+                ]),
+            ];
+        }
+
+        foreach ($variants['terms'] as $variant) {
+            $value = (string) ($variant['term'] ?? '');
+            if ($value === '') {
+                continue;
+            }
+            $candidates[] = [
+                'table' => 'os_catalog_term',
+                'id' => (int) $variant['id'],
+                'field' => 'term',
+                'value' => $value,
+                'language' => (string) ($variant['language_code'] ?? 'es'),
+                'source_language' => $variant['source_language_code'] ?? null,
+                'provenance' => (string) ($variant['provenance'] ?? 'unknown'),
+                'review_status' => (string) ($variant['review_status'] ?? 'unknown'),
+                'content_hash' => (string) ($variant['content_hash'] ?? ''),
+                'release_id' => (int) ($variant['release_id'] ?? 0),
+                'description' => null,
+            ];
+        }
+
+        if ($candidates === []) {
+            if ($base['untranslated']) {
+                $base['term'] = null;
+                $base['fallback_reason'] = 'no_approved_content';
+            }
+
+            return $base;
+        }
+
+        $searchOrder = [];
+        foreach ($chain as $position => $entry) {
+            $searchOrder[] = ['code' => $entry['code'], 'reason' => $entry['reason'], 'position' => $position];
+        }
+        foreach ($candidates as $candidate) {
+            if ($candidate['source_language'] === null || $candidate['source_language'] === '') {
+                continue;
+            }
+            $source = (string) $candidate['source_language'];
+            foreach ($searchOrder as $entry) {
+                if (strtolower($entry['code']) === strtolower($source)) {
+                    continue 2;
+                }
+            }
+            $searchOrder[] = [
+                'code' => $source,
+                'reason' => 'source_language',
+                'position' => count($searchOrder),
+            ];
+        }
+
+        $selected = null;
+        $selectedPosition = PHP_INT_MAX;
+        $selectedReason = null;
+
+        foreach ($searchOrder as $want) {
+            foreach ($candidates as $candidate) {
+                if (strtolower($candidate['language']) !== strtolower($want['code'])) {
+                    continue;
+                }
+                if ($candidate['review_status'] !== 'approved') {
+                    continue;
+                }
+                $key = $candidate['table'] . '|' . $candidate['id'] . '|' . $candidate['field'];
+                foreach ($reviews[$key] ?? [] as $review) {
+                    if ((string) $review['review_status'] !== 'approved') {
+                        continue;
+                    }
+                    $scope = $review['scope_release_id'] ?? null;
+                    if ($scope !== null && (int) $scope !== $candidate['release_id']) {
+                        continue;
+                    }
+                    $language = (string) $review['language_code'];
+                    $sourceReference = $review['source_reference'] ?? null;
+                    $hash = self::contentHash(
+                        $candidate['value'],
+                        $language,
+                        $sourceReference !== null ? (string) $sourceReference : null
+                    );
+                    if ((string) ($review['content_hash'] ?? '') !== $hash) {
+                        continue;
+                    }
+                    if ($want['position'] < $selectedPosition) {
+                        $selectedPosition = $want['position'];
+                        $selectedReason = $want['reason'];
+                        $selected = [
+                            'value' => $candidate['value'],
+                            'language' => $language,
+                            'source_language' => $review['source_language_code'] ?? $candidate['source_language'],
+                            'provenance' => (string) ($review['provenance'] ?? $candidate['provenance']),
+                            'description' => $candidate['description'],
+                        ];
+                    }
+                }
+            }
+        }
+
+        if ($selected === null) {
+            if ($base['untranslated']) {
+                $base['term'] = null;
+                $base['fallback_reason'] = 'no_approved_content';
+            }
+
+            return $base;
+        }
+
+        $language = (string) $selected['language'];
+        $effectivePrimary = $tags[$language] ?? strtolower($language);
+        $provenance = (string) $selected['provenance'];
+
+        return [
+            'language' => $rowLanguage,
+            'effective_language' => $language,
+            'source_language' => $selected['source_language'] !== null
+                ? (string) $selected['source_language']
+                : null,
+            'provenance' => in_array($provenance, [
+                'unknown', 'official_source', 'official_translation', 'origen_salud', 'community', 'machine',
+            ], true) ? $provenance : 'unknown',
+            'approval_state' => 'approved',
+            'untranslated' => $effectivePrimary !== $requestedPrimary,
+            'term' => $selected['value'],
+            'description' => $selected['description'] !== null && $selected['description'] !== ''
+                ? $selected['description']
+                : $description,
+            'fallback_applied' => $selectedPosition > 0,
+            'fallback_reason' => $selectedReason,
+            'dialect_determined' => str_contains($language, '-') && $language === $requestedCode,
+        ];
+    }
+
+    /** @param list<mixed> $values */
+    private static function firstText(array $values): ?string
     {
-        return md5($value . "\x1f" . $language . "\x1f");
+        foreach ($values as $value) {
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private static function contentHash(string $value, string $language, ?string $sourceReference = null): string
+    {
+        return md5($value . "\x1f" . $language . "\x1f" . ($sourceReference ?? ''));
     }
 }

@@ -38,6 +38,17 @@ GRANT SELECT ON TABLE
     public.vademecum_comercial
 TO origen_med;
 
+-- Motor os_catalog: búsqueda de dominios mapeados (sin dominios nuevos).
+GRANT SELECT ON TABLE
+    public.os_catalog,
+    public.os_catalog_release,
+    public.os_catalog_category,
+    public.os_catalog_item,
+    public.os_catalog_item_version,
+    public.os_catalog_term,
+    public.os_catalog_identifier
+TO origen_med;
+
 -- Configuración idiomática y estado editorial (D-27, D-30).
 GRANT SELECT ON TABLE
     public.os_language,
@@ -47,7 +58,7 @@ TO origen_med;
 
 COMMIT;
 
--- Verificación: debe devolver 'r' (SELECT) en las tablas listadas.
+-- Verificación: debe devolver 't' (SELECT) en las tablas listadas.
 SELECT schemaname, tablename, has_table_privilege('origen_med', schemaname || '.' || tablename, 'SELECT') AS puede_leer
   FROM pg_tables
  WHERE schemaname = 'public'
@@ -56,6 +67,9 @@ SELECT schemaname, tablename, has_table_privilege('origen_med', schemaname || '.
        'anmat_medicamentos', 'loinc', 'laboratorio_practicas', 'vacunas_catalogo',
        'odontologia_prestaciones', 'prestaciones_medicas', 'programas_sociales',
        'imagenes_practicas', 'nomencladores_argentina', 'vademecum_comercial',
+       'os_catalog', 'os_catalog_release', 'os_catalog_category',
+       'os_catalog_item', 'os_catalog_item_version', 'os_catalog_term',
+       'os_catalog_identifier',
        'os_language', 'os_catalog_language', 'os_field_review'
    )
  ORDER BY tablename;
