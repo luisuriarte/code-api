@@ -323,10 +323,23 @@ $stmtConcepto = $db->prepare(
      RETURNING id'
 );
 $stmtVersion = $db->prepare(
-    'INSERT INTO dentar_concept_version (concept_id, version_number, definition, clinical_scope, clinical_criteria)
-     VALUES (:concepto, :version, :definicion, :ambito, :criterios)
+    'INSERT INTO dentar_concept_version
+        (concept_id, version_number, definition, short_definition, global_period_days,
+         work_uvr, practice_expense_uvr, malpractice_uvr, total_uvr,
+         estimated_payment, clinical_scope, clinical_criteria)
+     VALUES
+        (:concepto, :version, :definicion, :short_definition, :global_period,
+         :work_rvu, :practice_expense_rvu, :malpractice_rvu, :total_rvu,
+         :estimated_payment, :ambito, :criterios)
      ON CONFLICT (concept_id, version_number) DO UPDATE
         SET definition = EXCLUDED.definition,
+            short_definition = EXCLUDED.short_definition,
+            global_period_days = EXCLUDED.global_period_days,
+            work_uvr = EXCLUDED.work_uvr,
+            practice_expense_uvr = EXCLUDED.practice_expense_uvr,
+            malpractice_uvr = EXCLUDED.malpractice_uvr,
+            total_uvr = EXCLUDED.total_uvr,
+            estimated_payment = EXCLUDED.estimated_payment,
             clinical_scope = EXCLUDED.clinical_scope,
             clinical_criteria = EXCLUDED.clinical_criteria
      RETURNING id'
