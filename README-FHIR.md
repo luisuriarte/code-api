@@ -3,6 +3,15 @@
 > **Servicio de Terminología Clínica Estándar (FHIR Terminology Service)**  
 > Implementación de interoperabilidad conforme al estándar **HL7 FHIR Release 4 (R4)** para Historias Clínicas Electrónicas (HCE), Receta Digital y Facturación Odontológica.
 
+> [!IMPORTANT]
+> **Estado: contrato propuesto, no implementado.** En el código actual `api/index.php`
+> no enruta ninguna ruta `/fhir/*`; todos los ejemplos de este documento son una
+> especificación objetivo, no un servicio disponible. Además, la guardia de API
+> Key cubre solo `/v1/*`, por lo que cualquier endpoint `/fhir/*` que se agregue
+> debe incorporarse explícitamente a esa guardia antes de publicarse. Las URI
+> canónicas y los ejemplos de respuesta son propuestas editoriales pendientes de
+> aprobación formal, no hechos implementados.
+
 ---
 
 ## 1. Introducción y Arquitectura FHIR
@@ -14,11 +23,11 @@ Origen Salud expone sus catálogos clínicos, terminologías y ontología odonto
 - Plataformas de Auditoría Odontológica y Facturación B2B.
 
 ### Endpoint Base FHIR
-- **URL Base:** `https://api.origen.ar/fhir`
-- **MIME Types soportados:**
+- **URL Base propuesta:** `https://api.origen.ar/fhir` (sin enrutar actualmente)
+- **MIME Types previstos:**
   - `application/fhir+json; charset=utf-8`
   - `application/json; charset=utf-8`
-- **Autenticación:** Cabecera HTTP `Authorization: Bearer <API_KEY>`
+- **Autenticación prevista:** cabecera HTTP `Authorization: Bearer <API_KEY>`; debe extenderse la guardia actual, que solo cubre `/v1/*`.
 
 ---
 

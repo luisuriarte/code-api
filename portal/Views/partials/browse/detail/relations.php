@@ -64,6 +64,9 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                                     <?php if (!empty($relation['display'])): ?>
                                         <span><?= e((string) $relation['display']) ?></span>
                                     <?php endif; ?>
+                                    <?php if (!empty($relation['context_text'])): ?>
+                                        <span class="browse-relation-context"><?= e((string) $relation['context_text']) ?></span>
+                                    <?php endif; ?>
                                     <span class="browse-badge<?= $pending ? ' browse-badge--pending' : ' browse-badge--neutral' ?>">
                                         <?= e($relationTypeLabel($type)) ?>
                                     </span>
@@ -115,7 +118,12 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                                         <strong><?= e((string) ($relation['code'] ?? '')) ?></strong>
                                     <?php endif; ?>
                                 </td>
-                                <td><?= e((string) ($relation['display'] ?? '')) ?></td>
+                                <td>
+                                    <?= e((string) ($relation['display'] ?? '')) ?>
+                                    <?php if (!empty($relation['context_text'])): ?>
+                                        <span class="browse-relation-context"><?= e((string) $relation['context_text']) ?></span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= e($relationTypeLabel((string) ($relation['type'] ?? ''))) ?></td>
                                 <td><?= e($relationRoleLabel((string) ($relation['role'] ?? ''))) ?></td>
                                 <td>

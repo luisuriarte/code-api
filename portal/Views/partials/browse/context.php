@@ -216,12 +216,30 @@ $relationTypeLabels = [
     'broader' => 'browse.relation_broader',
     'related' => 'browse.relation_related',
     'unmatched' => 'browse.relation_unmatched',
+    // Tipos literales de CDT-2025, conservados por os_catalog_relation.
+    'alternate_benefit' => 'browse.relation_alternate_benefit',
+    'billed_in_conjunction_with' => 'browse.relation_billed_in_conjunction_with',
+    'concurrent_to' => 'browse.relation_concurrent_to',
+    'denied_as_integral' => 'browse.relation_denied_as_integral',
+    'frequency_limitations' => 'browse.relation_frequency_limitations',
+    'integral_to' => 'browse.relation_integral_to',
+    'interchangeable_with' => 'browse.relation_interchangeable_with',
+    'not_paid_separately' => 'browse.relation_not_paid_separately',
+    'not_to_be_used_with' => 'browse.relation_not_to_be_used_with',
+    'paid_as_code' => 'browse.relation_paid_as_code',
+    'procedure_code_not_used_for' => 'browse.relation_procedure_code_not_used_for',
+    'refer_to_details' => 'browse.relation_refer_to_details',
+    'referencia_literal' => 'browse.relation_referencia_literal',
+    'shares_frequency_limitation_with' => 'browse.relation_shares_frequency_limitation_with',
+    'used_in_combination_with' => 'browse.relation_used_in_combination_with',
 ];
 $relationRoleLabels = [
     'procedure_concept' => 'browse.role_procedure_concept',
     'justifying_diagnosis' => 'browse.role_justifying_diagnosis',
     'observation_concept' => 'browse.role_observation_concept',
     'substance_concept' => 'browse.role_substance_concept',
+    'outgoing' => 'browse.role_outgoing',
+    'incoming' => 'browse.role_incoming',
 ];
 $reviewLabels = [
     'approved' => 'browse.review_approved',
@@ -232,10 +250,14 @@ $reviewLabels = [
 $pendingReviews = ['draft', 'reviewed'];
 
 $relationTypeLabel = static function (string $type) use ($t, $relationTypeLabels): string {
-    return isset($relationTypeLabels[$type]) ? $t($relationTypeLabels[$type]) : $t('browse.relation_neutral');
+    return isset($relationTypeLabels[$type])
+        ? $t($relationTypeLabels[$type])
+        : str_replace('_', ' ', $type);
 };
 $relationRoleLabel = static function (string $role) use ($t, $relationRoleLabels): string {
-    return isset($relationRoleLabels[$role]) ? $t($relationRoleLabels[$role]) : $t('browse.role_neutral');
+    return isset($relationRoleLabels[$role])
+        ? $t($relationRoleLabels[$role])
+        : str_replace('_', ' ', $role);
 };
 $reviewLabel = static function (string $status) use ($t, $reviewLabels): string {
     return isset($reviewLabels[$status]) ? $t($reviewLabels[$status]) : $status;

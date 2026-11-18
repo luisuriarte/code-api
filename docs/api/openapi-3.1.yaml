@@ -1,0 +1,718 @@
+openapi: 3.1.0
+info:
+  title: Origen Salud API
+  version: 1.0.0
+  summary: Búsqueda unificada de terminología clínica y catálogos sanitarios.
+  description: |
+    Contrato de la API REST real montada en `api/index.php`.
+
+    - Prefijo: `/v1`. Todas las rutas `/v1/*` requieren API Key.
+    - `/health` es pública.
+    - Envelope de éxito: `data`, `meta` y `request_id`.
+    - Envelope de error: `error.code`, `error.message`, `error.details` opcional y `request_id`.
+    - Los errores 500 no incluyen mensajes internos.
+    - `/fhir/*` **no está implementado**; ver `README-FHIR.md`.
+  contact:
+    name: Origen Salud
+    url: https://origen.ar
+  license:
+    name: Uso interno / contrato documentado
+servers:
+  - url: https://api.origen.ar
+    description: Producción
+tags:
+  - name: Descubrimiento
+  - name: Búsqueda
+  - name: Catálogos
+  - name: Terminologías
+  - name: Odontología
+  - name: Nomencladores
+security:
+  - BearerAuth: []
+  - ApiKeyHeader: []
+paths:
+  /health:
+    get:
+      tags: [Descubrimiento]
+      operationId: health
+      summary: Estado del servicio y de la base de datos.
+      security: []
+      responses:
+        '200':
+          description: Servicio operativo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEnvelope'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /v1/domains:
+    get:
+      tags: [Descubrimiento]
+      operationId: listDomains
+      summary: Dominios disponibles y dominios incluidos por defecto.
+      responses:
+        '200':
+          description: Catálogo de dominios.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Domain'
+                      meta:
+                        $ref: '#/components/schemas/DomainMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/refsets:
+    get:
+      tags: [Descubrimiento]
+      operationId: listRefsets
+      summary: RefSets de SNOMED CT disponibles como filtro.
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/search:
+    get:
+      tags: [Búsqueda]
+      operationId: unifiedSearch
+      summary: Búsqueda unificada en uno o varios dominios.
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Domains'
+        - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Refsets'
+      responses:
+        '200':
+          description: Resultados paginados.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SearchResult'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/search/{domain}:
+    get:
+      tags: [Búsqueda]
+      operationId: searchByDomain
+      summary: Búsqueda restringida a un dominio.
+      parameters:
+        - $ref: '#/components/parameters/DomainPath'
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/catalogs:
+    get:
+      tags: [Catálogos]
+      operationId: listCatalogs
+      summary: Catálogos publicados, incluida la familia DENTAR.
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/catalogs/{catalog_code}/releases:
+    get:
+      tags: [Catálogos]
+      operationId: listCatalogReleases
+      summary: Versiones de un catálogo con vigencia y estado.
+      parameters:
+        - $ref: '#/components/parameters/CatalogCode'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/catalogs/{catalog_code}/items:
+    get:
+      tags: [Catálogos]
+      operationId: listCatalogItems
+      summary: Ítems de un catálogo publicado.
+      parameters:
+        - $ref: '#/components/parameters/CatalogCode'
+        - $ref: '#/components/parameters/Q'
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/catalogs/{catalog_code}/items/{item}:
+    get:
+      tags: [Catálogos]
+      operationId: getCatalogItem
+      summary: Detalle de un ítem por código permanente, oficial o término.
+      parameters:
+        - $ref: '#/components/parameters/CatalogCode'
+        - name: item
+          in: path
+          required: true
+          schema: { type: string, maxLength: 100 }
+          example: DNT-PR-000001
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/mappings:
+    get:
+      tags: [Terminologías]
+      operationId: listMappings
+      summary: Mapeos cruzados entre sistemas terminológicos.
+      parameters:
+        - name: system
+          in: query
+          schema: { type: string }
+          example: CDT-2025
+        - name: code
+          in: query
+          schema: { type: string }
+          example: D0150
+        - name: catalog
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/pricing-units:
+    get:
+      tags: [Catálogos]
+      operationId: listPricingUnits
+      summary: Unidades arancelarias disponibles.
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/nomenclador:
+    get:
+      tags: [Nomencladores]
+      operationId: searchNomenclador
+      summary: Nomencladores argentinos unificados.
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [NN_PMO, NBU, NHPGD, ANDIS, KINESIOLOGIA, SALUD_MENTAL]
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/vademecum:
+    get:
+      tags: [Nomencladores]
+      operationId: searchVademecum
+      summary: Vademécum comercial por troquel, código o monodroga.
+      parameters:
+        - name: troquel
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/medicines/identifiers/{system}/{code}:
+    get:
+      tags: [Nomencladores]
+      operationId: getMedicineByIdentifier
+      summary: Producto medicinal por identificador comercial.
+      parameters:
+        - name: system
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [troquel, alfabeta, kairos, gtin]
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/loinc:
+    get:
+      tags: [Terminologías]
+      operationId: searchLoinc
+      summary: Búsqueda en LOINC.
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/loinc/{code}:
+    get:
+      tags: [Terminologías]
+      operationId: getLoinc
+      summary: Detalle de un código LOINC.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[0-9]{1,7}-[0-9]$' }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/pmo/practicas:
+    get:
+      tags: [Nomencladores]
+      operationId: listPmoPractices
+      summary: Prácticas del Programa Médico Obligatorio.
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/pmo/practicas/{code}:
+    get:
+      tags: [Nomencladores]
+      operationId: getPmoPractice
+      summary: Detalle de una práctica PMO.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[0-9]{1,6}(?:\.[0-9]{1,2})?$' }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/pmo/medicamentos:
+    get:
+      tags: [Nomencladores]
+      operationId: listPmoMedicines
+      summary: Medicamentos incluidos en PMO.
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/pmo/normativa:
+    get:
+      tags: [Nomencladores]
+      operationId: listPmoRegulations
+      summary: Normativa asociada al PMO.
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/cie10/{codigo}:
+    get:
+      tags: [Terminologías]
+      operationId: getCie10
+      summary: Detalle de un código CIE-10.
+      parameters:
+        - $ref: '#/components/parameters/Language'
+        - name: codigo
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Z][0-9]{2}(?:\.[0-9A-Za-z]{1,4}|[0-9A-Za-z]{0,3})$' }
+          example: K02.1
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/anmat/{id}:
+    get:
+      tags: [Terminologías]
+      operationId: getAnmat
+      summary: Detalle de un medicamento ANMAT por identificador numérico.
+      parameters:
+        - $ref: '#/components/parameters/Language'
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 999999999999 }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/snomed/{sctid}:
+    get:
+      tags: [Terminologías]
+      operationId: getSnomed
+      summary: Detalle de un concepto SNOMED CT por SCTID.
+      parameters:
+        - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Sctid'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/concepts/search:
+    get:
+      tags: [Terminologías]
+      operationId: searchConceptsLegacy
+      summary: Buscador SNOMED CT del contrato anterior.
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Language'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/concepts/{id}:
+    get:
+      tags: [Terminologías]
+      operationId: getConceptLegacy
+      summary: Alias de `/v1/snomed/{sctid}`.
+      parameters:
+        - $ref: '#/components/parameters/Sctid'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/odontologia/snomed/{sctid}:
+    get:
+      tags: [Odontología]
+      operationId: getDentistryBySnomed
+      summary: Procedimientos y diagnósticos odontológicos por SCTID.
+      parameters:
+        - $ref: '#/components/parameters/Sctid'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/odontologia/diagnosticos:
+    get:
+      tags: [Odontología]
+      operationId: listDentalDiagnoses
+      summary: Diagnósticos DENTAR-DX vinculados a CIE-10 y SNOMED CT.
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /v1/odontologia/diagnosticos/{code}:
+    get:
+      tags: [Odontología]
+      operationId: getDentalDiagnosis
+      summary: Diagnóstico por código DENTAR-DX, CIE-10 o SCTID.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+          example: DNT-DX-000006
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/odontologia/{code}/diagnosticos:
+    get:
+      tags: [Odontología]
+      operationId: getClinicalJustifications
+      summary: Diagnósticos que justifican una prestación odontológica.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+          example: DNT-PR-000001
+      responses:
+        '200':
+          description: Justificaciones clínicas de auditoría.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          procedure:
+                            $ref: '#/components/schemas/DentalProcedure'
+                          clinical_justifications:
+                            type: array
+                            items: { type: object }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/{catalogo}/{id}:
+    get:
+      tags: [Terminologías]
+      operationId: getDomainItem
+      summary: Detalle genérico de un ítem de dominio de catálogo.
+      parameters:
+        - name: catalogo
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [laboratorio, vacunas, odontologia, prestaciones, programas, imagenes]
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 999999999999 }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: "Authorization: Bearer <API_KEY>"
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    Q:
+      name: q
+      in: query
+      schema: { type: string, maxLength: 200 }
+      description: Texto libre.
+    Domains:
+      name: domains
+      in: query
+      schema:
+        type: string
+        default: snomed,cie10,anmat
+      description: Dominios separados por coma, o `all`.
+    DomainPath:
+      name: domain
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [snomed, cie10, anmat, laboratorio, vacunas, odontologia, prestaciones, programas, imagenes, nomenclador, vademecum, loinc]
+    Language:
+      name: lang
+      in: query
+      schema: { type: string, default: es-AR }
+      description: Idioma solicitado; admite `es`, `es-AR`, `en`, `pt-BR` según resolvedor.
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      description: Máximo real 50 salvo `API_PAGE_LIMIT_MAX` (tope 100).
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, maximum: 5000, default: 0 }
+    Refsets:
+      name: refsets
+      in: query
+      schema: { type: string, maxLength: 200 }
+    CatalogCode:
+      name: catalog_code
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9-]+$' }
+      example: dentar-pr
+    Sctid:
+      name: sctid
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[0-9]{6,18}$' }
+      example: '22298006'
+
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [data, meta, request_id]
+      properties:
+        data: {}
+        meta: { type: object }
+        request_id:
+          type: string
+          format: uuid
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object }
+        request_id:
+          type: string
+          format: uuid
+    HealthEnvelope:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        service: { type: string, example: origen-salud-api }
+        version: { type: string }
+        time: { type: string, format: date-time }
+        checks:
+          type: object
+          properties:
+            database: { type: string, example: ok }
+        request_id: { type: string, format: uuid }
+    Domain:
+      type: object
+      properties:
+        code: { type: string, example: odontologia }
+        label: { type: string }
+        description: { type: string }
+        source: { type: string }
+        mode: { type: string, enum: [full, catalog] }
+        metadata: { type: object }
+    DomainMeta:
+      type: object
+      properties:
+        domains:
+          type: array
+          items: { type: string }
+        default_domains:
+          type: array
+          items: { type: string }
+          example: [snomed, cie10, anmat]
+    PaginationMeta:
+      type: object
+      properties:
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+        domains:
+          type: array
+          items: { type: string }
+    SearchResult:
+      type: object
+      properties:
+        id: { type: string }
+        catalog: { type: string }
+        code: { type: string }
+        term: { type: string }
+        domain: { type: string }
+        language: { type: string }
+        effective_language: { type: string }
+        score: { type: number }
+    DentalProcedure:
+      type: object
+      properties:
+        dentar_code:
+          type: string
+          example: DNT-PR-000001
+        name:
+          type: string
+          example: Evaluación oral integral - paciente nuevo o ya conocido
+        nomenclador_argentino: { type: string, example: '01.01' }
+        cdt_code: { type: string, example: D0150 }
+        category: { type: string, example: CAT-DIAG }
+
+  responses:
+    Success:
+      description: Respuesta correcta con envelope estándar.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessEnvelope'
+    BadRequest:
+      description: Parámetros inválidos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Unauthorized:
+      description: Falta o es inválida la API Key.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: Recurso inexistente.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    InternalError:
+      description: Error interno; el mensaje no expone detalles de la excepción.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ServiceUnavailable:
+      description: Base de datos no disponible.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'

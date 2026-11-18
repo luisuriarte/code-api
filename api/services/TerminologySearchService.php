@@ -894,9 +894,7 @@ final class TerminologySearchService
             $stmt->execute($params);
             $rows = $stmt->fetchAll();
         } catch (\PDOException $e) {
-            throw ApiException::internalError(
-                'El módulo DENTAR / diagnósticos aún no ha sido inicializado en la base de datos.'
-            );
+            throw ApiException::internalError();
         }
 
         $results = [];
@@ -1056,9 +1054,7 @@ final class TerminologySearchService
             ]);
             $rows = $stmt->fetchAll();
         } catch (\PDOException $e) {
-            throw ApiException::internalError(
-                'El módulo DENTAR / diagnósticos aún no ha sido inicializado en la base de datos.'
-            );
+            throw ApiException::internalError();
         }
 
         if (empty($rows)) {
@@ -1239,9 +1235,7 @@ final class TerminologySearchService
             $stmtDiag->execute([':sct' => $snomedId, ':language' => $language]);
             $diagnoses = $stmtDiag->fetchAll();
         } catch (\PDOException $e) {
-            throw ApiException::internalError(
-                'El módulo DENTAR / diagnósticos aún no ha sido inicializado en la base de datos.'
-            );
+            throw ApiException::internalError();
         }
 
         if (empty($procedures) && empty($diagnoses)) {
@@ -1373,9 +1367,7 @@ final class TerminologySearchService
             ]);
             $rows = $statement->fetchAll();
         } catch (\PDOException $e) {
-            throw ApiException::internalError(
-                'El módulo DENTAR / diagnósticos aún no ha sido inicializado en la base de datos.'
-            );
+            throw ApiException::internalError();
         }
 
         if (empty($rows)) {
@@ -1490,7 +1482,7 @@ final class TerminologySearchService
             $stmt->execute();
             $rows = $stmt->fetchAll();
         } catch (\PDOException $e) {
-            throw ApiException::internalError('Error al consultar nomencladores de Argentina.');
+            throw ApiException::internalError();
         }
 
         $results = [];
@@ -1614,7 +1606,7 @@ final class TerminologySearchService
             $stmt->execute();
             $rows = $stmt->fetchAll();
         } catch (\PDOException $e) {
-            throw ApiException::internalError('Error al consultar el vademécum comercial.');
+            throw ApiException::internalError();
         }
 
         $results = [];
@@ -1743,7 +1735,7 @@ final class TerminologySearchService
             $stmt->execute();
             $rows = $stmt->fetchAll();
         } catch (\PDOException $e) {
-            throw ApiException::internalError('Error al consultar el catálogo LOINC: ' . $e->getMessage());
+            throw ApiException::internalError();
         }
 
         $results = [];

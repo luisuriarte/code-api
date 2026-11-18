@@ -13,7 +13,7 @@ $footerProduct = [
 $footerCompany = [
     ['label' => $t('footer.company_about'), 'href' => I18n::localizedPath($locale, '/about')],
     ['label' => $t('footer.company_contact'), 'href' => I18n::localizedPath($locale, '/contact')],
-    ['label' => $t('nav.services'), 'href' => I18n::localizedPath($locale, '/cart')],
+    ['label' => $t('nav.services'), 'href' => I18n::localizedPath($locale, '/') . '#plataforma'],
 ];
 ?>
 <footer class="site-footer">

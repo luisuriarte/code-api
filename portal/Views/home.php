@@ -6,7 +6,6 @@ use OrigenSalud\Web\I18n;
 
 $browseUrl = I18n::localizedPath($locale, '/browse');
 $docsUrl = I18n::localizedPath($locale, '/docs');
-$cartUrl = I18n::localizedPath($locale, '/cart');
 ?>
 <section class="hero">
     <div class="container hero-grid">

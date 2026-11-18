@@ -8,11 +8,13 @@ prefijo de código, reglas de mapeo y ciclo de versiones:
 | --- | --- | --- | --- |
 | **DENTAR-PR** | Procedimientos y prestaciones | `DNT-PR-NNNNNN` | Nomenclador Argentino (obligatorio), ADA CDT 2025, SNOMED CT |
 | **DENTAR-DX** | Diagnósticos y condiciones bucomaxilofaciales | `DNT-DX-NNNNNN` | CIE-10 K00-K14 (obligatorio), SNOMED CT |
-| DENTAR-AN | Anatomía dental (segunda etapa) | `DNT-AN-NNNNNN` | SNOMED CT, FDI |
-| DENTAR-CL | Hallazgos clínicos (segunda etapa) | `DNT-CL-NNNNNN` | SNOMED CT |
+| **DENTAR-AN** | Anatomía dental | `DNT-AN-NNNNNN` | SNOMED AR RF2 (es-AR), versión `en` por trigger |
+| **DENTAR-CL** | Hallazgos clínicos | `DNT-CL-NNNNNN` | SNOMED AR RF2 (es-AR), versión `en` por trigger |
 
-`DENTAR-PR` y `DENTAR-DX` son los productos activos. `DENTAR-AN` y `DENTAR-CL`
-están planificados: no tienen códigos ni tablas propias todavía.
+Los cuatro productos están activos en `origen_codes`. `DENTAR-IN`,
+`DENTAR-PD` y `DENTAR-EQ` quedan **reservados**: no tienen códigos ni datos
+cargados. AN/CL no se cargan con `import_dentar_csv.php` (que solo acepta
+PR/DX), sino con el artefacto SQL propio documentado más abajo.
 
 La marca `DENTAR` no tiene códigos ni releases propias. En la API figura como
 catálogo de rol `family`, con `family_code = null`; los productos declaran
@@ -24,10 +26,14 @@ catálogo de rol `family`, con `family_code = null`; los productos declaran
 | --- | --- |
 | Registro de la familia | `sql/dentar_family.sql` → `dentar_catalog` |
 | Esquema editorial (`dentar_*`) | `sql/dentar_core_and_diagnosis.sql` |
-| Procedimientos cargados | **138** de los 800 del catálogo inicial (DENTAR-PR) |
-| Diagnósticos cargados | **38** (DENTAR-DX) |
-| Importador masivo | `tools/php/import_dentar_csv.php` |
-| Sincronización con la API de catálogos | `sql/sync_dentar_to_os.sql` (automática) |
+| Base correcta | `origen_codes` (`origen_salud` es la vieja y solo conserva restos aislados) |
+| Procedimientos cargados | **844** (DENTAR-PR) |
+| Diagnósticos cargados | **223** (DENTAR-DX) |
+| Anatomía cargada | **624** (DENTAR-AN) |
+| Hallazgos clínicos cargados | **218** (DENTAR-CL) |
+| Relaciones CDT | **333 filas / 303 pares / 15 tipos** en `os_catalog_relation` |
+| Importador masivo | `tools/php/import_dentar_csv.php` (solo PR/DX) |
+| Sincronización con la API de catálogos | `sql/sync_dentar_to_os.sql` (ejecutar con `psql -1`) |
 | API | `GET /v1/catalogs`, `GET /v1/catalogs/dentar-pr/items`, `GET /v1/catalogs/dentar-dx/items`, `GET /v1/odontologia/diagnosticos` |
 
 El seed del SQL no escala a 800 códigos: editar cientos de bloques de `INSERT` a
@@ -37,11 +43,26 @@ el importador, que es idempotente y valida códigos, categorías y mapeos.
 ## Orden de carga
 
 ```bash
-psql -d origen_salud -v ON_ERROR_STOP=1 -f sql/origen_catalog_engine.sql
-psql -d origen_salud -v ON_ERROR_STOP=1 -f sql/pmo.sql
-psql -d origen_salud -v ON_ERROR_STOP=1 -f sql/dentar_family.sql
-psql -d origen_salud -v ON_ERROR_STOP=1 -f sql/dentar_core_and_diagnosis.sql
+# Esquema base (solo en una instalación nueva)
+psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/origen_catalog_engine.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/pmo.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/dentar_family.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/dentar_core_and_diagnosis.sql
+
+# Carga real ya verificada de PR/DX (importador masivo) → sincronización
+psql -d origen_codes -v ON_ERROR_STOP=1 -1 -f sql/03_dentar/sync_dentar_to_os.sql
+
+# Carga real ya verificada de AN/CL y relaciones CDT
+psql -d origen_codes -v ON_ERROR_STOP=1 -f docs/dentar/generado/dentar-an-cl-propuerto.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -1 -f sql/03_dentar/sync_dentar_to_os.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f docs/dentar/generado/dentar-cdt-relaciones-propuerto.sql
 ```
+
+Orden final verificado: **AN/CL → `sync_dentar_to_os.sql` → relaciones CDT**.
+No ejecutar `Argentina_dental_cdt_codes_2025_postgres.corregido.sql` como carga
+final: el artefacto propuesto ya crea los sistemas, identificadores y relaciones
+con claves únicas corregidas. `sync_dentar_to_os.sql` elimina y reinserta
+mapeos; por eso debe correrse dentro de una única transacción (`-1`).
 
 `dentar_family.sql` crea el registro `dentar_catalog` y la función
 `dentar_catalog_id()`. El núcleo editorial exige ese registro y falla con un
@@ -69,10 +90,10 @@ importador reconoce las filas de ambos catálogos en un mismo archivo.
 | `definicion` | No | ambos | Definición. Default: el término. |
 | `short_definition` | No | ambos | Descripción abreviada (máx. 255 chars) para listados y resumidos. |
 | `global_period` | No | ambos | Período global de días (0 = ninguno, 10, 30, 90, NULL = no definido). |
-| `work_rvu` | No | ambos | Unidades relativas de trabajo profesional (referencia). |
-| `practice_expense_rvu` | No | ambos | Unidades relativas de gastos de práctica (referencia). |
-| `malpractice_rvu` | No | ambos | Unidades relativas de responsabilidad profesional (referencia). |
-| `total_rvu` | No | ambos | Total de unidades relativas (referencia). |
+| `work_rvu` | No | ambos | Columna heredada del CSV; el importador la escribe en `work_uvr`. **No hay valores UVR cargados todavía.** |
+| `practice_expense_rvu` | No | ambos | Columna heredada; destino `practice_expense_uvr`. |
+| `malpractice_rvu` | No | ambos | Columna heredada; destino `professional_liability_uvr`. |
+| `total_rvu` | No | ambos | Columna heredada; destino `total_uvr`, siempre calculado como suma de las tres anteriores. |
 | `estimated_payment` | No | ambos | Pago estimado de referencia (ARS, solo orientativo). |
 | `criterios_clinicos` | No | ambos | Criterios de uso o justificación clínica. |
 | `lay_terms` | No | ambos | Descripción comprensible para pacientes (resumida). |
@@ -92,6 +113,13 @@ importador reconoce las filas de ambos catálogos en un mismo archivo.
 | `cdt_2025` | No | DENTAR-PR | Código ADA CDT 2025 (ej. `D3310`). |
 | `cie10` | No | DENTAR-DX | Código CIE-10 K00-K14 (ej. `K02.1`). **Obligatorio para publicar.** |
 | `snomed_sctid` | No | ambos | SCTID del concepto en SNOMED CT Argentina. |
+
+> **UVR:** el modelo distingue valoración relativa y conversión monetaria. La
+> relación vigente es `total_uvr = work_uvr + practice_expense_uvr +
+> professional_liability_uvr`. El módulo está diseñado pero **sin datos
+> cargados**; no se publican valores, factores de conversión ni pagos estimados
+> como datos reales. No se asigna UVR a diagnósticos, productos ni insumos por
+> defecto.
 
 Plantillas de ejemplo con códigos reservados para pruebas:
 
@@ -128,11 +156,30 @@ El importador crea/actualiza, según el catálogo de cada fila:
 
 Todo corre en una transacción: si alguna fila falla, se revierte completo.
 
-Al final de esa misma transacción ejecuta `sql/sync_dentar_to_os.sql`, que
-proyecta cada producto a `os_catalog_item`, `os_catalog_item_version`,
+Al final de esa misma transacción ejecuta `sql/03_dentar/sync_dentar_to_os.sql`,
+que proyecta cada producto a `os_catalog_item`, `os_catalog_item_version`,
 `os_catalog_term`, `os_catalog_identifier` y `os_concept_mapping` — el modelo
 que consumen `GET /v1/catalogs/dentar-pr/items` y
 `GET /v1/catalogs/dentar-dx/items`.
+
+### Carga de AN/CL y relaciones CDT
+
+`import_dentar_csv.php` solo acepta `PR`/`DX`. AN y CL se cargan con
+`docs/dentar/generado/dentar-an-cl-propuerto.sql`, que respeta la fuente SNOMED
+AR RF2 y sus conversiones. Detalles y exclusiones están en
+[`RESUMEN_AN_CL.md`](generado/RESUMEN_AN_CL.md).
+
+- Los términos de AN/CL se publican en `es-AR` con el texto de la fuente. El
+  inglés se publica como versión `language_code='en'` mediante el trigger §4.2,
+  **no** como sinónimo dentro de `es-AR`.
+- Las relaciones CDT se cargan con
+  `docs/dentar/generado/dentar-cdt-relaciones-propuerto.sql`. `os_catalog_relation`
+  conserva los 15 tipos reales; `context_text` integra la clave única para no
+  perder las 333 filas reales (303 pares únicos).
+- `CatalogRepository::itemRelations()` consulta `os_catalog_relation` junto con
+  `os_concept_mapping`, por lo que la pestaña Relaciones de Browse muestra ambos
+  sentidos, el contexto literal y enlaces al concepto opuesto cuando la
+  resolución es inequívoca.
 
 Cada producto calcula su propia release:
 
@@ -168,20 +215,25 @@ terminar la carga SNOMED.
 6. **Comité editorial**: todo cambio de definición o mapeo genera una nueva
    `version_number` con `approval_status` (`draft` → `review` → `approved`).
 
-## Hoja de ruta hacia los 800 códigos
+## Estado de la hoja de ruta y pasos pendientes
 
-El objetivo de 800 procedimientos no se completa inventando códigos. El
-repositorio aporta la infraestructura; el contenido clínico lo aprueba el comité
-editorial.
+El objetivo inicial de 800 procedimientos se resolvió con fuentes auditadas
+(CDT 2025 y nomenclador argentino), no inventando códigos. El contenido clínico
+sigue siendo responsabilidad del comité editorial.
 
-| Fase | Trabajo | Salida verificable |
+| Fase | Estado | Salida verificable |
 | --- | --- | --- |
-| 0. Auditoría del seed | Revisar los 138 procedimientos y 38 diagnósticos existentes: definición, categoría, mapeos faltantes o dudosos. | Informe de cobertura por capítulo y lista de mapeos a corregir. |
-| 1. Candidatos | Relevar procedimientos faltantes desde ADA CDT 2025, nomenclador odontológico argentino y especialidades; diagnósticos faltantes desde CIE-10 K00-K14. | Planilla de candidatos sin código DENTAR asignado. |
-| 2. Priorización | Ordenar por frecuencia de uso, impacto arancelario y demanda de obras sociales / colegios. | Lotes de 50-100 códigos por capítulo. |
-| 3. Revisión clínica | El comité valida definición, criterios de auditoría, CIE-10 y equivalencia SNOMED CT / CDT. | Versiones `approved` en `dentar_concept_version` / `dentar_diagnosis_version`. |
-| 4. Carga y publicación | Importar cada lote con `--dry-run`, corregir errores, cargar y sincronizar `os_*`. | Release `DENTAR-PR-vN` / `DENTAR-DX-vN` publicada y medible. |
-| 5. Seguimiento | Informe mensual de adopción y de cobertura de la familia. | `docs/adopcion/informes/AAAA-MM.md`. |
+| 0. Auditoría del seed | Cerrada | 844 PR y 223 DX cargados y verificados en `origen_codes`. |
+| 1. Candidatos | Cerrada para la carga actual | Origen: `docs/dentar/generado/dentar-pr-cdt-2025.csv` y mapeos DX. |
+| 2. Priorización | Cerrada para la carga actual | Secuencia AN/CL → sync → relaciones CDT. |
+| 3. Revisión clínica | Parcial | AN/CL y CDT cargados con `review_status='reviewed'`; falta aprobación formal de D-01…D-41. |
+| 4. Carga y publicación | Cerrada para la carga actual | `os_catalog_identifier` con 805 identificadores `CDT-2025`; 333 relaciones navegables. |
+| 5. Gobernanza UVR | Pendiente | Definir responsable de aprobación y factores de conversión antes de cargar cualquier valor. |
+| 6. FHIR | Pendiente | Contrato documentado en `README-FHIR.md`, sin enrutamiento ni guardia de auth. |
+
+Las decisiones D-01…D-41 del documento de arquitectura están **pendientes de
+aprobación formal**: su publicación no debe interpretarse como aprobación
+organizativa.
 
 ## Verificación
 

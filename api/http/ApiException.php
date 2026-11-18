@@ -53,4 +53,13 @@ final class ApiException extends RuntimeException
             ['allow' => $allow]
         );
     }
+
+    public static function internalError(): self
+    {
+        return new self(
+            500,
+            'internal_error',
+            'Ocurrió un error interno. Intente nuevamente más tarde.'
+        );
+    }
 }

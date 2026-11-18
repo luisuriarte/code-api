@@ -3,6 +3,10 @@
 > **Servicio de Terminología Clínica como Servicio (TaaS - Terminology-as-a-Service)**  
 > Plataforma de interoperabilidad, catálogos médicos nacionales y ontología odontológica armonizada.
 
+> [!NOTE]
+> Especificación OpenAPI 3.1 de la API real: [`docs/api/openapi-3.1.yaml`](docs/api/openapi-3.1.yaml).
+> Cubre `/health` y las rutas `/v1/*` implementadas en `api/index.php`. No incluye `/fhir/*` porque aún no está implementado.
+
 ---
 
 ## 1. Información General y Acceso
@@ -169,8 +173,8 @@ curl -s -X GET "https://api.origen.ar/v1/domains" \
     }
   ],
   "meta": {
-    "domains": ["snomed", "cie10", "anmat", "laboratorio", "vacunas", "odontologia", "prestaciones", "programas", "imagenes"],
-    "default_domains": ["snomed", "cie10", "odontologia"]
+    "domains": ["snomed", "cie10", "anmat", "laboratorio", "vacunas", "odontologia", "prestaciones", "programas", "imagenes", "nomenclador", "vademecum", "loinc"],
+    "default_domains": ["snomed", "cie10", "anmat"]
   },
   "request_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
 }
@@ -284,9 +288,9 @@ Permite buscar simultáneamente a través de múltiples vocabularios clínicos u
 | Parámetro | Tipo | Defecto | Descripción |
 |---|---|---|---|
 | `q` | `string` | **Requerido** | Término, código exacto o parte del nombre a buscar. |
-| `domains` | `string` | `default` | Dominios separados por coma: `snomed,cie10,odontologia`. |
+| `domains` | `string` | `snomed,cie10,anmat` | Dominios separados por coma; `all` incluye todos los dominios listados en `/v1/domains`. |
 | `lang` | `string` | `es` | Idioma de las descripciones: `es` o `en`. |
-| `limit` | `int` | `20` | Cantidad de resultados por página (máx. `100`). |
+| `limit` | `int` | `20` | Cantidad de resultados por página (máx. `50` por defecto; `API_PAGE_LIMIT_MAX` puede subirlo hasta `100`). |
 | `offset` | `int` | `0` | Desplazamiento para paginación. |
 | `refsets` | `string` | `null` | Filtrado por RefSets de SNOMED CT (separados por coma). |
 | `cie10_type`| `string` | `null` | Filtra CIE-10 por tipo: `4_caracteres`, `3_caracteres`, etc. |
@@ -308,15 +312,16 @@ Atajo directo para buscar exclusivamente dentro de un dominio específico.
 ## 5. Módulo Odontológico Armonizado (DENTAR-PR / DENTAR-DX / CDT / CIE-10)
 
 El módulo odontológico de Origen Salud unifica:
-1. **DENTAR-PR:** procedimientos con identificadores permanentes (`DNT-PR-000001` a `DNT-PR-000138`, en camino a 800).
-2. **DENTAR-DX:** diagnósticos con identificadores permanentes (`DNT-DX-000001` a `DNT-DX-000038`).
-3. **ADA CDT 2025:** estándar internacional de la Asociación Dental Americana (12 categorías, ej. `D0150`, `D2140`, `D3310`).
-4. **Nomenclador Odontológico Argentino:** 11 capítulos de obras sociales y medicina prepaga (`01.01` a `11.02`).
-5. **SNOMED CT:** conceptos clínicos de procedimientos odontológicos y diagnósticos bucales.
-6. **CIE-10 (K00–K14):** diagnósticos bucomaxilofaciales y justificación clínica de auditoría.
+1. **DENTAR-PR:** 844 procedimientos con identificadores permanentes `DNT-PR-NNNNNN` (cargados en `origen_codes`).
+2. **DENTAR-DX:** 223 diagnósticos con identificadores permanentes `DNT-DX-NNNNNN`.
+3. **DENTAR-AN / DENTAR-CL:** 624 y 218 conceptos derivados de SNOMED AR RF2. Los términos publicados en español son los de la fuente; la versión `language_code='en'` se genera por trigger editorial (§4.2), no como sinónimo dentro de `es-AR`.
+4. **ADA CDT 2025:** estándar internacional de la Asociación Dental Americana (ej. `D0150`, `D2140`, `D3310`). Las 333 relaciones reales conservan sus 15 tipos en `os_catalog_relation` y son navegables desde Browse.
+5. **Nomenclador Odontológico Argentino:** 11 capítulos de obras sociales y medicina prepaga (`01.01` a `11.02`).
+6. **SNOMED CT / CIE-10 (K00–K14):** conceptos clínicos y justificación clínica de auditoría.
 
 Cada producto tiene su propio prefijo, reglas de mapeo y ciclo de releases. La
-marca `dentar` sólo agrupa la familia en `GET /v1/catalogs`.
+marca `dentar` sólo agrupa la familia en `GET /v1/catalogs`. `DENTAR-IN`,
+`DENTAR-PD` y `DENTAR-EQ` están **reservados**, sin datos cargados.
 
 ---
 
@@ -471,7 +476,7 @@ Devuelve los diagnósticos médicos y justificaciones que fundamentan una práct
 ##### Identificadores admitidos:
 - **Código Nomenclador Argentino:** ej. `01.01`, `02.01`, `03.01`.
 - **Código ADA CDT 2025:** ej. `D0150`, `D2140`, `D3310`.
-- **Código DENTAR:** ej. `DNT-000001`, `DNT-000007`.
+- **Código DENTAR-PR:** ej. `DNT-PR-000001`, `DNT-PR-000007` (formato `DNT-PR-NNNNNN`).
 - **SCTID SNOMED-CT de la práctica:** ej. `424759004`.
 - **ID numérico de la tabla `odontologia_prestaciones`:** ej. `1`.
 
@@ -485,15 +490,15 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/02.01/diagnosticos" \
 {
   "data": {
     "procedure": {
-      "dentar_code": "DNT-000007",
-      "name": "Restauración con amalgama - cavidad simple",
-      "nomenclador_argentino": "02.01",
-      "cdt_code": "D2140",
-      "category": "Operatoria Dental y Restauradora"
+      "dentar_code": "DNT-PR-000001",
+      "name": "Evaluación oral integral - paciente nuevo o ya conocido",
+      "nomenclador_argentino": "01.01",
+      "cdt_code": "D0150",
+      "category": "CAT-DIAG"
     },
     "clinical_justifications": [
       {
-        "dentar_diagnosis_code": "DNT-DX-0006",
+        "dentar_diagnosis_code": "DNT-DX-000006",
         "name": "Caries de la dentina (cavitación simple, compuesta o compleja)",
         "cie10": {
           "code": "K02.1",
@@ -562,7 +567,7 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/snomed/80967001" \
         }
       },
       {
-        "dentar_diagnosis_code": "DNT-DX-0006",
+        "dentar_diagnosis_code": "DNT-DX-000006",
         "clinical_name": "Caries de la dentina (cavitación simple, compuesta o compleja)",
         "cie10": {
           "code": "K02.1",

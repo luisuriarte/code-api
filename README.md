@@ -4,12 +4,25 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 
 | Frente | Dominio | Contenido |
 | --- | --- | --- |
-| Portal institucional | `med.origen.ar` | Sitio bilingüe ES/EN con selector de idioma persistente. |
-| API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, familia odontológica DENTAR (DENTAR-PR / DENTAR-DX, ADA CDT 2025), prestaciones, programas e imágenes. |
+| Portal institucional | `med.origen.ar` | Sitio trilingüe con locales canónicos `es-AR`, `en` y `pt-BR` (alias de entrada `es` y `pt`), selector persistente y URLs `/{locale}/...`. |
+| API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, familia odontológica DENTAR (DENTAR-PR / DENTAR-DX / DENTAR-AN / DENTAR-CL, ADA CDT 2025), prestaciones, programas e imágenes. |
 
 ### Documentación de Acceso e Interoperabilidad
-- 📖 [Documentación de la API REST (v1)](README-API.md) — Autenticación, endpoints unificados, catálogos nacionales y familia odontológica DENTAR-PR / DENTAR-DX (CDT / CIE-10).
-- 🏥 [Guía de Interoperabilidad HL7® FHIR® R4](README-FHIR.md) — Terminología FHIR R4 (`CodeSystem`, `ValueSet`, `ConceptMap`, `$lookup`, `$expand`, `$translate`) y modelado clínico (`Procedure`, `Condition`, `Claim`).
+- 📖 [Documentación de la API REST (v1)](README-API.md) — Autenticación, endpoints unificados, catálogos nacionales y familia odontológica DENTAR (CDT / CIE-10 / SNOMED AR). Especificación: [`docs/api/openapi-3.1.yaml`](docs/api/openapi-3.1.yaml).
+- 🏥 [Guía de Interoperabilidad HL7® FHIR® R4](README-FHIR.md) — **contrato propuesto, aún no implementado**: `CodeSystem`, `ValueSet`, `ConceptMap`, `$lookup`, `$expand`, `$translate` y modelado clínico (`Procedure`, `Condition`, `Claim`).
+- 🏗️ [Propuesta de arquitectura de catálogos sanitarios](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md) — diagnóstico, modelo objetivo, plan por etapas y decisiones pendientes.
+
+### Estado real de DENTAR en `origen_codes`
+
+| Catálogo | Ítems | Observaciones |
+| --- | ---: | --- |
+| `DENTAR-PR` | 844 | Procedimientos; códigos `DNT-PR-NNNNNN`. |
+| `DENTAR-DX` | 223 | Diagnósticos; códigos `DNT-DX-NNNNNN`. |
+| `DENTAR-AN` | 624 | Términos SNOMED AR RF2 en español; versión `en` publicada por trigger. |
+| `DENTAR-CL` | 218 | Términos SNOMED AR RF2 en español; versión `en` publicada por trigger. |
+| Relaciones CDT | 333 filas / 303 pares / 15 tipos | En `os_catalog_relation`, navegables desde Browse. |
+
+`DENTAR-IN`, `DENTAR-PD` y `DENTAR-EQ` quedan **reservados**, sin datos cargados. El módulo UVR está diseñado pero **sin valores cargados**: no se publican conversaciones monetarias ni UVR inventados.
 
 ## Stack
 
