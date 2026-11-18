@@ -6,12 +6,23 @@ $catalogCode = is_array($item) && isset($item['catalog_code']) ? (string) $item[
 $isDentar = in_array($catalogCode, ['dentar-pr', 'dentar-dx'], true);
 $code = is_array($item) ? (string) ($item['code'] ?? '') : '';
 $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
+$domainLabel = is_array($item) ? (string) ($item['subtitle'] ?? $item['domain'] ?? '') : '';
 ?>
 <div class="browse-detail" data-focus="<?= e($focus) ?>">
-    <a class="back-link" href="<?= e($backUrl) ?>">← <?= e($t('browse.back_results')) ?></a>
+    <div class="browse-panel__crumb">
+        <a class="browse-crumb__back" href="<?= e($backUrl) ?>">← <?= e($t('browse.back_results')) ?></a>
+        <?php if ($item !== null): ?>
+            <span aria-hidden="true">›</span>
+            <span><?= e($domainLabel !== '' ? $domainLabel : $t('browse.detail_title')) ?></span>
+            <?php if ($code !== ''): ?>
+                <span aria-hidden="true">›</span>
+                <span class="mono"><?= e($code) ?></span>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
 
     <?php if ($item === null): ?>
-        <div class="browse-empty">
+        <div class="browse-empty browse-panel__empty">
             <span class="eyebrow"><?= e($t('browse.detail_title')) ?></span>
             <h2><?= e($t('browse.select_result')) ?></h2>
             <p><?= e($t('browse.select_result_hint')) ?></p>
@@ -30,13 +41,36 @@ $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
             </div>
         <?php endif; ?>
 
-        <div class="browse-detail__head">
+        <div class="browse-panel__head">
             <span class="eyebrow"><?= e($t('browse.detail_title')) ?></span>
             <h2 class="browse-detail__title" data-detail-title><?= e($term !== '' ? $term : ($code !== '' ? $code : $focus)) ?></h2>
             <?php if ($code !== ''): ?>
-                <span class="code-pill browse-detail__code"><?= e($code) ?></span>
+                <span class="browse-detail__code mono"><?= e($code) ?></span>
+            <?php endif; ?>
+            <?php if ($domainLabel !== ''): ?>
+                <p class="browse-panel__intro"><?= e($domainLabel) ?></p>
             <?php endif; ?>
         </div>
+
+        <dl class="browse-facts">
+            <?php
+            $facts = [
+                ['browse.catalog', $item['catalog_code'] ?? null],
+                ['browse.domain', $item['domain'] ?? null],
+                ['browse.approval_state', $item['approval_state'] ?? null],
+                ['browse.concept_type', $item['kind'] ?? null],
+                ['browse.concept_id', $item['concept_id'] ?? null],
+                ['browse.effective_language', $item['effective_language'] ?? null],
+            ];
+            ?>
+            <?php foreach ($facts as $fact): ?>
+                <?php if (!$hasValue($fact[1])) { continue; } ?>
+                <div class="browse-fact">
+                    <dt><?= e($t($fact[0])) ?></dt>
+                    <dd><?= e($formatValue($fact[1])) ?></dd>
+                </div>
+            <?php endforeach; ?>
+        </dl>
 
         <?php if (!empty($item['fallback_applied']) || !empty($item['untranslated'])): ?>
             <div class="alert alert-warning" role="status">
@@ -68,6 +102,8 @@ $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
             </a>
         </div>
 
+        <p class="browse-scope"><strong><?= e($t('browse.scope_title')) ?></strong> <?= e($t('browse.scope_notice')) ?></p>
+
         <?php if (count($compareItems) > 1): ?>
             <?php require __DIR__ . '/compare.php'; ?>
         <?php endif; ?>
@@ -92,16 +128,32 @@ $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
             <?php endforeach; ?>
         </div>
 
-        <?php foreach ($tabs as $tabKey => $labelKey): ?>
-            <?php $isActive = $tabKey === $activeTab; ?>
-            <div class="browse-tabpanel"
-                 role="tabpanel"
-                 id="browse-panel-<?= e($tabKey) ?>"
-                 aria-labelledby="browse-tab-<?= e($tabKey) ?>"
-                 data-tab-panel="<?= e($tabKey) ?>"
-                 <?= $isActive ? '' : 'hidden' ?>>
-                <?php require __DIR__ . '/detail/' . $tabKey . '.php'; ?>
-            </div>
-        <?php endforeach; ?>
+        <div class="browse-panel__scroll">
+            <?php foreach ($tabs as $tabKey => $labelKey): ?>
+                <?php $isActive = $tabKey === $activeTab; ?>
+                <div class="browse-tabpanel"
+                     role="tabpanel"
+                     id="browse-panel-<?= e($tabKey) ?>"
+                     aria-labelledby="browse-tab-<?= e($tabKey) ?>"
+                     data-tab-panel="<?= e($tabKey) ?>"
+                     <?= $isActive ? '' : 'hidden' ?>>
+                    <?php require __DIR__ . '/detail/' . $tabKey . '.php'; ?>
+                    <?php if ($tabKey === 'concept'): ?>
+                        <div class="browse-clinical">
+                            <?php require __DIR__ . '/detail/clinical.php'; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($tabKey === 'values'): ?>
+                        <div class="browse-uvr-note">
+                            <p class="form-note"><?= e($t('browse.uvr_formula')) ?></p>
+                            <?php if (empty($sections['values'])): ?>
+                                <p class="browse-empty"><?= e($t('browse.uvr_empty')) ?></p>
+                            <?php endif; ?>
+                            <p class="browse-scope"><strong><?= e($t('browse.uvr_scope_title')) ?></strong> <?= e($t('browse.uvr_scope_notice')) ?></p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
     <?php endif; ?>
 </div>

@@ -373,6 +373,51 @@
         });
     }
 
+    function isMobileView() {
+        if (typeof window.matchMedia === 'function') {
+            return window.matchMedia('(max-width: 900px)').matches;
+        }
+
+        return window.innerWidth <= 900;
+    }
+
+    function applyRelationFilters(root) {
+        var detail = root.querySelector('.browse-detail');
+        var selects;
+        var type = '';
+        var system = '';
+
+        if (!detail) {
+            return;
+        }
+
+        selects = Array.prototype.slice.call(detail.querySelectorAll('[data-rel-filter]'));
+        if (!selects.length) {
+            return;
+        }
+
+        selects.forEach(function (select) {
+            if (select.getAttribute('data-rel-filter') === 'type') {
+                type = select.value;
+            } else if (select.getAttribute('data-rel-filter') === 'system') {
+                system = select.value;
+            }
+        });
+
+        function visible(node) {
+            return (!type || node.getAttribute('data-rel-type') === type)
+                && (!system || node.getAttribute('data-rel-system') === system);
+        }
+
+        Array.prototype.forEach.call(detail.querySelectorAll('.browse-rel-row'), function (row) {
+            row.hidden = !visible(row);
+        });
+
+        Array.prototype.forEach.call(detail.querySelectorAll('.browse-rel-node'), function (node) {
+            node.hidden = !visible(node);
+        });
+    }
+
     function announce(root, text) {
         var status = root.querySelector('[data-live-status]');
 
@@ -424,6 +469,11 @@
             active = selected
                 ? selected.getAttribute('data-tab')
                 : (tabs[0] ? tabs[0].getAttribute('data-tab') : '');
+        }
+
+        // Una URL antigua puede pedir una pestaña consolidada (p. ej. clinical).
+        if (!tabs.some(function (tab) { return tab.getAttribute('data-tab') === active; })) {
+            active = tabs[0] ? tabs[0].getAttribute('data-tab') : '';
         }
 
         tabs.forEach(function (tab) {
@@ -515,17 +565,33 @@
 
             syncTabs(root, fragmentUrl);
             syncRelView(root, fragmentUrl);
-            setMobileView(root, 'detail');
+            applyRelationFilters(root);
+
+            if (settings.focusTab) {
+                Array.prototype.forEach.call(root.querySelectorAll('[data-tab]'), function (tab) {
+                    if (tab.getAttribute('data-tab') === settings.focusTab) {
+                        tab.focus();
+                    }
+                });
+            }
+
+            // En escritorio ambas columnas están visibles; forzar la vista
+            // móvil aquí ocultaría los resultados tras cada consulta.
+            if (isMobileView()) {
+                setMobileView(root, 'detail');
+            }
 
             if (settings.push !== false) {
                 window.history.pushState({}, '', fallback);
             }
 
-            if (settings.focusPane !== false) {
+            if (settings.focusPane !== false && !settings.focusTab) {
                 focusPane(root);
             }
 
-            announce(root, message(root, settings.messageKey || 'updated', 'Ficha actualizada'));
+            if (!settings.silent) {
+                announce(root, message(root, settings.messageKey || 'updated', 'Ficha actualizada'));
+            }
         }).catch(function () {
             window.location.assign(fallback);
         });
@@ -654,6 +720,7 @@
 
         requestFragment(root, fragmentUrl, stableUrl, {
             focus: focus,
+            focusTab: link.getAttribute('data-tab') || '',
             messageKey: 'view'
         });
     }
@@ -725,6 +792,14 @@
         }).join('&');
     }
 
+    function signatureFromUrl(value) {
+        try {
+            return resultsSignature(parseUrl(value).searchParams);
+        } catch (err) {
+            return resultsSignature(new URLSearchParams());
+        }
+    }
+
     function searchUrls(form) {
         var params = new URLSearchParams();
         var current = new URLSearchParams(window.location.search);
@@ -776,6 +851,24 @@
         return serializeLike(url, parsed);
     }
 
+    function syncDomainForm(form, code) {
+        if (code !== 'odontologia') {
+            Array.prototype.forEach.call(form.querySelectorAll('input[name="catalog[]"]'), function (input) {
+                input.checked = false;
+            });
+        }
+    }
+
+    function clearFocusFragment(source) {
+        var parsed = parseUrl(source);
+
+        parsed.searchParams.delete('focus');
+        parsed.searchParams.delete('fragment');
+        parsed.searchParams.set('fragment', 'detail');
+
+        return serializeLike(source, parsed);
+    }
+
     function fetchResults(root, fragmentUrl, stableUrl, push) {
         if (typeof window.fetch !== 'function') {
             if (stableUrl) {
@@ -797,10 +890,12 @@
             resultsPane.innerHTML = html;
             resultsPane.removeAttribute('aria-busy');
             updateSelection(root, root.dataset.focus);
-            root.__browseResultsSignature = resultsSignature(new URLSearchParams(window.location.search));
             if (push && stableUrl) {
                 window.history.pushState({}, '', stableUrl);
             }
+            root.__browseResultsSignature = stableUrl
+                ? signatureFromUrl(stableUrl)
+                : resultsSignature();
             announce(root, message(root, 'results-updated', 'Resultados actualizados.'));
         }).catch(function () {
             if (pane) {
@@ -810,23 +905,37 @@
         });
     }
 
+    function replaceResults(root, stableUrl, fragmentUrl, push) {
+        if (root.dataset.focus) {
+            requestFragment(root, clearFocusFragment(stableUrl), stableUrl, {
+                focus: '',
+                push: false,
+                focusPane: false,
+                silent: true,
+                messageKey: 'restored'
+            });
+        }
+
+        fetchResults(root, fragmentUrl, stableUrl, push);
+    }
+
     function appendResults(root, fragmentUrl, link) {
         var pane = root.querySelector('[data-pane="results"]');
         var list;
         var doc;
         var nextLoad;
-        var currentLoad;
+        var currentFoot;
+        var nextFoot;
+        var stableUrl = link ? (link.getAttribute('href') || fragmentUrl) : fragmentUrl;
 
         if (typeof window.fetch !== 'function' || typeof window.DOMParser !== 'function') {
-            if (link && link.getAttribute('href')) {
-                window.location.assign(link.getAttribute('href'));
-            }
+            window.location.assign(stableUrl);
             return;
         }
 
         list = pane ? pane.querySelector('.browse-results--explorer') : null;
         if (!pane || !list) {
-            window.location.assign(link ? (link.getAttribute('href') || fragmentUrl) : fragmentUrl);
+            window.location.assign(stableUrl);
             return;
         }
 
@@ -840,20 +949,21 @@
                 }
             );
 
-            currentLoad = pane.querySelector('[data-load-more]');
             nextLoad = doc.querySelector('[data-load-more]');
-            if (currentLoad && currentLoad.parentNode) {
-                if (nextLoad) {
-                    currentLoad.parentNode.replaceChild(document.importNode(nextLoad, true), currentLoad);
-                } else {
-                    currentLoad.parentNode.removeChild(currentLoad);
-                }
+            currentFoot = pane.querySelector('.browse-results-foot');
+            nextFoot = doc.querySelector('.browse-results-foot');
+            if (currentFoot && currentFoot.parentNode && nextFoot) {
+                currentFoot.parentNode.replaceChild(document.importNode(nextFoot, true), currentFoot);
             }
 
             pane.removeAttribute('aria-busy');
             updateSelection(root, root.dataset.focus);
+            if (typeof window.history.pushState === 'function') {
+                window.history.pushState({}, '', stableUrl);
+            }
+            root.__browseResultsSignature = signatureFromUrl(stableUrl);
             announce(root, message(root, 'results-updated', 'Resultados actualizados.'));
-            if (nextLoad && currentLoad && currentLoad.parentNode) {
+            if (nextLoad) {
                 var replacement = pane.querySelector('[data-load-more]');
                 if (replacement && typeof replacement.focus === 'function') {
                     replacement.focus();
@@ -914,10 +1024,19 @@
                     if (!pane) {
                         return;
                     }
+                    if (root.dataset.focus) {
+                        requestFragment(root, clearFocusFragment(urls.stable), urls.stable, {
+                            focus: '',
+                            push: false,
+                            focusPane: false,
+                            silent: true,
+                            messageKey: 'restored'
+                        });
+                    }
                     pane.innerHTML = html;
                     updateSelection(root, root.dataset.focus);
-                    root.__browseResultsSignature = urls.signature;
                     window.history.pushState({}, '', urls.stable);
+                    root.__browseResultsSignature = urls.signature;
                     announce(root, message(root, 'results-updated', 'Resultados actualizados.'));
                     controller = null;
                 }).catch(function (error) {
@@ -990,6 +1109,9 @@
 
             root.__browseExplorerReady = true;
             initialFocus = root.dataset.focus || '';
+            if (root.__browseResultsSignature === undefined) {
+                root.__browseResultsSignature = signatureFromUrl(window.location.href);
+            }
 
             setFocus(root, initialFocus, root.querySelector('.browse-detail'));
             updateSelection(root, initialFocus);
@@ -1001,13 +1123,96 @@
             if (initialParams.has('rel_view')) {
                 syncRelView(root, window.location.href);
             }
+            applyRelationFilters(root);
 
-            var form = document.querySelector('form.browse-form');
+            var form = root.querySelector('form.browse-form');
             if (form) {
                 initReactiveSearch(root, form);
+
+                form.addEventListener('change', function (event) {
+                    var target = event.target;
+                    var urls;
+
+                    if (!target || !target.name || form.contains(target) === false) {
+                        return;
+                    }
+
+                    if (target.name === 'domain') {
+                        syncDomainForm(form, target.value);
+                    }
+
+                    if (RESULT_PARAMS.indexOf(target.name) === -1 && target.name !== 'catalog[]') {
+                        return;
+                    }
+
+                    urls = searchUrls(form);
+                    if (urls.signature === root.__browseResultsSignature) {
+                        return;
+                    }
+
+                    replaceResults(root, urls.stable, urls.fragment, true);
+                });
             }
 
+            root.addEventListener('change', function (event) {
+                var target = event.target;
+
+                if (target && target.hasAttribute && target.hasAttribute('data-rel-filter')) {
+                    applyRelationFilters(root);
+                }
+            });
+
+            root.addEventListener('keydown', function (event) {
+                var tab;
+                var tabs;
+                var index;
+                var next;
+                var mobileButton;
+                var mobileButtons;
+
+                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight'
+                    && event.key !== 'Home' && event.key !== 'End') {
+                    return;
+                }
+
+                tab = closestFromEvent(event, '[role="tab"][data-tab]', root);
+                if (tab) {
+                    tabs = Array.prototype.slice.call(tab.closest('.browse-tabs').querySelectorAll('[role="tab"][data-tab]'));
+                    index = tabs.indexOf(tab);
+                    if (event.key === 'Home') {
+                        next = 0;
+                    } else if (event.key === 'End') {
+                        next = tabs.length - 1;
+                    } else {
+                        next = index + (event.key === 'ArrowRight' ? 1 : -1);
+                    }
+                    if (next >= 0 && next < tabs.length && tabs[next] !== tab) {
+                        event.preventDefault();
+                        onFragmentLink(root, tabs[next]);
+                    }
+                    return;
+                }
+
+                mobileButton = closestFromEvent(event, '[data-mobile-view-target]', root);
+                if (mobileButton) {
+                    mobileButtons = Array.prototype.slice.call(
+                        mobileButton.parentNode.querySelectorAll('[data-mobile-view-target]')
+                    );
+                    index = mobileButtons.indexOf(mobileButton);
+                    next = event.key === 'Home' ? 0 : (event.key === 'End' ? mobileButtons.length - 1 : index + (event.key === 'ArrowRight' ? 1 : -1));
+                    if (next >= 0 && next < mobileButtons.length) {
+                        event.preventDefault();
+                        setMobileView(root, mobileButtons[next].getAttribute('data-mobile-view-target'));
+                        mobileButtons[next].focus();
+                    }
+                }
+            });
+
             root.addEventListener('click', function (event) {
+                var domainLink;
+                var domainCode;
+                var domainSelect;
+                var stableUrl;
                 var mobileButton;
                 var copyButton;
                 var copyRecordButton;
@@ -1018,6 +1223,25 @@
                 var diagramLink;
 
                 if (!isPlainClick(event)) {
+                    return;
+                }
+
+                domainLink = closestFromEvent(event, '[data-domain-url][data-domain-code]', root);
+                if (domainLink) {
+                    event.preventDefault();
+                    domainCode = domainLink.getAttribute('data-domain-code') || '';
+                    stableUrl = domainLink.getAttribute('data-domain-url') || domainLink.getAttribute('href') || '';
+                    domainSelect = form ? form.querySelector('select[name="domain"]') : null;
+
+                    if (domainSelect) {
+                        domainSelect.value = domainCode;
+                    }
+                    if (form) {
+                        syncDomainForm(form, domainCode);
+                    }
+                    if (stableUrl !== '') {
+                        replaceResults(root, stableUrl, resultsFragmentFromUrl(stableUrl), true);
+                    }
                     return;
                 }
 

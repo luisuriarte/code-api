@@ -3,6 +3,13 @@
 declare(strict_types=1);
 
 $clinical = is_array($sections['clinical'] ?? null) ? $sections['clinical'] : [];
+$concept = is_array($sections['concept'] ?? null) ? $sections['concept'] : [];
+$alreadyInConcept = [];
+foreach (['definition', 'short_definition'] as $conceptField) {
+    if ($hasValue($concept[$conceptField] ?? null)) {
+        $alreadyInConcept[$conceptField] = true;
+    }
+}
 $clinicalFields = [
     'clinical_criteria' => 'browse.clinical_criteria',
     'clinical_scope' => 'browse.clinical_scope',
@@ -17,6 +24,9 @@ $rendered = 0;
     <?php foreach ($clinicalFields as $field => $labelKey): ?>
         <?php
         $entry = $clinical[$field] ?? null;
+        if (isset($alreadyInConcept[$field])) {
+            continue;
+        }
         if (!is_array($entry) || !$hasValue($entry['value'] ?? null)) {
             continue;
         }

@@ -5,34 +5,38 @@ declare(strict_types=1);
 $items = is_array($result['items'] ?? null) ? $result['items'] : [];
 $page = (int) ($result['page'] ?? 1);
 $pages = max(1, (int) ($result['pages'] ?? 1));
+$hasMore = !empty($result['has_more']);
 $error = is_string($result['error'] ?? null) ? (string) $result['error'] : '';
+$countLabel = $result['total'] === 1
+    ? $t('browse.result_count_one')
+    : $t('browse.result_count', ['%count%' => $result['total']]);
 ?>
 <div class="browse-results-panel">
-    <div class="browse-pane-head">
-        <h2><?= e($t('browse.results_panel')) ?></h2>
+    <div class="browse-pane-head browse-results-panel__head">
+        <h2><?= e($t('browse.results_title')) ?></h2>
         <?php if ($result['ok'] && $items !== []): ?>
-            <span class="results-count">
-                <?= e($result['total'] === 1
-                    ? $t('browse.result_count_one')
-                    : $t('browse.result_count', ['%count%' => $result['total']])) ?>
-            </span>
+            <span class="results-count"><?= e($countLabel) ?></span>
         <?php endif; ?>
     </div>
 
-    <?php if (!$result['ok']): ?>
-        <div class="alert alert-warning" role="status">
-            <p><?= e($t('browse.' . ($error !== '' ? $error : 'error_query'))) ?></p>
-        </div>
-    <?php elseif ($query === ''): ?>
-        <div class="alert alert-warning" role="status">
-            <p><?= e($t('browse.empty_query')) ?></p>
-        </div>
-    <?php elseif ($items === []): ?>
-        <div class="alert alert-warning" role="status">
-            <p><?= e($t('browse.no_results')) ?></p>
+    <p class="browse-results-panel__state" data-results-state>
+        <?php if (!$result['ok']): ?>
+            <?= e($t('browse.' . ($error !== '' ? $error : 'error_query'))) ?>
+        <?php elseif ($query === ''): ?>
+            <?= e($t('browse.empty_query')) ?>
+        <?php else: ?>
+            <?= e($t('browse.state_query', ['%query%' => $query])) ?>
+        <?php endif; ?>
+    </p>
+
+    <?php if (!$result['ok'] || $query === '' || $items === []): ?>
+        <div class="browse-empty" role="status">
+            <p><?= e(!$result['ok']
+                ? $t('browse.' . ($error !== '' ? $error : 'error_query'))
+                : ($query === '' ? $t('browse.empty_query') : $t('browse.no_results'))) ?></p>
         </div>
     <?php else: ?>
-        <ul class="browse-results browse-results--explorer">
+        <ul class="browse-results browse-results--explorer browse-result-list">
             <?php foreach ($items as $entry): ?>
                 <?php
                 $key = (string) ($entry['id'] ?? '');
@@ -42,30 +46,36 @@ $error = is_string($result['error'] ?? null) ? (string) $result['error'] : '';
                 $code = (string) ($entry['code'] ?? '');
                 $term = (string) ($entry['term'] ?? '');
                 $itemDomain = (string) ($entry['domain'] ?? '');
+                $catalogCode = (string) ($entry['catalog_code'] ?? '');
+                $kind = (string) ($entry['kind'] ?? '');
                 $effective = (string) ($entry['effective_language'] ?? '');
                 $selected = $key === $selectedKey;
                 $href = $stableItemUrl($key);
                 $focusHref = $fragmentUrl($key);
                 $compareHref = $compareUrl($key);
+                $matchType = (string) ($entry['match_type'] ?? '');
+                $relationCount = max(0, (int) ($entry['relation_count'] ?? 0));
                 ?>
-                <li class="browse-result browse-result--selectable<?= $selected ? ' is-selected' : '' ?>"
+                <li class="browse-result browse-result--selectable browse-result-row<?= $selected ? ' is-selected' : '' ?>"
                     data-result-key="<?= e($key) ?>">
-                    <a class="browse-result-link<?= $selected ? ' is-selected' : '' ?>"
+                    <a class="browse-result-link browse-result-row__link<?= $selected ? ' is-selected' : '' ?>"
                        href="<?= e($href) ?>"
                        data-focus-url="<?= e($focusHref) ?>"
                        data-result-key="<?= e($key) ?>"
                        <?= $selected ? 'aria-current="true"' : '' ?>>
-                        <span class="browse-result-head">
-                            <strong><?= e($term !== '' ? $term : $code) ?></strong>
-                            <?php if ($code !== ''): ?>
-                                <span class="code-pill"><?= e($code) ?></span>
-                            <?php endif; ?>
+                        <span class="browse-result-row__top">
+                            <span class="browse-result-row__code"><?= e($code) ?></span>
+                            <span class="browse-result-row__term"><?= e($term !== '' ? $term : $code) ?></span>
                         </span>
-                        <span class="browse-result-meta">
-                            <?php
-                            $matchType = (string) ($entry['match_type'] ?? '');
-                            $relationCount = max(0, (int) ($entry['relation_count'] ?? 0));
-                            ?>
+                        <span class="browse-result-row__meta">
+                            <?php if ($catalogCode !== ''): ?>
+                                <span class="browse-badge browse-badge--current"><?= e($catalogCode) ?></span>
+                            <?php elseif ($itemDomain !== ''): ?>
+                                <span class="browse-badge"><?= e($itemDomain) ?></span>
+                            <?php endif; ?>
+                            <?php if ($kind !== ''): ?>
+                                <span class="browse-badge browse-badge--neutral"><?= e($kind) ?></span>
+                            <?php endif; ?>
                             <?php if ($matchType === 'exact' || $matchType === 'partial'): ?>
                                 <span class="browse-badge <?= $matchType === 'exact' ? 'browse-badge--current' : 'browse-badge--neutral' ?>">
                                     <?= e($t('browse.match_' . $matchType)) ?>
@@ -78,11 +88,11 @@ $error = is_string($result['error'] ?? null) ? (string) $result['error'] : '';
                                         : $t('browse.relations_count', ['%count%' => $relationCount])) ?>
                                 </span>
                             <?php endif; ?>
-                            <?php if ($itemDomain !== ''): ?>
-                                <span><?= e($t('browse.domain')) ?>: <?= e($itemDomain) ?></span>
-                            <?php endif; ?>
                             <?php if ($effective !== ''): ?>
-                                <span><?= e($t('browse.effective_language')) ?>: <?= e($effective) ?></span>
+                                <span><?= e($effective) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($entry['status'])): ?>
+                                <span><?= e((string) $entry['status']) ?></span>
                             <?php endif; ?>
                             <?php if (!empty($entry['fallback_applied'])): ?>
                                 <span class="flag-warn"><?= e($t('browse.fallback_applied')) ?></span>
@@ -104,30 +114,25 @@ $error = is_string($result['error'] ?? null) ? (string) $result['error'] : '';
             <?php endforeach; ?>
         </ul>
 
-        <?php if ($pages > 1): ?>
-            <nav class="pagination" aria-label="<?= e($t('browse.results_title')) ?>">
-                <?php if ($page > 1): ?>
-                    <a class="button button-small button-ghost" href="<?= e($pageUrl($page - 1)) ?>">
-                        <?= e($t('browse.previous')) ?>
-                    </a>
-                <?php endif; ?>
+        <div class="browse-results-foot">
+            <?php if ($pages > 1): ?>
                 <span><?= e($t('browse.page', ['%page%' => $page, '%total%' => $pages])) ?></span>
-                <?php if ($page < $pages): ?>
-                    <a class="button button-small button-ghost" href="<?= e($pageUrl($page + 1)) ?>">
-                        <?= e($t('browse.next')) ?>
-                    </a>
-                <?php endif; ?>
-            </nav>
-            <?php if ($page < $pages): ?>
-                <div class="browse-loadmore">
-                    <a class="button button-small button-ghost"
-                       href="<?= e($pageUrl($page + 1)) ?>"
-                       data-load-more
-                       data-load-more-url="<?= e($resultsFragmentUrl($page + 1)) ?>">
-                        <?= e($t('browse.load_more')) ?>
-                    </a>
-                </div>
+                <nav class="browse-pagination" aria-label="<?= e($t('browse.results_title')) ?>">
+                    <?php if ($page > 1): ?>
+                        <a class="button button-small button-ghost" href="<?= e($pageUrl($page - 1)) ?>">
+                            <?= e($t('browse.previous')) ?>
+                        </a>
+                    <?php endif; ?>
+                    <?php if ($hasMore): ?>
+                        <a class="button button-small button-ghost"
+                           href="<?= e($pageUrl($page + 1)) ?>"
+                           data-load-more
+                           data-load-more-url="<?= e($resultsFragmentUrl($page + 1)) ?>">
+                            <?= e($t('browse.load_more')) ?>
+                        </a>
+                    <?php endif; ?>
+                </nav>
             <?php endif; ?>
-        <?php endif; ?>
+        </div>
     <?php endif; ?>
 </div>

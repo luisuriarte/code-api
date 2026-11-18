@@ -164,29 +164,38 @@ $stableCurrentUrl = $focus !== ''
     ? $stableItemUrl($focus)
     : $paramsUrl($stateParams(), $baseBrowsePath);
 
+// El selector de dominios es navegable sin JS y conserva el resto del contexto.
+$domainUrl = static function (string $code) use ($stateParams, $paramsUrl, $baseBrowsePath): string {
+    $overrides = ['domain' => $code !== '' ? $code : null, 'page' => null, 'focus' => null];
+    if ($code !== '' && $code !== 'odontologia') {
+        // El backend solo admite el filtro DENTAR dentro de odontología.
+        $overrides['catalog'] = null;
+    }
+
+    return $paramsUrl($stateParams($overrides), $baseBrowsePath);
+};
+
+$clearFiltersUrl = static function () use ($stateParams, $paramsUrl, $baseBrowsePath): string {
+    $params = $stateParams();
+    foreach (['q', 'domain', 'catalog', 'family', 'type', 'category', 'status', 'version', 'validity', 'page'] as $key) {
+        unset($params[$key]);
+    }
+
+    return $paramsUrl($params, $baseBrowsePath);
+};
+
+// Cinco pestañas consolidadas. Las claves de URL se conservan por compatibilidad;
+// `clinical` (pestaña retirada) se resuelve ahora dentro de Concepto.
 $tabLabels = [
     'concept' => 'browse.tab_concept',
     'relations' => 'browse.tab_relations',
     'values' => 'browse.tab_values',
-    'validity' => 'browse.tab_validity',
-    'clinical' => 'browse.tab_clinical',
-    'trace' => 'browse.tab_trace',
+    'validity' => 'browse.tab_versions',
+    'trace' => 'browse.tab_trace_sources',
 ];
-
-$hasClinical = false;
-foreach (['definition', 'clinical_criteria', 'short_definition', 'lay_terms', 'clinical_scope'] as $clinicalField) {
-    if ($hasValue($sections['clinical'][$clinicalField] ?? null)) {
-        $hasClinical = true;
-        break;
-    }
-}
-
-$hasTrace = false;
-foreach ($sections['trace'] ?? [] as $traceValue) {
-    if ($hasValue($traceValue)) {
-        $hasTrace = true;
-        break;
-    }
+$legacyTabs = ['clinical' => 'concept'];
+if (isset($legacyTabs[$tab])) {
+    $tab = $legacyTabs[$tab];
 }
 
 $tabs = ['concept' => $tabLabels['concept']];
@@ -199,10 +208,7 @@ if (!empty($sections['values'])) {
 if (!empty($sections['validity'])) {
     $tabs['validity'] = $tabLabels['validity'];
 }
-if ($hasClinical) {
-    $tabs['clinical'] = $tabLabels['clinical'];
-}
-if ($hasTrace) {
+if (!empty($sections['trace'])) {
     $tabs['trace'] = $tabLabels['trace'];
 }
 if (!array_key_exists($tab, $tabs)) {

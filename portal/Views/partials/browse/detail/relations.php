@@ -15,6 +15,23 @@ foreach ($relations as $relation) {
 }
 $codeLabel = is_array($item) ? (string) ($item['code'] ?? '') : '';
 $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
+$relationTypes = [];
+$relationSystems = [];
+foreach ($relations as $relation) {
+    if (!is_array($relation)) {
+        continue;
+    }
+    $type = (string) ($relation['type'] ?? '');
+    $system = (string) ($relation['system'] ?? '');
+    if ($type !== '') {
+        $relationTypes[$type] = $relationTypeLabel($type);
+    }
+    if ($system !== '') {
+        $relationSystems[$system] = $system;
+    }
+}
+asort($relationTypes);
+ksort($relationSystems);
 ?>
 <div class="browse-subsection">
     <?php if ($relations === []): ?>
@@ -34,6 +51,26 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
             <?php endforeach; ?>
         </div>
 
+        <?php if ($relationTypes !== [] || $relationSystems !== []): ?>
+            <div class="browse-relfilter">
+                <label for="browse-rel-filter-type"><?= e($t('browse.relation_filter_type')) ?></label>
+                <select id="browse-rel-filter-type" data-rel-filter="type">
+                    <option value=""><?= e($t('browse.relation_filter_all')) ?></option>
+                    <?php foreach ($relationTypes as $type => $label): ?>
+                        <option value="<?= e($type) ?>"><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <label for="browse-rel-filter-system"><?= e($t('browse.relation_filter_system')) ?></label>
+                <select id="browse-rel-filter-system" data-rel-filter="system">
+                    <option value=""><?= e($t('browse.relation_filter_all')) ?></option>
+                    <?php foreach ($relationSystems as $system => $label): ?>
+                        <option value="<?= e($system) ?>"><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        <?php endif; ?>
+        <p class="browse-rel-note"><?= e($t('browse.relation_literal_note')) ?></p>
+
         <?php if ($relView === 'diagram'): ?>
             <div class="browse-diagram browse-relations-diagram">
                 <div class="browse-diagram__node browse-diagram__node--center">
@@ -48,7 +85,7 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                                 <span class="browse-diagram__count"><?= count($entries) ?></span>
                             </summary>
                             <div class="browse-diagram__nodes">
-                            <?php foreach ($entries as $relation): ?>
+                            <?php foreach (array_slice($entries, 0, 5) as $relation): ?>
                                 <?php
                                 $type = (string) ($relation['type'] ?? '');
                                 $status = (string) ($relation['review_status'] ?? '');
@@ -59,7 +96,9 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                                     ? ' href="' . e($stableItemUrl($targetKey)) . '" data-focus-url="' . e($fragmentUrl($targetKey)) . '"'
                                     : '';
                                 ?>
-                                <<?= $nodeTag ?> class="browse-diagram__node"<?= $nodeAttrs ?>>
+                                <<?= $nodeTag ?> class="browse-diagram__node browse-rel-node"
+                                    data-rel-type="<?= e($type) ?>"
+                                    data-rel-system="<?= e($system) ?>"<?= $nodeAttrs ?>>
                                     <strong><?= e((string) ($relation['code'] ?? '')) ?></strong>
                                     <?php if (!empty($relation['display'])): ?>
                                         <span><?= e((string) $relation['display']) ?></span>
@@ -76,6 +115,7 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                         </details>
                     <?php endforeach; ?>
                 </div>
+                <p class="browse-rel-note"><?= e($t('browse.relations_limited')) ?></p>
             </div>
         <?php else: ?>
             <div class="browse-table-wrap browse-relations-table">
@@ -104,7 +144,9 @@ $termLabel = is_array($item) ? (string) ($item['term'] ?? '') : '';
                                 : ($status === 'approved' ? 'browse-badge--current' : 'browse-badge--neutral');
                             $targetKey = BrowseService::normalizeResultKey($relation['result_key'] ?? '');
                             ?>
-                            <tr>
+                            <tr class="browse-rel-row"
+                                data-rel-type="<?= e((string) ($relation['type'] ?? '')) ?>"
+                                data-rel-system="<?= e((string) ($relation['system'] ?? '')) ?>">
                                 <td><?= e((string) ($relation['system'] ?? '')) ?></td>
                                 <td>
                                     <?php if ($targetKey !== ''): ?>

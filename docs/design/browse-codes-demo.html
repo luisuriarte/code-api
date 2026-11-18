@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browse Codes — propuesta de rediseño | Origen Salud</title>
+<!--
+  PROTOTIPO ESTÁTICO DE LA ETAPA 1 — NO ES LA IMPLEMENTACIÓN.
+  Usa exclusivamente los tokens de color reales de web/assets/css/app.css.
+  Los registros mostrados son una muestra reducida y verificable de los artefactos
+  generados del repositorio; no se han inventado códigos, relaciones ni valores.
+  No está conectado a la API ni a la base de datos.
+-->
+<style>
+:root{
+  --ink:#0b2239; --ink-soft:#33495e; --muted:#5b6d7e;
+  --teal:#0c7c86; --teal-dark:#075b63; --mint:#e9f6f4;
+  --paper:#f6f9fb; --line:#dde6ec; --white:#fff;
+  --radius:18px; --shadow-sm:0 8px 24px rgba(11,34,57,.06);
+  --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,"Cascadia Code",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--font-sans);font-size:14px;line-height:1.5;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--teal-dark)}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+.mono{font-family:var(--font-mono);font-size:.88em;letter-spacing:-.01em}
+.muted{color:var(--muted)}
+.eyebrow{display:block;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal-dark)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Topbar institucional */
+.topbar{background:var(--white);border-bottom:1px solid var(--line)}
+.topbar__inner{max-width:1600px;margin:0 auto;padding:10px 24px;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:9px;color:var(--ink);font-weight:750;text-decoration:none}
+.brand svg{width:30px;height:30px;color:var(--teal)}
+.brand span span{color:var(--teal)}
+.topbar__sep{width:1px;height:22px;background:var(--line)}
+.topbar__crumb{font-size:.82rem;color:var(--muted)}
+.topbar__right{margin-left:auto;display:flex;gap:18px;align-items:center;font-size:.8rem}
+.topbar__right a{text-decoration:none}
+.demo-flag{border:1px solid var(--teal);color:var(--teal-dark);background:var(--mint);padding:3px 9px;border-radius:999px;font-size:.7rem;font-weight:700;letter-spacing:.04em}
+
+/* Cabecera del explorador */
+.page-head{background:var(--white);border-bottom:1px solid var(--line)}
+.page-head__inner{max-width:1600px;margin:0 auto;padding:22px 24px 18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:end}
+.page-head h1{margin:6px 0 4px;font-size:1.75rem;letter-spacing:-.02em;line-height:1.2}
+.page-head p{margin:0;color:var(--ink-soft);max-width:78ch;font-size:.9rem}
+.head-meta{display:flex;gap:22px;align-items:center}
+.head-stat{text-align:right}
+.head-stat strong{display:block;font-size:1.25rem;line-height:1.1;color:var(--teal-dark)}
+.head-stat span{font-size:.72rem;color:var(--muted)}
+.head-links{display:flex;flex-direction:column;gap:6px;font-size:.8rem}
+.head-links a{text-decoration:none}
+
+/* Buscador destacado */
+.searchbar{max-width:1600px;margin:0 auto;padding:0 24px 18px;background:var(--white)}
+.searchbar__row{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:6px 8px 6px 14px;background:var(--paper)}
+.searchbar__row:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px rgba(12,124,134,.12)}
+.searchbar svg{width:18px;height:18px;color:var(--muted);flex:none}
+.searchbar input{flex:1;border:0;background:transparent;outline:0;padding:8px 0;font-size:1rem}
+.searchbar input::placeholder{color:var(--muted)}
+.searchbar kbd{font-family:var(--font-mono);font-size:.7rem;color:var(--muted);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 6px;background:var(--white)}
+.btn{border:1px solid var(--teal);background:var(--teal);color:#fff;border-radius:9px;padding:9px 16px;font-weight:650;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--teal-dark);border-color:var(--teal-dark)}
+.btn--ghost{background:var(--white);color:var(--teal-dark);border-color:var(--line)}
+.btn--ghost:hover{background:var(--mint);border-color:var(--teal)}
+.btn--xs{padding:4px 9px;font-size:.72rem;border-radius:7px}
+.hint{margin:8px 2px 0;font-size:.76rem;color:var(--muted)}
+
+/* Workspace de dos columnas */
+.workspace{max-width:1600px;margin:0 auto;padding:18px 24px 40px;display:grid;grid-template-columns:minmax(0,38fr) minmax(0,62fr);gap:18px;align-items:start}
+.rail,.panel{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);min-height:0}
+.rail{position:sticky;top:12px;max-height:calc(100vh - 24px);display:flex;flex-direction:column;overflow:hidden}
+.panel{max-height:calc(100vh - 24px);overflow:hidden;display:flex;flex-direction:column}
+.rail__scroll,.panel__scroll{overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.rail__head,.panel__head{flex:none;padding:14px 16px;border-bottom:1px solid var(--line)}
+.rail__head h2,.panel__head h2{margin:0;font-size:.95rem;letter-spacing:-.01em}
+.rail__head p{margin:3px 0 0;font-size:.75rem;color:var(--muted)}
+
+/* Selector de catálogos por familias */
+.family{margin:0;padding:0;list-style:none}
+.family + .family{border-top:1px solid var(--line)}
+.family__title{padding:9px 16px 5px;font-size:.66rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+.family__title em{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:var(--teal-dark)}
+.cat{display:flex;align-items:center;gap:9px;padding:7px 16px;cursor:pointer;border:0;border-left:3px solid transparent;background:transparent;width:100%;text-align:left}
+.cat:hover{background:var(--paper)}
+.cat.is-active{background:var(--mint);border-left-color:var(--teal)}
+.cat__code{font-family:var(--font-mono);font-size:.72rem;font-weight:700;color:var(--teal-dark);min-width:88px}
+.cat__name{font-size:.8rem;flex:1;color:var(--ink)}
+.cat__tag{font-size:.6rem;padding:2px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.cat__tag--own{border-color:var(--teal);color:var(--teal-dark);background:var(--mint)}
+.cat__tag--int{border-color:#9fb6c4;color:var(--ink-soft)}
+.cat__tag--warn{border-style:dashed;color:var(--muted);background:var(--paper)}
+.cat--proposed{opacity:.58;cursor:not-allowed}
+.cat--proposed .cat__tag{border-style:dashed}
+.cat--soon .cat__code{min-width:88px}
+
+/* Filtros contextuales */
+.filters{padding:10px 16px 14px;border-bottom:1px solid var(--line)}
+.filters__title{font-size:.7rem;font-weight:750;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.filters__grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.filters label{font-size:.68rem;color:var(--muted);display:block;margin-bottom:3px}
+.filters select{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--white);padding:6px 8px;font-size:.78rem}
+.filters__note{margin:8px 0 0;font-size:.68rem;color:var(--muted)}
+
+/* Resultados compactos */
+.results{margin:0;padding:0;list-style:none}
+.result{border-bottom:1px solid var(--line)}
+.result:last-child{border-bottom:0}
+.result > button{display:block;width:100%;text-align:left;border:0;border-left:3px solid transparent;background:transparent;padding:10px 16px;cursor:pointer}
+.result > button:hover{background:var(--paper)}
+.result.is-active > button{background:var(--mint);border-left-color:var(--teal)}
+.result__top{display:flex;align-items:baseline;gap:8px}
+.result__code{font-family:var(--font-mono);font-size:.76rem;font-weight:700;color:var(--teal-dark);flex:none}
+.result__term{font-size:.82rem;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.result__meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;font-size:.68rem;color:var(--muted)}
+.pill{border:1px solid var(--line);border-radius:999px;padding:1px 7px;font-size:.64rem;color:var(--ink-soft);background:var(--white)}
+.pill--state{border-color:var(--teal);color:var(--teal-dark);background:var(--mint)}
+.pill--warn{border-style:dashed;color:var(--muted)}
+.rail__foot{flex:none;padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:var(--muted)}
+
+/* Panel de ficha */
+.panel__crumb{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);margin-bottom:8px}
+.panel__crumb button{border:0;background:var(--mint);color:var(--teal-dark);border-radius:6px;padding:2px 7px;font-size:.68rem;cursor:pointer}
+.panel__title{margin:0 0 8px;font-size:1.3rem;line-height:1.25;letter-spacing:-.02em}
+.panel__id{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
+.panel__id .code{font-family:var(--font-mono);font-size:.9rem;font-weight:700;color:var(--ink);background:var(--mint);border:1px solid var(--teal);border-radius:7px;padding:3px 9px}
+.panel__facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 18px;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--line)}
+.fact dt{font-size:.64rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.fact dd{margin:1px 0 0;font-size:.8rem;color:var(--ink);font-weight:600}
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.tools button,.tools a{font-size:.7rem;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:var(--white);color:var(--teal-dark);text-decoration:none;cursor:pointer}
+.tools button:hover,.tools a:hover{background:var(--mint);border-color:var(--teal)}
+.tools .accent{background:var(--teal);border-color:var(--teal);color:#fff}
+.boundary{margin:12px 0 0;padding:9px 12px;background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:8px;font-size:.74rem;color:var(--ink-soft)}
+.boundary strong{color:var(--teal-dark)}
+
+/* Pestañas */
+.tabs{display:flex;gap:2px;flex:none;padding:0 16px;border-bottom:1px solid var(--line);background:var(--white);overflow-x:auto}
+.tab{border:0;border-bottom:2px solid transparent;background:transparent;padding:11px 13px;font-size:.78rem;font-weight:650;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.is-active{color:var(--teal-dark);border-bottom-color:var(--teal)}
+.tabpanel{padding:16px;display:none}
+.tabpanel.is-active{display:block}
+.sec{margin:0 0 18px}
+.sec h3{margin:0 0 8px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kv{display:grid;grid-template-columns:180px minmax(0,1fr);gap:6px 16px;margin:0}
+.kv dt{font-size:.76rem;color:var(--muted)}
+.kv dd{margin:0;font-size:.8rem;color:var(--ink)}
+.kv dd.mono{font-size:.75rem}
+.note{font-size:.75rem;color:var(--ink-soft);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin:0 0 12px}
+
+/* Tabla de relaciones */
+.relbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.relbar select{border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:.73rem;background:var(--white)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--white);padding:5px 11px;font-size:.72rem;cursor:pointer;color:var(--muted)}
+.seg button.is-active{background:var(--mint);color:var(--teal-dark);font-weight:700}
+table{border-collapse:collapse;width:100%;font-size:.76rem}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.64rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;background:var(--paper)}
+td .reltype{color:var(--teal-dark);font-weight:650}
+td .ctx{display:block;color:var(--muted);font-size:.69rem;margin-top:2px}
+.linkcode{border:0;background:transparent;color:var(--teal-dark);font-family:var(--font-mono);font-size:.74rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
+
+/* Diagrama */
+.graph{position:relative;min-height:330px;border:1px solid var(--line);border-radius:12px;background:
+  radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);background-size:20px 20px;overflow:hidden;padding:18px}
+.graph__center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;text-align:center;box-shadow:var(--shadow-sm);max-width:210px;z-index:2}
+.graph__center strong{display:block;font-size:.78rem}
+.graph__center span{font-family:var(--font-mono);font-size:.7rem;color:#bfe3e2}
+.graph__node{position:absolute;background:var(--white);border:1px solid var(--line);border-radius:9px;padding:7px 10px;max-width:180px;box-shadow:var(--shadow-sm);cursor:pointer;z-index:2}
+.graph__node:hover{border-color:var(--teal);background:var(--mint)}
+.graph__node strong{display:block;font-size:.7rem;line-height:1.25}
+.graph__node span{font-family:var(--font-mono);font-size:.65rem;color:var(--teal-dark)}
+.graph__node small{display:block;font-size:.6rem;color:var(--muted);margin-top:2px}
+.graph svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.graph__legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:.68rem;color:var(--muted)}
+.graph__legend i{display:inline-block;width:18px;height:2px;background:var(--teal);vertical-align:middle;margin-right:5px}
+
+/* Valoración: separación conceptual */
+.uvr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
+.uvr-cell{border:1px solid var(--line);border-radius:10px;padding:10px}
+.uvr-cell strong{display:block;font-size:1.05rem;color:var(--teal-dark)}
+.uvr-cell span{font-size:.66rem;color:var(--muted)}
+.uvr-cell--total{background:var(--mint);border-color:var(--teal)}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:18px;text-align:center;color:var(--muted);font-size:.78rem;background:var(--paper)}
+
+/* Timeline de versiones */
+.timeline{margin:0;padding:0;list-style:none}
+.timeline li{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.timeline time{font-family:var(--font-mono);font-size:.7rem;color:var(--muted)}
+.timeline strong{font-size:.78rem}
+
+/* Mobile */
+.mobile-switch{display:none;gap:6px;padding:10px 16px 0;max-width:1600px;margin:0 auto}
+.mobile-switch button{flex:1;border:1px solid var(--line);background:var(--white);border-radius:8px;padding:8px;font-size:.75rem;cursor:pointer;color:var(--muted)}
+.mobile-switch button.is-active{background:var(--mint);border-color:var(--teal);color:var(--teal-dark);font-weight:700}
+@media(max-width:900px){
+  .workspace{grid-template-columns:1fr;padding:12px}
+  .rail,.panel{position:static;max-height:none}
+  .rail__scroll,.panel__scroll{max-height:none;overflow:visible}
+  .mobile-switch{display:flex}
+  .workspace[data-view="results"] .panel{display:none}
+  .workspace[data-view="detail"] .rail{display:none}
+  .page-head__inner{grid-template-columns:1fr}
+  .head-meta{justify-content:flex-start}
+  .head-stat{text-align:left}
+  .kv{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .topbar__inner,.page-head__inner,.searchbar,.workspace{padding-left:14px;padding-right:14px}
+  .page-head h1{font-size:1.45rem}
+  .filters__grid{grid-template-columns:1fr}
+  .panel__title{font-size:1.1rem}
+}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;border-radius:8px;padding:8px 14px;font-size:.76rem;opacity:0;transition:.2s;z-index:50;pointer-events:none}
+.toast.is-on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="#"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="12" fill="currentColor"/><path d="M20 11v18M11 20h18" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg><span>Origen<span>Salud</span></span></a>
+    <div class="topbar__sep"></div>
+    <span class="topbar__crumb">Explorador de catálogos</span>
+    <div class="topbar__right"><span class="demo-flag">PROTOTIPO · ETAPA 1</span><a href="#">Documentación</a><a href="#">API</a><a href="#">ES-AR ▾</a></div>
+  </div>
+</div>
+
+<header class="page-head">
+  <div class="page-head__inner">
+    <div>
+      <span class="eyebrow">Terminología clínica · Interoperabilidad</span>
+      <h1>Browse Codes</h1>
+      <p>Explore clinical codes, procedures, diagnoses, products and healthcare terminology from multiple coding systems. Encodá, compará y navegá relaciones sin perder el contexto de búsqueda.</p>
+    </div>
+    <div class="head-meta">
+      <div class="head-stat"><strong>2</strong><span>catálogos publicados</span></div>
+      <div class="head-stat"><strong>2</strong><span>en artefactos, no publicados</span></div>
+      <div class="head-links"><a href="#">Sistemas de codificación →</a><a href="#">Guía de uso →</a></div>
+    </div>
+  </div>
+</header>
+
+<div class="searchbar">
+  <div class="searchbar__row">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <label class="sr-only" for="q">Buscar por código, descripción o identificador</label>
+    <input id="q" type="search" autocomplete="off" placeholder="Código exacto, descripción, sinónimo o identificador externo…">
+    <kbd>⌘ K</kbd>
+    <button class="btn" id="searchBtn" type="button">Buscar</button>
+  </div>
+  <p class="hint">Búsqueda por código, descripción, sinónimos, identificadores externos e idiomas disponibles en la fuente. Prototipo sin conexión a la API: muestra reducida y verificable: 22 conceptos con término confirmado, 19 códigos de contexto y 15 relaciones, extraída de artefactos versionados. No se generan coincidencias ficticias.</p>
+</div>
+
+<div class="mobile-switch" role="group" aria-label="Vista móvil">
+  <button type="button" data-view="results" class="is-active">Resultados</button>
+  <button type="button" data-view="detail">Ficha</button>
+</div>
+
+<main class="workspace" id="workspace" data-view="results">
+  <!-- COLUMNAIZQUIERDA -->
+  <section class="rail" aria-label="Exploración y resultados">
+    <div class="rail__head">
+      <h2>Explorar catálogos</h2>
+      <p>Seleccioná una fuente, ajustá filtros y elegí un concepto.</p>
+    </div>
+    <div class="rail__scroll">
+      <ul class="family" id="catalogs"></ul>
+      <div class="filters">
+        <div class="filters__title">Filtros contextuales</div>
+        <div class="filters__grid" id="filters"></div>
+        <p class="filters__note" id="filtersNote"></p>
+      </div>
+      <div class="rail__head" style="border-top:1px solid var(--line)">
+        <h2>Resultados <span class="pill" id="count">0</span></h2>
+        <p id="searchState">Sin búsqueda activa</p>
+      </div>
+      <ul class="results" id="results"></ul>
+    </div>
+    <div class="rail__foot"><span id="pageInfo">—</span><button class="btn btn--ghost btn--xs" id="more" type="button">Cargar más</button></div>
+  </section>
+
+  <!-- COLUMNA DERECHA -->
+  <section class="panel" aria-label="Ficha del concepto">
+    <div class="panel__head">
+      <div class="panel__crumb" id="crumb"></div>
+      <h2 id="panelTitle">Ficha del concepto</h2>
+      <p class="muted" id="panelSubtitle" style="margin:2px 0 0;font-size:.74rem">Seleccioná un resultado para ver su ficha completa.</p>
+    </div>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab is-active" role="tab" data-tab="concept" aria-selected="true">Concepto</button>
+      <button class="tab" role="tab" data-tab="relations" aria-selected="false">Relaciones</button>
+      <button class="tab" role="tab" data-tab="values" aria-selected="false">Valores y valoración</button>
+      <button class="tab" role="tab" data-tab="versions" aria-selected="false">Versiones</button>
+      <button class="tab" role="tab" data-tab="trace" aria-selected="false">Fuentes y trazabilidad</button>
+    </div>
+    <div class="panel__scroll" id="panelScroll">
+      <div class="tabpanel is-active" data-panel="concept" id="p-concept"></div>
+      <div class="tabpanel" data-panel="relations" id="p-relations"></div>
+      <div class="tabpanel" data-panel="values" id="p-values"></div>
+      <div class="tabpanel" data-panel="versions" id="p-versions"></div>
+      <div class="tabpanel" data-panel="trace" id="p-trace"></div>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* === DATOS REALES DE MUESTRA — VERIFICABLES EN EL REPO ===
+   PR/CDT: docs/dentar/generado/dentar-pr-cdt-2025.csv
+   DX:     docs/dentar/generado/dentar-dx-cie10-snomed.csv
+   AN/CL:  docs/dentar/generado/dentar-{an,cl}-candidatos.csv
+   REL:    docs/dentar/generado/dentar-cdt-relaciones-propuerto.sql
+   Los códigos de contexto sin denominación verificada se marcan como parciales;
+   nunca se les asigna un término inventado. AN/CL se muestran como NO PUBLICADOS.
+*/
+const REAL_SAMPLE_DATA = true;
+const CATALOGS = [
+  {code:'dentar-pr', name:'Procedimientos odontológicos', group:'Catálogos odontológicos · DENTAR', groupNote:'familia propia', status:'active', tag:'Propio', tagClass:'cat__tag--own',
+   filters:[{key:'category',label:'Categoría',options:['CAT-DIAG','CAT-PREV','CAT-ENDO']},{key:'system',label:'Identificador',options:['CDT-2025','Nomenclador AR']},{key:'status',label:'Estado',options:['Activo']},{key:'version',label:'Versión',options:['2025']}],
+   filterNote:'Categoría e identificadores: columnas reales del CSV derivado de CDT 2025.'},
+  {code:'dentar-dx', name:'Diagnósticos odontológicos', group:'Catálogos odontológicos · DENTAR', groupNote:'familia propia', status:'active', tag:'Propio', tagClass:'cat__tag--own',
+   filters:[{key:'category',label:'Categoría',options:['CAT-DX']},{key:'system',label:'Identificador',options:['CIE-10','SNOMED CT']},{key:'status',label:'Estado',options:['Activo']}],
+   filterNote:'CIE-10 y SCTID: columnas reales del CSV derivado de CIE-10-ES 2026 y SNOMED AR.'},
+  {code:'dentar-an', name:'Anatomía odontológica', group:'Catálogos odontológicos · DENTAR', groupNote:'familia propia', status:'pending', tag:'NO PUBLICADO', tagClass:'cat__tag--warn',
+   filters:[{key:'system',label:'Fuente',options:['SNOMED CT AR 2026-08-20']},{key:'status',label:'Estado',options:['Activo']}],
+   filterNote:'Datos derivados disponibles; requiere aprobación explícita de exposición pública.'},
+  {code:'dentar-cl', name:'Hallazgos y condiciones clínicas', group:'Catálogos odontológicos · DENTAR', groupNote:'familia propia', status:'pending', tag:'NO PUBLICADO', tagClass:'cat__tag--warn',
+   filters:[{key:'system',label:'Fuente',options:['SNOMED CT AR 2026-08-20']},{key:'status',label:'Estado',options:['Activo']}],
+   filterNote:'Datos derivados disponibles; requiere aprobación explícita de exposición pública.'},
+  {code:'dentar-in', name:'Insumos y materiales odontológicos', group:'Catálogos odontológicos · DENTAR', groupNote:'familia propia', status:'reserved', tag:'Reservado', tagClass:'cat__tag--warn', filters:[]},
+  {code:'dentar-pd', name:'Productos odontológicos', group:'Catálogos odontológicos · DENTAR', groupNote:'familia propia', status:'reserved', tag:'Reservado', tagClass:'cat__tag--warn', filters:[]},
+  {code:'dentar-eq', name:'Equipamiento odontológico', group:'Catálogos odontológicos · DENTAR', groupNote:'familia propia', status:'reserved', tag:'Reservado', tagClass:'cat__tag--warn', filters:[]},
+  {code:'snomed-ct', name:'SNOMED CT Argentina', group:'Terminologías clínicas', groupNote:'estándar internacional', status:'reserved', tag:'Externo', tagClass:'cat__tag--int', filters:[]},
+  {code:'loinc', name:'LOINC', group:'Terminologías clínicas', groupNote:'estándar internacional', status:'reserved', tag:'Externo', tagClass:'cat__tag--int', filters:[]},
+  {code:'cie10', name:'CIE-10-ES', group:'Clasificaciones diagnósticas', groupNote:'clasificación oficial', status:'reserved', tag:'Oficial', tagClass:'cat__tag--int', filters:[]},
+  {code:'os-med', name:'Medicamentos', group:'Medicamentos y productos', groupNote:'familia OS-PRODUCTS propuesta', status:'reserved', tag:'Propuesto', tagClass:'cat__tag--warn', filters:[]},
+  {code:'os-prod', name:'Productos sanitarios', group:'Medicamentos y productos', groupNote:'familia OS-PRODUCTS propuesta', status:'reserved', tag:'Propuesto', tagClass:'cat__tag--warn', filters:[]},
+  {code:'os-ins', name:'Insumos sanitarios', group:'Dispositivos e insumos', groupNote:'familia OS-PRODUCTS propuesta', status:'reserved', tag:'Propuesto', tagClass:'cat__tag--warn', filters:[]},
+  {code:'os-dis', name:'Dispositivos médicos', group:'Dispositivos e insumos', groupNote:'familia OS-PRODUCTS propuesta', status:'reserved', tag:'Propuesto', tagClass:'cat__tag--warn', filters:[]},
+  {code:'os-eqp', name:'Equipamiento', group:'Dispositivos e insumos', groupNote:'familia OS-PRODUCTS propuesta', status:'reserved', tag:'Propuesto', tagClass:'cat__tag--warn', filters:[]},
+  {code:'os-impl', name:'Implantes y prótesis', group:'Dispositivos e insumos', groupNote:'familia OS-PRODUCTS propuesta', status:'reserved', tag:'Propuesto', tagClass:'cat__tag--warn', filters:[]},
+  {code:'cdt-2025', name:'CDT 2025 (ADA Argentina)', group:'Otros sistemas externos', groupNote:'nomenclador externo', status:'reserved', tag:'Nomenclador', tagClass:'cat__tag--int', filters:[]},
+  {code:'nomenclador-ar', name:'Nomenclador Argentino', group:'Otros sistemas externos', groupNote:'nomenclador nacional', status:'reserved', tag:'Nacional', tagClass:'cat__tag--int', filters:[]},
+];
+
+const PR_SRC = 'Catálogo Argentino de Procedimientos Odontológicos · CDT 2025';
+const SNOMED_SRC = 'SNOMED CT Argentina Snapshot 2026-08-20 (RF2)';
+const noUvr = null;
+const ITEMS = [
+  {id:'pr-108',catalog:'dentar-pr',code:'DNT-PR-000108',term:'intrabucal - serie radiográfica completa',status:'Activo',version:'2025',conceptId:'DNT-PR-000108',lang:'es-AR',definition:'intrabucal - serie radiográfica completa',chapter:'CAT-DIAG',external:'CDT-2025 D0210 · Nomenclador AR 09.01.04',domainType:'prestacion',uvr:noUvr,source:PR_SRC,sourceVersion:'2025',license:'Fuente externa: condiciones de licencia a verificar',reference:'docs/dentar/generado/dentar-pr-cdt-2025.csv:12',versions:[{date:'2025',label:'Versión 2025 · D0210',status:'Activo',note:'Identificador CDT-2025 y nomenclador AR 09.01.04'}],facets:{category:['CAT-DIAG'],system:['CDT-2025','Nomenclador AR'],status:['Activo'],version:['2025']}},
+  {id:'pr-146',catalog:'dentar-pr',code:'DNT-PR-000146',term:'aleta de mordida - una (1) radiografía',status:'Activo',version:'2025',conceptId:'DNT-PR-000146',lang:'es-AR',definition:'aleta de mordida - una (1) radiografía',chapter:'CAT-DIAG',external:'CDT-2025 D0270',domainType:'prestacion',uvr:noUvr,source:PR_SRC,sourceVersion:'2025',license:'Fuente externa: condiciones de licencia a verificar',reference:'docs/dentar/generado/dentar-pr-cdt-2025.csv:18',versions:[{date:'2025',label:'Versión 2025 · D0270',status:'Activo',note:'Sin código de nomenclador Argentino en la fuente'}],facets:{category:['CAT-DIAG'],system:['CDT-2025'],status:['Activo'],version:['2025']}},
+  {id:'pr-106',catalog:'dentar-pr',code:'DNT-PR-000106',term:'aletas de mordida - dos (2) radiografías',status:'Activo',version:'2025',conceptId:'DNT-PR-000106',lang:'es-AR',definition:'aletas de mordida - dos (2) radiografías',chapter:'CAT-DIAG',external:'CDT-2025 D0272 · Nomenclador AR 09.01.02',domainType:'prestacion',uvr:noUvr,source:PR_SRC,sourceVersion:'2025',license:'Fuente externa: condiciones de licencia a verificar',reference:'docs/dentar/generado/dentar-pr-cdt-2025.csv:19',versions:[{date:'2025',label:'Versión 2025 · D0272',status:'Activo',note:'Identificador CDT-2025 y nomenclador AR 09.01.02'}],facets:{category:['CAT-DIAG'],system:['CDT-2025','Nomenclador AR'],status:['Activo'],version:['2025']}},
+  {id:'pr-113',catalog:'dentar-pr',code:'DNT-PR-000113',term:'radiografía panorámica',status:'Activo',version:'2025',conceptId:'DNT-PR-000113',lang:'es-AR',definition:'radiografía panorámica',chapter:'CAT-DIAG',external:'CDT-2025 D0330 · Nomenclador AR 09.02.04',domainType:'prestacion',uvr:noUvr,source:PR_SRC,sourceVersion:'2025',license:'Fuente externa: condiciones de licencia a verificar',reference:'docs/dentar/generado/dentar-pr-cdt-2025.csv:27',versions:[{date:'2025',label:'Versión 2025 · D0330',status:'Activo',note:'Identificador CDT-2025 y nomenclador AR 09.02.04'}],facets:{category:['CAT-DIAG'],system:['CDT-2025','Nomenclador AR'],status:['Activo'],version:['2025']}},
+  {id:'pr-190',catalog:'dentar-pr',code:'DNT-PR-000190',term:'pruebas de vitalidad pulpar',status:'Activo',version:'2025',conceptId:'DNT-PR-000190',lang:'es-AR',definition:'pruebas de vitalidad pulpar',chapter:'CAT-DIAG',external:'CDT-2025 D0460',domainType:'prestacion',uvr:noUvr,source:PR_SRC,sourceVersion:'2025',license:'Fuente externa: condiciones de licencia a verificar',reference:'docs/dentar/generado/dentar-pr-cdt-2025.csv:68',versions:[{date:'2025',label:'Versión 2025 · D0460',status:'Activo',note:'Sin código de nomenclador Argentino en la fuente'}],facets:{category:['CAT-DIAG'],system:['CDT-2025'],status:['Activo'],version:['2025']}},
+  {id:'pr-222',catalog:'dentar-pr',code:'DNT-PR-000222',term:'escaneo de superficie intrabucal 3D - directo',status:'Activo',version:'2025',conceptId:'DNT-PR-000222',lang:'es-AR',definition:'escaneo de superficie intrabucal 3D - directo',chapter:'CAT-DIAG',external:'CDT-2025 D0801',domainType:'prestacion',uvr:noUvr,source:PR_SRC,sourceVersion:'2025',license:'Fuente externa: condiciones de licencia a verificar',reference:'docs/dentar/generado/dentar-pr-cdt-2025.csv:100',versions:[{date:'2025',label:'Versión 2025 · D0801',status:'Activo',note:'Sin código de nomenclador Argentino en la fuente'}],facets:{category:['CAT-DIAG'],system:['CDT-2025'],status:['Activo'],version:['2025']}},
+  {id:'pr-229',catalog:'dentar-pr',code:'DNT-PR-000229',term:'consejería sobre inmunizaciones',status:'Activo',version:'2025',conceptId:'DNT-PR-000229',lang:'es-AR',definition:'consejería sobre inmunizaciones',chapter:'CAT-PREV',external:'CDT-2025 D1301',domainType:'prestacion',uvr:noUvr,source:PR_SRC,sourceVersion:'2025',license:'Fuente externa: condiciones de licencia a verificar',reference:'docs/dentar/generado/dentar-pr-cdt-2025.csv:109',versions:[{date:'2025',label:'Versión 2025 · D1301',status:'Activo',note:'Categoría CAT-PREV'}],facets:{category:['CAT-PREV'],system:['CDT-2025'],status:['Activo'],version:['2025']}},
+  {id:'pr-021',catalog:'dentar-pr',code:'DNT-PR-000021',term:'tratamiento de conducto radicular, pieza anterior (excluyendo la restauración final)',status:'Activo',version:'2025',conceptId:'DNT-PR-000021',lang:'es-AR',definition:'tratamiento de conducto radicular, pieza anterior (excluyendo la restauración final)',chapter:'CAT-ENDO',external:'CDT-2025 D3310 · Nomenclador AR 03.01',domainType:'prestacion',uvr:noUvr,source:PR_SRC,sourceVersion:'2025',license:'Fuente externa: condiciones de licencia a verificar',reference:'docs/dentar/generado/dentar-pr-cdt-2025.csv:232',versions:[{date:'2025',label:'Versión 2025 · D3310',status:'Activo',note:'Identificador CDT-2025 y nomenclador AR 03.01'}],facets:{category:['CAT-ENDO'],system:['CDT-2025','Nomenclador AR'],status:['Activo'],version:['2025']}},
+  {id:'dx-039',catalog:'dentar-dx',code:'DNT-DX-000039',term:'Anodoncia',status:'Activo',conceptId:'DNT-DX-000039',lang:'es-AR',definition:'CIE-10 K00.0; nodo_final=1',chapter:'CAT-DX',external:'CIE-10 K00.0 · SNOMED CT 26624006',domainType:'diagnostico',uvr:noUvr,source:'CIE-10-ES 2026 + SNOMED CT Argentina',sourceVersion:'CIE-10-ES 2026',license:'CIE-10 y SNOMED CT: fuentes externas con licencia propia',reference:'docs/dentar/generado/dentar-dx-cie10-snomed.csv:2',versions:[{date:'2026',label:'CIE-10-ES 2026 / SNOMED AR',status:'Activo',note:'Mapa derivado de CIE-10-ES 2026 y SNOMED AR'}],facets:{category:['CAT-DX'],system:['CIE-10','SNOMED CT'],status:['Activo']}},
+  {id:'dx-001',catalog:'dentar-dx',code:'DNT-DX-000001',term:'Dientes supernumerarios',status:'Activo',conceptId:'DNT-DX-000001',lang:'es-AR',definition:'CIE-10 K00.1; nodo_final=1',chapter:'CAT-DX',external:'CIE-10 K00.1 · SNOMED CT 367534004',domainType:'diagnostico',uvr:noUvr,source:'CIE-10-ES 2026 + SNOMED CT Argentina',sourceVersion:'CIE-10-ES 2026',license:'CIE-10 y SNOMED CT: fuentes externas con licencia propia',reference:'docs/dentar/generado/dentar-dx-cie10-snomed.csv:3',versions:[{date:'2026',label:'CIE-10-ES 2026 / SNOMED AR',status:'Activo',note:'Mapa derivado de CIE-10-ES 2026 y SNOMED AR'}],facets:{category:['CAT-DX'],system:['CIE-10','SNOMED CT'],status:['Activo']}},
+  {id:'dx-041',catalog:'dentar-dx',code:'DNT-DX-000041',term:'Dientes manchados',status:'Activo',conceptId:'DNT-DX-000041',lang:'es-AR',definition:'CIE-10 K00.3; nodo_final=1',chapter:'CAT-DX',external:'CIE-10 K00.3 · SNOMED CT 120541000119103',domainType:'diagnostico',uvr:noUvr,source:'CIE-10-ES 2026 + SNOMED CT Argentina',sourceVersion:'CIE-10-ES 2026',license:'CIE-10 y SNOMED CT: fuentes externas con licencia propia',reference:'docs/dentar/generado/dentar-dx-cie10-snomed.csv:5',versions:[{date:'2026',label:'CIE-10-ES 2026 / SNOMED AR',status:'Activo',note:'Mapa derivado de CIE-10-ES 2026 y SNOMED AR'}],facets:{category:['CAT-DX'],system:['CIE-10','SNOMED CT'],status:['Activo']}},
+  {id:'dx-002',catalog:'dentar-dx',code:'DNT-DX-000002',term:'Alteraciones en erupción de diente',status:'Activo',conceptId:'DNT-DX-000002',lang:'es-AR',definition:'CIE-10 K00.6; nodo_final=1',chapter:'CAT-DX',external:'CIE-10 K00.6 · SNOMED CT 109644008',domainType:'diagnostico',uvr:noUvr,source:'CIE-10-ES 2026 + SNOMED CT Argentina',sourceVersion:'CIE-10-ES 2026',license:'CIE-10 y SNOMED CT: fuentes externas con licencia propia',reference:'docs/dentar/generado/dentar-dx-cie10-snomed.csv:8',versions:[{date:'2026',label:'CIE-10-ES 2026 / SNOMED AR',status:'Activo',note:'Mapa derivado de CIE-10-ES 2026 y SNOMED AR'}],facets:{category:['CAT-DX'],system:['CIE-10','SNOMED CT'],status:['Activo']}},
+  {id:'dx-003',catalog:'dentar-dx',code:'DNT-DX-000003',term:'Dientes incluidos',status:'Activo',conceptId:'DNT-DX-000003',lang:'es-AR',definition:'CIE-10 K01.0; nodo_final=1',chapter:'CAT-DX',external:'CIE-10 K01.0 · SNOMED CT 196419009',domainType:'diagnostico',uvr:noUvr,source:'CIE-10-ES 2026 + SNOMED CT Argentina',sourceVersion:'CIE-10-ES 2026',license:'CIE-10 y SNOMED CT: fuentes externas con licencia propia',reference:'docs/dentar/generado/dentar-dx-cie10-snomed.csv:12',versions:[{date:'2026',label:'CIE-10-ES 2026 / SNOMED AR',status:'Activo',note:'Mapa derivado de CIE-10-ES 2026 y SNOMED AR'}],facets:{category:['CAT-DX'],system:['CIE-10','SNOMED CT'],status:['Activo']}},
+  {id:'dx-004',catalog:'dentar-dx',code:'DNT-DX-000004',term:'Dientes impactados',status:'Activo',conceptId:'DNT-DX-000004',lang:'es-AR',definition:'CIE-10 K01.1; nodo_final=1',chapter:'CAT-DX',external:'CIE-10 K01.1 · SNOMED CT 235104008',domainType:'diagnostico',uvr:noUvr,source:'CIE-10-ES 2026 + SNOMED CT Argentina',sourceVersion:'CIE-10-ES 2026',license:'CIE-10 y SNOMED CT: fuentes externas con licencia propia',reference:'docs/dentar/generado/dentar-dx-cie10-snomed.csv:13',versions:[{date:'2026',label:'CIE-10-ES 2026 / SNOMED AR',status:'Activo',note:'Mapa derivado de CIE-10-ES 2026 y SNOMED AR'}],facets:{category:['CAT-DX'],system:['CIE-10','SNOMED CT'],status:['Activo']}},
+  {id:'an-001',catalog:'dentar-an',code:'DNT-AN-000001',term:'estructura de la apófisis coronoides de la mandíbula (estructura corporal)',status:'Activo',conceptId:'DNT-AN-000001',lang:'es-AR',definition:'SNOMED CT AR 124002',external:'SNOMED CT 124002',domainType:'anatomia',uvr:noUvr,source:SNOMED_SRC,sourceVersion:'2026-08-20',license:'SNOMED CT: licencia externa a verificar',reference:'docs/dentar/generado/dentar-an-candidatos.csv:2',versions:[{date:'2026-08-20',label:'Snapshot RF2 2026-08-20',status:'Pendiente de publicación',note:'Catálogo no publicado: requiere aprobación'}],facets:{system:['SNOMED CT AR 2026-08-20'],status:['Activo']}},
+  {id:'an-002',catalog:'dentar-an',code:'DNT-AN-000002',term:'estructura del tejido celular subcutáneo del filtro (estructura corporal)',status:'Activo',conceptId:'DNT-AN-000002',lang:'es-AR',definition:'SNOMED CT AR 608002',external:'SNOMED CT 608002',domainType:'anatomia',uvr:noUvr,source:SNOMED_SRC,sourceVersion:'2026-08-20',license:'SNOMED CT: licencia externa a verificar',reference:'docs/dentar/generado/dentar-an-candidatos.csv:3',versions:[{date:'2026-08-20',label:'Snapshot RF2 2026-08-20',status:'Pendiente de publicación',note:'Catálogo no publicado: requiere aprobación'}],facets:{system:['SNOMED CT AR 2026-08-20'],status:['Activo']}},
+  {id:'an-010',catalog:'dentar-an',code:'DNT-AN-000010',term:'estructura del maxilar superior (estructura corporal)',status:'Activo',conceptId:'DNT-AN-000010',lang:'es-AR',definition:'SNOMED CT AR 4335006',external:'SNOMED CT 4335006',domainType:'anatomia',uvr:noUvr,source:SNOMED_SRC,sourceVersion:'2026-08-20',license:'SNOMED CT: licencia externa a verificar',reference:'docs/dentar/generado/dentar-an-candidatos.csv:11',versions:[{date:'2026-08-20',label:'Snapshot RF2 2026-08-20',status:'Pendiente de publicación',note:'Catálogo no publicado: requiere aprobación'}],facets:{system:['SNOMED CT AR 2026-08-20'],status:['Activo']}},
+  {id:'an-011',catalog:'dentar-an',code:'DNT-AN-000011',term:'estructura del tejido celular subcutáneo de la barbilla (estructura corporal)',status:'Activo',conceptId:'DNT-AN-000011',lang:'es-AR',definition:'SNOMED CT AR 5520004',external:'SNOMED CT 5520004',domainType:'anatomia',uvr:noUvr,source:SNOMED_SRC,sourceVersion:'2026-08-20',license:'SNOMED CT: licencia externa a verificar',reference:'docs/dentar/generado/dentar-an-candidatos.csv:12',versions:[{date:'2026-08-20',label:'Snapshot RF2 2026-08-20',status:'Pendiente de publicación',note:'Catálogo no publicado: requiere aprobación'}],facets:{system:['SNOMED CT AR 2026-08-20'],status:['Activo']}},
+  {id:'cl-001',catalog:'dentar-cl',code:'DNT-CL-000001',term:'recesión gingival (trastorno)',status:'Activo',conceptId:'DNT-CL-000001',lang:'es-AR',definition:'SNOMED CT AR 4356008',external:'SNOMED CT 4356008',domainType:'clinico',uvr:noUvr,source:SNOMED_SRC,sourceVersion:'2026-08-20',license:'SNOMED CT: licencia externa a verificar',reference:'docs/dentar/generado/dentar-cl-candidatos.csv:2',versions:[{date:'2026-08-20',label:'Snapshot RF2 2026-08-20',status:'Pendiente de publicación',note:'Catálogo no publicado: requiere aprobación'}],facets:{system:['SNOMED CT AR 2026-08-20'],status:['Activo']}},
+  {id:'cl-002',catalog:'dentar-cl',code:'DNT-CL-000002',term:'herpes zóster (trastorno)',status:'Activo',conceptId:'DNT-CL-000002',lang:'es-AR',definition:'SNOMED CT AR 4740000',external:'SNOMED CT 4740000',domainType:'clinico',uvr:noUvr,source:SNOMED_SRC,sourceVersion:'2026-08-20',license:'SNOMED CT: licencia externa a verificar',reference:'docs/dentar/generado/dentar-cl-candidatos.csv:3',versions:[{date:'2026-08-20',label:'Snapshot RF2 2026-08-20',status:'Pendiente de publicación',note:'Catálogo no publicado: requiere aprobación'}],facets:{system:['SNOMED CT AR 2026-08-20'],status:['Activo']}},
+  {id:'cl-007',catalog:'dentar-cl',code:'DNT-CL-000007',term:'anodoncia (trastorno)',status:'Activo',conceptId:'DNT-CL-000007',lang:'es-AR',definition:'SNOMED CT AR 26624006',external:'SNOMED CT 26624006',domainType:'clinico',uvr:noUvr,source:SNOMED_SRC,sourceVersion:'2026-08-20',license:'SNOMED CT: licencia externa a verificar',reference:'docs/dentar/generado/dentar-cl-candidatos.csv:8',versions:[{date:'2026-08-20',label:'Snapshot RF2 2026-08-20',status:'Pendiente de publicación',note:'Catálogo no publicado: requiere aprobación'}],facets:{system:['SNOMED CT AR 2026-08-20'],status:['Activo']}},
+  {id:'cl-018',catalog:'dentar-cl',code:'DNT-CL-000018',term:'caries dental (trastorno)',status:'Activo',conceptId:'DNT-CL-000018',lang:'es-AR',definition:'SNOMED CT AR 80967001',external:'SNOMED CT 80967001',domainType:'clinico',uvr:noUvr,source:SNOMED_SRC,sourceVersion:'2026-08-20',license:'SNOMED CT: licencia externa a verificar',reference:'docs/dentar/generado/dentar-cl-candidatos.csv:19',versions:[{date:'2026-08-20',label:'Snapshot RF2 2026-08-20',status:'Pendiente de publicación',note:'Catálogo no publicado: requiere aprobación'}],facets:{system:['SNOMED CT AR 2026-08-20'],status:['Activo']}},
+];
+
+/* Códigos de contexto verificados en el artefacto de relaciones. Solo se conoce
+   su código; no se les asigna una denominación inventada. */
+const PARTIAL_CODES = {
+  'DNT-PR-000191':'p191','DNT-PR-000006':'p006','DNT-PR-000247':'p247','DNT-PR-000085':'p085',
+  'DNT-PR-000008':'p008','DNT-PR-000010':'p010','DNT-PR-000303':'p303','DNT-PR-000036':'p036',
+  'DNT-PR-000330':'p330','DNT-PR-000364':'p364','DNT-PR-000365':'p365','DNT-PR-000095':'p095',
+  'DNT-PR-000073':'p073','DNT-PR-000514':'p514','DNT-PR-000515':'p515','DNT-PR-000089':'p089',
+  'DNT-PR-000348':'p348','DNT-PR-000074':'p074','DNT-PR-000228':'p228'
+};
+Object.entries(PARTIAL_CODES).forEach(([code,id])=>{
+  ITEMS.push({id, catalog:'dentar-pr', code, term:'Denominación no incluida en la muestra reducida',
+    status:'Activo', version:'2025', conceptId:code, lang:'es-AR', definition:'', chapter:'',
+    external:'CDT-2025', domainType:'prestacion', uvr:noUvr, source:PR_SRC, sourceVersion:'2025',
+    license:'Fuente externa: condiciones de licencia a verificar',
+    reference:'docs/dentar/generado/dentar-cdt-relaciones-propuerto.sql', versions:[],
+    samplePartial:true, facets:{system:['CDT-2025'],status:['Activo'],version:['2025']}});
+});
+
+/* 15 tipos literales declarados por la fuente CDT. context_text se transcribe
+   literalmente; algunos aparecen truncados en el propio artefacto generado. */
+const RELATIONS = [
+  {id:'r01',sourceId:'pr-108',targetId:'pr-113',type:'referencia_literal',field:'procedure',system:'CDT-2025',review:'',context:'Una (1) en un período de tres (3) años D0210 o D0330. Los límites de frecuencia de ciertos planes pueden variar respecto de este estándar; consulte la política de su plan para detalles y confi'},
+  {id:'r02',sourceId:'pr-106',targetId:'pr-146',type:'refer_to_details',field:'notes',system:'CDT-2025',review:'',context:'Consulte los detalles indicados para el código D0270.'},
+  {id:'r03',sourceId:'pr-113',targetId:'pr-108',type:'alternate_benefit',field:'notes',system:'CDT-2025',review:'',context:'La película panorámica es admisible en lugar de una serie completa (D0210) según la fecha del último servicio, con la frecuencia dependiendo de los términos del plan dental. La cobertura de una serie completa varí'},
+  {id:'r04',sourceId:'pr-190',targetId:'pr-021',type:'billed_in_conjunction_with',field:'notes',system:'CDT-2025',review:'',context:'Puede facturarse junto con códigos de evaluación o tratamiento de conducto radicular (D3310, D3320 y D3330). Si se realiza prueba de vitalidad pulpar en más de una (1) pieza en la misma fecha de servicio, solo se paga una (1).'},
+  {id:'r05',sourceId:'pr-222',targetId:'p191',type:'denied_as_integral',field:'notes',system:'CDT-2025',review:'',context:'Se rechaza como INTEGRAL cuando lo realiza el mismo odontólogo que los modelos diagnósticos (D0470), rebasado y rebase de prótesis (D5710-D5765), servicios de implantes (D6010-D6199), prótesis parcial fija (D6205-D6794) y servicios de ort'},
+  {id:'r06',sourceId:'pr-229',targetId:'p006',type:'integral_to',field:'notes',system:'CDT-2025',review:'',context:'Integral a los exámenes D0120-D0180'},
+  {id:'r07',sourceId:'p247',targetId:'p085',type:'shares_frequency_limitation_with',field:'notes',system:'CDT-2025',review:'',context:'Este código comparte la limitación de frecuencia con el código D1510. La prestación del afiliado cubrirá D1510 o D1575, pero no ambos.'},
+  {id:'r08',sourceId:'p008',targetId:'p010',type:'paid_as_code',field:'notes',system:'CDT-2025',review:'',context:'y de cuántas restauraciones separadas compartan la misma superficie. Ejemplo: dos restauraciones separadas, MO y DO, se pagarán como una D2160 MOD. Hay un período de espera de doce (12) meses entre servicios.'},
+  {id:'r09',sourceId:'p303',targetId:'p036',type:'not_paid_separately',field:'notes',system:'CDT-2025',review:'',context:'idad cóncava en la preparación. Uno (1) cada cinco (5) años. Cuando se combina en una solicitud con un perno y muñón colado o prefabricado (D2952, D2954), el muñón (D2950) no se paga por separado.'},
+  {id:'r10',sourceId:'p330',targetId:'pr-021',type:'not_to_be_used_with',field:'notes',system:'CDT-2025',review:'',context:'odoncista. La cobertura incluye cuidados posoperatorios y anestesia local. Pagadero doce (12) meses después del tratamiento con los códigos D3310, D3320, D3330. Una vez por pieza por vida. El retratamiento de un tratamiento de conducto radicular previo no es pagadero con servicios de'},
+  {id:'r11',sourceId:'p364',targetId:'p365',type:'concurrent_to',field:'notes',system:'CDT-2025',review:'',context:'iezas de un cuadrante tienen bolsas periodontales de cinco (5) mm o más. Si hay menos de cuatro (4) piezas comprometidas, use el código CDT D4241. Pueden requerirse otros procedimientos concurrentes a D4240 y deben informarse por separado con sus propios códigos únicos. Puede realizar'},
+  {id:'r12',sourceId:'p095',targetId:'p073',type:'interchangeable_with',field:'notes',system:'CDT-2025',review:'',context:'Este código será intercambiable con el código D1110. Este código se cubrirá como servicio preventivo y compartirá las mismas limitaciones de frecuencia, pautas de procesamiento, relación con'},
+  {id:'r13',sourceId:'p514',targetId:'p515',type:'frequency_limitations',field:'procedure',system:'CDT-2025',review:'',context:'D6080, D6081, D6180. Limitaciones de frecuencia: dos servicios por año calendario.'},
+  {id:'r14',sourceId:'p089',targetId:'p348',type:'procedure_code_not_used_for',field:'notes',system:'CDT-2025',review:'',context:'La reimplantación se limita a piezas permanentes. El código de procedimiento no se usa para la reimplantación intencional (D3470).'},
+  {id:'r15',sourceId:'p074',targetId:'p228',type:'used_in_combination_with',field:'notes',system:'CDT-2025',review:'',context:'tura es de dos (2) veces por año calendario para planes dentales FFS/PPO. El barniz de flúor, código D1206, puede usarse en combinación con D1208 hasta un total de dos (2) aplicaciones tópicas o de barniz de flúor por año calendario. El paciente debe tener dieciocho (18) años o menos.'},
+];
+
+/* === MOTOR DEL PROTOTIPO === */
+let state = {catalog:'', q:'', filters:{}, selected:null, previous:null, tab:'concept', relView:'table', relType:'', relSystem:'', page:1, pageSize:6, view:'results'};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('is-on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('is-on'),1800);}
+const catOf = code => CATALOGS.find(c=>c.code===code) || {};
+const catLabel = code => { const c=catOf(code); return c.name ? `${code.toUpperCase()} · ${c.name}` : code; };
+const itemById = id => ITEMS.find(x=>x.id===id);
+function otherEnd(r, current){
+  const outgoing = r.sourceId===current;
+  const other = itemById(outgoing ? r.targetId : r.sourceId) || {code:'',term:''};
+  return {...other, direction:outgoing ? 'saliente' : 'entrante'};
+}
+
+function renderCatalogs(){
+  const groups = {};
+  CATALOGS.forEach(c=>(groups[c.group] ??= []).push(c));
+  $('#catalogs').innerHTML = Object.entries(groups).map(([g,list])=>`
+    <li class="family">
+      <div class="family__title"><span>${esc(g)}</span><em>${esc(list[0].groupNote||'')}</em></div>
+      ${list.map(c=>`<button type="button" class="cat ${c.status==='reserved'?'cat--proposed':''} ${c.code===state.catalog?'is-active':''}"
+          data-catalog="${esc(c.code)}" ${c.status==='reserved'?'disabled aria-disabled="true" title="Sin datos verificados: no seleccionable"':''}>
+          <span class="cat__code">${esc(c.code)}</span><span class="cat__name">${esc(c.name)}</span>
+          <span class="cat__tag ${c.tagClass||''}">${esc(c.tag)}</span></button>`).join('')}
+    </li>`).join('');
+  document.querySelectorAll('[data-catalog]:not([disabled])').forEach(b=>b.addEventListener('click',()=>{
+    state.catalog=b.dataset.catalog;state.page=1;state.selected=null;state.filters={};renderCatalogs();renderFilters();renderResults();renderDetail();
+  }));
+}
+
+function renderFilters(){
+  const f=(CATALOGS.find(c=>c.code===state.catalog)||{}).filters||[];
+  $('#filters').innerHTML=f.map(x=>`<div><label for="f-${esc(x.key)}">${esc(x.label)}</label>
+    <select id="f-${esc(x.key)}" data-filter="${esc(x.key)}"><option value="">Todos</option>
+    ${x.options.map(o=>`<option value="${esc(o)}" ${state.filters[x.key]===o?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`).join('')
+    || '<p class="filters__note">Este catálogo no expone filtros adicionales en los datos disponibles.</p>';
+  $('#filtersNote').textContent=(CATALOGS.find(c=>c.code===state.catalog)||{}).filterNote||'Los filtros se derivan de campos reales de la fuente.';
+  document.querySelectorAll('[data-filter]').forEach(s=>s.addEventListener('change',()=>{state.filters[s.dataset.filter]=s.value;state.page=1;renderResults();}));
+}
+
+function filtered(){
+  return ITEMS.filter(i=>{
+    if(state.catalog && i.catalog!==state.catalog) return false;
+    const q=state.q.trim().toLowerCase();
+    if(q && ![i.code,i.term,i.synonyms,i.external].join(' ').toLowerCase().includes(q)) return false;
+    return Object.entries(state.filters).every(([k,v])=>!v || (i.facets?.[k]||[]).includes(v));
+  });
+}
+function renderResults(){
+  const rows=filtered();
+  $('#count').textContent=rows.length;
+  $('#searchState').textContent=state.q?`Resultados para «${state.q}»`:'Sin búsqueda activa · muestra de datos reales';
+  const shown=rows.slice(0,state.page*state.pageSize);
+  $('#results').innerHTML=shown.map(i=>`
+    <li class="result ${state.selected===i.id?'is-active':''}">
+      <button type="button" data-item="${esc(i.id)}" aria-current="${state.selected===i.id}">
+        <span class="result__top"><span class="result__code">${esc(i.code)}</span><span class="result__term">${esc(i.term)}</span></span>
+        <span class="result__meta"><span class="pill">${esc(catLabel(i.catalog))}</span>
+        <span class="pill pill--state">${esc(i.status)}</span>${i.type?`<span class="pill">${esc(i.type)}</span>`:''}
+        ${i.samplePartial?'<span class="pill pill--warn">solo código verificado</span>':''}
+        ${i.lang?`<span>${esc(i.lang)}</span>`:''}</span>
+      </button></li>`).join('') || '<li class="empty">No hay resultados para esta combinación. No se muestran registros ficticios.</li>';
+  $('#pageInfo').textContent=`${shown.length} de ${rows.length}`;
+  $('#more').style.visibility=shown.length<rows.length?'visible':'hidden';
+  document.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.item)));
+}
+function select(id){ if(state.selected && state.selected!==id) state.previous=state.selected; state.selected=id; renderResults(); renderDetail(); setView('detail'); }
+
+function related(id){
+  const r=RELATIONS.find(x=>x.id===id); if(!r || !state.selected) return;
+  const other=otherEnd(r,state.selected);
+  state.previous=state.selected; state.selected=other.id;
+  renderResults(); renderDetail(); setView('detail');
+  toast('Ficha actualizada · el contexto de búsqueda se conserva');
+}
+function setView(v){state.view=v;$('#workspace').dataset.view=v;document.querySelectorAll('.mobile-switch button').forEach(b=>b.classList.toggle('is-active',b.dataset.view===v));}
+
+function facts(i){return `<dl class="panel__facts">
+  ${[['Catálogo',catLabel(i.catalog)],['Estado',i.status],['Versión',i.version],['Vigencia',i.validity],['ID de concepto',i.conceptId],['Idioma efectivo',i.lang],['Identificadores externos',i.external]]
+    .filter(([,v])=>v).map(([k,v])=>`<div class="fact"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;}
+function kv(pairs){return `<dl class="kv">${pairs.filter(([,v])=>v).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;}
+
+function renderDetail(){
+  const i=ITEMS.find(x=>x.id===state.selected), box=$('#panelScroll');
+  if(!i){
+    $('#crumb').innerHTML='';$('#panelTitle').textContent='Ficha del concepto';
+    $('#panelSubtitle').textContent='Seleccioná un resultado para ver su ficha completa.';
+    box.querySelectorAll('.tabpanel').forEach(p=>p.innerHTML='<div class="empty">Sin concepto seleccionado.</div>');return;
+  }
+  const cat=catOf(i.catalog);
+  $('#crumb').innerHTML=`<span>${esc(catLabel(i.catalog))}</span><span>›</span><span class="mono">${esc(i.code)}</span>`+
+    (state.previous&&state.previous!==i.id?`<button type="button" id="backRel">← concepto anterior</button>`:'');
+  $('#panelTitle').textContent=i.term;
+  const notices=[];
+  if(cat.status==='pending') notices.push('Catálogo NO PUBLICADO: datos derivados disponibles, requiere aprobación explícita de exposición.');
+  if(i.samplePartial) notices.push('Registro de contexto: solo se verificó el código; la denominación no se incluyó en esta muestra.');
+  $('#panelSubtitle').textContent=notices.join(' ') || (i.external||'');
+  const back=$('#backRel'); if(back) back.onclick=()=>{state.selected=state.previous;state.previous=null;renderResults();renderDetail();};
+
+  $('#p-concept').innerHTML=`<div class="sec"><h3>Identificación</h3>
+      <div class="panel__id"><span class="code">${esc(i.code)}</span><span class="pill pill--state">${esc(i.status)}</span>${i.type?`<span class="pill">${esc(i.type)}</span>`:''}</div>
+      ${facts(i)}</div>
+    <div class="sec"><h3>Definición</h3><p class="note">${esc(i.definition||'La fuente no expone una definición literal para este concepto.')}</p></div>
+    ${notices.length?`<p class="boundary"><strong>Estado de la muestra:</strong> ${esc(notices.join(' '))}</p>`:''}
+    <div class="sec"><h3>Clasificación y términos</h3>${kv([
+      ['Categoría de la fuente',i.chapter],['Identificadores externos',i.external],
+      ['Términos alternativos',i.synonyms],['Observaciones',i.notes]])}</div>
+    <div class="tools"><button data-copy="${esc(i.code)}">Copiar código</button><button data-copy="${esc(i.conceptId)}">Copiar ID</button>
+      <button data-copy-record>Copiar ficha</button><button data-copy="${esc(location.href)}">Compartir enlace</button>
+      <a href="#">Documentación de API</a></div>
+    <p class="boundary"><strong>Límite de alcance:</strong> esta ficha describe el concepto clínico. No incluye requisitos de obras sociales, autorizaciones, aranceles, copagos ni límites por financiador.</p>`;
+
+  const rels=RELATIONS.filter(r=>r.sourceId===i.id||r.targetId===i.id);
+  $('#p-relations').innerHTML=`<div class="relbar">
+      <div class="seg"><button data-relview="table" class="${state.relView==='table'?'is-active':''}">Tabla</button>
+      <button data-relview="graph" class="${state.relView==='graph'?'is-active':''}">Diagrama</button></div>
+      <select id="relType"><option value="">Todos los tipos</option>${[...new Set(rels.map(r=>r.type))].map(t=>`<option ${state.relType===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+      <select id="relSystem"><option value="">Todos los sistemas</option>${[...new Set(rels.map(r=>r.system))].map(t=>`<option ${state.relSystem===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+    </div><div id="relBody"></div>`;
+  document.querySelectorAll('[data-relview]').forEach(b=>b.onclick=()=>{state.relView=b.dataset.relview;renderDetail();});
+  $('#relType').onchange=e=>{state.relType=e.target.value;renderRelations(i);};
+  $('#relSystem').onchange=e=>{state.relSystem=e.target.value;renderRelations(i);};
+  renderRelations(i);
+
+  $('#p-values').innerHTML=i.domainType==='prestacion'
+    ? `<div class="uvr-grid">
+        <div class="uvr-cell"><strong>${esc(i.uvr?.work??'—')}</strong><span>Trabajo profesional</span></div>
+        <div class="uvr-cell"><strong>${esc(i.uvr?.expense??'—')}</strong><span>Gastos de prestación</span></div>
+        <div class="uvr-cell"><strong>${esc(i.uvr?.liability??'—')}</strong><span>Responsabilidad profesional</span></div>
+        <div class="uvr-cell uvr-cell--total"><strong>${esc(i.uvr?.total??'—')}</strong><span>Total UVR (derivado)</span></div>
+      </div><p class="note">${i.uvr?`Valoración relativa · versión ${esc(i.uvr.version)} · vigencia ${esc(i.uvr.validity)} · fuente: ${esc(i.uvr.source)}`:'No hay valores UVR cargados para este concepto. No se muestran valores estimados.'}</p>
+      <p class="boundary"><strong>No es un arancel:</strong> UVR es valoración relativa. Los importes, copagos y condiciones dependen de contratos de financiadores y se consultarán en un módulo independiente.</p>`
+    : `<div class="empty">La valoración UVR no aplica a este tipo de concepto (${esc(i.domainType||'catálogo clínico')}).</div>
+       <p class="note" style="margin-top:12px">No se asignan valores UVR a diagnósticos, medicamentos, insumos ni productos por defecto.</p>`;
+
+  $('#p-versions').innerHTML=`<ul class="timeline">${(i.versions||[]).map(v=>`<li><time>${esc(v.date)}</time><div><strong>${esc(v.label)}</strong> · <span class="muted">${esc(v.status)}</span><div class="muted" style="font-size:.72rem">${esc(v.note)}</div></div></li>`).join('')||'<li><span class="muted">Sin historial de versiones publicado en la fuente.</span></li>'}</ul>`;
+
+  $('#p-trace').innerHTML=`<div class="sec"><h3>Procedencia</h3>${kv([
+    ['Fuente de origen',i.source],['Versión de la fuente',i.sourceVersion],['Fecha de importación',i.imported],
+    ['Última actualización',i.updated],['Responsable de revisión',i.reviewer],['Licencia',i.license],
+    ['Referencia documental',i.reference]])}</div>
+    <p class="boundary"><strong>Regla:</strong> si la fuente no declara licencia, responsable o fecha, el campo queda vacío. Nunca se inventan aprobaciones ni datos de auditoría.</p>`;
+
+  document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);toast('Copiado al portapapeles');}catch{toast('No se pudo copiar');}});
+  const cr=document.querySelector('[data-copy-record]'); if(cr) cr.onclick=async()=>{try{await navigator.clipboard.writeText([i.code,i.term,catLabel(i.catalog),i.reference].join(' | '));toast('Ficha copiada');}catch{toast('No se pudo copiar');}};
+}
+
+function renderRelations(i){
+  const list=RELATIONS.filter(r=>(r.sourceId===i.id||r.targetId===i.id)&&(!state.relType||r.type===state.relType)&&(!state.relSystem||r.system===state.relSystem));
+  if(!list.length){$('#relBody').innerHTML='<div class="empty">No hay relaciones registradas para los filtros seleccionados.</div>';return;}
+  const tail=`<p class="note" style="margin-top:10px">Los 15 tipos se presentan literalmente como los declara la fuente CDT; no se asume equivalencia entre sistemas. El texto de contexto se transcribe tal cual aparece en el artefacto generado (algunos fragmentos están truncados en la propia fuente). Las menciones a planes o coberturas forman parte del texto fuente y <strong>no</strong> constituyen datos de financiadores de Origen Salud.</p>`;
+  if(state.relView==='table'){
+    $('#relBody').innerHTML=`<table><thead><tr><th>Tipo declarado</th><th>Código relacionado</th><th>Descripción</th><th>Sistema / campo</th><th>Dirección</th></tr></thead><tbody>
+      ${list.map(r=>{const o=otherEnd(r,i.id);return `<tr><td><span class="reltype">${esc(r.type)}</span>${r.context?`<span class="ctx">${esc(r.context)}</span>`:''}</td>
+      <td><button class="linkcode" data-rel="${esc(r.id)}">${esc(o.code)}</button></td><td>${esc(o.term)}</td>
+      <td>${esc(r.system)}<span class="ctx">campo: ${esc(r.field)}</span></td><td>${esc(o.direction)}</td></tr>`;}).join('')}</tbody></table>${tail}`;
+  }else{
+    const pts=[[16,20],[84,22],[84,74],[16,76],[50,10]];
+    const cx=50,cy=48;
+    $('#relBody').innerHTML=`<div class="graph"><svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      ${list.slice(0,5).map((r,k)=>`<line x1="${cx}" y1="${cy}" x2="${pts[k][0]}" y2="${pts[k][1]}" stroke="var(--teal)" stroke-width=".35" opacity=".7"/>`).join('')}</svg>
+      <div class="graph__center"><strong>${esc(i.term)}</strong><span>${esc(i.code)}</span></div>
+      ${list.slice(0,5).map((r,k)=>{const o=otherEnd(r,i.id);return `<div class="graph__node" style="left:${pts[k][0]}%;top:${pts[k][1]}%;transform:translate(-50%,-50%)" data-rel="${esc(r.id)}">
+        <strong>${esc(o.term)}</strong><span>${esc(o.code)}</span><small>${esc(r.type)} · ${esc(r.system)}</small></div>`;}).join('')}</div>
+      <div class="graph__legend"><span><i></i>relación declarada por la fuente</span><span>Profundidad limitada a 1 nivel · hasta 5 nodos</span></div>
+      <p class="note" style="margin-top:10px">Seleccioná un nodo para abrir su ficha y volver al concepto anterior sin perder la búsqueda.</p>${tail}`;
+  }
+  document.querySelectorAll('[data-rel]').forEach(b=>b.onclick=()=>related(b.dataset.rel));
+}
+
+$('#searchBtn').onclick=()=>{state.q=$('#q').value;state.page=1;renderResults();};
+$('#q').addEventListener('input',(()=>{let t;return e=>{clearTimeout(t);t=setTimeout(()=>{state.q=e.target.value;state.page=1;renderResults();},250);};})());
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')$('#searchBtn').click();});
+$('#more').onclick=()=>{state.page++;renderResults();};
+document.querySelectorAll('.mobile-switch button').forEach(b=>b.onclick=e=>{e.stopPropagation();setView(b.dataset.view);});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=e=>{
+  e.stopPropagation();
+  state.tab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(x=>{const on=x===b;x.classList.toggle('is-active',on);x.setAttribute('aria-selected',on);});
+  document.querySelectorAll('[data-panel]').forEach(p=>p.classList.toggle('is-active',p.dataset.panel===state.tab));
+  $('#panelScroll').scrollTop=0;
+});
+/* Estados iniciales por query string: ?catalog=dentar-pr&item=pr-113&tab=relations&relview=graph&view=results */
+const params=new URLSearchParams(location.search);
+if(params.get('catalog') && catOf(params.get('catalog')).name) state.catalog=params.get('catalog');
+if(params.get('item') && itemById(params.get('item'))) state.selected=params.get('item');
+if(params.get('q')) {state.q=params.get('q');$('#q').value=state.q;}
+if(params.get('relview')==='graph'||params.get('relview')==='table') state.relView=params.get('relview');
+if(params.get('view')==='results'||params.get('view')==='detail') state.view=params.get('view');
+renderCatalogs();renderFilters();renderResults();renderDetail();
+if(['concept','relations','values','versions','trace'].includes(params.get('tab'))) state.tab=params.get('tab');
+document.querySelector(`[data-tab="${state.tab}"]`)?.click();
+setView(state.view);
+</script>
+</body>
+</html>
