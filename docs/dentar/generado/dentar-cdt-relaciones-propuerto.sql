@@ -65,8 +65,11 @@ CREATE TABLE IF NOT EXISTS os_catalog_relation (
     provenance TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_os_catalog_relation_not_self CHECK (source_item_id <> target_item_id),
+    -- El contexto diferencia filas que comparten los demás campos (18 grupos en
+    -- la fuente), por eso integra la clave única y el ON CONFLICT.
     CONSTRAINT uq_os_catalog_relation UNIQUE
-        (source_item_id, target_item_id, relation_type, source_system_code, source_field, source_value)
+        (source_item_id, target_item_id, relation_type, source_system_code,
+         source_field, source_value, context_text)
 );
 
 CREATE INDEX IF NOT EXISTS idx_os_catalog_relation_source
@@ -1317,10 +1320,9 @@ SELECT si.id, ti.id, r.relation_type, 'CDT-2025',
   JOIN os_catalog sc ON sc.id = si.catalog_id AND sc.code = 'dentar-pr'
   JOIN os_catalog tc ON tc.id = ti.catalog_id AND tc.code = 'dentar-pr'
 ON CONFLICT (source_item_id, target_item_id, relation_type,
-             source_system_code, source_field, source_value)
+             source_system_code, source_field, source_value, context_text)
 DO UPDATE
-   SET context_text = EXCLUDED.context_text,
-       source_cdt_id = EXCLUDED.source_cdt_id,
+   SET source_cdt_id = EXCLUDED.source_cdt_id,
        review_status = EXCLUDED.review_status,
        provenance = EXCLUDED.provenance;
 
