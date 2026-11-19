@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var list<array<string, mixed>> $organizations */
 /** @var list<string> $roles */
 /** @var string $status */
+/** @var list<array{code: string, name: string, short_name: string}> $catalogs */
 ?>
 <section class="admin-panel">
     <h1><?= e($t('admin.invites.title')) ?></h1>
@@ -52,9 +53,11 @@ declare(strict_types=1);
                 <label><?= e($t('admin.invites.ttl')) ?>
                     <input type="number" name="ttl" min="60" max="2592000" step="60" value="604800">
                 </label>
-                <label><?= e($t('admin.grants.hint')) ?>
-                    <textarea name="grants" rows="3" placeholder="dentar-pr:propose:dentar-pr:review:deny"></textarea>
-                </label>
+                <?php
+                $allowedSelected = [];
+                $deniedSelected = [];
+                require __DIR__ . '/_grant_choices.php';
+                ?>
                 <label><?= e($t('admin.invites.message')) ?>
                     <textarea name="message" rows="3" maxlength="1000"><?= $value('message') ?></textarea>
                 </label>

@@ -1,7 +1,7 @@
 -- =====================================================================
 -- M2 / Fase 2 — Gobernanza: organizaciones, invitaciones y memberships
 -- =====================================================================
--- ARTEFACTO PROPUESTO — NO EJECUTAR SIN AUTORIZACIÓN OPERATIVA EXPLÍCITA.
+-- APLICADO Y VERIFICADO en origen_codes (2026-11-19) con autorización explícita.
 -- Autorización de diseño: "Autorizo Fase 2 / M2" (2026-11-19).
 -- Aditiva y transaccional. Requiere M1 aplicado previamente.
 -- No modifica public, os_catalog_*, importadores, fuentes originales ni la
@@ -221,4 +221,4 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA os_admin TO origen_admin;
 
 COMMIT;
 
--- Fin del artefacto M2. No se ha ejecutado.
+-- Fin del artefacto M2. Aplicado y verificado el 2026-11-19.

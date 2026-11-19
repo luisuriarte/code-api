@@ -1338,10 +1338,22 @@ admin:
             revoked: 'Revoke'
     grants:
         hint: 'Catalog grants (one per line: code:operation:allow or deny)'
+        title: 'Catalog permissions'
+        legend: 'Check ✓ to allow or ✗ to deny. Denials take precedence.'
+        empty: 'No active catalogs available.'
+        allow: 'Allow'
+        deny: 'Deny'
         catalog: 'Catalog code'
         operation: 'Operation'
         decision: 'Decision'
-        save: 'Save grant'
+        save: 'Save grants'
+        ops:
+            view: 'View'
+            propose: 'Propose'
+            edit_draft: 'Edit draft'
+            review: 'Review'
+            approve: 'Approve'
+            publish: 'Publish'
     invites:
         title: 'Invitations'
         lead: 'External collaborators are added by invitation only. The link is single use.'
@@ -1417,3 +1429,4 @@ admin:
         last_superadmin: 'The last super administrator cannot be deactivated.'
         catalog: 'The catalog code or operation is not valid.'
         grants: 'The grants format is not valid.'
+        grant_required: 'Select at least one permission.'

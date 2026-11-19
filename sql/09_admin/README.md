@@ -11,19 +11,31 @@ append-only y los roles/permisos base.
 
 ## M2 — Gobernanza: organizaciones, invitaciones y memberships
 
-**Estado: IMPLEMENTADO EN EL REPOSITORIO. MIGRACIÓN PROPUESTA, NO EJECUTADA.**
+**Estado: APLICADO Y VERIFICADO en `origen_codes` (2026-11-19).**
 
-El código de la Fase 2 está listo, pero `fase2_gobernanza.sql` **no se ha
-ejecutado** contra `origen_codes`. Requiere revisión y ejecución manual por el
-responsable. El diseño y las decisiones están en
+La migración `fase2_gobernanza.sql` fue ejecutada por el responsable como
+`postgres` con `sudo -u postgres psql -v ON_ERROR_STOP=1` y terminó en `COMMIT`.
+La verificación `SELECT`-only confirmó:
+
+- 15 columnas nuevas de gobernanza en `organization`, `membership` y
+  `catalog_grant`;
+- las 2 tablas `invitation` e `invitation_grant`;
+- 12 índices, incluidos los dos índices parciales que sustituyeron la constraint
+  única global de `catalog_grant` (la consulta de constraints devolvió 0 filas,
+  tal como se esperaba);
+- el trigger `trg_catalog_grant_membership_user` activo;
+- los 4 permisos nuevos asignados solo a `superadmin`;
+- `origen_admin` sin privilegios fuera de `os_admin`;
+- el trigger append-only `trg_audit_log_immutable` activo.
+
+El diseño y las decisiones están en
 [`docs/architecture/fase2-organizaciones-invitaciones.md`](../../docs/architecture/fase2-organizaciones-invitaciones.md).
 
-Antes de ejecutar M2 deben estar dadas estas condiciones:
+Sigue pendiente de configuración operativa (no bloquea la base):
 
-1. M1 aplicado y verificado.
-2. Backup verificado de `origen_codes`.
-3. `ADMIN_BASE_URL` definido si el panel vive en un host distinto del portal.
-4. SMTP configurado si se quiere entrega real de invitaciones.
+1. `ADMIN_BASE_URL` si el panel vive en un host distinto del portal.
+2. SMTP si se quiere entrega real de las invitaciones.
+3. Publicar el código PHP del panel en el VPS; la base ya está lista.
 
 ## Reglas de las migraciones
 

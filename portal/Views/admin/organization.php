@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var list<array<string, mixed>> $members */
 /** @var list<array<string, mixed>> $invitations */
 /** @var list<string> $roles */
+/** @var list<array{code: string, name: string, short_name: string}> $catalogs */
 ?>
 <section class="admin-panel">
     <p><a href="/admin/organizations">← <?= e($t('admin.orgs.back')) ?></a></p>
@@ -93,9 +94,11 @@ declare(strict_types=1);
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label><?= e($t('admin.grants.hint')) ?>
-                    <textarea name="grants" rows="3" placeholder="snomed:propose:dentar-pr:review:deny"></textarea>
-                </label>
+                <?php
+                $allowedSelected = [];
+                $deniedSelected = [];
+                require __DIR__ . '/_grant_choices.php';
+                ?>
                 <button type="submit" class="button"><?= e($t('admin.members.assign_submit')) ?></button>
             </form>
         </article>
@@ -139,25 +142,25 @@ declare(strict_types=1);
                     </tr>
                     <tr class="admin-subrow">
                         <td colspan="4">
-                            <form method="post" action="/admin/grants/<?= $memberId ?>" class="admin-form admin-inline">
+                            <?php
+                            $existingGrants = is_array($member['grants'] ?? null) ? $member['grants'] : [];
+                            $allowedSelected = [];
+                            $deniedSelected = [];
+
+                            foreach ($existingGrants as $existingGrant) {
+                                $value = (string) $existingGrant['catalog_code'] . '|' . (string) $existingGrant['operation'];
+
+                                if ((bool) $existingGrant['allowed']) {
+                                    $allowedSelected[] = $value;
+                                } else {
+                                    $deniedSelected[] = $value;
+                                }
+                            }
+                            ?>
+                            <form method="post" action="/admin/grants/<?= $memberId ?>" class="admin-form">
                                 <input type="hidden" name="<?= e(\OrigenSalud\Portal\Services\Csrf::FIELD) ?>"
                                        value="<?= e(\OrigenSalud\Portal\Services\Csrf::token()) ?>">
-                                <label><?= e($t('admin.grants.catalog')) ?>
-                                    <input type="text" name="catalog_code" maxlength="50" required>
-                                </label>
-                                <label><?= e($t('admin.grants.operation')) ?>
-                                    <select name="operation">
-                                        <?php foreach (\OrigenSalud\Portal\Admin\Rbac::CATALOG_OPERATIONS as $operation): ?>
-                                            <option value="<?= e($operation) ?>"><?= e($operation) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </label>
-                                <label><?= e($t('admin.grants.decision')) ?>
-                                    <select name="allowed">
-                                        <option value="allow"><?= e($t('admin.home.allowed')) ?></option>
-                                        <option value="deny"><?= e($t('admin.home.denied')) ?></option>
-                                    </select>
-                                </label>
+                                <?php require __DIR__ . '/_grant_choices.php'; ?>
                                 <button type="submit" class="button button-small"><?= e($t('admin.grants.save')) ?></button>
                             </form>
                         </td>

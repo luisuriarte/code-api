@@ -3358,3 +3358,83 @@ svg {
 .admin-table th {
     background: #edf1f6;
 }
+
+.admin-grant-choices {
+    border: 1px solid #dde3ea;
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    margin: 0;
+}
+
+.admin-grant-choices legend {
+    padding: 0 0.35rem;
+    font-weight: 600;
+}
+
+.admin-grant-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    max-height: 18rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.admin-grant-catalog {
+    border: 1px solid #e2e7ee;
+    border-radius: 8px;
+    padding: 0.7rem;
+    background: #fbfcfe;
+}
+
+.admin-grant-heading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+}
+
+.admin-grant-heading code {
+    color: #5b6472;
+    font-size: 0.8rem;
+}
+
+.admin-grant-ops {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.admin-grant-op {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.admin-grant-op label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.admin-grant-choices input[type="checkbox"] {
+    width: auto;
+    padding: 0;
+    margin: 0;
+}
+
+.admin-grant-choices .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

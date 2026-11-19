@@ -1,11 +1,15 @@
 # Fase 2 / M2 — Organizaciones, invitaciones y memberships de colaboradores
 
-> **Estado: IMPLEMENTADO EN EL REPOSITORIO. MIGRACIÓN PROPUESTA, NO EJECUTADA.**
+> **Estado: IMPLEMENTADO, APLICADO Y VERIFICADO en `origen_codes` (2026-11-19).**
 >
 > **Autorización recibida:** `Autorizo Fase 2 / M2` (2026-11-19).
 >
-> **Ejecución en VPS:** no realizada. El responsable debe revisar y ejecutar
-> `sql/09_admin/fase2_gobernanza.sql` por su cuenta.
+> **Ejecución en VPS:** realizada por el responsable con
+> `sudo -u postgres psql -v ON_ERROR_STOP=1`. La migración terminó en `COMMIT` y
+> la verificación `SELECT`-only terminó en `ROLLBACK`, sin escribir datos.
+>
+> **Pendiente no bloqueante:** publicar el código PHP del panel y configurar
+> `ADMIN_BASE_URL` y SMTP en el entorno.
 >
 > **Base:** M1 aplicado y verificado en `origen_codes` el 2026-11-19.
 >
@@ -776,7 +780,7 @@ las recomendaciones del acta.
 La entrega en el repositorio comprende:
 
 - `sql/09_admin/fase2_gobernanza.sql`: migración aditiva y transaccional,
-  **no ejecutada**;
+  **aplicada y verificada** en `origen_codes` (2026-11-19);
 - `sql/09_admin/verificacion_fase2.sql`: verificación `SELECT`-only con
   `BEGIN READ ONLY` / `ROLLBACK`;
 - `sql/09_admin/README.md`: instrucciones de operación y rollback propuesto;
@@ -787,20 +791,65 @@ La entrega en el repositorio comprende:
   importadores;
 - sin commit, push ni deploy.
 
-## 16. Verificación previa a producción
+## 16. Verificación realizada y pasos restantes
 
-Antes de la ejecución real:
+La ejecución y la verificación ya se realizaron en `origen_codes`:
 
-1. Confirmar M1 aplicado y backup verificado de `origen_codes`.
+1. `sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes -f sql/09_admin/fase2_gobernanza.sql`
+   → `COMMIT` sin errores.
+2. `sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes -f sql/09_admin/verificacion_fase2.sql`
+   → 15 columnas nuevas, 2 tablas, 12 índices, 0 constraints únicas en
+   `catalog_grant` (esperado tras la sustitución por índices parciales), trigger
+   de integridad activo, 4 permisos asignados solo a `superadmin`,
+   `origen_admin` sin privilegios fuera de `os_admin` y trigger append-only
+   activo. La sesión terminó en `ROLLBACK`.
+
+### 16.1 Incidencia detectada en la prueba funcional (2026-11-19)
+
+Al asignar un miembro, el panel respondió *"El servicio no está disponible"*.
+La causa fue un desajuste entre código y esquema: `MembershipRepository`
+referenciaba `updated_by_user_id` en el `INSERT` y en dos `UPDATE`, pero ni el
+diseño (§5.2) ni la migración aplicada agregan esa columna a `membership`
+(solo `organization` la tiene; `catalog_grant` tampoco). PostgreSQL devolvió
+`column "updated_by_user_id" of relation "membership" does not exist` y la
+transacción se revirtió, por lo que **no quedaron filas parciales**.
+
+Corrección aplicada: se eliminaron esas tres referencias del repositorio; la
+trazabilidad se conserva con `created_by_user_id`, `updated_at`,
+`revoked_by_user_id` y, sobre todo, con `audit_log`. No requirió cambios en la
+base ni una nueva migración. Se agregó una comprobación de regresión en
+`tests/run.php` para impedir que el repositorio vuelva a referenciar columnas
+inexistentes en `membership`.
+
+Queda para el responsable:
+
+1. Publicar el código PHP corregido en el VPS; la base no requiere cambios.
 2. Definir `ADMIN_BASE_URL` y los parámetros `ADMIN_INVITE_*` en el entorno.
-3. Ejecutar la migración con `psql -v ON_ERROR_STOP=1` y archivar la salida.
-4. Ejecutar la verificación SELECT-only y comparar contra los criterios de
-   aceptación de la sección 12.
-5. Probar en un correo de prueba: crear invitación, aceptar, reutilizar el token
+3. Configurar SMTP si se desea entrega real de invitaciones.
+4. Probar en un correo de prueba: crear invitación, aceptar, reutilizar el token
    (debe fallar), reenviar (token anterior debe fallar) y cambiar de contexto.
-6. Confirmar que no cambió ninguna fila de `os_catalog_*`.
+5. Confirmar que no cambió ninguna fila de `os_catalog_*`.
 
-El panel seguirá funcionando con M1 si la migración M2 aún no se aplicó: las
-consultas de grants tienen una ruta de compatibilidad para los grants globales.
-Las operaciones de gobernanza requieren las nuevas columnas/tablas; si faltan,
-devuelven un error controlado en lugar de exponer detalles de base de datos.
+### 16.2 Selección de grants con casillas
+
+La asignación de miembros y las invitaciones exigían escribir a mano el código
+de catálogo (`catalogo:operacion:allow|deny`). Se reemplazó por un selector de
+casillas reutilizable (`portal/Views/admin/_grant_choices.php`) que lista los
+catálogos activos desde `public.os_catalog`, con la conexión pública de solo
+lectura. Por cada catálogo se muestran las seis operaciones válidas del RBAC y
+dos casillas: ✓ permitir y ✗ denegar (la denegación prevalece si ambas están
+marcadas).
+
+El servicio conserva la validación original: cada valor se comprueba contra
+`Rbac::isValidOperation()` y `CatalogReferenceRepository::exists()` antes de
+persistirse, y se mantiene la ruta de compatibilidad con el formato de texto
+para formularios que aún no se hayan actualizado. No hay cambios de esquema ni
+de permisos. La edición de grants de un membership existente precarga las
+casillas según los grants vigentes.
+
+Limitación conocida: desmarcar una casilla en un membership existente no elimina
+el grant (M2 no prevé baja de grants); para anularlo debe marcarse la casilla ✗
+de esa misma operación.
+
+M1 y M2 quedan así cerrados en base. Las fases 3-6 siguen como propuestas no
+ejecutadas.

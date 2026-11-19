@@ -7,6 +7,8 @@ namespace OrigenSalud\Portal\Controllers;
 use OrigenSalud\Portal\Admin\AdminGuard;
 use OrigenSalud\Portal\Admin\GovernanceService;
 use OrigenSalud\Portal\Admin\Rbac;
+use OrigenSalud\Portal\Repositories\CatalogGrantRepository;
+use OrigenSalud\Portal\Repositories\CatalogReferenceRepository;
 use OrigenSalud\Portal\Repositories\InvitationRepository;
 use OrigenSalud\Portal\Repositories\MembershipRepository;
 use OrigenSalud\Portal\Repositories\OrganizationRepository;
@@ -69,10 +71,20 @@ final class AdminOrganizationController
             $organization = OrganizationRepository::find($id);
             $members = $organization === null ? [] : MembershipRepository::forOrganization($id);
             $invitations = $organization === null ? [] : InvitationRepository::forOrganization($id);
+            $catalogs = CatalogReferenceRepository::all();
         } catch (RepositoryException) {
             $organization = null;
             $members = [];
             $invitations = [];
+            $catalogs = [];
+        }
+
+        foreach ($members as $index => $member) {
+            try {
+                $members[$index]['grants'] = CatalogGrantRepository::forMembership((int) $member['id']);
+            } catch (RepositoryException) {
+                $members[$index]['grants'] = [];
+            }
         }
 
         if ($organization === null) {
@@ -97,6 +109,7 @@ final class AdminOrganizationController
             'members' => $members,
             'invitations' => $invitations,
             'roles' => self::roleCodes(),
+            'catalogs' => $catalogs,
             'flash' => AdminForm::pull(),
         ], 'admin');
     }

@@ -70,7 +70,7 @@ administrativa usa `origen_admin`, sin privilegios sobre `os_catalog_*`.
 
 Ver `git status` para la lista exacta. Los principales son:
 
-- `sql/09_admin/fase1_identidad.sql` — migración propuesta, **no ejecutada**.
+- `sql/09_admin/fase1_identidad.sql` — migración **aplicada y verificada** en `origen_codes` (2026-11-19).
 - `sql/09_admin/verificacion.sql` — verificación `SELECT`-only.
 - `sql/09_admin/README.md` — requisitos y rollback propuesto.
 - `portal/Admin/` — `PasswordHasher`, `Token`, `Rbac`, `AuthService`, `AuditLogger`, `AdminGuard`.

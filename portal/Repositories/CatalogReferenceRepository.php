@@ -34,4 +34,36 @@ final class CatalogReferenceRepository
             throw new RepositoryException('catalog_reference_unavailable');
         }
     }
+
+    /**
+     * Catálogos activos para poblar el selector de grants del panel.
+     *
+     * Solo lectura a través de la conexión pública; `origen_admin` no recibe
+     * privilegios sobre os_catalog_*. La validación final sigue haciendo
+     * `exists()` por si el código cambió entre render y envío.
+     *
+     * @return list<array{code: string, name: string, short_name: string}>
+     */
+    public static function all(): array
+    {
+        try {
+            $statement = PortalDatabase::connection()->query(
+                'SELECT code, name, short_name
+                   FROM public.os_catalog
+                  WHERE is_active = true
+                  ORDER BY name, code'
+            );
+
+            return array_map(
+                static fn (array $row): array => [
+                    'code' => (string) $row['code'],
+                    'name' => (string) $row['name'],
+                    'short_name' => $row['short_name'] === null ? '' : (string) $row['short_name'],
+                ],
+                $statement->fetchAll()
+            );
+        } catch (PDOException) {
+            throw new RepositoryException('catalog_reference_unavailable');
+        }
+    }
 }

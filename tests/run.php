@@ -618,6 +618,7 @@ $m2Files = [
     '/portal/Views/admin/invitations.php',
     '/portal/Views/admin/invite.php',
     '/portal/Views/admin/_flash.php',
+    '/portal/Views/admin/_grant_choices.php',
 ];
 foreach ($m2Files as $m2File) {
     $check(is_file($root . $m2File), 'Falta el artefacto M2 ' . $m2File . '.');
@@ -654,6 +655,20 @@ foreach (['admin.orgs.manage', 'admin.invites.manage', 'admin.memberships.manage
 $m2Verify = (string) file_get_contents($root . '/sql/09_admin/verificacion_fase2.sql');
 $check(str_contains($m2Verify, 'BEGIN READ ONLY'), 'La verificación M2 debe usar BEGIN READ ONLY.');
 $check(str_contains($m2Verify, 'ROLLBACK'), 'La verificación M2 debe finalizar con ROLLBACK.');
+
+// Regresión: M2 no agregó updated_by_user_id a membership (solo a organization).
+// El repositorio debe usar exactamente el esquema aplicado; de lo contrario la
+// asignación de miembros falla con "El servicio no está disponible".
+$membershipRepoSource = (string) file_get_contents($root . '/portal/Repositories/MembershipRepository.php');
+$check(
+    !str_contains($membershipRepoSource, 'updated_by_user_id'),
+    'membership no tiene la columna updated_by_user_id; el repositorio no debe referenciarla.'
+);
+$check(
+    str_contains($membershipRepoSource, 'created_by_user_id')
+        && str_contains($membershipRepoSource, 'updated_at = now()'),
+    'membership debe conservar creador y fecha de actualización usando columnas existentes.'
+);
 
 $check(
     \OrigenSalud\Portal\Admin\Rbac::canGrantRole(['*'], ['superadmin'], 'superadmin'),
@@ -727,8 +742,42 @@ $check(
 $m2I18nKeys = [
     'admin.orgs.title', 'admin.invites.title', 'admin.members.title', 'admin.context.label',
     'admin.invite.title', 'admin.grants.hint', 'admin.messages.invite_accepted',
-    'admin.errors.last_superadmin', 'admin.roles.org_type.health_center',
+    'admin.errors.last_superadmin', 'admin.errors.grant_required',
+    'admin.grants.title', 'admin.grants.allow', 'admin.grants.deny',
+    'admin.grants.ops.view', 'admin.grants.ops.propose', 'admin.grants.ops.edit_draft',
+    'admin.grants.ops.review', 'admin.grants.ops.approve', 'admin.grants.ops.publish',
+    'admin.roles.org_type.health_center',
 ];
+
+// Los grants se eligen con casillas: sin campos de texto libres para catalog_code.
+$grantChoicesView = (string) file_get_contents($root . '/portal/Views/admin/_grant_choices.php');
+$check(str_contains($grantChoicesView, 'grant_allow[]'), 'El selector debe ofrecer casillas de permiso.');
+$check(str_contains($grantChoicesView, 'grant_deny[]'), 'El selector debe ofrecer casillas de denegación.');
+$check(
+    str_contains($grantChoicesView, 'Rbac::CATALOG_OPERATIONS'),
+    'El selector debe usar solo operaciones válidas del RBAC.'
+);
+foreach (['/portal/Views/admin/organization.php', '/portal/Views/admin/invitations.php'] as $m2GrantView) {
+    $grantViewSource = (string) file_get_contents($root . $m2GrantView);
+    $check(
+        str_contains($grantViewSource, "_grant_choices.php") && !str_contains($grantViewSource, 'name="grants"'),
+        $m2GrantView . ' debe usar el selector de casillas en lugar del campo de texto de grants.'
+    );
+}
+$catalogRepoSource = (string) file_get_contents($root . '/portal/Repositories/CatalogReferenceRepository.php');
+$check(
+    str_contains($catalogRepoSource, 'public.os_catalog')
+        && str_contains($catalogRepoSource, 'is_active = true')
+        && str_contains($catalogRepoSource, 'function all()'),
+    'El listado de catálogos debe ser de solo lectura y limitarse a los activos.'
+);
+$check(
+    str_contains($governanceSource, 'grantsFromSelection')
+        && str_contains($governanceSource, "'grant_allow'")
+        && str_contains($governanceSource, "'grant_deny'")
+        && str_contains($governanceSource, 'grant_required'),
+    'El servicio debe validar los grants elegidos con casillas.'
+);
 foreach (['es-AR', 'en', 'pt-BR', 'es'] as $m2Locale) {
     $m2Messages = Yaml::parseFile($root . '/portal/translations/messages.' . $m2Locale . '.yaml');
     $m2Flat = [];

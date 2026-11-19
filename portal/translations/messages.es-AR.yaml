@@ -1338,10 +1338,22 @@ admin:
             revoked: 'Revocar'
     grants:
         hint: 'Grants por catálogo (uno por línea: codigo:operacion:allow o deny)'
+        title: 'Permisos por catálogo'
+        legend: 'Marcá ✓ para permitir o ✗ para denegar. La denegación prevalece.'
+        empty: 'No hay catálogos activos disponibles.'
+        allow: 'Permitir'
+        deny: 'Denegar'
         catalog: 'Código de catálogo'
         operation: 'Operación'
         decision: 'Decisión'
-        save: 'Guardar grant'
+        save: 'Guardar grants'
+        ops:
+            view: 'Ver'
+            propose: 'Proponer'
+            edit_draft: 'Editar borrador'
+            review: 'Revisar'
+            approve: 'Aprobar'
+            publish: 'Publicar'
     invites:
         title: 'Invitaciones'
         lead: 'El alta de colaboradores externos es solo por invitación. El vínculo es de un solo uso.'
@@ -1417,3 +1429,4 @@ admin:
         last_superadmin: 'No se puede desactivar el último superadministrador.'
         catalog: 'El código de catálogo o la operación no son válidos.'
         grants: 'El formato de los grants no es válido.'
+        grant_required: 'Seleccione al menos un permiso.'

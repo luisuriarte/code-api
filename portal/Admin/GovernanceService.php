@@ -156,7 +156,7 @@ final class GovernanceService
             throw new GovernanceException('role');
         }
 
-        $grants = $this->grantsFromText((string) ($input['grants'] ?? ''));
+        $grants = $this->grantsFromInput($input);
         $actorId = $this->actorId($actor);
         $ttl = $this->invitationTtl($input);
 
@@ -464,7 +464,7 @@ final class GovernanceService
         }
 
         $userId = (int) $user['id'];
-        $grants = $this->grantsFromText((string) ($input['grants'] ?? ''));
+        $grants = $this->grantsFromInput($input);
         $actorId = $this->actorId($actor);
         $membership = MembershipRepository::upsert($userId, $organizationId, $roleCode, $actorId);
 
@@ -582,32 +582,35 @@ final class GovernanceService
             throw new GovernanceException('permission');
         }
 
-        $catalog = Validator::text($input['catalog_code'] ?? '', 50);
-        $operation = Validator::text($input['operation'] ?? '', 40);
+        $grants = $this->grantsFromInput($input);
 
-        if (!Rbac::isValidOperation($operation) || !CatalogReferenceRepository::exists($catalog)) {
-            throw new GovernanceException('catalog');
+        if ($grants === []) {
+            throw new GovernanceException('grant_required');
         }
 
-        $allowed = ($input['allowed'] ?? 'allow') !== 'deny';
         $userId = (int) $membership['user_id'];
         $actorId = $this->actorId($actor);
 
-        CatalogGrantRepository::setForMembership(
-            $userId,
-            $membershipId,
-            $catalog,
-            $operation,
-            $allowed,
-            $actorId
-        );
+        foreach ($grants as $grant) {
+            CatalogGrantRepository::setForMembership(
+                $userId,
+                $membershipId,
+                $grant['catalog_code'],
+                $grant['operation'],
+                $grant['allowed'],
+                $actorId
+            );
 
-        AuditLogger::record('catalog_grant_updated', $this->actorContext($actor) + [
-            'entity_type' => 'catalog_grant',
-            'entity_id' => (string) $membershipId,
-            'catalog_code' => $catalog,
-            'after_state' => ['operation' => $operation, 'allowed' => $allowed],
-        ]);
+            AuditLogger::record('catalog_grant_updated', $this->actorContext($actor) + [
+                'entity_type' => 'catalog_grant',
+                'entity_id' => (string) $membershipId,
+                'catalog_code' => $grant['catalog_code'],
+                'after_state' => [
+                    'operation' => $grant['operation'],
+                    'allowed' => $grant['allowed'],
+                ],
+            ]);
+        }
     }
 
     /** @param array<string, mixed> $actor */
@@ -720,6 +723,82 @@ final class GovernanceService
         ];
     }
 
+    /**
+     * Punto único de entrada de los grants: casillas del panel, texto legacy
+     * (compatibilidad con formularios ya desplegados) o un grant suelto.
+     *
+     * @param array<string, mixed> $input
+     * @return list<array{catalog_code: string, operation: string, allowed: bool}>
+     */
+    private function grantsFromInput(array $input): array
+    {
+        if (array_key_exists('grant_allow', $input) || array_key_exists('grant_deny', $input)) {
+            return $this->grantsFromSelection($input);
+        }
+
+        if (array_key_exists('grants', $input)) {
+            return $this->grantsFromText((string) $input['grants']);
+        }
+
+        // Compatibilidad con el formulario anterior de un solo grant.
+        if (array_key_exists('catalog_code', $input)) {
+            $single = Validator::text($input['catalog_code'] ?? '', 50)
+                . '|' . Validator::text($input['operation'] ?? '', 40);
+            $decision = (string) ($input['allowed'] ?? 'allow');
+
+            return $this->grantsFromSelection([
+                'grant_allow' => $decision === 'deny' ? [] : [$single],
+                'grant_deny' => $decision === 'deny' ? [$single] : [],
+            ]);
+        }
+
+        return [];
+    }
+
+    /**
+     * Casillas `grant_allow[]` y `grant_deny[]`, con valor "catalogo|operacion".
+     * Si una misma opción aparece en ambas, gana la denegación.
+     *
+     * @param array<string, mixed> $input
+     * @return list<array{catalog_code: string, operation: string, allowed: bool}>
+     */
+    private function grantsFromSelection(array $input): array
+    {
+        $grants = [];
+        $seen = [];
+
+        foreach (['deny' => false, 'allow' => true] as $field => $allowed) {
+            $values = $input['grant_' . $field] ?? [];
+
+            if (!is_array($values)) {
+                throw new GovernanceException('grants');
+            }
+
+            foreach ($values as $value) {
+                if (!is_string($value)) {
+                    throw new GovernanceException('grants');
+                }
+
+                $parts = explode('|', $value);
+
+                if (count($parts) !== 2) {
+                    throw new GovernanceException('grants');
+                }
+
+                $key = strtolower(trim($parts[0])) . '|' . strtolower(trim($parts[1]));
+
+                if (isset($seen[$key])) {
+                    continue;
+                }
+
+                $seen[$key] = true;
+                $grants[] = $this->makeGrant($parts[0], $parts[1], $allowed);
+            }
+        }
+
+        return $grants;
+    }
+
     /** @return list<array{catalog_code: string, operation: string, allowed: bool}> */
     private function grantsFromText(string $text): array
     {
@@ -739,31 +818,37 @@ final class GovernanceService
                 throw new GovernanceException('grants');
             }
 
-            $catalog = strtolower($parts[0]);
-            $operation = strtolower($parts[1]);
-            $allowed = !isset($parts[2]) || strtolower($parts[2]) !== 'deny';
-
-            if ($catalog === '' || !Rbac::isValidOperation($operation)
-                || !CatalogReferenceRepository::exists($catalog)
-            ) {
-                throw new GovernanceException('catalog');
-            }
-
-            $key = $catalog . '|' . $operation;
+            $key = strtolower($parts[0]) . '|' . strtolower($parts[1]);
 
             if (isset($seen[$key])) {
                 continue;
             }
 
             $seen[$key] = true;
-            $grants[] = [
-                'catalog_code' => $catalog,
-                'operation' => $operation,
-                'allowed' => $allowed,
-            ];
+            $allowed = !isset($parts[2]) || strtolower($parts[2]) !== 'deny';
+            $grants[] = $this->makeGrant($parts[0], $parts[1], $allowed);
         }
 
         return $grants;
+    }
+
+    /** @return array{catalog_code: string, operation: string, allowed: bool} */
+    private function makeGrant(string $catalog, string $operation, bool $allowed): array
+    {
+        $catalog = strtolower(trim($catalog));
+        $operation = strtolower(trim($operation));
+
+        if ($catalog === '' || !Rbac::isValidOperation($operation)
+            || !CatalogReferenceRepository::exists($catalog)
+        ) {
+            throw new GovernanceException('catalog');
+        }
+
+        return [
+            'catalog_code' => $catalog,
+            'operation' => $operation,
+            'allowed' => $allowed,
+        ];
     }
 
     /** @param array<string, mixed> $invitation */

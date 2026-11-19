@@ -8,6 +8,7 @@ use OrigenSalud\Portal\Admin\AdminGuard;
 use OrigenSalud\Portal\Admin\GovernanceService;
 use OrigenSalud\Portal\Admin\Rbac;
 use OrigenSalud\Portal\Admin\Token;
+use OrigenSalud\Portal\Repositories\CatalogReferenceRepository;
 use OrigenSalud\Portal\Repositories\InvitationRepository;
 use OrigenSalud\Portal\Repositories\OrganizationRepository;
 use OrigenSalud\Portal\Repositories\RepositoryException;
@@ -30,9 +31,11 @@ final class AdminInvitationController
         try {
             $invitations = InvitationRepository::all($status);
             $organizations = OrganizationRepository::all(true);
+            $catalogs = CatalogReferenceRepository::all();
         } catch (RepositoryException) {
             $invitations = [];
             $organizations = [];
+            $catalogs = [];
         }
 
         View::render('admin/invitations', [
@@ -45,6 +48,7 @@ final class AdminInvitationController
             'organizations' => $organizations,
             'roles' => self::invitableRoles($current),
             'status' => $status,
+            'catalogs' => $catalogs,
             'flash' => AdminForm::pull(),
         ], 'admin');
     }

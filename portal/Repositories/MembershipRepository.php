@@ -245,13 +245,11 @@ final class MembershipRepository
                         revoked_at = NULL,
                         revoked_by_user_id = NULL,
                         revoke_reason = NULL,
-                        updated_by_user_id = :actor,
                         updated_at = now()
                   WHERE id = :id'
             );
             $update->execute([
                 ':status' => 'active',
-                ':actor' => $actorId,
                 ':id' => $id,
             ]);
 
@@ -261,9 +259,9 @@ final class MembershipRepository
         $insert = $pdo->prepare(
             'INSERT INTO os_admin.membership (
                  user_id, organization_id, role_code, status,
-                 created_by_user_id, updated_by_user_id
+                 created_by_user_id
              ) VALUES (
-                 :user, :org, :role, :status, :actor, :actor_updated
+                 :user, :org, :role, :status, :actor
              ) RETURNING id'
         );
         $insert->execute([
@@ -272,7 +270,6 @@ final class MembershipRepository
             ':role' => $roleCode,
             ':status' => 'active',
             ':actor' => $actorId,
-            ':actor_updated' => $actorId,
         ]);
 
         return ['id' => (int) $insert->fetchColumn(), 'action' => 'created'];
@@ -296,7 +293,6 @@ final class MembershipRepository
                         revoked_at = :revoked_at,
                         revoked_by_user_id = :revoked_by,
                         revoke_reason = :reason,
-                        updated_by_user_id = :actor,
                         updated_at = now()
                   WHERE id = :id'
             );
@@ -305,7 +301,6 @@ final class MembershipRepository
                 ':status' => $status,
                 ':revoked_at' => $revokedAt,
                 ':revoked_by' => $revokedBy,
-                ':actor' => $actorId,
                 ':reason' => $reason !== null && $reason !== '' ? mb_substr($reason, 0, 200) : null,
             ]);
         } catch (PDOException) {

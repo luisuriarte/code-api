@@ -13,7 +13,7 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 - 🧮 [Metodología UVR/SVP](web/uvr.php) — página independiente, **propuesta sin valores cargados ni endpoints**.
 - 🏗️ [Propuesta de arquitectura de catálogos sanitarios](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md) — diagnóstico, modelo objetivo, plan por etapas y decisiones pendientes.
 - 🔐 [Fase 1 / M1 — Identidad, autenticación y RBAC](docs/architecture/fase1-admin-identidad.md) — estado, controles y verificación en `origen_codes`.
-- 👥 [Fase 2 / M2 — Organizaciones, invitaciones y memberships](docs/architecture/fase2-organizaciones-invitaciones.md) — acta de diseño propuesto, pendiente de autorización.
+- 👥 [Fase 2 / M2 — Organizaciones, invitaciones y memberships](docs/architecture/fase2-organizaciones-invitaciones.md) — migración aplicada y verificada en `origen_codes` (2026-11-19).
 
 ### Estado real de DENTAR en `origen_codes`
 
