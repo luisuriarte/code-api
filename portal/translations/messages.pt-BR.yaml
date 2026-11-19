@@ -923,7 +923,7 @@ dentar:
 
 uvr:
     meta:
-        title: 'UVR e Sistema de Valorização Prestacional · Origen Salud'
+        title: 'UVR e Unidades de Valor Relativo · Origen Salud'
         description: 'Metodologia proposta pela Origen Salud para valorar prestações de saúde por meio de Unidades de Valor Relativo (UVR). Estado, componentes, cálculo, governança e limitações.'
     a11y:
         skip: 'Ir para o conteúdo principal'
@@ -939,7 +939,7 @@ uvr:
         copied: 'Fórmula copiada'
     header:
         eyebrow: 'Documento metodológico · Proposta'
-        title: 'Sistema de Valorização Prestacional (UVR)'
+        title: 'Unidades de Valor Relativo (UVR)'
         lead: 'Uma metodologia transparente, reproduzível e adaptável para comparar os recursos relativos exigidos por cada prestação de saúde, sem confundir valor relativo com valor monetário.'
         badge: 'UVR · Unidade de Valor Relativo'
         status_title: 'Estado da proposta'
@@ -1048,7 +1048,7 @@ uvr:
         artifact_text: 'A fonte desta página é README-UVR.md, documentado no repositório como proposta metodológica. Não deve ser interpretado como contrato de API nem como tabela de tarifas.'
     intro:
         title: '1. Introdução'
-        lead: 'A Origen Salud propõe um Sistema de Valorização Prestacional (UVR) baseado em Unidades de Valor Relativo (UVR) para representar os recursos relativos necessários para realizar uma prestação de saúde.'
+        lead: 'A Origen Salud propõe um Unidades de Valor Relativo (UVR) baseado em Unidades de Valor Relativo (UVR) para representar os recursos relativos necessários para realizar uma prestação de saúde.'
         goal: 'O objetivo é dispor de uma metodologia transparente, reproduzível e adaptável a diferentes especialidades, instituições, jurisdições e sistemas de financiamento.'
         questions_title: 'Duas perguntas diferentes'
         q1: 'Quantos recursos relativos uma prestação exige em comparação com outras prestações?'
