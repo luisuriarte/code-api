@@ -585,6 +585,17 @@ foreach (['en', 'pt-BR', 'es'] as $adminLocale) {
     $check($otherKeys === $adminKeySets['es-AR'], 'Fase 1: paridad de claves admin entre es-AR y ' . $adminLocale . '.');
 }
 
+require_once $root . '/portal/i18n/I18n.php';
+$adminWelcome = \OrigenSalud\Web\I18n::trans(
+    'admin.home.welcome',
+    ['%name%' => 'Prueba'],
+    'es-AR'
+);
+$check(
+    str_contains($adminWelcome, 'Prueba') && !str_contains($adminWelcome, '%Prueba%'),
+    'El saludo del panel debe interpolar %name% sin dejar los signos.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

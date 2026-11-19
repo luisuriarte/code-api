@@ -6,7 +6,7 @@ declare(strict_types=1);
 ?>
 <section class="admin-panel">
     <h1><?= e($t('admin.home.title')) ?></h1>
-    <p class="admin-lead"><?= e($t('admin.home.welcome', ['name' => $current['user']['full_name']])) ?></p>
+    <p class="admin-lead"><?= e($t('admin.home.welcome', ['%name%' => $current['user']['full_name']])) ?></p>
 
     <?php if (!$m1Applied): ?>
     <p class="admin-error" role="alert"><?= e($t('admin.home.m1_pending')) ?></p>
