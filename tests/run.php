@@ -432,11 +432,18 @@ if (is_file($fase4VerifyPath)) {
 }
 $check(str_contains($sqlReadme, 'verificacion_fase4.sql'), 'El README SQL debe documentar la verificación de Fase 4.');
 $check(str_contains($sqlReadme, 'Decisión 10'), 'El README SQL debe registrar la decisión 10 aprobada.');
+$check(str_contains($sqlReadme, 'Fase 4 cerrada en base'), 'El README SQL debe registrar el cierre en base de la Fase 4.');
 $architectureRaw = (string) file_get_contents($root . '/docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md');
 $check(
     str_contains($architectureRaw, 'Integración aprobada (Fase 4)')
         && str_contains($architectureRaw, 'Aprobada en Fase 4 (2026-11-19)'),
     'El documento de arquitectura debe registrar la decisión 10 como aprobada.'
+);
+$check(
+    str_contains($architectureRaw, 'Fase 4 cerrada en base')
+        && str_contains($architectureRaw, '603 de 603 relaciones resultaron')
+        && str_contains($architectureRaw, 'navegables**, sin huérfanos'),
+    'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 4.'
 );
 
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.
