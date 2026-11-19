@@ -959,6 +959,7 @@ JSON;
 
                 <?php $renderSubhead('pending-uvr', $t('docs.pending.uvr_title')); ?>
                 <p><?= $esc($t('docs.pending.uvr_text')) ?></p>
+                <p><a href="/uvr?lang=<?= $esc(rawurlencode($locale)) ?>"><?= $esc($t('uvr.nav.label')) ?></a></p>
 
                 <?php $renderSubhead('pending-oauth', $t('docs.pending.oauth_title')); ?>
                 <p><?= $esc($t('docs.pending.oauth_text')) ?></p>

@@ -331,6 +331,108 @@ $check(
     'Docs debe usar los formatos reales de códigos DENTAR-PR y DENTAR-DX.'
 );
 
+// 8. UVR: metodología propuesta, página independiente e i18n equivalente.
+$uvrSource = (string) file_get_contents($root . '/web/uvr.php');
+$check(str_contains($uvrSource, "/uvr?lang='"), 'UVR debe canónizar y cambiar idioma por /uvr?lang=.');
+$check(str_contains($uvrSource, 'data-lang-link'), 'UVR debe renderizar su propio selector de idioma.');
+$check(!str_contains($uvrSource, 'language-switcher.php'), 'UVR no debe reutilizar el selector legacy.');
+$check(!str_contains($uvrSource, 'I18n::alternateLinks'), 'UVR no debe usar alternateLinks() sobre la ruta legacy.');
+$check(str_contains($uvrSource, 'uvr-search-input'), 'UVR debe incluir búsqueda interna.');
+$check(str_contains($uvrSource, 'uvr-toc-list'), 'UVR debe incluir índice contextual.');
+$check(str_contains($uvrSource, 'data-breadcrumb-article'), 'UVR debe incluir breadcrumbs dinámicos.');
+$check(str_contains($uvrSource, 'data-formula'), 'UVR debe permitir copiar fórmulas.');
+$check(str_contains($uvrSource, 'README-UVR.md'), 'UVR debe declarar README-UVR.md como fuente.');
+$check(!str_contains($uvrSource, '/v1/uvr'), 'UVR no debe presentar endpoints inexistentes.');
+$check(!str_contains($uvrSource, 'professioniabial'), 'UVR no debe reproducir el error tipográfico del README.');
+$check(str_contains($docsSource, '/uvr?lang='), 'Docs debe enlazar a la metodología UVR.');
+
+preg_match_all('/href="#([A-Za-z0-9_-]+)"/', $uvrSource, $uvrAnchors);
+preg_match_all('/id="([A-Za-z0-9_-]+)"/', $uvrSource, $uvrIds);
+preg_match_all("/renderSubhead\\('([A-Za-z0-9_-]+)'/", $uvrSource, $uvrSubheads);
+preg_match_all("/renderFormula\\('[^']+', '([A-Za-z0-9_-]+)'/", $uvrSource, $uvrFormulas);
+$uvrAvailableIds = array_merge($uvrIds[1], $uvrSubheads[1], $uvrFormulas[1]);
+foreach (array_unique($uvrAnchors[1]) as $uvrAnchor) {
+    $check(in_array($uvrAnchor, $uvrAvailableIds, true), 'UVR: ancla rota #' . $uvrAnchor . '.');
+}
+$check(count($uvrFormulas[1]) === 7, 'UVR debe publicar siete fórmulas copiables.');
+$check(substr_count($uvrSource, 'data-article="') === 16, 'UVR debe publicar 16 secciones.');
+
+$uvrFlat = [];
+$uvrKeySets = [];
+foreach (['es-AR', 'en', 'pt-BR'] as $locale) {
+    $messages = Yaml::parseFile($root . '/portal/translations/messages.' . $locale . '.yaml');
+    $uvrNode = $messages['uvr'] ?? [];
+    $flat = [];
+    $flattenUvr = static function (array $node, string $prefix) use (&$flattenUvr, &$flat): void {
+        foreach ($node as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix . '.' . $key;
+            if (is_array($value)) {
+                $flattenUvr($value, $path);
+            } else {
+                $flat[$path] = $value;
+            }
+        }
+    };
+    $flattenUvr(is_array($uvrNode) ? $uvrNode : [], '');
+    $uvrFlat[$locale] = $flat;
+    $uvrKeySets[$locale] = array_keys($flat);
+    foreach ($flat as $key => $value) {
+        $check(is_string($value) && trim($value) !== '', 'UVR ' . $locale . ': valor vacío en uvr.' . $key . '.');
+    }
+}
+$uvrBaseKeys = $uvrKeySets['es-AR'];
+sort($uvrBaseKeys);
+foreach (['en', 'pt-BR'] as $locale) {
+    $uvrLocaleKeys = $uvrKeySets[$locale];
+    sort($uvrLocaleKeys);
+    $check($uvrLocaleKeys === $uvrBaseKeys, 'UVR: paridad de claves entre es-AR y ' . $locale . '.');
+}
+
+preg_match_all("/'uvr\\.([A-Za-z0-9_.]+)'/", $uvrSource, $uvrUsedKeys);
+$uvrSections = ['status', 'intro', 'concept', 'components', 'calculation', 'determination', 'scale', 'geographic', 'monetary', 'distinction', 'rvu', 'sources', 'traceability', 'governance', 'scope', 'roadmap'];
+$uvrDynamicKeys = [];
+foreach ($uvrSections as $uvrSection) {
+    foreach (['title', 'lead', 'keywords'] as $uvrField) {
+        $uvrDynamicKeys[] = 'article.' . $uvrSection . '.' . $uvrField;
+    }
+}
+foreach (['foundation', 'model', 'operations'] as $uvrGroup) {
+    $uvrDynamicKeys[] = 'nav.groups.' . $uvrGroup;
+}
+foreach (['es', 'en', 'pt'] as $uvrLanguage) {
+    $uvrDynamicKeys[] = 'lang.' . $uvrLanguage;
+}
+foreach (array_unique(array_merge($uvrUsedKeys[1], $uvrDynamicKeys)) as $uvrKey) {
+    if (str_ends_with($uvrKey, '.')) {
+        continue;
+    }
+    $check(array_key_exists($uvrKey, $uvrFlat['es-AR']), 'UVR: falta la clave uvr.' . $uvrKey . '.');
+}
+$check(
+    str_contains($uvrFlat['es-AR']['status.pending_text'], 'ningún endpoint de la API pública'),
+    'UVR debe declarar que no hay endpoints de valoración.'
+);
+$check(
+    str_contains($uvrFlat['es-AR']['common.illustrative'], 'No representa un arancel'),
+    'UVR debe marcar los ejemplos como ilustrativos.'
+);
+$check(
+    str_contains($uvrFlat['es-AR']['rvu.warning'], 'no son equivalentes'),
+    'UVR debe negar la equivalencia con RVU de Medicare.'
+);
+$check(
+    str_contains($uvrFlat['es-AR']['geographic.gradual_warning'], 'No se deberán inventar'),
+    'UVR debe prohibir índices geográficos inventados.'
+);
+$check(
+    $uvrFlat['es-AR']['calculation.formula'] === 'total_uvr = work_uvr + practice_expense_uvr + professional_liability_uvr',
+    'UVR debe conservar la fórmula básica literal.'
+);
+$check(
+    $uvrFlat['es-AR']['geographic.formula_liability'] === 'adjusted_professional_liability_uvr = professional_liability_uvr × uvr_geo_professional_liability_index',
+    'UVR debe corregir la fórmula geográfica del README.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

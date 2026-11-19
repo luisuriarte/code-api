@@ -11,6 +11,7 @@ Options -Indexes
 
     # Rutas legacy todavía no migradas al router.
     RewriteRule ^docs/?$ docs.php [L,QSA]
+    RewriteRule ^uvr/?$ uvr.php [L,QSA]
     RewriteRule ^search/?$ search.php [L,QSA]
     RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
 

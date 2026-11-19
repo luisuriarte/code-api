@@ -919,3 +919,296 @@ dentar:
     cta_primary: "Browse DENTAR"
     cta_secondary: "View API documentation"
     cta_contact: "Contact Origen Salud"
+
+uvr:
+    meta:
+        title: 'UVR and Provider Valuation System · Origen Salud'
+        description: 'Methodology proposed by Origen Salud to value healthcare services using Relative Value Units (UVR). Status, components, calculation, governance, and limitations.'
+    a11y:
+        skip: 'Skip to main content'
+        search_label: 'Search this methodology'
+        search_placeholder: 'Search sections, formulas, or components…'
+        search_clear: 'Clear search'
+        search_no_results: 'No sections match the search.'
+        toc_label: 'Contents of this section'
+        breadcrumb_label: Breadcrumb
+        previous: 'Previous section'
+        next: 'Next section'
+        copy_formula: 'Copy formula'
+        copied: 'Formula copied'
+    header:
+        eyebrow: 'Methodological document · Proposal'
+        title: 'Provider Valuation System (SVP)'
+        lead: 'A transparent, reproducible, and adaptable methodology for comparing the relative resources required by each healthcare service, without confusing relative value with monetary amount.'
+        badge: 'UVR · Relative Value Unit'
+        status_title: 'Status of the proposal'
+        status_text: 'This document describes a proposed methodology. No UVR values are loaded, no geographic indices are published, and there are no valuation endpoints in the public API. The numerical examples are illustrative.'
+    nav:
+        index: 'Methodology index'
+        search: 'Internal search'
+        groups:
+            foundation: Foundations
+            model: 'UVR model'
+            operations: 'Governance and scope'
+        label: 'UVR methodology'
+    breadcrumb:
+        home: Home
+        docs: 'API documentation'
+        uvr: UVR
+    article:
+        status:
+            title: 'Implementation status'
+            lead: 'What exists today and what remains pending before speaking of available UVR values.'
+            keywords: 'status proposal not implemented pending values tables api'
+        intro:
+            title: Introduction
+            lead: 'What the SVP is for and what question each concept answers.'
+            keywords: 'introduction objective relative resources money tariff'
+        concept:
+            title: 'Conceptual foundation'
+            lead: "Reference to Medicare's RBRVS model without adopting its values."
+            keywords: 'rbrvs rvu medicine medicare conceptual reference equivalents'
+        components:
+            title: 'Components of the valuation'
+            lead: 'Professional work, service expenses, and professional liability coverage.'
+            keywords: 'work_uvr practice_expense_uvr professional_liability_uvr components'
+        calculation:
+            title: 'Calculation of the total valuation'
+            lead: 'Basic formula and strictly illustrative numerical example.'
+            keywords: 'total_uvr formula sum components example'
+        determination:
+            title: 'Determination of UVR values'
+            lead: 'Evidence collection, analysis by component, and validation by specialists.'
+            keywords: 'evidence times costs validation specialists delphi'
+        scale:
+            title: 'Relative scale and reference services'
+            lead: 'How to build a comparable scale without presenting it as universal.'
+            keywords: 'scale reference normalization complexity low medium high'
+        geographic:
+            title: 'Geographic adjustment of costs'
+            lead: 'Indices proposed by component and gradual implementation.'
+            keywords: 'gpci geographic index uvr_geo_work_index adjustment jurisdiction'
+        monetary:
+            title: 'Conversion of UVR to monetary values'
+            lead: 'The role of uvr_value and the difference between relative units and amounts.'
+            keywords: 'uvr_value estimated_payment conversion currency tariff example'
+        distinction:
+            title: 'Relative valuation and monetary updating'
+            lead: 'Two independent processes that must not modify each other automatically.'
+            keywords: 'update inflation complexity resources relative values'
+        rvu:
+            title: "Relationship with Medicare's RVU system"
+            lead: 'Structural similarity, not equivalence of values.'
+            keywords: 'rvu medicare conversion factor gpci comparative table'
+        sources:
+            title: 'Information sources and documentation'
+            lead: 'Criteria for provenance, version, and scope of admissible sources.'
+            keywords: 'sources studies costs insurers verifiable documentation'
+        traceability:
+            title: 'Versioning and traceability'
+            lead: 'How to reconstruct and audit each valuation over time.'
+            keywords: 'versions history validity audit responsible approval'
+        governance:
+            title: 'Governance and review'
+            lead: 'Documented process for evolution and publication of versions.'
+            keywords: 'governance review specialties publication changes pending'
+        scope:
+            title: 'Scope and limitations'
+            lead: 'What the UVR system is not and what it does not guarantee.'
+            keywords: 'scope limitations fee tariff coverage payment guarantee'
+        roadmap:
+            title: 'Long-term goal'
+            lead: 'Progressive application by specialty and jurisdiction.'
+            keywords: 'future dentistry medicine imaging laboratory rehabilitation interoperability'
+    common:
+        proposal: 'Methodological proposal'
+        not_implemented: 'Not implemented in the API'
+        illustrative: 'Illustrative example. It does not represent a fee, a recommended value, or data loaded into the system.'
+        field: Field
+        description: Description
+        value: 'UVR value'
+        total: Total
+        formula: Formula
+        note: Note
+        warning: Warning
+        component: Component
+        characteristic: Characteristic
+        name: Name
+        pending: Pending
+        available: Available
+    status:
+        title: 'Implementation status'
+        lead: 'The Origen Salud UVR system exists today as a reference methodological document.'
+        exists_title: 'What exists'
+        exists_text: 'A formal proposal for relative valuation with three components, formulas for geographic adjustment and monetary conversion, evidence criteria, traceability, and governance.'
+        pending_title: 'What does not exist yet'
+        pending_text: 'No UVR values are approved or loaded, no geographic indices are published, no monetary conversions are in effect, and no public API endpoint queries these structures. The corresponding SQL tables are proposed and empty.'
+        artifact_title: 'Reference artifact'
+        artifact_text: 'The source of this page is README-UVR.md, documented in the repository as a methodological proposal. It must not be interpreted as an API contract or as a fee schedule.'
+    intro:
+        title: '1. Introduction'
+        lead: 'Origen Salud proposes a Provider Valuation System (SVP) based on Relative Value Units (UVR) to represent the relative resources needed to perform a healthcare service.'
+        goal: 'The goal is to have a transparent, reproducible methodology adaptable to different specialties, institutions, jurisdictions, and financing systems.'
+        questions_title: 'Two different questions'
+        q1: 'How many relative resources does a service require compared with other services?'
+        q2: 'What monetary value does an institution or payer assign to those resources?'
+        answer: 'The first question is answered with UVR. The second depends on the reference monetary value, the geographic scope, the period of validity, and the contractual conditions.'
+        key_message: 'A UVR does not represent a fixed amount of money and does not by itself constitute a fee.'
+    concept:
+        title: '2. Conceptual foundation'
+        lead: 'The model takes as its conceptual reference the relative valuation systems used internationally, especially the Resource-Based Relative Value Scale (RBRVS) of the United States Medicare system.'
+        rvu_title: 'Reference RVU components'
+        rvu_work: 'Professional work.'
+        rvu_expense: 'Practice operating expenses.'
+        rvu_malpractice: 'Expenses related to professional liability insurance.'
+        adaptation: 'Origen Salud adopts this structure as a methodological reference and adapts it to the characteristics of healthcare systems and services in the countries where it is used.'
+        no_equivalence: 'This does not imply equivalence with US RVU values, nor adoption of their amounts, regulatory criteria, or updating mechanisms.'
+    components:
+        title: '3. Components of the UVR valuation'
+        lead: 'The valuation of each service is made up of three independent dimensions.'
+        work_title: 'Professional work — work_uvr'
+        work_text: 'It represents the professional effort required to perform a service. Time is an important variable, but not the only one: two services of equal duration may require very different levels of specialization, precision, and responsibility.'
+        work_items: 'Effective time; preparation and completion; training and experience; technical complexity; manual skill; physical and cognitive effort; clinical responsibility; supervision; execution conditions.'
+        work_warning: 'The valuation must reflect the work actually required, avoiding double-counting tasks already included in another service.'
+        expense_title: 'Service expenses — practice_expense_uvr'
+        expense_text: 'It represents the material, technological, and operational resources needed to perform a service.'
+        expense_items: 'Auxiliary staff; supplies; equipment; depreciation and maintenance; instruments; facilities; operational services; sterilization; information systems.'
+        expense_warning: 'When a material, medication, or device is billed separately, its full cost must not be included again in the service valuation.'
+        liability_title: 'Professional liability coverage — professional_liability_uvr'
+        liability_text: 'It represents the relative cost associated with the professional liability coverage needed to carry out an activity.'
+        liability_items: 'Insurance premiums; differences by specialty; insured risk; coverage costs; justified differences by jurisdiction.'
+        liability_warning: 'It must not be confused with a general clinical risk score or with the potential severity of a complication. Without sufficient data, the value must be marked as estimated or pending validation.'
+    calculation:
+        title: '4. Calculation of the total valuation'
+        lead: 'The total relative valuation is obtained by adding the three components.'
+        formula: 'total_uvr = work_uvr + practice_expense_uvr + professional_liability_uvr'
+        example_title: 'Illustrative example'
+        example_intro: 'The following values are fictitious and are used solely to explain the calculation.'
+        example_work: 'Professional work'
+        example_expense: 'Practice expenses'
+        example_liability: 'Professional liability'
+        example_total: Total
+        example_value_work: '2.50'
+        example_value_expense: '1.20'
+        example_value_liability: '0.30'
+        example_value_total: '4.00'
+        example_meaning: 'The service has a valuation of 4.00 UVR. This means it requires four relative units of resources, not that its amount is four pesos, four dollars, or any other specific monetary amount.'
+    determination:
+        title: '5. Determination of UVR values'
+        lead: "Values must not be assigned arbitrarily or based solely on one person's opinion."
+        collection_title: 'Information collection'
+        collection_text: 'For each service, efforts will be made to gather information on times, professional profile, complexity, staff, supplies, equipment, operating costs, liability costs, and usual execution conditions.'
+        collection_sources: 'Possible sources: cost studies, institutional surveys, time records, supplier information, insurer data, and technical documentation.'
+        work_title: 'Analysis of professional work'
+        work_text: 'The work_uvr component may be estimated from time-and-motion studies, complexity analysis, and structured professional assessment. A purely linear relationship between duration and value is not recommended.'
+        expense_title: 'Analysis of practice expenses'
+        expense_text: 'The practice_expense_uvr component will be determined by identifying and allocating the necessary resources, distinguishing direct costs, assignable indirect costs, equipment, auxiliary staff, and facilities.'
+        liability_title: 'Analysis of professional liability'
+        liability_text: 'The professional_liability_uvr component will be established using available information on coverage costs and justified differences between activities. A high value must not be assigned automatically solely due to clinical complexity.'
+        validation_title: 'Validation by specialists'
+        validation_text: 'Proposed values must undergo review by professionals with experience in the corresponding specialties.'
+        steps: '1. Preliminary valuation. 2. Technical review. 3. Comparison with similar services. 4. Identification of inconsistencies. 5. Documented adjustment. 6. Editorial approval and publication.'
+        delphi: 'The review may use structured consensus methodologies, such as Delphi rounds, where appropriate.'
+    scale:
+        title: '6. Relative scale and reference services'
+        lead: 'For UVR to be comparable across services, it is necessary to establish a reference scale within each professional domain.'
+        identify_title: 'The scale must make it possible to identify'
+        identify_items: 'Low-complexity services; intermediate complexity; high complexity; special resources; significant professional workload.'
+        reference: 'A reference service may receive 1.00 UVR in one dimension or in the total, depending on the normalization method adopted. The others will be set in relation to that reference.'
+        warning: 'The scale must maintain internal consistency and must not be interpreted as a universal scale of clinical complexity.'
+    geographic:
+        title: '7. Geographic adjustment of costs'
+        lead: 'Costs may vary between cities, provinces, and countries. The model contemplates geographic indices by component, although they are not published today.'
+        factors_title: 'Factors with geographic differences'
+        factors: 'Professional compensation; auxiliary salaries; rents; operational services; supplies; equipment; professional liability premiums.'
+        gpci_title: 'Reference to the GPCI model'
+        gpci_text: 'Medicare uses Geographic Practice Cost Indices to adjust its RVU: Work GPCI, Practice Expense GPCI, and Malpractice GPCI. The indices reflect relative cost differences, not inflation updating.'
+        proposed_title: 'Proposed UVR indices'
+        index_work: uvr_geo_work_index
+        index_expense: uvr_geo_practice_expense_index
+        index_liability: uvr_geo_professional_liability_index
+        formula_work: 'adjusted_work_uvr = work_uvr × uvr_geo_work_index'
+        formula_expense: 'adjusted_practice_expense_uvr = practice_expense_uvr × uvr_geo_practice_expense_index'
+        formula_liability: 'adjusted_professional_liability_uvr = professional_liability_uvr × uvr_geo_professional_liability_index'
+        formula_total: 'adjusted_total_uvr = adjusted_work_uvr + adjusted_practice_expense_uvr + adjusted_professional_liability_uvr'
+        interpretation: 'An index of 1.00 represents the reference level. Greater than 1.00 indicates higher relative costs; lower than 1.00, lower relative costs. Each index must refer to a jurisdiction, methodology, source, and period of validity.'
+        gradual_title: 'Gradual implementation'
+        gradual_text: 'Applying indices requires comparable data, reliable sources, uniform criteria, a published methodology, an update frequency, and review procedures. Until sufficient information exists, indices may be kept at 1.00.'
+        gradual_warning: 'Regional indices must not be invented, nor arbitrary percentages assigned.'
+    monetary:
+        title: '8. Conversion of UVR to monetary values'
+        lead: 'UVR express relative resources, not monetary amounts. To obtain an estimated amount, a conversion value is needed.'
+        uvr_value: uvr_value
+        uvr_value_text: 'Monetary value assigned to one UVR for a given jurisdiction, financing system, and period.'
+        formula_plain: 'estimated_payment = total_uvr × uvr_value'
+        formula_adjusted: 'estimated_payment = adjusted_total_uvr × uvr_value'
+        example_title: 'Illustrative conversion example'
+        example_text: 'Service with 4.00 UVR, a uvr_value of $1,000, and geographic indices at 1.00. Result: 4.00 × $1,000 = $4,000. It does not represent a current fee or a recommended value.'
+        determination_title: 'Determination of the monetary value'
+        determination_text: 'The value may be set through agreements between providers and payers, institutional arrangements, fee schedules, applicable resolutions, or updating models defined by each entity.'
+        variation: 'The value may vary by country, province, payer, contract, and period. The updating methodology must identify the index or mechanism, its source, and the date of application.'
+    distinction:
+        title: '9. Relative valuation and monetary updating'
+        lead: 'They are two independent processes that must not modify each other automatically.'
+        uvr_title: 'Updating the UVR valuation'
+        uvr_text: 'It changes the estimate of the resources needed to perform a service. It may be due to technology, techniques, supplies, times, or new cost evidence.'
+        money_title: 'Updating the monetary value of the UVR'
+        money_text: 'It changes the economic amount assigned to each relative unit. It may respond to inflation, contractual agreements, cost variations, or financing policies.'
+        rule: 'A monetary update should not automatically modify the UVR of all services. A review of the resources for one service should not automatically modify the monetary value of the unit.'
+    rvu:
+        title: "10. Relationship with Medicare's RVU system"
+        lead: 'The UVR methodology shares with RBRVS the use of three resource components. The similarity is conceptual and structural.'
+        col_uvr: 'UVR — Origen Salud'
+        col_rvu: 'RVU — Medicare'
+        row_work: 'Professional work'
+        row_expense: 'Practice expenses'
+        row_liability: 'Professional liability'
+        row_total: 'Total value'
+        row_geo: 'Geographic adjustment'
+        row_conversion: 'Monetary conversion'
+        row_scope: 'Scope of application'
+        val_work: 'work_uvr / Work RVU'
+        val_expense: 'practice_expense_uvr / Practice Expense RVU'
+        val_liability: 'professional_liability_uvr / Malpractice RVU'
+        val_total: 'total_uvr / Total RVU according to applicable rules'
+        val_geo: 'Proposed UVR indices / GPCI'
+        val_conversion: 'uvr_value / Conversion Factor'
+        val_scope: 'Proposal adaptable by jurisdiction / United States Medicare program'
+        warning: 'UVR values are not equivalent to Medicare RVUs and must not be obtained by direct conversion. US values must not be transferred automatically to another economic or healthcare reality.'
+    sources:
+        title: '11. Information sources and documentation'
+        lead: 'The methodology must be grounded in identifiable and verifiable sources.'
+        items: 'Time-and-motion studies; cost surveys; economic studies; equipment and supply information; compensation data; insurer data; scientific publications; specialist assessments; official documentation; nomenclatures as a comparative reference.'
+        external: 'When an external nomenclature is used, its provenance, version, scope, and conditions of use must be documented.'
+        warning: 'The existence of an equivalent or related code in another system does not imply that its economic values are transferable.'
+    traceability:
+        title: '12. Versioning and traceability'
+        lead: 'Every valuation must be reconstructible and auditable.'
+        fields: 'Service code; catalog version; three components; calculated total; methodology; sources; evaluation date; validity; responsible party; approval status; observations and justification of changes.'
+        history: 'Historical values must be retained to reproduce earlier calculations. A new valuation must not overwrite or delete historical records.'
+        independent: 'Geographic indices and monetary values must also have independent versions and periods of validity.'
+    governance:
+        title: '13. Governance and review'
+        lead: 'The SVP must evolve through a documented review process.'
+        items: 'Technical review by specialty; participation of professionals and entities; evidence review; consistency assessment; record of observations; publication of versions and validity dates.'
+        rule: 'Every addition or modification must be documented and reproducible. Values pending validation must be clearly identified and not presented as definitive.'
+    scope:
+        title: '14. Scope and limitations'
+        lead: 'The UVR system is a proposed relative valuation methodology.'
+        not_title: 'It does not by itself constitute'
+        not_items: 'An official fee schedule; a mandatory tariff; a fee regulation; a universal monetary value; an automatic replacement for nomenclatures; a coverage decision; a guarantee of recognition or payment.'
+        rule: 'Each institution or payer may set its own monetary values, contractual conditions, and recognition rules, respecting applicable provisions.'
+        purpose: 'The purpose of the SVP is to provide a transparent methodological basis for comparing service resources and facilitating economic valuation models.'
+    roadmap:
+        title: '15. Long-term goal'
+        lead: 'Origen Salud seeks to develop a valuation system applicable progressively to different areas of healthcare.'
+        areas: 'Dentistry; medicine; diagnostic imaging; laboratory; kinesiology and physiatry; psychology and mental health; rehabilitation; other specialties and services.'
+        principles: 'The methodology must allow justified adaptations by specialty and jurisdiction, while maintaining transparency, traceability, consistency, and technical review.'
+        goal: 'To facilitate interoperability between service catalogs, health information systems, institutions, and payers.'
+    footer:
+        disclaimer: 'Reference methodological document based on README-UVR.md. Values, indices, and examples are illustrative unless an explicit approved source and version are stated.'
+    lang:
+        label: 'Methodology language'
+        es: 'Español (Argentina)'
+        en: English
+        pt: 'Português (Brasil)'

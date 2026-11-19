@@ -7,7 +7,8 @@ declare(strict_types=1);
  *
  * Se genera desde las rutas y locales REALMENTE implementados. No incluye
  * DENTAR-AN/CL (su exposición pública requiere aprobación explícita), ni
- * secciones reservadas (IN/PD/EQ, productos, UVR), ni la ruta rota /cart.
+ * secciones reservadas (IN/PD/EQ, productos), la página metodológica UVR
+ * (enlazada desde Docs) y la ruta rota /cart.
  */
 
 require_once dirname(__DIR__) . '/portal/bootstrap.php';
