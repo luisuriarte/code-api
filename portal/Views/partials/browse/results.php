@@ -55,6 +55,11 @@ $countLabel = $result['total'] === 1
                 $compareHref = $compareUrl($key);
                 $matchType = (string) ($entry['match_type'] ?? '');
                 $relationCount = max(0, (int) ($entry['relation_count'] ?? 0));
+                $officialSystem = (string) ($entry['official_system'] ?? '');
+                $officialCode = (string) ($entry['official_code'] ?? '');
+                $officialLabel = $officialCode !== ''
+                    ? ($officialSystem !== '' ? $officialSystem . ': ' . $officialCode : $officialCode)
+                    : '';
                 ?>
                 <li class="browse-result browse-result--selectable browse-result-row<?= $selected ? ' is-selected' : '' ?>"
                     data-result-key="<?= e($key) ?>">
@@ -75,6 +80,9 @@ $countLabel = $result['total'] === 1
                             <?php endif; ?>
                             <?php if ($kind !== ''): ?>
                                 <span class="browse-badge browse-badge--neutral"><?= e($kind) ?></span>
+                            <?php endif; ?>
+                            <?php if ($officialLabel !== ''): ?>
+                                <span class="browse-badge browse-badge--neutral"><?= e($officialLabel) ?></span>
                             <?php endif; ?>
                             <?php if ($matchType === 'exact' || $matchType === 'partial'): ?>
                                 <span class="browse-badge <?= $matchType === 'exact' ? 'browse-badge--current' : 'browse-badge--neutral' ?>">

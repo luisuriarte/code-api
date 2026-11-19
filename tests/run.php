@@ -119,6 +119,25 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $locale) {
 $repository = (string) file_get_contents($root . '/portal/Repositories/CatalogRepository.php');
 $check(str_contains($repository, 'os_catalog_relation'), 'itemRelations() debe consultar os_catalog_relation.');
 $check(str_contains($repository, "CASE WHEN r.source_item_id = ? THEN 'outgoing' ELSE 'incoming' END"), 'Debe distinguir relaciones salientes y entrantes.');
+$check(
+    str_contains($repository, 'item.permanent_code AS code'),
+    'Los resultados DENTAR deben mostrar el código permanente DNT-PR/DNT-DX.'
+);
+$check(
+    !str_contains($repository, 'coalesce(ident.value, item.permanent_code) AS code'),
+    'El identificador externo (CIE-10/Nomenclador) no debe reemplazar al código DENTAR.'
+);
+$check(
+    str_contains($repository, "'official_code', ident.value")
+    && str_contains($repository, "'official_system', ident.system_name"),
+    'El identificador externo debe conservarse como metadata secundaria.'
+);
+$resultsSource = (string) file_get_contents($root . '/portal/Views/partials/browse/results.php');
+$check(
+    str_contains($resultsSource, 'officialLabel')
+    && str_contains($resultsSource, 'official_system'),
+    'La fila debe mostrar el código DENTAR y, si existe, el identificador externo como badge.'
+);
 
 // 5. Documentación alineada con el estado real.
 $dentarReadme = (string) file_get_contents($root . '/docs/dentar/README.md');

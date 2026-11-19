@@ -173,6 +173,10 @@ Contenida en un panel con scroll propio:
 
 **DENTAR conserva identidad destacada** mediante familia propia, etiqueta de
 catálogo propio y color de acento institucional, sin ocultar otras familias.
+En los resultados se muestra siempre el código permanente (`DNT-PR-…` /
+`DNT-DX-…`). Los identificadores de otros sistemas (por ejemplo, `CIE-10 K00.1`
+o el Nomenclador Argentino) aparecen como badge secundario explícito y siguen
+siendo buscables; nunca sustituyen al código DENTAR.
 
 Los códigos `DENTAR-IN`, `DENTAR-PD`, `DENTAR-EQ`, `OS-INS`, `OS-PROD`,
 `OS-MED`, `OS-DIS`, `OS-EQP` y `OS-IMPL` se muestran como **reservados /

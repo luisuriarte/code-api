@@ -833,13 +833,18 @@ final class CatalogRepository
             . "'catalog_name', cat.name, "
             . "'item_id', CAST(item.id AS text), "
             . "'release_id', CAST(rel.id AS text), "
-            . "'primary_code', coalesce(ident.value, item.permanent_code)"
+            . "'primary_code', item.permanent_code, "
+            . "'official_code', ident.value, "
+            . "'official_system', ident.system_name"
             . ") AS text) AS metadata";
 
         $sql = "SELECT '{$domain}' AS domain, 'os_catalog' AS source,\n"
             . " '{$domain}:os_catalog:' || cat.code || ':' || CAST(item.id AS text) AS result_key,\n"
             . " CAST(item.id AS text) AS source_id,\n"
-            . " coalesce(ident.value, item.permanent_code) AS code,\n"
+            // El código visible es el permanente del catálogo (DNT-PR/DNT-DX).
+            // El identificador externo (CIE-10, Nomenclador, CDT) se conserva
+            // como metadata y sigue siendo buscable.
+            . " item.permanent_code AS code,\n"
             . " ver.preferred_term AS term,\n"
             . " cat.short_name AS subtitle,\n"
             . " ver.language_code AS language,\n"
@@ -1437,6 +1442,12 @@ final class CatalogRepository
                 'description' => $editorial['description'] ?? self::description($metadata),
                 'concept_id' => isset($metadata['concept_id']) ? (string) $metadata['concept_id'] : null,
                 'catalog_code' => isset($metadata['catalog_code']) ? (string) $metadata['catalog_code'] : null,
+                'official_code' => isset($metadata['official_code']) && $metadata['official_code'] !== null
+                    ? (string) $metadata['official_code']
+                    : null,
+                'official_system' => isset($metadata['official_system']) && $metadata['official_system'] !== null
+                    ? (string) $metadata['official_system']
+                    : null,
             ] + $editorial;
 
             $items[] = $item;
