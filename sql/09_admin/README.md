@@ -22,6 +22,22 @@ diseño de referencia, pero **no se ha aplicado a `origen_codes`**.
 | `fase1_identidad.sql` | Esquema `os_admin`, tablas de usuario/sesión/roles/permisos/auditoría, rol `origen_admin` y datos base de roles y permisos. |
 | `verificacion.sql` | Verificación `SELECT`-only dentro de `BEGIN READ ONLY` / `ROLLBACK`. |
 
+## Si M1 ya está aplicado
+
+La migración es idempotente y puede volver a ejecutarse completa. Si solo se
+necesita corregir el permiso de alta de roles, alcanza con aplicar el `GRANT`
+incremental como superusuario:
+
+```sql
+GRANT SELECT, INSERT ON os_admin.membership TO origen_admin;
+```
+
+Luego, si el usuario se creó pero el bootstrap falló antes de asignar roles:
+
+```bash
+php tools/php/admin_bootstrap.php --repair-existing
+```
+
 ## Requisitos previos del operador
 
 1. Backup verify de `origen_codes` (D-16, D-25).

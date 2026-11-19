@@ -108,6 +108,12 @@ El servidor de prueba se detuvo al finalizar; no hubo conexión a PostgreSQL.
    ```bash
    php tools/php/admin_bootstrap.php
    ```
+   Si el usuario quedó creado pero falló la asignación de roles (por ejemplo,
+   por el permiso `INSERT` sobre `os_admin.membership`), completar sin cambiar
+   la contraseña con:
+   ```bash
+   php tools/php/admin_bootstrap.php --repair-existing
+   ```
 6. Forzar HTTPS en el vhost y mantener `ADMIN_REQUIRE_HTTPS=true`.
 7. Verificar `/admin/login` en los tres idiomas y que `/admin/audit` exija el permiso `audit.view`.
 8. Recién entonces solicitar autorización para Fase 2.

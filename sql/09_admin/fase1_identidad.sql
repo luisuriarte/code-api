@@ -197,10 +197,12 @@ GRANT SELECT ON
     os_admin.role,
     os_admin.permission,
     os_admin.role_permission,
-    os_admin.membership,
     os_admin.organization,
     os_admin.catalog_grant
 TO origen_admin;
+
+-- El alta de usuarios asigna roles globales durante el bootstrap.
+GRANT SELECT, INSERT ON os_admin.membership TO origen_admin;
 
 -- La auditoría solo permite lectura e inserción: el trigger impide UPDATE/DELETE.
 GRANT SELECT, INSERT ON os_admin.audit_log TO origen_admin;

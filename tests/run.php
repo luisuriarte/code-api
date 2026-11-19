@@ -500,6 +500,10 @@ $check(str_contains($m1Sql, 'BEGIN;') && str_contains($m1Sql, 'COMMIT;'), 'M1 de
 $check(str_contains($m1Sql, 'CREATE SCHEMA IF NOT EXISTS os_admin'), 'M1 debe crear el esquema os_admin.');
 $check(str_contains($m1Sql, 'os_admin.audit_log') && str_contains($m1Sql, 'trg_audit_log_immutable'), 'M1 debe crear la auditoría append-only.');
 $check(str_contains($m1Sql, 'origen_admin'), 'M1 debe crear el rol de aplicación aislado.');
+$check(
+    preg_match('/GRANT\s+SELECT,\s*INSERT\s+ON\s+os_admin\.membership\s+TO\s+origen_admin/i', $m1Sql) === 1,
+    'M1 debe permitir INSERT en membership para el bootstrap de roles.'
+);
 $check(!preg_match('/\bDROP\s+TABLE\b|\bDROP\s+COLUMN\b|\bTRUNCATE\b|\bDELETE\s+FROM\b/i', $m1Sql), 'M1 debe ser aditiva.');
 $check(!preg_match('/\bGRANT\s+[^\n]+\bTO\s+PUBLIC\b/i', $m1Sql), 'M1 no debe otorgar privilegios a PUBLIC.');
 $check(!preg_match('/\b(?:INSERT|UPDATE)\s+(?:INTO\s+)?(?:public\.)?os_catalog/i', $m1Sql), 'M1 no debe modificar os_catalog_*.');
