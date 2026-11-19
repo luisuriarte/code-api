@@ -939,7 +939,7 @@ uvr:
         copied: 'Fórmula copiada'
     header:
         eyebrow: 'Documento metodológico · Propuesta'
-        title: 'Sistema de Valoración Prestacional (SVP)'
+        title: 'Sistema de Valoración Prestacional (UVR)'
         lead: 'Una metodología transparente, reproducible y adaptable para comparar los recursos relativos que requiere cada prestación sanitaria, sin confundir valor relativo con importe monetario.'
         badge: 'UVR · Unidad de Valor Relativo'
         status_title: 'Estado de la propuesta'
@@ -1048,7 +1048,7 @@ uvr:
         artifact_text: 'La fuente de esta página es README-UVR.md, documentado en el repositorio como propuesta metodológica. No debe interpretarse como contrato de API ni como tabla arancelaria.'
     intro:
         title: '1. Introducción'
-        lead: 'Origen Salud propone un Sistema de Valoración Prestacional (SVP) basado en Unidades de Valor Relativo (UVR) para representar los recursos relativos necesarios para realizar una prestación sanitaria.'
+        lead: 'Origen Salud propone un Sistema de Valoración Prestacional (UVR) basado en Unidades de Valor Relativo (UVR) para representar los recursos relativos necesarios para realizar una prestación sanitaria.'
         goal: 'El objetivo es disponer de una metodología transparente, reproducible y adaptable a diferentes especialidades, instituciones, jurisdicciones y sistemas de financiación.'
         questions_title: 'Dos preguntas diferentes'
         q1: '¿Cuántos recursos relativos requiere una prestación en comparación con otras prestaciones?'

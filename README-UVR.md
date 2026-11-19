@@ -1,4 +1,4 @@
-# Sistema de Valoración Prestacional de Origen Salud (SVP)
+# Sistema de Valoración Prestacional de Origen Salud (UVR)
 
 ## Metodología de Unidades de Valor Relativo (UVR)
 
@@ -12,7 +12,7 @@
 
 ## 1. Introducción
 
-Origen Salud propone un Sistema de Valoración Prestacional (SVP) basado en Unidades de Valor Relativo (UVR), destinado a representar los recursos relativos necesarios para realizar una prestación sanitaria.
+Origen Salud propone un Sistema de Valoración Prestacional (UVR) basado en Unidades de Valor Relativo (UVR), destinado a representar los recursos relativos necesarios para realizar una prestación sanitaria.
 
 El objetivo es disponer de una metodología transparente, reproducible y adaptable a diferentes especialidades, instituciones, jurisdicciones y sistemas de financiación.
 
@@ -487,7 +487,7 @@ El propósito es facilitar la interoperabilidad entre catálogos de prestaciones
 ---
 
 **Origen Salud**  
-Sistema de Valoración Prestacional (SVP)  
+Sistema de Valoración Prestacional (UVR)  
 **UVR — Unidad de Valor Relativo**
 
 *Documento metodológico de referencia. Los valores, índices y ejemplos incluidos tienen carácter ilustrativo cuando no se identifica expresamente una fuente y una versión aprobada.*

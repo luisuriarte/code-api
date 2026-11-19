@@ -939,7 +939,7 @@ uvr:
         copied: 'Formula copied'
     header:
         eyebrow: 'Methodological document · Proposal'
-        title: 'Provider Valuation System (SVP)'
+        title: 'Provider Valuation System (RVU)'
         lead: 'A transparent, reproducible, and adaptable methodology for comparing the relative resources required by each healthcare service, without confusing relative value with monetary amount.'
         badge: 'UVR · Relative Value Unit'
         status_title: 'Status of the proposal'
@@ -1048,7 +1048,7 @@ uvr:
         artifact_text: 'The source of this page is README-UVR.md, documented in the repository as a methodological proposal. It must not be interpreted as an API contract or as a fee schedule.'
     intro:
         title: '1. Introduction'
-        lead: 'Origen Salud proposes a Provider Valuation System (SVP) based on Relative Value Units (UVR) to represent the relative resources needed to perform a healthcare service.'
+        lead: 'Origen Salud proposes a Provider Valuation System (RVU) based on Relative Value Units (UVR) to represent the relative resources needed to perform a healthcare service.'
         goal: 'The goal is to have a transparent, reproducible methodology adaptable to different specialties, institutions, jurisdictions, and financing systems.'
         questions_title: 'Two different questions'
         q1: 'How many relative resources does a service require compared with other services?'
