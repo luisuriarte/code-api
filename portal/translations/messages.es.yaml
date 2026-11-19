@@ -607,8 +607,11 @@ admin:
     grants:
         hint: "Grants por catálogo (uno por línea: codigo:operacion:allow o deny)"
         title: "Permisos por catálogo"
-        legend: "Marcá ✓ para permitir o ✗ para denegar. La denegación prevalece."
+        legend: "Seleccione las operaciones permitidas para cada catálogo."
         empty: "No hay catálogos activos disponibles."
+        deny_title: "Denegaciones explícitas"
+        deny_help: "Solo si necesita bloquear una operación. Una denegación prevalece sobre un permiso."
+        member_title: "Permisos de este colaborador"
         allow: "Permitir"
         deny: "Denegar"
         catalog: "Código de catálogo"

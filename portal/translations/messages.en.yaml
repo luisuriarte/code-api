@@ -1339,8 +1339,11 @@ admin:
     grants:
         hint: 'Catalog grants (one per line: code:operation:allow or deny)'
         title: 'Catalog permissions'
-        legend: 'Check ✓ to allow or ✗ to deny. Denials take precedence.'
+        legend: 'Select the allowed operations for each catalog.'
         empty: 'No active catalogs available.'
+        deny_title: 'Explicit denials'
+        deny_help: 'Only if you need to block an operation. A denial takes precedence over an allowance.'
+        member_title: 'Permissions for this collaborator'
         allow: 'Allow'
         deny: 'Deny'
         catalog: 'Catalog code'

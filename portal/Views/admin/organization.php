@@ -156,13 +156,22 @@ declare(strict_types=1);
                                     $deniedSelected[] = $value;
                                 }
                             }
+                            $grantCount = count($allowedSelected) + count($deniedSelected);
                             ?>
-                            <form method="post" action="/admin/grants/<?= $memberId ?>" class="admin-form">
-                                <input type="hidden" name="<?= e(\OrigenSalud\Portal\Services\Csrf::FIELD) ?>"
-                                       value="<?= e(\OrigenSalud\Portal\Services\Csrf::token()) ?>">
-                                <?php require __DIR__ . '/_grant_choices.php'; ?>
-                                <button type="submit" class="button button-small"><?= e($t('admin.grants.save')) ?></button>
-                            </form>
+                            <details class="admin-member-grants">
+                                <summary>
+                                    <?= e($t('admin.grants.member_title')) ?>
+                                    <?php if ($grantCount > 0): ?>
+                                        <span class="admin-grants-count"><?= $grantCount ?></span>
+                                    <?php endif; ?>
+                                </summary>
+                                <form method="post" action="/admin/grants/<?= $memberId ?>" class="admin-form admin-grants-form">
+                                    <input type="hidden" name="<?= e(\OrigenSalud\Portal\Services\Csrf::FIELD) ?>"
+                                           value="<?= e(\OrigenSalud\Portal\Services\Csrf::token()) ?>">
+                                    <?php require __DIR__ . '/_grant_choices.php'; ?>
+                                    <button type="submit" class="button button-small"><?= e($t('admin.grants.save')) ?></button>
+                                </form>
+                            </details>
                         </td>
                     </tr>
                 <?php endforeach; ?>

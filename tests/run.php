@@ -744,6 +744,7 @@ $m2I18nKeys = [
     'admin.invite.title', 'admin.grants.hint', 'admin.messages.invite_accepted',
     'admin.errors.last_superadmin', 'admin.errors.grant_required',
     'admin.grants.title', 'admin.grants.allow', 'admin.grants.deny',
+    'admin.grants.deny_title', 'admin.grants.deny_help', 'admin.grants.member_title',
     'admin.grants.ops.view', 'admin.grants.ops.propose', 'admin.grants.ops.edit_draft',
     'admin.grants.ops.review', 'admin.grants.ops.approve', 'admin.grants.ops.publish',
     'admin.roles.org_type.health_center',
@@ -751,11 +752,16 @@ $m2I18nKeys = [
 
 // Los grants se eligen con casillas: sin campos de texto libres para catalog_code.
 $grantChoicesView = (string) file_get_contents($root . '/portal/Views/admin/_grant_choices.php');
-$check(str_contains($grantChoicesView, 'grant_allow[]'), 'El selector debe ofrecer casillas de permiso.');
-$check(str_contains($grantChoicesView, 'grant_deny[]'), 'El selector debe ofrecer casillas de denegación.');
+$check(str_contains($grantChoicesView, "'grant_allow'"), 'El selector debe ofrecer casillas de permiso.');
+$check(str_contains($grantChoicesView, "'grant_deny'"), 'El selector debe ofrecer casillas de denegación.');
 $check(
-    str_contains($grantChoicesView, 'Rbac::CATALOG_OPERATIONS'),
-    'El selector debe usar solo operaciones válidas del RBAC.'
+    str_contains($grantChoicesView, 'Rbac::CATALOG_OPERATIONS')
+        && str_contains($grantChoicesView, '<details class="admin-grants-deny">'),
+    'El selector debe usar operaciones válidas y mantener las denegaciones plegadas.'
+);
+$check(
+    !str_contains($grantChoicesView, 'admin-grant-grid') && !str_contains($grantChoicesView, 'aria-hidden'),
+    'El selector no debe usar la grilla densa ni símbolos duplicados por casilla.'
 );
 foreach (['/portal/Views/admin/organization.php', '/portal/Views/admin/invitations.php'] as $m2GrantView) {
     $grantViewSource = (string) file_get_contents($root . $m2GrantView);

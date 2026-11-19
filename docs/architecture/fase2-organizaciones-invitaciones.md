@@ -833,23 +833,26 @@ Queda para el responsable:
 ### 16.2 Selección de grants con casillas
 
 La asignación de miembros y las invitaciones exigían escribir a mano el código
-de catálogo (`catalogo:operacion:allow|deny`). Se reemplazó por un selector de
-casillas reutilizable (`portal/Views/admin/_grant_choices.php`) que lista los
+de catálogo (`catalogo:operacion:allow|deny`). Se reemplazó por un selector
+compacto y reutilizable (`portal/Views/admin/_grant_choices.php`) que lista los
 catálogos activos desde `public.os_catalog`, con la conexión pública de solo
-lectura. Por cada catálogo se muestran las seis operaciones válidas del RBAC y
-dos casillas: ✓ permitir y ✗ denegar (la denegación prevalece si ambas están
-marcadas).
+lectura. Cada catálogo muestra sus seis operaciones válidas del RBAC como
+"chips" de un solo clic para **permitir**. Las denegaciones explícitas se
+agrupan en una sección plegable, para no recargar la pantalla; la denegación
+sigue prevaleciendo si ambas están marcadas. El editor de permisos de cada
+colaborador también está plegado dentro de la tabla, de modo que la lista no
+crece aunque haya muchos miembros.
 
 El servicio conserva la validación original: cada valor se comprueba contra
 `Rbac::isValidOperation()` y `CatalogReferenceRepository::exists()` antes de
 persistirse, y se mantiene la ruta de compatibilidad con el formato de texto
 para formularios que aún no se hayan actualizado. No hay cambios de esquema ni
-de permisos. La edición de grants de un membership existente precarga las
-casillas según los grants vigentes.
+de permisos. La edición de grants de un membership existente precarga los chips
+según los grants vigentes.
 
-Limitación conocida: desmarcar una casilla en un membership existente no elimina
-el grant (M2 no prevé baja de grants); para anularlo debe marcarse la casilla ✗
-de esa misma operación.
+Limitación conocida: desmarcar un chip en un membership existente no elimina el
+grant (M2 no prevé baja de grants); para anularlo debe marcarse la operación en
+la sección de denegaciones.
 
 M1 y M2 quedan así cerrados en base. Las fases 3-6 siguen como propuestas no
 ejecutadas.
