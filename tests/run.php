@@ -79,7 +79,7 @@ $check($missingRefs === [], 'Referencias OpenAPI sin resolver: ' . implode(', ',
 
 // 3. Artefactos SQL: sintaxis básica y prohibiciones del plan de migración.
 $sqlDir = $root . '/sql/08_arquitectura';
-$sqlFiles = glob($sqlDir . '/*.sql') ?: [];
+$sqlFiles = glob($sqlDir . '/fase*.sql') ?: [];
 $check(count($sqlFiles) === 5, 'Deben existir cinco artefactos SQL propuestos.');
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
@@ -96,6 +96,60 @@ $uvrSql = (string) file_get_contents($sqlDir . '/fase6_uvr.sql');
 $check(str_contains($uvrSql, "component_type IN (\n        'work', 'practice_expense', 'professional_liability'\n    )"), 'UVR debe conservar los tres componentes.');
 $check(str_contains($uvrSql, 'total_uvr') || str_contains($uvrSql, 'COALESCE(c_work.value, 0)'), 'UVR debe derivar el total de los componentes.');
 $check(!preg_match('/INSERT\s+INTO\s+os_uvr_(valuation|component|conversion|geo_index)/i', $uvrSql), 'No se deben cargar valores UVR.');
+
+// 3b. Fase 1 del §16: infraestructura compartida y verificación SELECT-only.
+$fase1Sql = (string) file_get_contents($sqlDir . '/fase1_infraestructura.sql');
+foreach (['os_domain_registry', 'os_relation_kind', 'os_relation_type', 'os_review_state'] as $fase1Table) {
+    $check(
+        str_contains($fase1Sql, 'CREATE TABLE IF NOT EXISTS ' . $fase1Table),
+        'Fase 1 debe crear ' . $fase1Table . '.'
+    );
+}
+$fase1Domains = [
+    'snomed', 'cie10', 'anmat', 'laboratorio', 'vacunas', 'odontologia',
+    'prestaciones', 'programas', 'imagenes', 'nomenclador', 'vademecum', 'loinc',
+];
+$terminologySource = (string) file_get_contents($root . '/api/services/TerminologySearchService.php');
+foreach ($fase1Domains as $fase1Domain) {
+    $check(
+        str_contains($fase1Sql, "('" . $fase1Domain . "',"),
+        'Fase 1 debe sembrar el dominio ' . $fase1Domain . '.'
+    );
+    $check(
+        str_contains($terminologySource, 'DOMAIN_' . strtoupper($fase1Domain)),
+        'TerminologySearchService debe definir el dominio ' . $fase1Domain . '.'
+    );
+}
+$check(
+    substr_count($fase1Sql, 'TerminologySearchService::DOMAINS/DOMAIN_CATALOG') === 12
+        && str_contains($fase1Sql, "mode IN ('full', 'catalog')"),
+    'Fase 1 debe sembrar los 12 dominios reales conservando los modos full/catalog.'
+);
+$check(
+    str_contains($fase1Sql, 'is_publication_allowed')
+        && str_contains($fase1Sql, "('approved',") && str_contains($fase1Sql, "('published',"),
+    'Fase 1 debe fijar qué estados de revisión permiten publicación.'
+);
+$check(
+    str_contains($fase1Sql, "to_regclass('public.os_catalog_relation')")
+        && str_contains($fase1Sql, 'SELECT DISTINCT r.relation_type'),
+    'Fase 1 debe derivar los tipos de relación de la tabla real, sin inventar códigos.'
+);
+$fase1VerifyPath = $sqlDir . '/verificacion_fase1.sql';
+$check(is_file($fase1VerifyPath), 'Debe existir la verificación SELECT-only de Fase 1.');
+if (is_file($fase1VerifyPath)) {
+    $fase1Verify = (string) file_get_contents($fase1VerifyPath);
+    $check(
+        str_contains($fase1Verify, 'BEGIN READ ONLY;') && str_contains($fase1Verify, 'ROLLBACK;'),
+        'La verificación de Fase 1 debe ser de solo lectura.'
+    );
+    $check(
+        str_contains($fase1Verify, 'os_domain_registry')
+            && str_contains($fase1Verify, 'os_catalog_relation')
+            && str_contains($fase1Verify, "grantee = 'origen_admin'"),
+        'La verificación de Fase 1 debe comprobar dominios, invariante CDT y privilegios.'
+    );
+}
 
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.
 $relationTypes = [

@@ -1,6 +1,8 @@
--- FASE 1 — Infraestructura compartida (propuesta, NO EJECUTAR sin aprobación)
--- Base objetivo: origen_codes. Requiere backup verificado y fase aprobada.
+-- FASE 1 del §16 — Infraestructura compartida (propuesta, NO EJECUTAR sin aprobación)
+-- Base objetivo: origen_codes. Requiere backup verificado y autorización explícita.
 -- Aditivo: no elimina tablas, columnas ni datos.
+-- Numeración: en esta carpeta "fase1" equivale a la Fase 1 del §16; los
+-- archivos fase3..fase6 corresponden a las Fases 4..7 (ver README.md).
 
 BEGIN;
 

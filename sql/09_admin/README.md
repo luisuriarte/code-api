@@ -58,7 +58,7 @@ Sigue pendiente de configuración operativa (no bloquea la base):
 |---|---|
 | `fase1_identidad.sql` | M1: esquema `os_admin`, usuarios, sesiones, roles, permisos y auditoría. **Aplicado.** |
 | `verificacion.sql` | Verificación `SELECT`-only de M1. |
-| `fase2_gobernanza.sql` | M2: organizaciones, invitaciones, memberships y grants por membership. **No ejecutado.** |
+| `fase2_gobernanza.sql` | M2: organizaciones, invitaciones, memberships y grants por membership. **Aplicado.** |
 | `verificacion_fase2.sql` | Verificación `SELECT`-only de M2 (`BEGIN READ ONLY` / `ROLLBACK`). |
 
 ## Si M1 ya está aplicado
