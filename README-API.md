@@ -7,10 +7,12 @@
 > Especificación OpenAPI 3.1 de la API real: [`docs/api/openapi-3.1.yaml`](docs/api/openapi-3.1.yaml).
 > Cubre `/health` y las rutas `/v1/*` implementadas en `api/index.php`. No incluye `/fhir/*` porque aún no está implementado.
 >
-> La spec y este README tienen desvíos documentados frente al código (17 y
-> varios, respectivamente). Inventario y detalle en el
-> [§13.2 de la propuesta arquitectónica](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md);
-> su corrección está pendiente de aprobación.
+> Spec y README fueron reconciliados con el código en la Fase 2 del plan (§16):
+> los 17 desvíos del
+> [§13.2 de la propuesta arquitectónica](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md)
+> quedaron corregidos, junto con las afirmaciones falsas de este README
+> (UUID, `403`/`429`, `cie10_type`, formato de dominios y `{identifier}`).
+> `tests/run.php` es el verificador canónico.
 
 ---
 
@@ -205,6 +207,17 @@ Cada catálogo devuelve, entre otros campos, `role` (`family` o `catalog`),
 `family` (código de la marca paraguas) y `short_name`. Los productos
 `dentar-pr` y `dentar-dx` declaran `family: "dentar"`.
 
+#### Endpoints de descubrimiento adicionales
+
+| Endpoint | Uso |
+|---|---|
+| `GET /v1/refsets` | RefSets de SNOMED CT disponibles como filtro. |
+| `GET /v1/catalogs/{catalog_code}/releases` | Versiones con vigencia y estado de un catálogo. |
+| `GET /v1/pricing-units` | Unidades arancelarias disponibles. |
+
+Un catálogo inexistente o sin datos devuelve `200` con `data: []` en estas
+rutas; no se emite `404`.
+
 ### 3.2. Consultar Prestaciones de un Catálogo
 #### `GET /v1/catalogs/{catalog_code}/items?q={query}&limit={n}`
 ```bash
@@ -226,7 +239,7 @@ curl -s -X GET "https://api.origen.ar/v1/catalogs/dentar-dx/items?q=caries" \
 ```
 
 ### 3.3. Ficha Técnica de la Prestación con Aranceles y Mapeos
-#### `GET /v1/catalogs/{catalog_code}/items/{code}`
+#### `GET /v1/catalogs/{catalog_code}/items/{item}`
 Devuelve la identidad permanente, aranceles vigentes (UB, Galenos, Módulos o Pesos) y mapeos cruzados a **SNOMED-CT**, **CIE-10** y **LOINC**.
 
 ```bash
@@ -248,7 +261,7 @@ curl -s -X GET "https://api.origen.ar/v1/mappings?system=CIE-10&code=K02.1" \
 ```
 
 `target_display` y `rationale` usan el mismo dual-read condicionado que
-`GET /v1/catalogs/{catalogCode}/items/{code}`: requieren aprobación D-19 vigente
+`GET /v1/catalogs/{catalog_code}/items/{item}`: requieren aprobación D-19 vigente
 en `os_field_review`. Cada resultado incluye `field_languages` y `untranslated`.
 Cuando se publica, `effective_language` es `undet`: `os_concept_mapping` no tiene
 `language_code` y no se inventa `es-AR`. Un cambio de texto o `source_reference`
@@ -285,11 +298,11 @@ Permite buscar simultáneamente a través de múltiples vocabularios clínicos u
 |---|---|---|---|
 | `q` | `string` | **Requerido** | Término, código exacto o parte del nombre a buscar. |
 | `domains` | `string` | `snomed,cie10,anmat` | Dominios separados por coma; `all` incluye todos los dominios listados en `/v1/domains`. |
-| `lang` | `string` | `es` | Idioma de las descripciones: `es` o `en`. |
+| `lang` | `string` | `es` | Idioma de las descripciones: `es`, `es-AR`, `en` o `pt-BR` según el resolvedor. |
 | `limit` | `int` | `20` | Cantidad de resultados por página (máx. `50` por defecto; `API_PAGE_LIMIT_MAX` puede subirlo hasta `100`). |
 | `offset` | `int` | `0` | Desplazamiento para paginación. |
-| `refsets` | `string` | `null` | Filtrado por RefSets de SNOMED CT (separados por coma). |
-| `cie10_type`| `string` | `null` | Filtra CIE-10 por tipo: `4_caracteres`, `3_caracteres`, etc. |
+| `refsets` | `string` | `null` | Filtrado por RefSets de SNOMED CT (separados por coma). El código también acepta el alias `refset`. |
+| `cie10_type`| `string` | `null` | Filtra CIE-10 por tipo: `diagnostico` o `procedimiento`. |
 
 #### Ejemplo de búsqueda
 ```bash
@@ -392,7 +405,7 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos?snomed=8096700
 
 ### 5.2. Detalle de Diagnóstico y Procedimientos Indicados
 
-#### `GET /v1/odontologia/diagnosticos/{identificador}`
+#### `GET /v1/odontologia/diagnosticos/{code}`
 Permite consultar un diagnóstico odontológico y obtener **todas las prestaciones que lo tratan o resuelven clínicamente**.
 
 ##### Identificadores admitidos:
@@ -466,7 +479,7 @@ curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos/K02.1" \
 
 ### 5.3. Justificación Clínica de Prestaciones (Matriz de Auditoría)
 
-#### `GET /v1/odontologia/{identificador}/diagnosticos`
+#### `GET /v1/odontologia/{code}/diagnosticos`
 Devuelve los diagnósticos médicos y justificaciones que fundamentan una práctica odontológica para auditoría y facturación.
 
 ##### Identificadores admitidos:
@@ -683,7 +696,7 @@ curl -s -X GET "https://api.origen.ar/v1/snomed/80967001?lang=es" \
     "cie10_codes": [
       {
         "code": "K02.9",
-        "type": "4_caracteres",
+        "type": "diagnostico",
         "description": "Caries dental, no especificada"
       }
     ],
@@ -725,7 +738,7 @@ curl -s -X GET "https://api.origen.ar/v1/cie10/K02.1" \
 {
   "data": {
     "code": "K02.1",
-    "type": "4_caracteres",
+    "type": "diagnostico",
     "descriptions": {
       "es": [
         "Caries de la dentina"

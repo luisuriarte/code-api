@@ -87,8 +87,10 @@ a `origen_admin` sobre **toda tabla nueva** creada en `public` por `postgres`.
 Por eso la primera ejecución de la Fase 1 devolvió 4 filas en el apartado 8 de
 la verificación, aunque el DDL terminó en `COMMIT`.
 
-La migración ya incluye el `REVOKE` correctivo al final. Si se aplicó una versión
-anterior del archivo, ejecutar una sola vez:
+La migración ya incluye el `REVOKE` correctivo al final. **Estado en
+`origen_codes`: corrección aplicada y reverificada el 2026-11-19; apartado 8 en
+0 filas y solo `postgres` como grantee.** Si se aplicó una versión anterior del
+archivo en otro entorno, ejecutar una sola vez:
 
 ```bash
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \

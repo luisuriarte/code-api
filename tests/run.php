@@ -77,6 +77,130 @@ $walk = static function ($node, string $path = '') use (&$walk, &$missingRefs, $
 $walk($spec);
 $check($missingRefs === [], 'Referencias OpenAPI sin resolver: ' . implode(', ', $missingRefs));
 
+// 2b. Fase 2: los 17 desvíos del §13.2 quedan corregidos en la spec.
+$specRaw = (string) file_get_contents($specPath);
+$check(!str_contains($specRaw, 'format: uuid'), 'request_id no debe declararse UUID.');
+$check(str_contains($specRaw, 'no es UUID'), 'La spec debe aclarar que request_id no es UUID.');
+$check(!str_contains($specRaw, 'default: es-AR'), 'lang no debe usar es-AR como default; el real es es.');
+$check(str_contains($specRaw, 'minLength: 2, maxLength: 80'), 'q debe declarar entre 2 y 80 caracteres.');
+$check(str_contains($specRaw, '`OPTIONS` con `204`'), 'La spec debe documentar OPTIONS 204.');
+$check(str_contains($specRaw, '`405` con `Allow'), 'La spec debe documentar 405 con Allow.');
+$check(
+    substr_count($specRaw, 'no se emite `404`') >= 3,
+    'Las tres rutas de catálogos deben documentar 200 con data: [].'
+);
+$check(
+    str_contains($specRaw, 'puede emitirse en cualquier operación'),
+    'La spec debe documentar que 400 puede emitirse en más operaciones.'
+);
+$check(
+    !str_contains($specRaw, 'enum: [troquel, alfabeta, kairos, gtin]'),
+    'El sistema de identificador medicinal no debe restringirse a cuatro valores.'
+);
+$check(
+    str_contains($specRaw, '^(?:[0-9]{2,6}|[0-9]{1,2}\\.[0-9]{1,2})$'),
+    'La ruta PMO debe exigir al menos 2 dígitos cuando no lleva punto.'
+);
+$check(str_contains($specRaw, '^[A-Za-z][0-9]{2}'), 'CIE-10 debe admitir inicial en minúscula.');
+
+$specSchemas = $spec['components']['schemas'] ?? [];
+$specParams = $spec['components']['parameters'] ?? [];
+$check(
+    ($specParams['ConceptId']['name'] ?? null) === 'id',
+    'El parámetro del alias /v1/concepts/{id} debe llamarse id, no sctid.'
+);
+$check(
+    !isset($specSchemas['HealthEnvelope']['properties']['request_id']),
+    'HealthEnvelope no debe incluir request_id en el body.'
+);
+$check(
+    in_array('request_id', $specSchemas['ErrorEnvelope']['required'] ?? [], true),
+    'ErrorEnvelope debe exigir request_id.'
+);
+$check(
+    isset($specSchemas['Domain']['properties']['id'])
+        && !isset($specSchemas['Domain']['properties']['code'])
+        && !isset($specSchemas['Domain']['properties']['metadata']),
+    'Domain debe usar id y label/description por idioma.'
+);
+$check(
+    !isset($specSchemas['PaginationMeta']['properties']['total'])
+        && isset($specSchemas['PaginationMeta']['properties']['page_counts']),
+    'PaginationMeta no debe declarar total y sí page_counts.'
+);
+$check(
+    !isset($specSchemas['SearchResult']['properties']['catalog'])
+        && !isset($specSchemas['SearchResult']['properties']['effective_language'])
+        && isset($specSchemas['SearchResult']['properties']['subtitle']),
+    'SearchResult debe reflejar la salida real con domain/source/subtitle/kind.'
+);
+foreach ([
+    'DomainQuery', 'AllFlag', 'Refset', 'Cie10Type', 'SnomedFilter', 'Cie10Filter',
+    'Tipo', 'Alfabeta', 'Kairos', 'Gtin', 'Atc', 'Class', 'Status', 'System',
+    'Capitulo', 'CoberturaCondicionada', 'Seccion',
+] as $specParam) {
+    $check(isset($specParams[$specParam]), 'Falta documentar el parámetro implementado ' . $specParam . '.');
+}
+
+// 2c. Segunda pasada de la Fase 2: parámetros por operación y textos derivados.
+$check(
+    !str_contains($specRaw, '`OPTIONS` con `204` y `Allow`'),
+    'OPTIONS 204 no debe anunciar Allow: el código solo lo emite en 405.'
+);
+$check(
+    ($specParams['Cie10Type']['schema']['enum'] ?? []) === ['diagnostico', 'procedimiento'],
+    'cie10_type solo admite diagnostico o procedimiento.'
+);
+$operationParams = static function (string $path) use ($spec): array {
+    $parameters = $spec['paths'][$path]['get']['parameters'] ?? [];
+    $names = [];
+    foreach ($parameters as $parameter) {
+        if (is_array($parameter)) {
+            $names[] = (string) ($parameter['$ref'] ?? $parameter['name'] ?? '');
+        }
+    }
+
+    return $names;
+};
+foreach ([
+    '/v1/pmo/practicas' => ['Q', 'Capitulo', 'CoberturaCondicionada', 'Limit', 'Offset'],
+    '/v1/pmo/medicamentos' => ['Q', 'Atc', 'Limit', 'Offset'],
+    '/v1/pmo/normativa' => ['Q', 'Seccion', 'Limit'],
+    '/v1/concepts/search' => ['Refsets', 'Refset', 'Cie10Type'],
+    '/v1/nomenclador' => ['Tipo'],
+    '/v1/catalogs/{catalog_code}/items' => ['Offset'],
+] as $operation => $requiredParams) {
+    $presentParams = $operationParams($operation);
+    foreach ($requiredParams as $requiredParam) {
+        $check(
+            in_array('#/components/parameters/' . $requiredParam, $presentParams, true)
+                || in_array($requiredParam, $presentParams, true),
+            'Falta documentar ' . $requiredParam . ' en ' . $operation . '.'
+        );
+    }
+}
+foreach (['es-AR', 'en', 'pt-BR'] as $locale) {
+    $translationSource = (string) file_get_contents(
+        $root . '/portal/translations/messages.' . $locale . '.yaml'
+    );
+    $deviationsStart = strpos($translationSource, 'divergences_title');
+    $deviationsEnd = $deviationsStart === false
+        ? false
+        : strpos($translationSource, 'generate_title', $deviationsStart);
+    $deviationsBlock = $deviationsStart !== false && $deviationsEnd !== false
+        ? substr($translationSource, $deviationsStart, $deviationsEnd - $deviationsStart)
+        : '';
+    $check(
+        $deviationsBlock !== ''
+            && (str_contains($deviationsBlock, 'Fase 2') || str_contains($deviationsBlock, 'Phase 2'))
+            && !str_contains($deviationsBlock, 'spec declara UUID')
+            && !str_contains($deviationsBlock, 'spec declares UUID')
+            && !str_contains($deviationsBlock, '200 caracteres')
+            && !str_contains($deviationsBlock, '200 characters'),
+        'Las traducciones de ' . $locale . ' deben reflejar los desvíos ya corregidos.'
+    );
+}
+
 // 3. Artefactos SQL: sintaxis básica y prohibiciones del plan de migración.
 $sqlDir = $root . '/sql/08_arquitectura';
 $sqlFiles = array_values(array_filter(
@@ -282,6 +406,22 @@ foreach (['844', '223', '624', '218', 'origen_codes', 'DENTAR-IN'] as $needle) {
 $apiReadme = (string) file_get_contents($root . '/README-API.md');
 $check(!str_contains($apiReadme, 'DNT-000007'), 'README-API.md no debe usar el código inventado DNT-000007.');
 $check(str_contains($apiReadme, 'DNT-PR-NNNNNN'), 'README-API.md debe documentar DNT-PR-NNNNNN.');
+$check(!str_contains($apiReadme, 'pendiente de aprobación'), 'README-API.md no debe declarar pendiente la corrección ya aplicada.');
+$check(str_contains($apiReadme, 'Fase 2'), 'README-API.md debe registrar la reconciliación de la Fase 2.');
+$check(str_contains($apiReadme, 'no es UUID'), 'README-API.md debe aclarar que request_id no es UUID.');
+$check(!str_contains($apiReadme, '4_caracteres'), 'README-API.md no debe usar valores inventados en cie10_type.');
+$check(str_contains($apiReadme, '`diagnostico` o `procedimiento`'), 'README-API.md debe documentar los valores reales de cie10_type.');
+$check(!str_contains($apiReadme, '{identificador}'), 'README-API.md debe usar {code} en odontología.');
+$check(!str_contains($apiReadme, 'items/{code}'), 'README-API.md debe usar {item} en el detalle de catálogos.');
+foreach (['/v1/refsets', '/v1/catalogs/{catalog_code}/releases', '/v1/pricing-units'] as $documentedRoute) {
+    $check(str_contains($apiReadme, $documentedRoute), 'README-API.md debe documentar ' . $documentedRoute . '.');
+}
+$mainReadme = (string) file_get_contents($root . '/README.md');
+$check(!str_contains($mainReadme, 'aún no navegables'), 'README.md debe reflejar que las relaciones CDT son navegables.');
+$check(str_contains($mainReadme, 'navegables desde Browse'), 'README.md debe afirmar la navegabilidad real de las relaciones CDT.');
+$legacyVerifier = (string) file_get_contents($root . '/tools/php/verificar_fase10.php');
+$check(str_contains($legacyVerifier, 'INFORME LEGACY'), 'El verificador Fase 10 debe declararse como informe no vinculante.');
+$check(str_contains($legacyVerifier, 'no bloquea'), 'El verificador Fase 10 no debe bloquear la entrega.');
 $fhirReadme = (string) file_get_contents($root . '/README-FHIR.md');
 $check(str_contains($fhirReadme, 'contrato propuesto, no implementado'), 'README-FHIR.md debe declarar el estado no implementado.');
 
@@ -324,6 +464,7 @@ $check(!str_contains($docsSource, 'language-switcher.php'), 'Docs no debe reutil
 $check(str_contains($docsSource, 'docs-search-input'), 'Docs debe incluir búsqueda interna.');
 $check(str_contains($docsSource, 'docs-toc-list'), 'Docs debe incluir índice contextual por artículo.');
 $check(str_contains($docsSource, 'data-breadcrumb-article'), 'Docs debe incluir breadcrumbs dinámicos.');
+$check(!str_contains($docsSource, '{identifier}'), 'Docs debe usar {code} como en la spec y en el enrutador.');
 $check(str_contains($docsSource, 'nomenclador-odontologico-ar'), 'Docs debe documentar el Nomenclador Odontológico Nacional.');
 $check(str_contains($docsSource, 'dentar-pr'), 'Docs debe usar el catálogo real dentar-pr en los ejemplos.');
 $check(str_contains($docsSource, 'DNT-PR-000001'), 'Docs debe usar ejemplos de código DENTAR coherentes.');

@@ -11,6 +11,14 @@ info:
     - Envelope de éxito: `data`, `meta` y `request_id`.
     - Envelope de error: `error.code`, `error.message`, `error.details` opcional y `request_id`.
     - Los errores 500 no incluyen mensajes internos.
+    - `request_id` es hexadecimal de 32 caracteres generado por el servidor, o el
+      valor recibido en `X-Request-Id` (8–64 caracteres `[A-Za-z0-9._-]`); no es UUID.
+    - El enrutador responde `OPTIONS` con `204` en rutas conocidas (sin cabecera
+      `Allow`) y `405` con `Allow: GET, OPTIONS` para métodos no soportados.
+      Estas respuestas son transversales y no se repiten en cada operación.
+    - Los catálogos sin ítems devuelven `200` con `data: []` (no `404`).
+    - `400` puede emitirse en cualquier operación con parámetros inválidos;
+      donde no se documenta explícitamente, aplica `ErrorEnvelope`.
     - `/fhir/*` **no está implementado**; ver `README-FHIR.md`.
   contact:
     name: Origen Salud
@@ -92,10 +100,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Q'
         - $ref: '#/components/parameters/Domains'
+        - $ref: '#/components/parameters/DomainQuery'
+        - $ref: '#/components/parameters/AllFlag'
         - $ref: '#/components/parameters/Language'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
         - $ref: '#/components/parameters/Refsets'
+        - $ref: '#/components/parameters/Refset'
+        - $ref: '#/components/parameters/Cie10Type'
       responses:
         '200':
           description: Resultados paginados.
@@ -128,6 +140,12 @@ paths:
         - $ref: '#/components/parameters/Language'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Refset'
+        - $ref: '#/components/parameters/Cie10Type'
+        - $ref: '#/components/parameters/SnomedFilter'
+        - $ref: '#/components/parameters/Cie10Filter'
+        - $ref: '#/components/parameters/Tipo'
+        - $ref: '#/components/parameters/Seccion'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -152,51 +170,53 @@ paths:
       tags: [Catálogos]
       operationId: listCatalogReleases
       summary: Versiones de un catálogo con vigencia y estado.
+      description: "Un catálogo inexistente o sin versiones devuelve `200` con `data: []`; no se emite `404`."
       parameters:
         - $ref: '#/components/parameters/CatalogCode'
       responses:
         '200':
           $ref: '#/components/responses/Success'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /v1/catalogs/{catalog_code}/items:
     get:
       tags: [Catálogos]
       operationId: listCatalogItems
       summary: Ítems de un catálogo publicado.
+      description: "Un catálogo inexistente o sin ítems devuelve `200` con `data: []`; no se emite `404`."
       parameters:
         - $ref: '#/components/parameters/CatalogCode'
         - $ref: '#/components/parameters/Q'
+        - name: query
+          in: query
+          description: Alias de `q` en este endpoint.
+          schema: { type: string }
         - name: category
           in: query
           schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           $ref: '#/components/responses/Success'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /v1/catalogs/{catalog_code}/items/{item}:
     get:
       tags: [Catálogos]
       operationId: getCatalogItem
       summary: Detalle de un ítem por código permanente, oficial o término.
+      description: "Un catálogo o ítem inexistente devuelve `200` con `data: []`; no se emite `404`."
       parameters:
         - $ref: '#/components/parameters/CatalogCode'
         - name: item
           in: path
           required: true
-          schema: { type: string, maxLength: 100 }
+          schema: { type: string, pattern: '^[A-Za-z0-9._-]{1,100}$' }
           example: DNT-PR-000001
       responses:
         '200':
           $ref: '#/components/responses/Success'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /v1/mappings:
     get:
@@ -240,7 +260,11 @@ paths:
             type: string
             enum: [NN_PMO, NBU, NHPGD, ANDIS, KINESIOLOGIA, SALUD_MENTAL]
         - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Tipo'
         - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Capitulo'
+        - $ref: '#/components/parameters/CoberturaCondicionada'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -254,8 +278,13 @@ paths:
         - name: troquel
           in: query
           schema: { type: string }
+        - $ref: '#/components/parameters/Alfabeta'
+        - $ref: '#/components/parameters/Kairos'
+        - $ref: '#/components/parameters/Gtin'
+        - $ref: '#/components/parameters/Atc'
         - $ref: '#/components/parameters/Q'
         - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -269,9 +298,8 @@ paths:
         - name: system
           in: path
           required: true
-          schema:
-            type: string
-            enum: [troquel, alfabeta, kairos, gtin]
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]+$' }
+          description: Cualquier sistema de identificador soportado por el repositorio (`troquel`, `alfabeta`, `kairos`, `gtin` y otros).
         - name: code
           in: path
           required: true
@@ -289,7 +317,11 @@ paths:
       summary: Búsqueda en LOINC.
       parameters:
         - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Class'
+        - $ref: '#/components/parameters/Status'
+        - $ref: '#/components/parameters/System'
         - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -315,6 +347,12 @@ paths:
       tags: [Nomencladores]
       operationId: listPmoPractices
       summary: Prácticas del Programa Médico Obligatorio.
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Capitulo'
+        - $ref: '#/components/parameters/CoberturaCondicionada'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -328,7 +366,8 @@ paths:
         - name: code
           in: path
           required: true
-          schema: { type: string, pattern: '^[0-9]{1,6}(?:\.[0-9]{1,2})?$' }
+          schema: { type: string, pattern: '^(?:[0-9]{2,6}|[0-9]{1,2}\.[0-9]{1,2})$' }
+          description: Sin punto requiere al menos 2 dígitos; con punto admite 1 o 2 antes y 1 o 2 después.
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -340,6 +379,11 @@ paths:
       tags: [Nomencladores]
       operationId: listPmoMedicines
       summary: Medicamentos incluidos en PMO.
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Atc'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -349,6 +393,10 @@ paths:
       tags: [Nomencladores]
       operationId: listPmoRegulations
       summary: Normativa asociada al PMO.
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Seccion'
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -363,7 +411,8 @@ paths:
         - name: codigo
           in: path
           required: true
-          schema: { type: string, pattern: '^[A-Z][0-9]{2}(?:\.[0-9A-Za-z]{1,4}|[0-9A-Za-z]{0,3})$' }
+          schema: { type: string, pattern: '^[A-Za-z][0-9]{2}(?:\.[0-9A-Za-z]{1,4}|[0-9A-Za-z]{0,3})$' }
+          description: El enrutador acepta mayúsculas y minúsculas en la inicial.
           example: K02.1
       responses:
         '200':
@@ -413,9 +462,15 @@ paths:
       tags: [Terminologías]
       operationId: searchConceptsLegacy
       summary: Buscador SNOMED CT del contrato anterior.
+      description: Delega en el buscador unificado; acepta también `refset(s)` y `cie10_type`.
       parameters:
         - $ref: '#/components/parameters/Q'
         - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Refsets'
+        - $ref: '#/components/parameters/Refset'
+        - $ref: '#/components/parameters/Cie10Type'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -426,7 +481,7 @@ paths:
       operationId: getConceptLegacy
       summary: Alias de `/v1/snomed/{sctid}`.
       parameters:
-        - $ref: '#/components/parameters/Sctid'
+        - $ref: '#/components/parameters/ConceptId'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -453,6 +508,7 @@ paths:
       summary: Diagnósticos DENTAR-DX vinculados a CIE-10 y SNOMED CT.
       parameters:
         - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Tipo'
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
@@ -544,8 +600,8 @@ components:
     Q:
       name: q
       in: query
-      schema: { type: string, maxLength: 200 }
-      description: Texto libre.
+      schema: { type: string, minLength: 2, maxLength: 80 }
+      description: Texto libre; `/v1/search` valida entre 2 y 80 caracteres UTF-8.
     Domains:
       name: domains
       in: query
@@ -563,13 +619,13 @@ components:
     Language:
       name: lang
       in: query
-      schema: { type: string, default: es-AR }
-      description: Idioma solicitado; admite `es`, `es-AR`, `en`, `pt-BR` según resolvedor.
+      schema: { type: string, default: es }
+      description: Idioma solicitado; el default real es `API_DEFAULT_LANG=es`. Admite `es`, `es-AR`, `en`, `pt-BR` según resolvedor.
     Limit:
       name: limit
       in: query
       schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
-      description: Máximo real 50 salvo `API_PAGE_LIMIT_MAX` (tope 100).
+      description: Máximo efectivo por defecto 50; `API_PAGE_LIMIT_MAX` puede elevar el tope hasta 100.
     Offset:
       name: offset
       in: query
@@ -590,6 +646,89 @@ components:
       required: true
       schema: { type: string, pattern: '^[0-9]{6,18}$' }
       example: '22298006'
+    ConceptId:
+      name: id
+      in: path
+      required: true
+      description: El enrutador expone el parámetro como `id`, no como `sctid`.
+      schema: { type: string, pattern: '^[0-9]{6,18}$' }
+      example: '22298006'
+    DomainQuery:
+      name: domain
+      in: query
+      description: Alias singular de `domains` en búsquedas unificadas.
+      schema: { type: string }
+    AllFlag:
+      name: all
+      in: query
+      description: Alias `all`/`*` para seleccionar todos los dominios.
+      schema: { type: string }
+    Refset:
+      name: refset
+      in: query
+      description: Alias singular de `refsets`.
+      schema: { type: string }
+    Cie10Type:
+      name: cie10_type
+      in: query
+      schema: { type: string, enum: [diagnostico, procedimiento] }
+      description: Tipo de código CIE-10; el código solo admite `diagnostico` o `procedimiento`.
+    SnomedFilter:
+      name: snomed
+      in: query
+      description: Alias `snomed`/`snomed_id` para filtrar por SCTID.
+      schema: { type: string }
+    Cie10Filter:
+      name: cie10
+      in: query
+      description: Alias `cie10`/`cie10_code` para filtrar por código CIE-10.
+      schema: { type: string }
+    Tipo:
+      name: tipo
+      in: query
+      description: Alias `type`/`tipo` para filtrar resultados por tipo.
+      schema: { type: string }
+    Alfabeta:
+      name: alfabeta
+      in: query
+      schema: { type: string }
+    Kairos:
+      name: kairos
+      in: query
+      schema: { type: string }
+    Gtin:
+      name: gtin
+      in: query
+      schema: { type: string }
+    Atc:
+      name: atc
+      in: query
+      schema: { type: string }
+    Class:
+      name: class
+      in: query
+      schema: { type: string }
+    Status:
+      name: status
+      in: query
+      schema: { type: string }
+    System:
+      name: system
+      in: query
+      schema: { type: string }
+    Capitulo:
+      name: capitulo
+      in: query
+      description: Alias `capitulo`/`cap_cod`.
+      schema: { type: string }
+    CoberturaCondicionada:
+      name: cobertura_condicionada
+      in: query
+      schema: { type: boolean }
+    Seccion:
+      name: seccion
+      in: query
+      schema: { type: string }
 
   schemas:
     SuccessEnvelope:
@@ -600,10 +739,11 @@ components:
         meta: { type: object }
         request_id:
           type: string
-          format: uuid
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{7,63}$'
+          description: El servidor genera 32 hexadecimales; si el cliente envía X-Request-Id válido se devuelve tal cual (8–64 caracteres [A-Za-z0-9._-]). No es UUID.
     ErrorEnvelope:
       type: object
-      required: [error]
+      required: [error, request_id]
       properties:
         error:
           type: object
@@ -614,7 +754,8 @@ components:
             details: { type: object }
         request_id:
           type: string
-          format: uuid
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{7,63}$'
+          description: Siempre se emite; mismo formato que en SuccessEnvelope.
     HealthEnvelope:
       type: object
       properties:
@@ -626,16 +767,20 @@ components:
           type: object
           properties:
             database: { type: string, example: ok }
-        request_id: { type: string, format: uuid }
     Domain:
       type: object
       properties:
-        code: { type: string, example: odontologia }
-        label: { type: string }
-        description: { type: string }
+        id: { type: string, example: odontologia }
+        label:
+          type: object
+          description: Texto por idioma (claves es-AR, en, pt-BR).
+          additionalProperties: { type: string }
+        description:
+          type: object
+          description: Texto por idioma (claves es-AR, en, pt-BR).
+          additionalProperties: { type: string }
         source: { type: string }
         mode: { type: string, enum: [full, catalog] }
-        metadata: { type: object }
     DomainMeta:
       type: object
       properties:
@@ -648,8 +793,15 @@ components:
           example: [snomed, cie10, anmat]
     PaginationMeta:
       type: object
+      description: Campos reales devueltos por las rutas de búsqueda; no se emite `total`.
       properties:
-        total: { type: integer }
+        query: { type: string }
+        language: { type: string }
+        page_counts: { type: object, additionalProperties: { type: integer } }
+        returned: { type: integer }
+        has_more: { type: boolean }
+        next_offset: { type: integer, nullable: true }
+        took_ms: { type: number }
         limit: { type: integer }
         offset: { type: integer }
         domains:
@@ -658,14 +810,16 @@ components:
     SearchResult:
       type: object
       properties:
-        id: { type: string }
-        catalog: { type: string }
-        code: { type: string }
-        term: { type: string }
         domain: { type: string }
+        source: { type: string }
+        id: { type: string }
+        code: { type: string, nullable: true }
+        term: { type: string }
+        subtitle: { type: string, nullable: true }
         language: { type: string }
-        effective_language: { type: string }
+        kind: { type: string }
         score: { type: number }
+        metadata: { type: object }
     DentalProcedure:
       type: object
       properties:

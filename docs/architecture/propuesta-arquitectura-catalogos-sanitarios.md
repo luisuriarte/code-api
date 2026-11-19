@@ -81,11 +81,11 @@ referencia [DOC].
 | Generadores Python en `tools/` | 4 (`generate_dental_sql.py`, `generate_unified_catalog_engine_sql.py`, `generate_dentar_core_sql.py`, `generate_nomenclador_odontologico_sql.py`) |
 | Importadores PHP en `tools/php/` | 17, más 36 artefactos en `tools/sources/` |
 | Documentos en `docs/architecture/` | 12 |
-| Catálogos de traducción activos | `messages.es-AR.yaml`, `messages.en.yaml`, `messages.pt-BR.yaml`: **1101 claves planas cada uno**, paridad exacta (293 `docs.*`, 249 `uvr.*`) |
-| Catálogo legacy | `messages.es.yaml`: 454 claves, 94 `docs.*`, sin bloque `uvr`; `es` se canonicaliza a `es-AR` y no se carga en rutas públicas |
+| Catálogos de traducción activos | `messages.es-AR.yaml`, `messages.en.yaml`, `messages.pt-BR.yaml`: **1300 claves hoja cada uno** (conteo aplanado de Fase 2), paridad exacta (293 `docs.*`, 249 `uvr.*`) |
+| Catálogo legacy | `messages.es.yaml`: 652 claves hoja, 94 `docs.*`, sin bloque `uvr`; `es` se canonicaliza a `es-AR` y no se carga en rutas públicas |
 | API | 30 patrones de ruta: `/health` público + 29 bajo `/v1`; 30 operaciones `GET` en OpenAPI 3.1 |
-| OpenAPI | `docs/api/openapi-3.1.yaml`: 30 paths, 30 operaciones, 98 `$ref`; sin `/fhir` |
-| Tests | `php tests/run.php` → `OK: 2345 comprobaciones.` |
+| OpenAPI | `docs/api/openapi-3.1.yaml`: 30 paths, 30 operaciones, 137 `$ref`; sin `/fhir` |
+| Tests | `php tests/run.php` → `OK: 2738 comprobaciones.` |
 
 ### 1.3 Cuatro generaciones conviviendo [REPO]
 
@@ -132,7 +132,7 @@ pasan por `portal/Router.php`.
   `dentar_diagnosis(_version)`, términos, categorías, mapeos y columnas de
   valoración relativa.
 - **API y documentación:** envelope `data`/`meta`/`request_id`, autenticación
-  Bearer/X-API-Key, paginación, OpenAPI 3.1 y suite de 2345 comprobaciones.
+  Bearer/X-API-Key, paginación, OpenAPI 3.1 y suite de 2738 comprobaciones.
 - **Portal:** trilingüe, con cabeceras hreflang, selector de idioma y página
   DENTAR con identidad visual propia.
 
@@ -235,7 +235,7 @@ contradicciones 4 a 6 se resolvieron en el repositorio.
 | 3 | **Resuelta en cuanto a datos. Gana [DOC/a].** AN/CL están cargados: 624/218 ítems, 1248/436 versiones (dos idiomas por ítem), 624/218 identificadores, 0 mapeos, términos en `es-AR` y `en` con `is_primary` del código DENTAR. Las relaciones CDT también están cargadas. El cartel "NO EJECUTADO" de los artefactos es información del repositorio, no de la base. **Sigue pendiente la decisión editorial** de publicar o no AN/CL: hoy Browse los muestra como "No publicado", lo cual es una decisión de exposición, no una ausencia de datos. | [BD] bloques 1E y 3A–3C. |
 | 4 | **Resuelta.** El inventario correcto es **44** archivos `.sql` en 9 subdirectorios. | [REPO] `find sql -type f -name '*.sql'`. |
 | 5 | **Resuelta por edición.** La revisión actual distingue [REPO] de [DOC] y no afirma ejecución sin evidencia. | [REPO] §1.3 y esta sección. |
-| 6 | **Resuelta. Verificador canónico: `tests/run.php`** (`OK: 2345 comprobaciones`), que cubre API, portal y páginas standalone. `tools/php/verificar_fase10.php` queda como **informe legacy**: sus 339 hallazgos son reproducibles y exigen 94 claves `docs.*` en `messages.es.yaml`, catálogo no cargado en rutas públicas (454 claves totales, 94 `docs.*`); los catálogos activos tienen 1101 claves y 293 `docs.*`. No debe usarse como puerta de calidad sin decidir antes si se migra su expectativa al catálogo activo. | [REPO] ejecución de ambos verificadores y conteo YAML. |
+| 6 | **Resuelta. Verificador canónico: `tests/run.php`** (`OK: 2738 comprobaciones`), que cubre API, portal y páginas standalone. `tools/php/verificar_fase10.php` queda como **informe legacy**: sus 339 hallazgos son reproducibles y exigen 94 claves `docs.*` en `messages.es.yaml`, catálogo no cargado en rutas públicas (652 claves totales, 94 `docs.*`); los catálogos activos tienen 1300 claves y 293 `docs.*`. **Decisión tomada en Fase 2: se retira su expectativa como puerta de calidad**, no se migra al catálogo activo. Migrarla exigiría revertir la decisión ya aprobada de que `/docs` no use `alternateLinks()` ni el selector compartido (§7 de `tests/run.php`). El script sigue como informe diagnóstico no vinculante. | [REPO] ejecución de ambos verificadores y conteo YAML. |
 
 ### Hallazgos nuevos derivados de la verificación
 
@@ -821,7 +821,11 @@ paginación `limit`/`offset`, OpenAPI 3.1 y 2345 comprobaciones de tests.
   8–64 caracteres `[A-Za-z0-9._-]`.
 - Idioma y publicación editorial se resuelven como se describe en §12.
 
-### 13.2 Desvíos OpenAPI ↔ código [REPO]
+### 13.2 Desvíos OpenAPI ↔ código [REPO] — CORREGIDOS EN FASE 2
+
+Los 17 desvíos siguientes fueron corregidos en `docs/api/openapi-3.1.yaml` y
+`README-API.md` con autorización de la Fase 2. Se conservan como inventario
+histórico; `tests/run.php` verifica que no reaparezcan.
 
 1. La spec solo declara `GET`; el código expone `OPTIONS 204` y `405` con `Allow`.
 2. `request_id` declarado `format: uuid`; el real es hexadecimal de 32.
@@ -853,9 +857,32 @@ paginación `limit`/`offset`, OpenAPI 3.1 y 2345 comprobaciones de tests.
 17. La spec documenta `400` en 5 operaciones; el código puede emitirlo en
     muchas más.
 
-Además, `web/docs.php` usa `{identifier}` donde el enrutador y la spec usan
-`{code}`. `README-API.md` afirma UUID, `403`/`429`, `cie10_type` inexistente y
-formato de dominios divergente. La propia Docs ya documenta ocho desvíos.
+Además, `web/docs.php` usaba `{identifier}` donde el enrutador y la spec usan
+`{code}` (corregido). `README-API.md` afirmaba UUID, `403`/`429`, `cie10_type`
+inexistente y formato de dominios divergente (corregido). La propia Docs ya
+documenta ocho desvíos.
+
+**Cierre de la Fase 2 (2026-11-19).** La spec declara ahora `OPTIONS`/`405`,
+`request_id` no UUID, `lang=es`, `q` 2–80, `Domain` con `id`, `PaginationMeta`
+sin `total`, `SearchResult` con `domain`/`source`/`subtitle`/`kind`, los patrones
+reales de CIE-10 y PMO, `system` medicinal abierto, `200` con `data: []` en
+catálogos y los parámetros previamente omitidos. `verificar_fase10.php` conserva
+sus 339 hallazgos como diagnóstico, pero su expectativa fue **retirada**: exige
+94 claves `docs.*` de un catálogo no cargado y exige en `/docs` lo que
+`tests/run.php` prohíbe; migrarla revertiría una decisión aprobada. No hay DDL ni
+cambios de comportamiento de la API en esta fase.
+
+**Segunda pasada (misma fecha).** La revisión posterior corrigió los últimos
+residuos: `OPTIONS 204` **no** incluye `Allow` (solo `405` lo emite, con
+`Allow: GET, OPTIONS`); `cie10_type` quedó con su enum real `diagnostico` /
+`procedimiento` en la spec, en README-API y en dos ejemplos JSON; se documentaron
+los alias `query`, `refset`, `tipo` y los parámetros de `/v1/pmo/practicas`,
+`/v1/pmo/medicamentos`, `/v1/pmo/normativa` y `/v1/concepts/search`;
+README-API incorporó `/v1/refsets`, `/v1/catalogs/{catalog_code}/releases` y
+`/v1/pricing-units`, y usa `{item}` en el detalle de catálogos; `README.md`
+reconoció que las relaciones CDT ya son navegables desde Browse; y las tres
+locales activas reemplazaron el bloque "desvíos conocidos" por "conciliación
+aplicada". El suite pasó de 2707 a **2738 comprobaciones**.
 
 ### 13.3 Principios para la evolución
 
@@ -963,9 +990,10 @@ exponer cualquier `/fhir/*`.
 7. Definir actores, roles y responsable de aprobación UVR.
 8. Emitir el acta que fija el estatus formal de D-01..D-41 y autorizar su
    ejecución o activación.
-9. Aprobar la corrección de la OpenAPI y de `README-API.md`. El verificador
-   canónico ya quedó definido en §1.6: `tests/run.php`; decidir si se migra o se
-   retira la expectativa legacy de `verificar_fase10.php`.
+9. **Resuelta en Fase 2 (2026-11-19).** Aprobada y ejecutada la corrección de la
+   OpenAPI y de `README-API.md`. El verificador canónico sigue siendo
+   `tests/run.php`; la expectativa legacy de `verificar_fase10.php` fue
+   **retirada** como puerta de calidad y conservada como informe diagnóstico.
 10. Aprobar la integración de `itemRelations()` con `os_catalog_relation`.
 11. Aprobar el módulo UVR y la fuente de sus primeros valores, sin inventarlos.
 12. Aprobar rate limiting, hash de API keys, OAuth/estructura de scopes y
@@ -997,7 +1025,7 @@ inválidos (D-34).
 |---|---|---|---|
 | 0 | **Completada la parte documental**: §1.6 resuelto y READMEs alineados | Evidencia [BD]/[REPO] registrada; contradicciones factuales cerradas | No (ya ejecutada en modo solo lectura) |
 | 1 | Consolidar infraestructura compartida: registro de dominios y motor único | Un solo origen de catálogos/dominios; API y portal usan el mismo servicio | Sí |
-| 2 | Conciliar OpenAPI, READMEs y verificadores; corregir errores de API | Spec y código coherentes; suite canónica en verde | Sí |
+| 2 | Conciliar OpenAPI, READMEs y verificadores; corregir errores de API | **Ejecutada el 2026-11-19**: 17 desvíos corregidos, README reconciliado, expectativa legacy retirada; `php tests/run.php` en verde | Sí (otorgada) |
 | 3 | Completar i18n según el acta de D-01..D-41: `os_catalog_language`, D-31 y corte `OS_IMPORT_MODE` | Configuración por catálogo y activación decididas; no reejecutar lo ya cargado | Sí |
 | 4 | Relations/mapeos generales | Extensión de `os_catalog_relation`; relaciones CDT navegables | Sí |
 | 5 | Gobernanza y auditoría unificadas | Requests/reviews/decisions con actores reales | Sí |
@@ -1016,8 +1044,13 @@ verificación `SELECT`-only (`verificacion_fase1.sql`) registró dos hallazgos
 documentados en el README de `sql/08_arquitectura/`: el total de relaciones es
 603 (333 de las CDT + 270 del Nomenclador Odontológico Nacional de la Fase 9),
 y un `DEFAULT ACL` de `public` concedió privilegios a `origen_admin` sobre las
-tablas nuevas, corregidos mediante `fase1_correcion_privilegios.sql`. La Fase 9
-fue ejecutada por el usuario con autorización, backup y verificación (§5.2).
+tablas nuevas, corregidos y **reverificados en 0 filas** mediante
+`fase1_correcion_privilegios.sql`. La Fase 1 quedó así cerrada en base. La **Fase
+2** también fue ejecutada: `docs/api/openapi-3.1.yaml` y `README-API.md` quedaron
+reconciliados con el código, `web/docs.php` usa `{code}` como el enrutador, y
+`tools/php/verificar_fase10.php` pasó a ser informe no vinculante (su expectativa
+era incompatible con el verificador canónico). La Fase 9 fue ejecutada por el
+usuario con autorización, backup y verificación (§5.2).
 Las fases M1/M2 del panel administrativo están aplicadas y verificadas en
 `os_admin` (ver `docs/architecture/fase2-organizaciones-invitaciones.md`). Los
 nombres `fase3..fase6` de `sql/08_arquitectura/` corresponden a las Fases 4..7
@@ -1031,8 +1064,9 @@ de esta tabla; la equivalencia completa está en el README de esa carpeta.
 
 1. §1.6 resuelto y `origen_codes` ratificado por evidencia [BD]; READMEs
    actualizados. Queda el acta para la ratificación organizativa.
-2. Conciliar la OpenAPI con el código; el verificador canónico ya es
-   `tests/run.php`, queda decidir el destino de `verificar_fase10.php`.
+2. **Hecho en Fase 2.** OpenAPI y README reconciliados con el código;
+   `tests/run.php` sigue siendo el verificador canónico y el destino de
+   `verificar_fase10.php` quedó resuelto como informe no vinculante.
 3. Unificar los dos motores de catálogo y mover dominios/catálogos a datos.
 4. Integrar `itemRelations()` con `os_catalog_relation`.
 

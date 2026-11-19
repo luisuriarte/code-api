@@ -26,7 +26,7 @@ y metodología en el [§1.6 de la propuesta arquitectónica](docs/architecture/p
 | `DENTAR-DX` | 223 | Diagnósticos; códigos `DNT-DX-NNNNNN`. Sin UVR. Consultable en Browse y API. |
 | `DENTAR-AN` | 624 | Anatomía; términos `es-AR` y `en`. Visible como "No publicado" por decisión editorial. |
 | `DENTAR-CL` | 218 | Hallazgos; términos `es-AR` y `en`. Visible como "No publicado" por decisión editorial. |
-| Relaciones CDT | 333 filas / 303 pares / 15 tipos | En `os_catalog_relation`; aún no navegables desde Browse. |
+| Relaciones CDT | 333 filas / 303 pares / 15 tipos | En `os_catalog_relation`; navegables desde Browse. |
 | Identificadores `CDT-2025` | 805 | Sobre ítems DENTAR-PR. |
 
 El **Nomenclador Odontológico Nacional** fue desplegado el 2026-11-19 con autorización explícita y backup previo: `nomenclador-odontologico-ar` tiene 135 ítems, 135 versiones `es-AR` y 270 relaciones `referencia_literal` con DENTAR-PR. Es consultable en `/browse?catalog=nomenclador-odontologico-ar`; las 333 relaciones CDT quedaron intactas. Detalle en el [§5.2](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md).

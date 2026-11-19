@@ -919,12 +919,12 @@ JSON;
                 <?php $renderSubhead('dental-dx', $t('docs.dental.dx_title')); ?>
                 <p><?= $esc($t('docs.dental.dx_text')) ?></p>
                 <?php $renderEndpoint('/v1/odontologia/diagnosticos'); ?>
-                <?php $renderEndpoint('/v1/odontologia/diagnosticos/{identifier}'); ?>
+                <?php $renderEndpoint('/v1/odontologia/diagnosticos/{code}'); ?>
                 <?php $renderCode('dental', ['curl' => $dentalCurl]); ?>
 
                 <?php $renderSubhead('dental-just', $t('docs.dental.just_title')); ?>
                 <p><?= $esc($t('docs.dental.just_text')) ?></p>
-                <?php $renderEndpoint('/v1/odontologia/{identifier}/diagnosticos'); ?>
+                <?php $renderEndpoint('/v1/odontologia/{code}/diagnosticos'); ?>
 
                 <?php $renderSubhead('dental-snomed', $t('docs.dental.snomed_title')); ?>
                 <p><?= $esc($t('docs.dental.snomed_text')) ?></p>
