@@ -1,12 +1,62 @@
--- FASE 3 — Relaciones y mapeos generales (propuesta, NO EJECUTAR sin aprobación)
--- Requiere fase1_infraestructura.sql y backup verificado.
--- Conserva los 15 tipos reales de CDT y el contexto de las 333 filas.
+-- =============================================================================
+-- FASE 4 (§16) · Relaciones y mapeos generales
+-- =============================================================================
+-- NOTA DE NUMERACIÓN: el nombre del archivo conserva la numeración histórica
+-- de la carpeta. Según §16 del documento de arquitectura esto es la FASE 4.
+-- Ver la tabla de alineación en sql/08_arquitectura/README.md.
+--
+-- PROPUESTA PREPARADA EL 2026-11-19. NO EJECUTAR SIN APROBACIÓN Y BACKUP.
+-- Autorización registrada: "Fase 4: relaciones", que aprueba también la
+-- decisión 10 del §15.2 (integración de itemRelations() con os_catalog_relation).
+--
+-- REQUISITOS: Fase 1 ejecutada (os_relation_kind, os_review_state) y backup
+-- verificado. No reejecutar los scripts 01..15 de sql/07_multilingue.
+--
+-- ADITIVO Y TRANSACCIONAL:
+--   · Solo agrega columnas y crea tablas si no existen.
+--   · Constraints e índices creados solo si no existen.
+--   · REVOKE sobre las tablas nuevas por el DEFAULT ACL de public (D-16).
+--   · No elimina tablas, columnas ni datos.
+--   · NO modifica importadores, API pública, catálogos publicados ni
+--     Browse Codes. Las 603 relaciones existentes no se reescriben.
+--
+-- DECISIÓN 10: no requiere cambio de código. CatalogRepository::itemRelations()
+-- ya consulta os_catalog_relation y tests/run.php ya lo exige. Esta fase solo
+-- formaliza la aprobación y extiende el modelo de datos.
+--
+-- CAMBIO DE COMPORTAMIENTO DECLARADO: os_concept_mapping.review_status pasa a
+-- tener DEFAULT 'draft' (hallazgo 13 del §1.6). Las filas existentes NO se
+-- tocan; solo cambia el valor por omisión de inserciones futuras. Revisar con
+-- el responsable de gobernanza antes de ejecutar.
+--
+-- ROLLBACK: restaurar el dump previo (ver README). No hay DDL destructivo.
+-- =============================================================================
+
+SET client_encoding = 'UTF8';
 
 BEGIN;
 
--- Extensión aditiva de os_catalog_relation. No se eliminan columnas ni se
--- restringen los tipos existentes: el CHECK actual sigue vigente hasta una
--- migración aprobada específicamente.
+-- ---------------------------------------------------------------------------
+-- 0. Preflight: Fase 1 y tabla base deben existir
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF to_regclass('public.os_relation_kind') IS NULL
+       OR to_regclass('public.os_review_state') IS NULL THEN
+        RAISE EXCEPTION 'Fase 4 requiere la Fase 1 (os_relation_kind y os_review_state)';
+    END IF;
+    IF to_regclass('public.os_catalog_relation') IS NULL THEN
+        RAISE EXCEPTION 'Fase 4 requiere os_catalog_relation';
+    END IF;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 1. Extensión aditiva de os_catalog_relation
+-- ---------------------------------------------------------------------------
+-- No se eliminan columnas ni se restringen los tipos existentes: el CHECK
+-- actual de relation_type sigue vigente hasta una migración aprobada
+-- específicamente. Las filas actuales conservan NULL en las columnas nuevas
+-- y 'unclassified' en relation_kind; no se inventa clasificación editorial.
 ALTER TABLE os_catalog_relation
     ADD COLUMN IF NOT EXISTS valid_from DATE,
     ADD COLUMN IF NOT EXISTS valid_to DATE,
@@ -59,8 +109,12 @@ CREATE INDEX IF NOT EXISTS idx_ocr_kind ON os_catalog_relation (relation_kind);
 
 COMMENT ON COLUMN os_catalog_relation.context_text IS
     'Contexto literal de la fuente; integra la clave única y no debe descartarse al exportar.';
+COMMENT ON COLUMN os_catalog_relation.relation_kind IS
+    'Clasificación gruesa (§7.2). Las 603 filas previas quedan unclassified hasta revisión editorial.';
 
--- Mapeos: metadatos de gobernanza sin alterar las filas existentes.
+-- ---------------------------------------------------------------------------
+-- 2. Metadatos de gobernanza de mapeos (sin tocar filas existentes)
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_mapping_metadata (
     mapping_id INT PRIMARY KEY REFERENCES os_concept_mapping(id) ON DELETE CASCADE,
     source_system_id INT REFERENCES os_terminology_system(id) ON DELETE SET NULL,
@@ -92,8 +146,10 @@ CREATE INDEX IF NOT EXISTS idx_os_mapping_metadata_status
 COMMENT ON TABLE os_mapping_metadata IS
     'Metadatos de vigencia, método y gobernanza de os_concept_mapping. La visibilidad depende de review_status, no de provenance.';
 
--- Unificación de sistemas terminológicos sin mover filas: alias declarados
--- entre os_terminology_system y dentar_terminology_system por código exacto.
+-- ---------------------------------------------------------------------------
+-- 3. Unificación de sistemas terminológicos (alias por código exacto)
+-- ---------------------------------------------------------------------------
+-- No mueve filas: solo declara la equivalencia donde el código ya coincide.
 CREATE TABLE IF NOT EXISTS os_terminology_system_alias (
     canonical_system_id INT NOT NULL REFERENCES os_terminology_system(id) ON DELETE CASCADE,
     alias_system_code VARCHAR(30) NOT NULL,
@@ -118,14 +174,63 @@ BEGIN
     END IF;
 END $$;
 
--- Corrección del DEFAULT que nacía aprobado. No modifica filas existentes.
+-- ---------------------------------------------------------------------------
+-- 4. Gobernanza de mapeos: DEFAULT 'draft' (hallazgo 13)
+-- ---------------------------------------------------------------------------
+-- Solo cambia el valor por omisión de inserciones futuras. Las filas ya
+-- existentes con 'approved' NO se modifican. Revisar antes de ejecutar:
+-- los mapeos creados por el sync necesitarán aprobación D-19 para publicarse.
 ALTER TABLE os_concept_mapping
     ALTER COLUMN review_status SET DEFAULT 'draft';
 
+-- ---------------------------------------------------------------------------
+-- 5. DEFAULT ACL: retirar privilegios automáticos sobre las tablas nuevas
+-- ---------------------------------------------------------------------------
+-- El DEFAULT PRIVILEGES FOR TABLES postgres de public concede privilegios a
+-- origen_admin sobre toda tabla nueva. Se revoca aquí, en la misma
+-- transacción, sin modificar el DEFAULT ACL global (afectaría a otras fases).
+REVOKE ALL PRIVILEGES ON TABLE
+    public.os_mapping_metadata,
+    public.os_terminology_system_alias
+FROM PUBLIC;
+
+DO $$
+BEGIN
+    IF to_regrole('origen_admin') IS NOT NULL THEN
+        EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE
+            public.os_mapping_metadata,
+            public.os_terminology_system_alias
+            FROM origen_admin';
+    END IF;
+END $$;
+
 COMMIT;
 
--- Verificación sugerida (no ejecutar automáticamente):
--- SELECT count(*) FROM os_catalog_relation;
--- SELECT relation_type, count(*) FROM os_catalog_relation GROUP BY 1 ORDER BY 1;
--- SELECT review_status, count(*) FROM os_concept_mapping GROUP BY 1 ORDER BY 1;
--- SELECT * FROM os_terminology_system_alias ORDER BY alias_system_code;
+-- ---------------------------------------------------------------------------
+-- Comprobaciones posteriores (solo lectura)
+-- ---------------------------------------------------------------------------
+SELECT '=== Fase 4 · os_catalog_relation intacta ===' AS seccion;
+SELECT count(*) AS relaciones, count(DISTINCT relation_type) AS tipos
+  FROM os_catalog_relation;
+
+SELECT '=== Fase 4 · columnas y tablas nuevas ===' AS seccion;
+SELECT table_name, count(*) AS columnas_nuevas
+  FROM information_schema.columns
+ WHERE table_schema = 'public'
+   AND table_name = 'os_catalog_relation'
+   AND column_name IN (
+       'valid_from', 'valid_to', 'source_catalog_id', 'source_release_id',
+       'target_catalog_id', 'target_release_id', 'relation_kind',
+       'mapping_method', 'confidence_level', 'reviewed_by', 'reviewed_at',
+       'license_reference', 'inverse_relation_type'
+   )
+ GROUP BY table_name;
+
+SELECT '=== Fase 4 · DEFAULT de review_status ===' AS seccion;
+SELECT column_default
+  FROM information_schema.columns
+ WHERE table_schema = 'public'
+   AND table_name = 'os_concept_mapping'
+   AND column_name = 'review_status';
+
+-- Fin de Fase 4 (§16) · relaciones y mapeos generales.

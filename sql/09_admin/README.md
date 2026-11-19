@@ -110,4 +110,6 @@ invitaciones, memberships y eventos de auditoría se conservan como evidencia.
 - Propuestas, revisiones, comentarios y decisiones (Fases 3-4).
 - Publicación atómica de releases y relaciones (Fases 5-6).
 - Hash de `api_clients.api_key`, scopes y 429 (M6, requiere autorización aparte).
-- Activación de D-31 y llenado de `os_catalog_language` (M7, diferido por Acta M0).
+- Activación de D-31 y llenado de `os_catalog_language` (M7; el Acta M0 lo
+  difirió, pero el 2026-11-19 se autorizó como Fase 3 del §16 y los artefactos
+  están preparados en `sql/08_arquitectura/fase3_i18n.sql`).

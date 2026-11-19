@@ -148,5 +148,7 @@ La Fase 1 se considera **cerrada** con estas condiciones:
   [`fase2-organizaciones-invitaciones.md`](fase2-organizaciones-invitaciones.md).
 - Fases 3-5: propuestas, revisión y publicación atómica.
 - M6: hash de API keys, scopes, 429 y consola self-service.
-- M7: D-31 y llenado de `os_catalog_language`.
+- M7: D-31 y llenado de `os_catalog_language`. **Autorizado el 2026-11-19
+  como Fase 3 del §16**, con artefactos preparados en
+  `sql/08_arquitectura/fase3_i18n.sql`; sigue fuera de M1/M2.
 - Cualquier deploy o push a producción.

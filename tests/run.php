@@ -208,7 +208,7 @@ $sqlFiles = array_values(array_filter(
     static fn (string $f): bool => !str_contains(basename($f), 'verificacion_')
         && !str_contains(basename($f), 'correcion_')
 ));
-$check(count($sqlFiles) === 5, 'Deben existir cinco artefactos SQL propuestos.');
+$check(count($sqlFiles) === 6, 'Deben existir seis artefactos SQL propuestos (incluida la Fase 3).');
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
     $name = basename($file);
@@ -299,6 +299,145 @@ if (is_file($fase1VerifyPath)) {
         'La verificación de Fase 1 debe reflejar 603 relaciones (333 CDT + 270 Fase 9).'
     );
 }
+
+// 3c. Fase 3 del §16: D-31 y sembrado derivado de os_catalog_language.
+$fase3Path = $sqlDir . '/fase3_i18n.sql';
+$fase3VerifyPath = $sqlDir . '/verificacion_fase3.sql';
+$check(is_file($fase3Path), 'Debe existir la migración de i18n de la Fase 3.');
+$check(is_file($fase3VerifyPath), 'Debe existir la verificación de i18n de la Fase 3.');
+if (is_file($fase3Path)) {
+    $fase3Sql = (string) file_get_contents($fase3Path);
+    $check(
+        str_contains($fase3Sql, 'trg_ocm_invalidate_fr')
+            && str_contains($fase3Sql, 'CREATE OR REPLACE TRIGGER')
+            && str_contains($fase3Sql, 'approval_invalidated'),
+        'Fase 3 debe instalar el trigger D-31 con el evento de invalidación.'
+    );
+    $check(
+        str_contains($fase3Sql, 'INSERT INTO os_catalog_language')
+            && str_contains($fase3Sql, 'ON CONFLICT (catalog_id, language_code) DO NOTHING')
+            && str_contains($fase3Sql, 'coverage_status')
+            && str_contains($fase3Sql, "'undetermined'"),
+        'Fase 3 debe sembrar os_catalog_language de forma idempotente y sin inventar cobertura.'
+    );
+    $check(
+        str_contains($fase3Sql, 'os_catalog_item_version')
+            && str_contains($fase3Sql, 'NOT idi.is_source_only')
+            && str_contains($fase3Sql, "COALESCE(d.language_code, 'es-AR')")
+            && str_contains($fase3Sql, "WHEN 'es-AR' THEN 0"),
+        'Fase 3 debe derivar idiomas seleccionables, priorizar es-AR en empates y usarla si no hay versiones.'
+    );
+    $check(
+        !str_contains($fase3Sql, 'INSERT INTO os_language')
+            && !str_contains($fase3Sql, 'INSERT INTO os_language_alias')
+            && !preg_match('/\bSET\s+OS_IMPORT_MODE\b/i', $fase3Sql),
+        'Fase 3 no debe reejecutar la siembra base ni cambiar OS_IMPORT_MODE.'
+    );
+    $check(
+        !str_contains($fase3Sql, "'es-MX'") && !str_contains($fase3Sql, "'pt-BR'"),
+        'Fase 3 no debe sembrar idiomas source-only ni del portal como default.'
+    );
+}
+if (is_file($fase3VerifyPath)) {
+    $fase3Verify = (string) file_get_contents($fase3VerifyPath);
+    $check(
+        str_contains($fase3Verify, 'BEGIN READ ONLY;') && str_contains($fase3Verify, 'ROLLBACK;'),
+        'La verificación de Fase 3 debe ser de solo lectura.'
+    );
+    $check(
+        str_contains($fase3Verify, 'trg_ocm_invalidate_fr')
+            && str_contains($fase3Verify, 'is_default')
+            && str_contains($fase3Verify, 'is_fallback')
+            && str_contains($fase3Verify, 'is_source_only')
+            && str_contains($fase3Verify, 'default_esperado'),
+        'La verificación de Fase 3 debe comprobar D-31, cardinalidad D-13, idiomas activos y preferencia es-AR.'
+    );
+}
+$fase3FixPath = $sqlDir . '/fase3_correcion_idioma_default.sql';
+$check(is_file($fase3FixPath), 'Debe existir el correctivo de desempate de idioma de la Fase 3.');
+if (is_file($fase3FixPath)) {
+    $fase3Fix = (string) file_get_contents($fase3FixPath);
+    $check(
+        substr_count($fase3Fix, 'ON CONFLICT (catalog_id, language_code) DO UPDATE') === 4
+            && str_contains($fase3Fix, 'BEGIN;') && str_contains($fase3Fix, 'COMMIT;'),
+        'El correctivo debe aplicar cuatro intercambios ordenados de flags en una transacción.'
+    );
+    $check(
+        str_contains($fase3Fix, 'dentar-an') && str_contains($fase3Fix, 'dentar-cl'),
+        'El correctivo debe documentar los catálogos detectados en la ejecución del 2026-11-19.'
+    );
+}
+$sqlReadme = (string) file_get_contents($sqlDir . '/README.md');
+$check(str_contains($sqlReadme, 'verificacion_fase3.sql'), 'El README SQL debe documentar la Fase 3.');
+$check(str_contains($sqlReadme, 'diferimiento M7'), 'El README SQL debe registrar el levantamiento del diferimiento M7.');
+$check(str_contains($sqlReadme, 'fase3_correcion_idioma_default.sql'), 'El README SQL debe documentar el correctivo de desempate.');
+
+// 3d. Fase 4 del §16: relaciones y mapeos generales (nombre histórico fase3).
+$fase4Path = $sqlDir . '/fase3_relaciones_mapeos.sql';
+$fase4VerifyPath = $sqlDir . '/verificacion_fase4.sql';
+$check(is_file($fase4Path), 'Debe existir la migración de relaciones de la Fase 4.');
+$check(is_file($fase4VerifyPath), 'Debe existir la verificación de relaciones de la Fase 4.');
+if (is_file($fase4Path)) {
+    $fase4Sql = (string) file_get_contents($fase4Path);
+    $check(
+        substr_count($fase4Sql, 'ADD COLUMN IF NOT EXISTS') === 13,
+        'Fase 4 debe añadir 13 columnas aditivas a os_catalog_relation.'
+    );
+    $check(
+        str_contains($fase4Sql, 'fk_ocr_source_catalog')
+            && str_contains($fase4Sql, 'fk_ocr_relation_kind')
+            && str_contains($fase4Sql, 'ck_ocr_validity')
+            && str_contains($fase4Sql, 'idx_ocr_validity')
+            && str_contains($fase4Sql, 'idx_ocr_kind'),
+        'Fase 4 debe crear los constraints y los índices nuevos de forma idempotente.'
+    );
+    $check(
+        str_contains($fase4Sql, 'CREATE TABLE IF NOT EXISTS os_mapping_metadata')
+            && str_contains($fase4Sql, 'CREATE TABLE IF NOT EXISTS os_terminology_system_alias')
+            && str_contains($fase4Sql, 'ON CONFLICT (alias_table, alias_system_code) DO NOTHING'),
+        'Fase 4 debe crear las dos tablas de mapeos sin duplicar alias.'
+    );
+    $check(
+        str_contains($fase4Sql, "ALTER TABLE os_concept_mapping\n    ALTER COLUMN review_status SET DEFAULT 'draft'"),
+        'Fase 4 debe fijar el DEFAULT draft sin reescribir filas existentes.'
+    );
+    $check(
+        str_contains($fase4Sql, 'REVOKE ALL PRIVILEGES ON TABLE')
+            && str_contains($fase4Sql, 'FROM PUBLIC')
+            && str_contains($fase4Sql, 'FROM origen_admin')
+            && str_contains($fase4Sql, 'public.os_mapping_metadata')
+            && str_contains($fase4Sql, 'public.os_terminology_system_alias'),
+        'Fase 4 debe revocar el DEFAULT ACL sobre sus dos tablas nuevas.'
+    );
+    $check(
+        str_contains($fase4Sql, 'RAISE EXCEPTION')
+            && !str_contains($fase4Sql, 'DROP TABLE')
+            && !str_contains($fase4Sql, 'DELETE FROM'),
+        'Fase 4 debe validar sus prerrequisitos y no destruir objetos ni datos.'
+    );
+}
+if (is_file($fase4VerifyPath)) {
+    $fase4Verify = (string) file_get_contents($fase4VerifyPath);
+    $check(
+        str_contains($fase4Verify, 'BEGIN READ ONLY;') && str_contains($fase4Verify, 'ROLLBACK;'),
+        'La verificación de Fase 4 debe ser de solo lectura.'
+    );
+    $check(
+        str_contains($fase4Verify, '603 relaciones')
+            && str_contains($fase4Verify, 'count(DISTINCT relation_type)')
+            && str_contains($fase4Verify, 'relaciones_huerfanas')
+            && str_contains($fase4Verify, "grantee IN ('origen_admin', 'PUBLIC')"),
+        'La verificación de Fase 4 debe comprobar integridad, navegabilidad y privilegios.'
+    );
+}
+$check(str_contains($sqlReadme, 'verificacion_fase4.sql'), 'El README SQL debe documentar la verificación de Fase 4.');
+$check(str_contains($sqlReadme, 'Decisión 10'), 'El README SQL debe registrar la decisión 10 aprobada.');
+$architectureRaw = (string) file_get_contents($root . '/docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md');
+$check(
+    str_contains($architectureRaw, 'Integración aprobada (Fase 4)')
+        && str_contains($architectureRaw, 'Aprobada en Fase 4 (2026-11-19)'),
+    'El documento de arquitectura debe registrar la decisión 10 como aprobada.'
+);
 
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.
 $relationTypes = [

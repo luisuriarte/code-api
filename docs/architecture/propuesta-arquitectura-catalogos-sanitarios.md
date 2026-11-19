@@ -183,8 +183,10 @@ pasan por `portal/Router.php`.
     `os_localized_text.entity_id` y `os_field_review.target_id`.
 13. **Gobernanza de mapeos degradada.** `os_concept_mapping.review_status` tiene
     `DEFAULT 'approved'` (`engine:130`) y el sync no asigna la columna, así que
-    los mapeos entran aprobados sin revisión. El cambio a `draft` existe solo en
-    `fase3_relaciones_mapeos.sql`, no ejecutado.
+    los mapeos entran aprobados sin revisión. El cambio a `draft` quedó incluido
+    en `fase3_relaciones_mapeos.sql`, que en §16 es la Fase 4: **ejecutada y
+    verificada el 2026-11-19**, con `column_default = 'draft'` comprobado en
+    base. Afecta solo a inserciones futuras; no reescribió filas existentes.
 14. **Sin control de solapamiento de vigencias.** Ninguna tabla con
     `valid_from`/`valid_to` tiene `EXCLUDE` con `&&` sobre `tstzrange`.
 15. **Releases desvinculados.** `dentar_release` y `os_catalog_release` no tienen
@@ -246,6 +248,31 @@ contradicciones 4 a 6 se resolvieron en el repositorio.
 2. **D-31 no está activo** [BD]: el trigger `trg_ocm_invalidate_fr` (script 18)
    está ausente, aunque el resto de la huella multilingüe existe. La
    invalidación de aprobaciones por cambio de contenido no está operativa.
+
+ Preparación de la Fase 3 (2026-11-19, autorizada). Los hallazgos 1 y 2 se
+ atienden con `sql/08_arquitectura/fase3_i18n.sql` y
+ `sql/08_arquitectura/verificacion_fase3.sql`. El trigger se instala con el mismo
+ cuerpo del script 18 y `os_catalog_language` se siembra con un `is_default` y un
+ `is_fallback` por catálogo no familiar, derivados de los idiomas reales y
+ seleccionables de `os_catalog_item_version` (D-27/D-38: `es` y `es-MX` son
+ `source-only` y no se siembran como default; `es-AR` si no hay versiones; `en`
+ como fallback cuando procede). `coverage_status='undetermined'` para no afirmar cobertura no
+ verificada. **Artefactos preparados; la ejecución en base la hace el usuario con
+ backup verificado.** No se reejecutan los scripts `01`..`15`.
+
+ **Ejecución registrada (2026-11-19).** El usuario aplicó la migración con
+ backup previo: `CREATE FUNCTION`, `CREATE TRIGGER`, `INSERT 0 22` y `COMMIT`.
+ La verificación devolvió el trigger `trg_ocm_invalidate_fr` activo, 0 filas en
+ los apartados 2, 3 y 4, 22 filas sembradas (11 defaults / 11 fallbacks / 0
+ bridges), `origen_med` como único grantee además del propietario y
+ `OS_IMPORT_MODE` vacío (modo efectivo `dual`). Apareció un hallazgo: `dentar-an`
+ y `dentar-cl` recibieron default `en` porque tienen la misma cantidad de
+ versiones `es-AR` y `en` y el desempate era alfabético. La regla fue corregida
+ en `fase3_i18n.sql` y se preparó
+ `sql/08_arquitectura/fase3_correcion_idioma_default.sql`. El usuario lo aplicó
+ (`INSERT 0 2` × 4, `COMMIT`) y reverificó: `dentar-an` y `dentar-cl` pasaron a
+ `es-AR` default / `en` fallback, con los apartados 2, 3, 4 y 8 en **0 filas** y
+ 22 filas sembradas. **La Fase 3 quedó cerrada en base el 2026-11-19.**
 3. **Ninguna capa LOINC tiene `review_status='approved'`** [BD] (0 de
    1.303.888 filas entre `Loinc.csv`, `ConsumerName.csv` y las variantes es-MX /
    es-AR). Es coherente con la regla de no inventar aprobaciones, pero implica
@@ -555,11 +582,17 @@ deben declararlo.
 Conservar `related_dentar` y `related_external` como vistas o proyecciones sobre
 la tabla relacional normalizada, sin romper formatos existentes.
 
-### 7.4 Pendiente inmediato
+### 7.4 Integración aprobada (Fase 4)
 
-Integrar `CatalogRepository::itemRelations()` con `os_catalog_relation` para que
-las 333 relaciones CDT verificadas [BD] sean navegables. La contradicción §1.6-1
-ya está resuelta; requiere aprobación para el cambio de código.
+La aprobación de la Fase 4 (2026-11-19) cubre la decisión 10 del §15.2. No
+requirió cambio de código: `CatalogRepository::itemRelations()` **ya consulta**
+`os_catalog_relation` y `tests/run.php` ya lo exige, por lo que las 333
+relaciones CDT verificadas [BD], junto con las 270 del Nomenclador Odontológico
+Nacional, son navegables desde la pestaña Relaciones. La contradicción §1.6-1
+quedó resuelta. La Fase 4 solo extiende el modelo de datos (13 columnas, 6
+constraints, 2 índices y las tablas `os_mapping_metadata` y
+`os_terminology_system_alias`) mediante
+`sql/08_arquitectura/fase3_relaciones_mapeos.sql`, sin tocar esas 603 filas.
 
 ---
 
@@ -994,7 +1027,9 @@ exponer cualquier `/fhir/*`.
    OpenAPI y de `README-API.md`. El verificador canónico sigue siendo
    `tests/run.php`; la expectativa legacy de `verificar_fase10.php` fue
    **retirada** como puerta de calidad y conservada como informe diagnóstico.
-10. Aprobar la integración de `itemRelations()` con `os_catalog_relation`.
+10. **Aprobada en Fase 4 (2026-11-19).** La integración de `itemRelations()`
+    con `os_catalog_relation` ya estaba implementada y cubierta por
+    `tests/run.php`; la autorización la formaliza sin exigir cambio de código.
 11. Aprobar el módulo UVR y la fuente de sus primeros valores, sin inventarlos.
 12. Aprobar rate limiting, hash de API keys, OAuth/estructura de scopes y
     consola self-service, como decisiones independientes.
@@ -1005,9 +1040,11 @@ exponer cualquier `/fhir/*`.
     **Resuelta**: autorizada y ejecutada por el usuario el 2026-11-19 (135 ítems,
     270 relaciones, backups y verificación; §5.2). Queda opcionalmente decidir
     si se genera también la versión `en`, hoy ausente.
-16. Decidir la activación de D-31 (`trg_ocm_invalidate_fr`) y el llenado de
-    `os_catalog_language`. El corte `OS_IMPORT_MODE` ya está resuelto: modo
-    efectivo `dual`, sin activación de Fase 13 (§1.6, hallazgo 6).
+16. **Autorizada en Fase 3 (2026-11-19).** Se activa D-31
+    (`trg_ocm_invalidate_fr`) y se siembra `os_catalog_language` mediante
+    `sql/08_arquitectura/fase3_i18n.sql`. Esta autorización deja sin efecto, para
+    esta fase, el diferimiento M7 del Acta M0. El corte `OS_IMPORT_MODE` sigue
+    resuelto: modo efectivo `dual`, sin activación de Fase 13 (§1.6, hallazgo 6).
 
 ---
 
@@ -1026,8 +1063,8 @@ inválidos (D-34).
 | 0 | **Completada la parte documental**: §1.6 resuelto y READMEs alineados | Evidencia [BD]/[REPO] registrada; contradicciones factuales cerradas | No (ya ejecutada en modo solo lectura) |
 | 1 | Consolidar infraestructura compartida: registro de dominios y motor único | Un solo origen de catálogos/dominios; API y portal usan el mismo servicio | Sí |
 | 2 | Conciliar OpenAPI, READMEs y verificadores; corregir errores de API | **Ejecutada el 2026-11-19**: 17 desvíos corregidos, README reconciliado, expectativa legacy retirada; `php tests/run.php` en verde | Sí (otorgada) |
-| 3 | Completar i18n según el acta de D-01..D-41: `os_catalog_language`, D-31 y corte `OS_IMPORT_MODE` | Configuración por catálogo y activación decididas; no reejecutar lo ya cargado | Sí |
-| 4 | Relations/mapeos generales | Extensión de `os_catalog_relation`; relaciones CDT navegables | Sí |
+| 3 | Completar i18n según el acta de D-01..D-41: `os_catalog_language`, D-31 y corte `OS_IMPORT_MODE` | **Cerrada el 2026-11-19**: D-31 activo, 22 filas sembradas, desempate `es-AR` corregido, apartados 2/3/4/8 en 0 filas y modo `dual` confirmado | Sí (otorgada) |
+| 4 | Relations/mapeos generales | **Autorizada y preparada el 2026-11-19**: `fase3_relaciones_mapeos.sql` (nombre histórico) + `verificacion_fase4.sql`; 13 columnas, 6 constraints, 2 índices, 2 tablas nuevas; decisión 10 ya satisfecha en código. Pendiente de ejecución por el usuario | Sí (otorgada) |
 | 5 | Gobernanza y auditoría unificadas | Requests/reviews/decisions con actores reales | Sí |
 | 6 | Modelo de productos/presentaciones/identificadores, vacío | Tablas y constraints; ningún producto sin fuente | Sí |
 | 7 | Módulo UVR, sin valores inventados | `os_uvr_*` vacías o con datos auditados; reglas §10.3 | Sí |
@@ -1049,8 +1086,20 @@ tablas nuevas, corregidos y **reverificados en 0 filas** mediante
 2** también fue ejecutada: `docs/api/openapi-3.1.yaml` y `README-API.md` quedaron
 reconciliados con el código, `web/docs.php` usa `{code}` como el enrutador, y
 `tools/php/verificar_fase10.php` pasó a ser informe no vinculante (su expectativa
-era incompatible con el verificador canónico). La Fase 9 fue ejecutada por el
-usuario con autorización, backup y verificación (§5.2).
+era incompatible con el verificador canónico). La **Fase 3** fue autorizada y sus
+artefactos quedaron preparados: `fase3_i18n.sql` activa D-31 y siembra
+`os_catalog_language` a partir de los idiomas reales, y
+`verificacion_fase3.sql` comprueba el resultado sin escribir. El usuario la
+ejecutó con backup verificado: D-31 activo, 22 filas sembradas, desempate
+`es-AR` corregido y modo `dual` confirmado; la verificación final dejó los
+apartados 2, 3, 4 y 8 en 0 filas. No se reejecutaron los scripts `01`..`15`.
+La **Fase 4** fue autorizada el mismo día: `fase3_relaciones_mapeos.sql` extiende
+`os_catalog_relation` sin tocar las 603 filas y crea las dos tablas de mapeo, con
+`verificacion_fase4.sql` para comprobarlo; la decisión 10 quedó formalizada sin
+cambio de código porque `itemRelations()` ya consume la tabla. **Artefactos
+preparados; ejecución pendiente del usuario con backup verificado.** La Fase 9
+fue ejecutada por el usuario con autorización,
+backup y verificación (§5.2).
 Las fases M1/M2 del panel administrativo están aplicadas y verificadas en
 `os_admin` (ver `docs/architecture/fase2-organizaciones-invitaciones.md`). Los
 nombres `fase3..fase6` de `sql/08_arquitectura/` corresponden a las Fases 4..7
@@ -1068,7 +1117,9 @@ de esta tabla; la equivalencia completa está en el README de esa carpeta.
    `tests/run.php` sigue siendo el verificador canónico y el destino de
    `verificar_fase10.php` quedó resuelto como informe no vinculante.
 3. Unificar los dos motores de catálogo y mover dominios/catálogos a datos.
-4. Integrar `itemRelations()` con `os_catalog_relation`.
+4. **Fase 4 autorizada:** la integración de `itemRelations()` ya está en código;
+   ejecutar `fase3_relaciones_mapeos.sql` con backup y verificar con
+   `verificacion_fase4.sql`. No reejecutar los scripts `01`..`15`.
 
 ### Etapa B — Preservar y fortalecer DENTAR
 
@@ -1079,10 +1130,14 @@ de esta tabla; la equivalencia completa está en el README de esa carpeta.
 
 ### Etapa C — Infraestructura transversal
 
-8. Ejecutar/activar i18n según el acta de D-01..D-41.
+8. **Fase 3 cerrada:** ejecutados `fase3_i18n.sql` y el correctivo de desempate,
+   con `verificacion_fase3.sql` en verde; no se reejecutaron los scripts
+   `01`..`15`.
 9. Implantar gobernanza, relaciones y mapeos generales.
 10. Crear, vacío, el modelo de productos/presentaciones/identificadores.
-11. Homogeneizar importadores y compuerta `OS_IMPORT_MODE`; preservar fuentes.
+11. **Pendiente fuera de alcance de esta entrega:** homogeneizar importadores
+    (no se modifican) y verificar la compuerta `OS_IMPORT_MODE`. El modo efectivo
+    sigue siendo `dual`, documentado, sin activar Fase 13; preservar fuentes.
 
 ### Etapa D — Valoración e interoperabilidad
 
