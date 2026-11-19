@@ -24,8 +24,13 @@ final class CatalogRepository
 
     public const DEFAULT_DOMAINS = ['snomed', 'cie10', 'anmat'];
 
-    /** Catálogos DENTAR publicados que pueden usarse como filtro del explorador. */
-    public const DENTAR_CATALOGS = ['dentar-pr', 'dentar-dx'];
+    /**
+     * Catálogos DENTAR publicados que pueden usarse como filtro del explorador.
+     * `nomenclador-odontologico-ar` conserva la numeración histórica que hoy
+     * usan los odontólogos; sus ítems se vinculan con DENTAR-PR por referencia
+     * literal, no por equivalencia clínica asumida.
+     */
+    public const DENTAR_CATALOGS = ['dentar-pr', 'dentar-dx', 'nomenclador-odontologico-ar'];
 
     private const SNOMED_FSN = '900000000000003001';
     private const SNOMED_SYNONYM = '900000000000013009';
@@ -778,7 +783,8 @@ final class CatalogRepository
             : self::scoreSql([
                 "lower(ver.preferred_term) = lower(:{$p}_exact)" => '1.0',
                 "item.permanent_code ILIKE :{$p}_code_prefix" => '0.96',
-                "coalesce(ident.value, '') ILIKE :{$p}_code_prefix" => '0.96',
+                "EXISTS (SELECT 1 FROM os_catalog_identifier si WHERE si.item_id = item.id"
+                    . " AND si.value ILIKE :{$p}_code_prefix)" => '0.96',
                 "ver.preferred_term ILIKE :{$p}_prefix" => '0.92',
                 "ver.preferred_term ILIKE :{$p}_contains" => '0.78',
                 "similarity(ver.preferred_term, :{$p}_sim)" => null,
@@ -815,15 +821,24 @@ final class CatalogRepository
         }
         $params[":{$p}_filter_status"] = $filters['status'] ?? 'active';
 
+        // Cualquier identificador real debe ser buscable, no solo el que se
+        // eligió para el badge. Esto cubre códigos del Nomenclador, CIE-10, CDT
+        // y el propio DENTAR cuando conviven en un mismo ítem.
+        $identifierWhere = $byKey
+            ? " OR EXISTS (SELECT 1 FROM os_catalog_identifier ki"
+                . " WHERE ki.item_id = item.id"
+                . " AND (ki.value = :{$p}_key"
+                . " OR replace(ki.value, '.', '') = :{$p}_key_clean))"
+            : " OR EXISTS (SELECT 1 FROM os_catalog_identifier pi"
+                . " WHERE pi.item_id = item.id AND pi.value ILIKE :{$p}_contains)";
         $where = $byKey
             ? "(item.permanent_code = :{$p}_key"
-                . " OR coalesce(ident.value, '') = :{$p}_key"
-                . " OR replace(coalesce(ident.value, ''), '.', '') = :{$p}_key_clean"
+                . $identifierWhere
                 . " OR 'os_catalog:' || cat.code || ':' || CAST(item.id AS text) = :{$p}_key"
                 . " OR '{$domain}:os_catalog:' || cat.code || ':' || CAST(item.id AS text) = :{$p}_full_key)"
             : "(ver.preferred_term ILIKE :{$p}_contains"
                 . " OR item.permanent_code ILIKE :{$p}_contains"
-                . " OR coalesce(ident.value, '') ILIKE :{$p}_contains"
+                . $identifierWhere
                 . " OR EXISTS (SELECT 1 FROM os_catalog_term ot"
                 . " WHERE ot.item_version_id = ver.id AND ot.term ILIKE :{$p}_contains))";
 
@@ -865,8 +880,8 @@ final class CatalogRepository
             . " )\n"
             . " LEFT JOIN os_catalog_identifier ident ON ident.id = (\n"
             . "     SELECT i.id FROM os_catalog_identifier i\n"
-            . "      WHERE i.item_id = item.id AND i.is_primary = TRUE\n"
-            . "      ORDER BY i.id LIMIT 1\n"
+            . "      WHERE i.item_id = item.id\n"
+            . "      ORDER BY i.is_primary DESC, i.id ASC LIMIT 1\n"
             . " )\n"
             . (isset($filters['category'])
                 ? " JOIN os_catalog_category catcat ON catcat.id = ver.category_id\n"
@@ -2166,6 +2181,30 @@ final class CatalogRepository
             $identifiers = [];
         }
 
+        // Campos literales del Nomenclador Odontológico Nacional. La tabla es
+        // opcional: si no fue cargada, la ficha no inventa indicadores.
+        $sourceAttributes = [];
+        if (self::tableExists($pdo, 'os_catalog_source_attribute')) {
+            try {
+                $statement = $pdo->prepare(
+                    'SELECT attribute_code, attribute_label, attribute_value, is_boolean, display_order'
+                    . ' FROM os_catalog_source_attribute'
+                    . ' WHERE item_id = ? ORDER BY display_order, attribute_code'
+                );
+                $statement->execute([$itemId]);
+                foreach ($statement->fetchAll() as $row) {
+                    $sourceAttributes[] = [
+                        'code' => (string) $row['attribute_code'],
+                        'label' => (string) $row['attribute_label'],
+                        'value' => (string) $row['attribute_value'],
+                        'boolean' => (bool) $row['is_boolean'],
+                    ];
+                }
+            } catch (PDOException) {
+                $sourceAttributes = [];
+            }
+        }
+
         $validity = [];
         $itemRow = null;
         try {
@@ -2239,6 +2278,7 @@ final class CatalogRepository
                 'short_definition' => $clinical['short_definition']['value'] ?? null,
                 'synonyms' => $synonyms,
                 'identifiers' => $identifiers,
+                'source_attributes' => $sourceAttributes,
             ],
             'validity' => $validity,
             'clinical' => $clinical,

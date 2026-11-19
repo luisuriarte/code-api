@@ -64,7 +64,7 @@ $row = static function (string $labelKey, mixed $value) use ($t, $formatValue, $
                 <?php endif; ?>
                 <li>
                     <?php if (!empty($identifier['system'])): ?>
-                        <?= e((string) $identifier['system']) ?>:
+                        <?= e($identifierSystemLabel((string) $identifier['system'])) ?>:
                     <?php endif; ?>
                     <strong><?= e((string) $identifier['value']) ?></strong>
                     <?php if (!empty($identifier['primary'])): ?>
@@ -73,5 +73,27 @@ $row = static function (string $labelKey, mixed $value) use ($t, $formatValue, $
                 </li>
             <?php endforeach; ?>
         </ul>
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($concept['source_attributes']) && is_array($concept['source_attributes'])): ?>
+    <div class="browse-subsection">
+        <h3><?= e($t('browse.source_attributes')) ?></h3>
+        <p class="form-note"><?= e($t('browse.source_attributes_note')) ?></p>
+        <dl class="detail-grid browse-detail-grid">
+            <?php foreach ($concept['source_attributes'] as $attribute): ?>
+                <?php if (!is_array($attribute) || !$hasValue($attribute['value'] ?? null)) { continue; } ?>
+                <div class="detail-row">
+                    <dt><?= e($sourceAttributeLabel($attribute)) ?></dt>
+                    <dd>
+                        <?php if (!empty($attribute['boolean'])): ?>
+                            <?= e($t((string) $attribute['value'] === '1' ? 'browse.yes' : 'browse.no')) ?>
+                        <?php else: ?>
+                            <?= e((string) $attribute['value']) ?>
+                        <?php endif; ?>
+                    </dd>
+                </div>
+            <?php endforeach; ?>
+        </dl>
     </div>
 <?php endif; ?>

@@ -3,11 +3,10 @@
 declare(strict_types=1);
 
 /**
- * Origen Salud - Portal de Documentación para Desarrolladores (med.origen.ar/docs)
+ * Origen Salud - Centro de documentación para desarrolladores (med.origen.ar/docs).
  *
- * Documentación interactiva de la API REST v1 y del servidor de terminología HL7 FHIR R4.
- * Admite visualización trilingüe (es-AR / EN / PT-BR) y ejemplos de código en 7 lenguajes de programación:
- * cURL, JavaScript, Python, PHP, C# (.NET), Java y Go.
+ * Página independiente, trilingüe y de solo lectura. El contenido describe
+ * exclusivamente el contrato real de la API pública v1 (api.origen.ar).
  */
 
 require_once dirname(__DIR__) . '/bootstrap.php';
@@ -18,310 +17,566 @@ use OrigenSalud\Web\I18n;
 $locale = I18n::boot();
 
 header('Content-Type: text/html; charset=UTF-8');
-header('Vary: Accept-Language');
+header('Vary: Accept-Language, Cookie');
 header('Content-Language: ' . $locale);
-$t = static fn (string $key, array $parameters = []): string => trans($key, $parameters, $locale);
 
-$requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/docs'), PHP_URL_PATH);
-$currentPath = is_string($requestPath) && $requestPath !== '' ? $requestPath : '/docs';
+$t = static fn (string $key, array $parameters = []): string => trans($key, $parameters, $locale);
+$esc = static fn (string $value): string => e($value);
+$raw = static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
 $baseUrl = rtrim((string) env('WEB_BASE_URL', 'https://med.origen.ar'), '/');
 if ($baseUrl === '') {
     $baseUrl = 'https://med.origen.ar';
 }
 
-$contactEmail = 'contacto@origen.ar';
-$accessMailto = 'mailto:' . $contactEmail . '?subject=' . rawurlencode($t('nav.access_api'));
-$contactMailto = 'mailto:' . $contactEmail;
-$legalMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal'));
+$apiBase = 'https://api.origen.ar';
+$canonical = $baseUrl . '/docs?lang=' . rawurlencode($locale);
+$metadata = I18n::metadata($locale);
 $year = date('Y');
 
+$alternates = [];
+foreach (I18n::SUPPORTED as $supported) {
+    $info = I18n::metadata($supported);
+    $alternates[] = [
+        'hreflang' => $info['hreflang'],
+        'href' => $baseUrl . '/docs?lang=' . rawurlencode($supported),
+        'short' => $info['short'],
+        'label' => $t('docs.lang.' . ($supported === 'es-AR' ? 'es' : ($supported === 'pt-BR' ? 'pt' : 'en'))),
+        'active' => $supported === $locale,
+    ];
+}
+
+$homePath = I18n::localizedPath($locale, '/');
+$contactPath = I18n::localizedPath($locale, '/contact');
+$accessMailto = 'mailto:contacto@origen.ar?subject=' . rawurlencode($t('nav.access_api'));
+$contactMailto = 'mailto:contacto@origen.ar';
+$legalMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal'));
+$privacyMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal_privacy'));
+
+$articles = [
+    ['id' => 'overview', 'key' => 'overview', 'group' => 'start'],
+    ['id' => 'auth', 'key' => 'auth', 'group' => 'start'],
+    ['id' => 'conventions', 'key' => 'conventions', 'group' => 'start'],
+    ['id' => 'quickstart', 'key' => 'quickstart', 'group' => 'start'],
+    ['id' => 'search', 'key' => 'search', 'group' => 'core'],
+    ['id' => 'catalogs', 'key' => 'catalogs', 'group' => 'core'],
+    ['id' => 'mappings', 'key' => 'mappings', 'group' => 'core'],
+    ['id' => 'clinical', 'key' => 'clinical', 'group' => 'domain'],
+    ['id' => 'dental', 'key' => 'dental', 'group' => 'domain'],
+    ['id' => 'pending', 'key' => 'pending', 'group' => 'operations'],
+    ['id' => 'openapi', 'key' => 'openapi', 'group' => 'operations'],
+    ['id' => 'support', 'key' => 'support', 'group' => 'operations'],
+];
+
+$articleIndex = [];
+foreach ($articles as $index => $article) {
+    $articleIndex[$article['id']] = $index;
+}
+
+$grouped = [];
+foreach ($articles as $article) {
+    $grouped[$article['group']][] = $article;
+}
+
+/**
+ * @param list<array{name:string,type:string,default:string,required:string,text:string}> $rows
+ */
+$renderParams = static function (array $rows) use ($t, $esc): void {
+    ?>
+    <div class="table-wrap">
+        <table class="param-table">
+            <thead>
+                <tr>
+                    <th scope="col"><?= $esc($t('search.params_title')) ?></th>
+                    <th scope="col"><?= $esc($t('common.default')) ?></th>
+                    <th scope="col"><?= $esc($t('common.required')) ?></th>
+                    <th scope="col"><?= $esc($t('search.domains_title')) ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $row): ?>
+                    <tr>
+                        <td><code><?= $esc($row['name']) ?></code></td>
+                        <td><?= $esc($row['default']) ?></td>
+                        <td><?= $esc($row['required']) ?></td>
+                        <td><?= $esc($row['text']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php
+};
+
+$renderEndpoint = static function (string $path, string $access = 'authenticated') use ($apiBase, $t, $esc): void {
+    $label = $access === 'public' ? $t('common.public') : $t('common.authenticated');
+    $tone = $access === 'public' ? 'ok' : 'key';
+    ?>
+    <div class="endpoint">
+        <span class="method method--get"><?= $esc($t('common.method_get')) ?></span>
+        <code class="endpoint__path"><?= $esc($path) ?></code>
+        <span class="badge badge--<?= $tone ?>"><?= $esc($label) ?></span>
+        <button type="button" class="copy-endpoint" data-endpoint="<?= $esc($apiBase . $path) ?>"
+                aria-label="<?= $esc($t('docs.a11y.copy_endpoint')) ?>"><?= $esc($t('docs.a11y.copy_endpoint')) ?></button>
+    </div>
+    <?php
+};
+
+$renderSubhead = static function (string $id, string $label): void {
+    echo '<h3 id="' . e($id) . '">' . e($label) . '</h3>';
+};
+
+$renderCallout = static function (string $tone, string $title, string $text) use ($esc): void {
+    ?>
+    <div class="callout callout--<?= $esc($tone) ?>">
+        <strong><?= $esc($title) ?></strong>
+        <p><?= $esc($text) ?></p>
+    </div>
+    <?php
+};
+
+/**
+ * @param array<string, string> $snippets
+ */
+$renderCode = static function (string $id, array $snippets) use ($t, $esc, $raw): void {
+    $labels = [
+        'curl' => $t('code.curl'),
+        'php' => $t('code.php'),
+        'python' => $t('code.python'),
+        'java' => $t('code.java'),
+        'javascript' => $t('code.javascript'),
+        'csharp' => $t('code.csharp'),
+    ];
+    ?>
+    <div class="code-container" data-code-block="<?= $esc($id) ?>">
+        <div class="code-toolbar">
+            <div class="code-tabs" role="tablist" aria-label="<?= $esc($t('docs.a11y.code_language')) ?>">
+                <?php foreach ($snippets as $lang => $_): ?>
+                    <button type="button" class="code-tab" role="tab" data-code-lang="<?= $esc($lang) ?>"
+                            aria-selected="false" tabindex="-1"><?= $esc($labels[$lang] ?? $lang) ?></button>
+                <?php endforeach; ?>
+            </div>
+            <button type="button" class="copy-code" data-copy-code><?= $esc($t('docs.a11y.copy')) ?></button>
+        </div>
+        <?php foreach ($snippets as $lang => $code): ?>
+            <pre class="code-pane" data-code-pane="<?= $esc($lang) ?>" role="tabpanel" hidden><code><?= $raw($code) ?></code></pre>
+        <?php endforeach; ?>
+    </div>
+    <?php
+};
+
+$renderResponse = static function (string $title, string $json, string $note = '') use ($esc): void {
+    ?>
+    <figure class="response-card">
+        <figcaption class="response-head">
+            <span><?= $esc($title) ?></span>
+            <span class="badge badge--get">200</span>
+        </figcaption>
+        <pre><code><?= $esc($json) ?></code></pre>
+        <?php if ($note !== ''): ?>
+            <p class="response-note"><?= $esc($note) ?></p>
+        <?php endif; ?>
+    </figure>
+    <?php
+};
+
+$renderArticleNav = static function (string $id) use ($articles, $articleIndex, $t, $esc): void {
+    $index = $articleIndex[$id];
+    $prev = $articles[$index - 1] ?? null;
+    $next = $articles[$index + 1] ?? null;
+    ?>
+    <nav class="article-nav" aria-label="<?= $esc($t('docs.a11y.next')) ?>">
+        <?php if ($prev !== null): ?>
+            <a class="article-nav__link article-nav__link--prev" href="#<?= $esc($prev['id']) ?>">
+                <span><?= $esc($t('docs.a11y.previous')) ?></span>
+                <strong><?= $esc($t('docs.article.' . $prev['key'] . '.title')) ?></strong>
+            </a>
+        <?php else: ?>
+            <span></span>
+        <?php endif; ?>
+        <?php if ($next !== null): ?>
+            <a class="article-nav__link article-nav__link--next" href="#<?= $esc($next['id']) ?>">
+                <span><?= $esc($t('docs.a11y.next')) ?></span>
+                <strong><?= $esc($t('docs.article.' . $next['key'] . '.title')) ?></strong>
+            </a>
+        <?php endif; ?>
+    </nav>
+    <?php
+};
+
+$quickstartSnippets = [
+    'curl' => <<<'CODE'
+curl --get "https://api.origen.ar/v1/catalogs/dentar-pr/items" \
+  --data-urlencode "q=evaluacion" \
+  --data-urlencode "limit=5" \
+  -H "Accept: application/json" \
+  -H "X-API-Key: TU_API_KEY"
+CODE,
+    'php' => <<<'CODE'
+<?php
+
+$url = 'https://api.origen.ar/v1/catalogs/dentar-pr/items?' . http_build_query([
+    'q' => 'evaluacion',
+    'limit' => 5,
+]);
+
+$ch = curl_init($url);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        'Accept: application/json',
+        'X-API-Key: TU_API_KEY',
+    ],
+]);
+
+$body = curl_exec($ch);
+$status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+curl_close($ch);
+
+if ($body === false || $status !== 200) {
+    throw new RuntimeException('La API no devolvió 200.');
+}
+
+$payload = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+CODE,
+    'python' => <<<'CODE'
+import json
+import urllib.parse
+import urllib.request
+
+params = urllib.parse.urlencode({"q": "evaluacion", "limit": 5})
+url = f"https://api.origen.ar/v1/catalogs/dentar-pr/items?{params}"
+
+request = urllib.request.Request(
+    url,
+    headers={
+        "Accept": "application/json",
+        "X-API-Key": "TU_API_KEY",
+    },
+)
+
+with urllib.request.urlopen(request, timeout=10) as response:
+    payload = json.load(response)
+
+print(payload["data"][0]["term"])
+CODE,
+    'java' => <<<'CODE'
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+
+public final class ApiExample {
+    public static void main(String[] args) throws Exception {
+        String query = "q=" + URLEncoder.encode("evaluacion", StandardCharsets.UTF_8)
+                + "&limit=5";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.origen.ar/v1/catalogs/dentar-pr/items?" + query))
+                .header("Accept", "application/json")
+                .header("X-API-Key", "TU_API_KEY")
+                .GET()
+                .build();
+
+        HttpResponse<String> response = HttpClient.newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new IllegalStateException("HTTP " + response.statusCode());
+        }
+
+        System.out.println(response.body());
+    }
+}
+CODE,
+    'javascript' => <<<'CODE'
+async function main() {
+  const url = new URL('https://api.origen.ar/v1/catalogs/dentar-pr/items');
+  url.searchParams.set('q', 'evaluacion');
+  url.searchParams.set('limit', '5');
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      'X-API-Key': 'TU_API_KEY',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+  console.log(payload.data[0].term);
+}
+
+main().catch((error) => console.error(error));
+CODE,
+    'csharp' => <<<'CODE'
+using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+internal static class ApiExample
+{
+    private static async Task Main()
+    {
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", "TU_API_KEY");
+        client.DefaultRequestHeaders.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/json"));
+
+        var response = await client.GetAsync(
+            "https://api.origen.ar/v1/catalogs/dentar-pr/items?q=evaluacion&limit=5");
+        response.EnsureSuccessStatusCode();
+
+        using var stream = await response.Content.ReadAsStreamAsync();
+        using var payload = await JsonDocument.ParseAsync(stream);
+        Console.WriteLine(payload.RootElement.GetProperty("data")[0]
+            .GetProperty("term").GetString());
+    }
+}
+CODE,
+];
+
+$searchCurl = <<<'CODE'
+curl --get "https://api.origen.ar/v1/search" \
+  --data-urlencode "q=infarto" \
+  --data-urlencode "domains=snomed,cie10" \
+  --data-urlencode "lang=es-AR" \
+  --data-urlencode "limit=10" \
+  -H "X-API-Key: TU_API_KEY"
+CODE;
+
+$mappingsCurl = <<<'CODE'
+curl --get "https://api.origen.ar/v1/mappings" \
+  --data-urlencode "system=SNOMED-CT" \
+  --data-urlencode "code=22298006" \
+  --data-urlencode "catalog=dentar-pr" \
+  -H "X-API-Key: TU_API_KEY"
+CODE;
+
+$dentalCurl = <<<'CODE'
+curl --get "https://api.origen.ar/v1/odontologia/diagnosticos/K02.1" \
+  -H "Accept: application/json" \
+  -H "X-API-Key: TU_API_KEY"
+CODE;
+
+$healthResponse = <<<'JSON'
+{
+  "status": "ok",
+  "service": "origen-salud-api",
+  "version": "1.0.0",
+  "time": "2026-11-19T12:34:56+00:00",
+  "checks": {
+    "database": "ok"
+  }
+}
+JSON;
+
+$successResponse = <<<'JSON'
+{
+  "data": [],
+  "meta": {
+    "took_ms": 3.42
+  },
+  "request_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+}
+JSON;
+
+$errorResponse = <<<'JSON'
+{
+  "error": {
+    "code": "bad_request",
+    "message": "El parámetro q es obligatorio.",
+    "details": {
+      "q": "Enviá un término de búsqueda de entre 2 y 80 caracteres."
+    }
+  },
+  "request_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+}
+JSON;
+
+$quickstartResponse = <<<'JSON'
+{
+  "data": [
+    {
+      "permanent_code": "DNT-PR-000001",
+      "official_code": "01.01",
+      "term": "Evaluación oral integral",
+      "category": "Evaluación",
+      "pricing": {
+        "unit_type": "UB",
+        "units": 3.8,
+        "fixed_price": null
+      }
+    }
+  ],
+  "meta": {
+    "requested_language": "es-AR",
+    "effective_language": "es",
+    "source_language": "es",
+    "fallback_applied": true,
+    "dialect_determined": false,
+    "took_ms": 4.12
+  },
+  "request_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+}
+JSON;
+
+$searchResponse = <<<'JSON'
+{
+  "data": [
+    {
+      "domain": "snomed",
+      "source": "snomed",
+      "id": "22298006",
+      "code": "22298006",
+      "term": "Infarto del miocardio",
+      "subtitle": null,
+      "language": "es",
+      "kind": "synonym",
+      "score": 0.95,
+      "metadata": {
+        "description_id": "…",
+        "concept_id": "22298006",
+        "term_type": "synonym"
+      }
+    }
+  ],
+  "meta": {
+    "query": "infarto",
+    "language": "es",
+    "domains": ["snomed", "cie10"],
+    "limit": 10,
+    "offset": 0,
+    "returned": 1,
+    "has_more": false,
+    "next_offset": null,
+    "page_counts": { "snomed": 1, "cie10": 0 },
+    "took_ms": 5.31
+  },
+  "request_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+}
+JSON;
 ?>
 <!doctype html>
-<html lang="<?= e($locale) ?>">
+<html lang="<?= $esc($locale) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= e($t('docs.meta_title')) ?></title>
-    <meta name="description" content="<?= e($t('docs.meta_description')) ?>">
+    <title><?= $esc($t('docs.meta.title')) ?></title>
+    <meta name="description" content="<?= $esc($t('docs.meta.description')) ?>">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="<?= e($t('docs.meta_title')) ?>">
-    <meta property="og:description" content="<?= e($t('docs.meta_description')) ?>">
-    <meta property="og:locale" content="<?= e(I18n::metadata($locale)['og_locale']) ?>">
-    <link rel="canonical" href="<?= e($baseUrl . '/docs') ?>">
-    <?php foreach (I18n::alternateLinks($currentPath) as $alternate): ?>
-    <link rel="alternate" hreflang="<?= e($alternate['hreflang']) ?>" href="<?= e($baseUrl . $alternate['href']) ?>">
+    <meta property="og:title" content="<?= $esc($t('docs.meta.title')) ?>">
+    <meta property="og:description" content="<?= $esc($t('docs.meta.description')) ?>">
+    <meta property="og:locale" content="<?= $esc($metadata['og_locale']) ?>">
+    <meta property="og:url" content="<?= $esc($canonical) ?>">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="<?= $esc($t('docs.meta.title')) ?>">
+    <meta name="twitter:description" content="<?= $esc($t('docs.meta.description')) ?>">
+    <link rel="canonical" href="<?= $esc($canonical) ?>">
+    <?php foreach ($alternates as $alternate): ?>
+        <link rel="alternate" hreflang="<?= $esc($alternate['hreflang']) ?>" href="<?= $esc($alternate['href']) ?>">
     <?php endforeach; ?>
-    <link rel="stylesheet" href="assets/css/app.css">
+    <link rel="stylesheet" href="assets/css/app.css?v=docs-v2">
     <style>
-        /* Docs Layout & Components */
-        .docs-layout {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: 40px;
-            align-items: start;
-            padding: 40px 0 80px;
+        .docs-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr) 190px; gap: 32px; align-items: start; padding: 32px 0 72px; }
+        .docs-sidebar, .docs-toc { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
+        .docs-sidebar { padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+        .docs-sidebar__title { margin: 0 0 12px; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+        .docs-search { position: relative; margin-bottom: 16px; }
+        .docs-search input { width: 100%; padding: 9px 34px 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: var(--ink); font: inherit; font-size: .88rem; }
+        .docs-search__clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 4px 6px; font-size: 1rem; }
+        .docs-search__empty { display: none; margin: 8px 2px; font-size: .82rem; color: var(--muted); }
+        .docs-nav-group { margin-bottom: 18px; }
+        .docs-nav-group h3 { margin: 0 0 6px; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+        .docs-nav-group ul { list-style: none; padding: 0; margin: 0; }
+        .docs-nav-group a { display: block; padding: 6px 9px; border-radius: 6px; color: var(--ink-soft); font-size: .88rem; line-height: 1.35; text-decoration: none; }
+        .docs-nav-group a:hover, .docs-nav-group a.is-active { background: var(--white); color: var(--teal-dark); box-shadow: var(--shadow-sm); }
+        .docs-main { min-width: 0; }
+        .docs-intro { margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+        .docs-intro__badge { display: inline-block; margin-bottom: 10px; padding: 4px 10px; border-radius: 999px; background: var(--mint); color: var(--teal-dark); font-size: .75rem; font-weight: 700; letter-spacing: .04em; }
+        .docs-intro h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.1; color: var(--ink); }
+        .docs-intro p { margin: 0; max-width: 76ch; color: var(--ink-soft); font-size: 1.05rem; }
+        .breadcrumb ol { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0 0 18px; font-size: .82rem; color: var(--muted); }
+        .breadcrumb li + li::before { content: "/"; margin-right: 6px; color: var(--line); }
+        .breadcrumb a { color: var(--teal-dark); }
+        .breadcrumb [aria-current="page"] { color: var(--ink); font-weight: 600; }
+        .docs-toc { padding: 16px; border-left: 2px solid var(--mint); font-size: .84rem; }
+        .docs-toc h2 { margin: 0 0 8px; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+        .docs-toc ol { list-style: none; padding: 0; margin: 0; }
+        .docs-toc a { display: block; padding: 4px 0; color: var(--ink-soft); text-decoration: none; }
+        .docs-toc a:hover, .docs-toc a.is-active { color: var(--teal-dark); font-weight: 600; }
+        .docs-section { margin-bottom: 56px; scroll-margin-top: 24px; }
+        .docs-section > h2 { margin: 0 0 10px; padding-bottom: 8px; border-bottom: 2px solid var(--mint); font-size: 1.6rem; color: var(--ink); }
+        .docs-section > p.lead { margin: 0 0 22px; color: var(--ink-soft); font-size: 1.02rem; }
+        .docs-section h3 { margin: 30px 0 10px; scroll-margin-top: 24px; font-size: 1.2rem; color: var(--ink); }
+        .docs-section p { color: var(--ink-soft); }
+        .table-wrap { width: 100%; overflow-x: auto; margin: 14px 0 22px; }
+        .param-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: .9rem; }
+        .param-table th, .param-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+        .param-table th { background: var(--paper); color: var(--ink); font-weight: 700; }
+        .param-table code, .endpoint__path { font-family: var(--font-mono); }
+        .param-table code { padding: 2px 5px; border-radius: 4px; background: var(--mint); color: var(--teal-dark); font-size: .85em; }
+        .endpoint { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 20px; padding: 10px 12px; border-radius: 10px; background: #061522; color: #d7f1f7; }
+        .endpoint__path { flex: 1 1 320px; min-width: 0; overflow-wrap: anywhere; font-size: .88rem; }
+        .method { padding: 3px 8px; border-radius: 5px; background: #0c7c86; color: #fff; font-size: .72rem; font-weight: 800; letter-spacing: .04em; }
+        .badge { padding: 3px 8px; border-radius: 999px; font-size: .7rem; font-weight: 700; white-space: nowrap; }
+        .badge--key { background: rgba(255, 196, 0, .16); color: #ffd97a; }
+        .badge--ok { background: rgba(52, 211, 153, .18); color: #8ef0c4; }
+        .badge--get { background: var(--mint); color: var(--teal-dark); }
+        .badge--pending { background: #fff2d9; color: #8a5a00; }
+        .copy-endpoint, .copy-code { border: 1px solid rgba(255, 255, 255, .2); border-radius: 6px; background: rgba(255, 255, 255, .08); color: inherit; padding: 5px 9px; cursor: pointer; font: inherit; font-size: .74rem; }
+        .copy-endpoint:hover, .copy-code:hover { background: rgba(255, 255, 255, .16); }
+        .callout { margin: 18px 0; padding: 14px 16px; border-left: 4px solid var(--teal); border-radius: 10px; background: var(--mint); }
+        .callout p { margin: 6px 0 0; }
+        .callout--warning { border-color: #d97706; background: #fff8e8; }
+        .callout--danger { border-color: #b91c1c; background: #fef2f2; }
+        .callout--pending { border-color: #8a5a00; background: #fff9e8; }
+        .code-container { margin: 16px 0 26px; border: 1px solid rgba(255, 255, 255, .12); border-radius: var(--radius); background: #061522; overflow: hidden; box-shadow: var(--shadow-sm); }
+        .code-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; background: #0a1f30; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+        .code-tabs { display: flex; gap: 3px; overflow-x: auto; }
+        .code-tab { border: 0; border-radius: 6px; background: transparent; color: #8da4b8; cursor: pointer; padding: 7px 10px; font: inherit; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+        .code-tab:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+        .code-tab[aria-selected="true"] { background: #061522; color: #7dd3fc; box-shadow: inset 0 -2px 0 #0c7c86; }
+        .code-pane { margin: 0; padding: 18px; overflow-x: auto; color: #c9e6ee; font-family: var(--font-mono); font-size: .84rem; line-height: 1.55; tab-size: 4; }
+        .code-pane[hidden] { display: none; }
+        .response-card { margin: 16px 0 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); overflow: hidden; }
+        .response-head { display: flex; justify-content: space-between; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); background: #eef4f8; color: var(--ink-soft); font-size: .82rem; font-weight: 700; }
+        .response-card pre { margin: 0; padding: 16px; overflow-x: auto; background: #fafcfe; color: var(--ink); font-family: var(--font-mono); font-size: .82rem; line-height: 1.55; }
+        .response-note { margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .8rem; }
+        .article-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); }
+        .article-nav__link { display: grid; gap: 2px; max-width: 46%; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink-soft); text-decoration: none; }
+        .article-nav__link span { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+        .article-nav__link strong { color: var(--teal-dark); font-size: .9rem; }
+        .article-nav__link--next { text-align: right; margin-left: auto; }
+        .docs-lang-switch { display: flex; align-items: center; gap: 5px; }
+        .docs-lang-switch a { padding: 4px 7px; border-radius: 5px; color: var(--ink-soft); font-size: .78rem; font-weight: 700; text-decoration: none; }
+        .docs-lang-switch a[aria-current="true"] { background: var(--mint); color: var(--teal-dark); }
+        a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
+        @media (max-width: 1180px) { .docs-shell { grid-template-columns: 232px minmax(0, 1fr); } .docs-toc { display: none; } }
+        @media (max-width: 860px) {
+            .docs-shell { grid-template-columns: 1fr; gap: 24px; padding-top: 22px; }
+            .docs-sidebar, .docs-toc { position: static; max-height: none; }
+            .site-nav { display: none; }
+            .article-nav { flex-direction: column; }
+            .article-nav__link { max-width: none; margin-left: 0 !important; text-align: left !important; }
         }
-        @media (max-width: 960px) {
-            .docs-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-        /* Sticky Sidebar */
-        .docs-sidebar {
-            position: sticky;
-            top: 24px;
-            max-height: calc(100vh - 48px);
-            overflow-y: auto;
-            padding: 20px;
-            border-radius: var(--radius);
-            background: var(--paper);
-            border: 1px solid var(--line);
-        }
-        .docs-sidebar h3 {
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--muted);
-            margin: 0 0 12px;
-        }
-        .docs-nav-group {
-            margin-bottom: 24px;
-        }
-        .docs-nav-group ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .docs-nav-group li {
-            margin-bottom: 6px;
-        }
-        .docs-nav-group a {
-            display: block;
-            padding: 6px 10px;
-            border-radius: 6px;
-            color: var(--ink-soft);
-            font-size: 0.9rem;
-            line-height: 1.4;
-            transition: all 0.15s ease;
-        }
-        .docs-nav-group a:hover,
-        .docs-nav-group a.is-active {
-            background: var(--white);
-            color: var(--teal-dark);
-            box-shadow: var(--shadow-sm);
-        }
-        /* Main Content */
-        .docs-content {
-            min-width: 0;
-        }
-        .docs-header {
-            margin-bottom: 40px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid var(--line);
-        }
-        .docs-header h1 {
-            font-size: 2.5rem;
-            color: var(--ink);
-            margin-bottom: 12px;
-        }
-        .docs-header .lead {
-            font-size: 1.15rem;
-            color: var(--ink-soft);
-            max-width: 800px;
-        }
-        /* Sections */
-        .docs-section {
-            margin-bottom: 60px;
-            scroll-margin-top: 30px;
-        }
-        .docs-section h2 {
-            font-size: 1.8rem;
-            color: var(--ink);
-            border-bottom: 2px solid var(--mint);
-            padding-bottom: 8px;
-            margin-bottom: 20px;
-        }
-        .docs-section h3 {
-            font-size: 1.3rem;
-            color: var(--ink-soft);
-            margin: 28px 0 12px;
-        }
-        /* Endpoint Box */
-        .endpoint-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            background: #061522;
-            color: #fff;
-            font-family: var(--font-mono);
-            font-size: 0.92rem;
-            margin-bottom: 16px;
-        }
-        .method-get {
-            background: #0c7c86;
-            color: #fff;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-        }
-        .method-post {
-            background: #2563eb;
-            color: #fff;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-        }
-        /* Tables */
-        .param-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 16px 0 24px;
-            font-size: 0.92rem;
-        }
-        .param-table th,
-        .param-table td {
-            padding: 10px 14px;
-            text-align: left;
-            border-bottom: 1px solid var(--line);
-        }
-        .param-table th {
-            background: var(--paper);
-            color: var(--ink);
-            font-weight: 600;
-        }
-        .param-table code {
-            font-family: var(--font-mono);
-            background: var(--mint);
-            color: var(--teal-dark);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-        }
-        /* Interactive Multi-Language Code Tabs */
-        .code-container {
-            margin: 20px 0 32px;
-            border-radius: var(--radius);
-            background: #061522;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            overflow: hidden;
-            box-shadow: var(--shadow-sm);
-        }
-        .code-tabs-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #0a1f30;
-            padding: 4px 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            overflow-x: auto;
-        }
-        .code-tabs-list {
-            display: flex;
-            gap: 4px;
-        }
-        .tab-btn {
-            background: transparent;
-            border: none;
-            color: #8da4b8;
-            font-size: 0.82rem;
-            font-weight: 600;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-        .tab-btn:hover {
-            color: #fff;
-            background: rgba(255, 255, 255, 0.06);
-        }
-        .tab-btn.is-active {
-            color: #0c7c86;
-            background: #061522;
-            border-bottom: 2px solid #0c7c86;
-        }
-        .copy-btn {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #c9e6ee;
-            font-size: 0.75rem;
-            padding: 4px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-        .copy-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-        }
-        .code-pane {
-            display: none;
-            margin: 0;
-            padding: 20px;
-            overflow-x: auto;
-            color: #c9e6ee;
-            font-family: var(--font-mono);
-            font-size: 0.88rem;
-            line-height: 1.5;
-        }
-        .code-pane.is-active {
-            display: block;
-        }
-        /* JSON response box */
-        .response-card {
-            border: 1px solid var(--line);
-            border-radius: var(--radius);
-            background: var(--paper);
-            margin: 20px 0;
-            overflow: hidden;
-        }
-        .response-head {
-            background: #eef4f8;
-            padding: 8px 16px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--ink-soft);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--line);
-        }
-        .response-card pre {
-            margin: 0;
-            padding: 16px 20px;
-            overflow-x: auto;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            color: var(--ink);
-            background: #fafcfe;
-        }
-        /* Callout alert boxes */
-        .alert-box {
-            padding: 16px 20px;
-            border-radius: 12px;
-            margin: 20px 0;
-            border-left: 4px solid var(--teal);
-            background: var(--mint);
-            font-size: 0.95rem;
-        }
-        .alert-box p {
-            margin: 0;
-        }
-        .alert-box strong {
-            color: var(--teal-dark);
-        }
+        @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+        @media print { .docs-sidebar, .docs-toc, .article-nav, .copy-endpoint, .copy-code, .site-header, .site-footer { display: none !important; } .docs-shell { display: block; } .code-pane[hidden] { display: block !important; } }
     </style>
 </head>
 <body>
-<a class="skip-link" href="#main"><?= e($t('a11y.skip')) ?></a>
+<a class="skip-link" href="#main"><?= $esc($t('docs.a11y.skip')) ?></a>
 
 <header class="site-header">
     <div class="container header-inner">
-        <a class="brand" href="/" aria-label="Origen Salud">
+        <a class="brand" href="<?= $esc($homePath) ?>" aria-label="Origen Salud">
             <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
                 <rect width="40" height="40" rx="12" fill="currentColor"/>
                 <path d="M20 11v18M11 20h18" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
@@ -329,1119 +584,682 @@ $year = date('Y');
             <span class="brand-name">Origen<span>Salud</span></span>
         </a>
 
-        <nav class="site-nav" aria-label="<?= e($t('nav.label')) ?>">
-            <a href="/#plataforma"><?= e($t('nav.platform')) ?></a>
-            <a href="/#snomed"><?= e($t('nav.snomed')) ?></a>
-            <a href="/#anmat"><?= e($t('nav.anmat')) ?></a>
-            <a href="/#api"><?= e($t('nav.api')) ?></a>
-            <a href="/docs" aria-current="page" class="is-active"><?= e($t('nav.docs')) ?></a>
-            <a href="/#contacto"><?= e($t('nav.contact')) ?></a>
+        <nav class="site-nav" aria-label="<?= $esc($t('nav.label')) ?>">
+            <a href="<?= $esc($homePath . '#plataforma') ?>"><?= $esc($t('nav.platform')) ?></a>
+            <a href="<?= $esc($homePath . '#snomed') ?>"><?= $esc($t('nav.snomed')) ?></a>
+            <a href="<?= $esc($homePath . '#api') ?>"><?= $esc($t('nav.api')) ?></a>
+            <a href="<?= $esc($canonical) ?>" aria-current="page"><?= $esc($t('nav.docs')) ?></a>
+            <a href="<?= $esc($contactPath) ?>"><?= $esc($t('nav.contact')) ?></a>
         </nav>
 
         <div class="header-actions">
-            <?php require dirname(__DIR__) . '/portal/Views/partials/language-switcher.php'; ?>
-            <a class="button button-small" href="<?= e($accessMailto) ?>"><?= e($t('nav.access')) ?></a>
+            <div class="docs-lang-switch" role="group" aria-label="<?= $esc($t('docs.lang.label')) ?>">
+                <?php foreach ($alternates as $alternate): ?>
+                    <a href="<?= $esc($alternate['href']) ?>" hreflang="<?= $esc($alternate['hreflang']) ?>"
+                       lang="<?= $esc($alternate['hreflang']) ?>"
+                       <?= $alternate['active'] ? 'aria-current="true"' : '' ?>
+                       data-lang-link title="<?= $esc($alternate['label']) ?>"><?= $esc($alternate['short']) ?></a>
+                <?php endforeach; ?>
+            </div>
+            <a class="button button-small" href="<?= $esc($accessMailto) ?>"><?= $esc($t('nav.access')) ?></a>
         </div>
     </div>
 </header>
 
 <main id="main">
-    <div class="container docs-layout">
-        <!-- Sidebar Navigation -->
-        <aside class="docs-sidebar" aria-label="<?= e($t('docs.nav_index')) ?>">
-            <div class="docs-nav-group">
-                <h3><?= e($t('docs.nav_getting_started')) ?></h3>
-                <ul>
-                    <li><a href="#intro"><?= e($t('docs.nav_overview')) ?></a></li>
-                    <li><a href="#auth"><?= e($t('docs.nav_auth')) ?></a></li>
-                    <li><a href="#domains"><?= e($t('docs.nav_domains')) ?></a></li>
-                </ul>
+    <div class="container docs-shell">
+        <aside class="docs-sidebar" aria-label="<?= $esc($t('docs.nav.index')) ?>">
+            <p class="docs-sidebar__title"><?= $esc($t('docs.nav.index')) ?></p>
+            <div class="docs-search">
+                <label class="sr-only" for="docs-search-input"><?= $esc($t('docs.a11y.search_label')) ?></label>
+                <input id="docs-search-input" type="search" autocomplete="off"
+                       placeholder="<?= $esc($t('docs.a11y.search_placeholder')) ?>">
+                <button type="button" class="docs-search__clear" id="docs-search-clear"
+                        aria-label="<?= $esc($t('docs.a11y.search_clear')) ?>">&times;</button>
             </div>
+            <p class="docs-search__empty" id="docs-search-empty"><?= $esc($t('docs.a11y.search_no_results')) ?></p>
 
-            <div class="docs-nav-group">
-                <h3><?= e($t('docs.nav_catalog_engine')) ?></h3>
-                <ul>
-                    <li><a href="#catalogs"><?= e($t('docs.nav_catalogs')) ?></a></li>
-                    <li><a href="#catalogs-items"><?= e($t('docs.nav_catalog_items')) ?></a></li>
-                    <li><a href="#catalogs-mappings"><?= e($t('docs.nav_mappings')) ?></a></li>
-                    <li><a href="#catalogs-pharma"><?= e($t('docs.nav_pharma')) ?></a></li>
-                </ul>
-            </div>
-
-            <div class="docs-nav-group">
-                <h3><?= e($t('docs.nav_unified_search')) ?></h3>
-                <ul>
-                    <li><a href="#search"><?= e($t('docs.nav_search')) ?></a></li>
-                </ul>
-            </div>
-
-            <div class="docs-nav-group">
-                <h3><?= e($t('docs.nav_dental')) ?></h3>
-                <ul>
-                    <li><a href="#dental-diagnoses"><?= e($t('docs.nav_dental_diagnoses')) ?></a></li>
-                    <li><a href="#dental-justifications"><?= e($t('docs.nav_dental_justifications')) ?></a></li>
-                    <li><a href="#dental-snomed"><?= e($t('docs.nav_dental_snomed')) ?></a></li>
-                    <li><a href="#dental-procedure"><?= e($t('docs.nav_dental_cdt')) ?></a></li>
-                    <li><a href="#cdt-nn"><?= e($t('docs.nav_cdt_nn')) ?></a></li>
-                </ul>
-            </div>
-
-            <div class="docs-nav-group">
-                <h3><?= e($t('docs.nav_clinical_catalogs')) ?></h3>
-                <ul>
-                    <li><a href="#snomed"><?= e($t('docs.nav_snomed')) ?></a></li>
-                    <li><a href="#cie10"><?= e($t('docs.nav_cie10')) ?></a></li>
-                    <li><a href="#anmat"><?= e($t('docs.nav_anmat')) ?></a></li>
-                    <li><a href="#loinc"><?= e($t('docs.nav_loinc')) ?></a></li>
-                    <li><a href="#local-catalogs"><?= e($t('docs.nav_local_catalogs')) ?></a></li>
-                </ul>
-            </div>
-
-            <div class="docs-nav-group">
-                <h3><?= e($t('docs.nav_fhir')) ?></h3>
-                <ul>
-                    <li><a href="#fhir-intro"><?= e($t('docs.nav_fhir_intro')) ?></a></li>
-                    <li><a href="#fhir-lookup"><?= e($t('docs.nav_fhir_lookup')) ?></a></li>
-                    <li><a href="#fhir-expand"><?= e($t('docs.nav_fhir_expand')) ?></a></li>
-                    <li><a href="#fhir-translate"><?= e($t('docs.nav_fhir_translate')) ?></a></li>
-                    <li><a href="#fhir-resources"><?= e($t('docs.nav_fhir_resources')) ?></a></li>
-                </ul>
-            </div>
+            <nav aria-label="<?= $esc($t('docs.nav.index')) ?>">
+                <?php foreach ($grouped as $group => $groupArticles): ?>
+                    <div class="docs-nav-group">
+                        <h3><?= $esc($t('docs.nav.groups.' . $group)) ?></h3>
+                        <ul>
+                            <?php foreach ($groupArticles as $article): ?>
+                                <?php
+                                $articleKey = 'docs.article.' . $article['key'];
+                                $searchText = $t($articleKey . '.title') . ' ' . $t($articleKey . '.lead') . ' ' . $t($articleKey . '.keywords');
+                                ?>
+                                <li>
+                                    <a href="#<?= $esc($article['id']) ?>" data-nav-link
+                                       data-search="<?= $esc(mb_strtolower($searchText, 'UTF-8')) ?>"><?= $esc($t($articleKey . '.title')) ?></a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endforeach; ?>
+            </nav>
         </aside>
 
-        <!-- Documentation Content -->
-        <article class="docs-content">
-            <div class="docs-header">
-                <h1><?= e($t('docs.header_title')) ?></h1>
-                <p class="lead">
-                    <?= e($t('docs.header_lead'))
-                    ?>
-                </p>
+        <div class="docs-main">
+            <div class="docs-intro">
+                <span class="docs-intro__badge"><?= $esc($t('docs.header.badge')) ?></span>
+                <h1><?= $esc($t('docs.header.title')) ?></h1>
+                <p><?= $esc($t('docs.header.lead')) ?></p>
             </div>
 
-            <!-- 1. GENERAL & AUTH -->
-            <section id="intro" class="docs-section">
-                <h2><?= e($t('docs.overview_title')) ?></h2>
-                <p>
-                    <?= e($t('docs.overview_text'))
-                    ?>
-                </p>
-                <table class="param-table">
-                    <thead>
-                        <tr>
-                            <th><?= e($t('docs.table_environment')) ?></th>
-                            <th>URL</th>
-                            <th><?= e($t('docs.table_description')) ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Production REST</strong></td>
-                            <td><code>https://api.origen.ar/v1</code></td>
-                            <td><?= e($t('docs.env_rest')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><strong>HL7 FHIR R4</strong></td>
-                            <td><code>https://api.origen.ar/fhir</code></td>
-                            <td><?= e($t('docs.env_fhir')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Health Check</strong></td>
-                            <td><code>https://api.origen.ar/health</code></td>
-                            <td><?= e($t('docs.env_health')) ?></td>
-                        </tr>
-                    </tbody>
-                </table>
+            <nav class="breadcrumb" aria-label="<?= $esc($t('docs.a11y.breadcrumb_label')) ?>">
+                <ol>
+                    <li><a href="<?= $esc($homePath) ?>"><?= $esc($t('breadcrumb.home')) ?></a></li>
+                    <li><a href="<?= $esc($canonical) ?>"><?= $esc($t('breadcrumb.docs')) ?></a></li>
+                    <li data-breadcrumb-group><?= $esc($t('docs.nav.groups.start')) ?></li>
+                    <li aria-current="page" data-breadcrumb-article><?= $esc($t('docs.article.overview.title')) ?></li>
+                </ol>
+            </nav>
+
+            <section id="overview" class="docs-section" data-article="overview">
+                <h2><?= $esc($t('docs.article.overview.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.overview.lead')) ?></p>
+
+                <?php $renderSubhead('overview-urls', $t('docs.overview.title')); ?>
+                <div class="table-wrap">
+                    <table class="param-table">
+                        <thead><tr><th scope="col"><?= $esc($t('docs.overview.env_col')) ?></th><th scope="col"><?= $esc($t('docs.overview.url_col')) ?></th><th scope="col"><?= $esc($t('docs.overview.access_col')) ?></th></tr></thead>
+                        <tbody>
+                            <tr><td><strong><?= $esc($t('common.production')) ?></strong><br><small><?= $esc($t('docs.overview.rest_desc')) ?></small></td><td><code><?= $esc($apiBase) ?></code></td><td><?= $esc($t('common.authenticated')) ?></td></tr>
+                            <tr><td><strong><?= $esc($t('common.public')) ?></strong><br><small><?= $esc($t('docs.overview.health_desc')) ?></small></td><td><code><?= $esc($apiBase) ?>/health</code></td><td><?= $esc($t('common.public')) ?></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <?php $renderEndpoint('/health', 'public'); ?>
+
+                <?php $renderSubhead('overview-health', $t('docs.overview.health_title')); ?>
+                <?php $renderResponse($t('docs.overview.health_title'), $healthResponse, $t('docs.overview.health_note') . ' ' . $t('common.illustrative')); ?>
+
+                <?php $renderSubhead('overview-format', $t('docs.overview.response_title')); ?>
+                <p><?= $esc($t('docs.overview.response_text')) ?></p>
+                <?php $renderCallout('', $t('common.note'), $t('common.json_only')); ?>
+                <?php $renderArticleNav('overview'); ?>
             </section>
 
-            <section id="auth" class="docs-section">
-                <h2><?= e($t('docs.auth_title')) ?></h2>
-                <p>
-                    <?= e($t('docs.auth_text'))
-                    ?>
-                </p>
-                <div class="endpoint-badge">
-                    <span class="method-get">HEADER</span>
-                    <code>Authorization: Bearer orig_live_xxxxxxxxxxxxxxxxxxxx</code>
+            <section id="auth" class="docs-section" data-article="auth">
+                <h2><?= $esc($t('docs.article.auth.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.auth.lead')) ?></p>
+
+                <?php $renderSubhead('auth-headers', $t('docs.auth.header_title')); ?>
+                <p><?= $esc($t('docs.auth.header_text')) ?></p>
+                <div class="table-wrap">
+                    <table class="param-table">
+                        <thead><tr><th scope="col"><?= $esc($t('auth.header')) ?></th><th scope="col"><?= $esc($t('docs.auth.header_title')) ?></th></tr></thead>
+                        <tbody>
+                            <tr><td><code>X-API-Key</code></td><td><code><?= $esc($t('docs.auth.xapikey')) ?></code></td></tr>
+                            <tr><td><code>Authorization</code></td><td><code><?= $esc($t('docs.auth.bearer')) ?></code></td></tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <div class="alert-box">
-                    <p>
-                        <strong><?= e($t('docs.auth_important')) ?></strong>
-                        <?= e($t('docs.auth_warning'))
-                        ?>
-                    </p>
-                </div>
+                <?php $renderSubhead('auth-format', $t('docs.auth.format_title')); ?>
+                <p><?= $esc($t('docs.auth.format_text')) ?></p>
+
+                <?php $renderSubhead('auth-management', $t('docs.auth.management_title')); ?>
+                <p><?= $esc($t('docs.auth.management_text')) ?></p>
+                <?php $renderCallout('danger', $t('docs.auth.warning_title'), $t('docs.auth.warning_text')); ?>
+                <?php $renderArticleNav('auth'); ?>
             </section>
 
-            <!-- CATALOG ENGINE -->
-            <section id="catalogs" class="docs-section">
-                <h2><?= e($t('docs.catalogs_title')) ?></h2>
-                <p>
-                    <?= e($t('docs.catalogs_text'))
-                    ?>
-                </p>
+            <section id="conventions" class="docs-section" data-article="conventions">
+                <h2><?= $esc($t('docs.article.conventions.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.conventions.lead')) ?></p>
 
-                <table class="param-table">
-                    <thead>
-                        <tr>
-                            <th><?= e($t('docs.table_scope')) ?></th>
-                            <th><?= e($t('docs.table_catalog_code')) ?></th>
-                            <th><?= e($t('docs.table_description')) ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong style="color:var(--teal-dark)">Propio</strong></td>
-                            <td><code>dentar</code></td>
-                            <td><?= e($t('docs.catalog_dentar')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Argentina</strong></td>
-                            <td><code>nn-pmo</code></td>
-                            <td><?= e($t('docs.catalog_pmo')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Argentina</strong></td>
-                            <td><code>nbu</code></td>
-                            <td><?= e($t('docs.catalog_nbu')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Argentina</strong></td>
-                            <td><code>nhpgd</code></td>
-                            <td><?= e($t('docs.catalog_hospitales')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Argentina</strong></td>
-                            <td><code>andis</code></td>
-                            <td><?= e($t('docs.catalog_discapacidad')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Argentina</strong></td>
-                            <td><code>kinesiologia</code></td>
-                            <td><?= e($t('docs.catalog_fisioterapia')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Argentina</strong></td>
-                            <td><code>salud-mental</code></td>
-                            <td><?= e($t('docs.catalog_psicologia')) ?></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <?php $renderSubhead('conventions-success', $t('docs.conventions.success_title')); ?>
+                <?php $renderResponse($t('docs.conventions.success_title'), $successResponse); ?>
 
-                <h3 id="catalogs-items"><?= e($t('docs.catalog_items_title')) ?></h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/catalogs/{catalog_code}/items?q={query}&amp;limit={n}</code>
+                <?php $renderSubhead('conventions-error', $t('docs.conventions.error_title')); ?>
+                <?php $renderResponse($t('docs.conventions.error_title'), $errorResponse); ?>
+                <div class="table-wrap">
+                    <table class="param-table">
+                        <thead><tr><th scope="col"><?= $esc($t('docs.conventions.codes_col')) ?></th><th scope="col"><?= $esc($t('docs.conventions.code_col')) ?></th><th scope="col"><?= $esc($t('docs.conventions.meaning_col')) ?></th></tr></thead>
+                        <tbody>
+                            <tr><td>400</td><td><code>bad_request</code></td><td><?= $esc($t('docs.conventions.err_400')) ?></td></tr>
+                            <tr><td>401</td><td><code>unauthorized</code></td><td><?= $esc($t('docs.conventions.err_401')) ?></td></tr>
+                            <tr><td>404</td><td><code>not_found</code></td><td><?= $esc($t('docs.conventions.err_404')) ?></td></tr>
+                            <tr><td>405</td><td><code>method_not_allowed</code></td><td><?= $esc($t('docs.conventions.err_405')) ?></td></tr>
+                            <tr><td>500</td><td><code>internal_error</code></td><td><?= $esc($t('docs.conventions.err_500')) ?></td></tr>
+                            <tr><td>503</td><td><code>service_unavailable</code></td><td><?= $esc($t('docs.conventions.err_503')) ?></td></tr>
+                        </tbody>
+                    </table>
                 </div>
+                <?php $renderCallout('warning', $t('common.warning'), $t('docs.conventions.no_403')); ?>
 
-                <div class="code-container" data-container="cat-items">
-                    <div class="code-tabs-header">
-                        <div class="code-tabs-list">
-                            <button class="tab-btn is-active" data-lang="curl">cURL</button>
-                            <button class="tab-btn" data-lang="js">JavaScript</button>
-                            <button class="tab-btn" data-lang="python">Python</button>
-                            <button class="tab-btn" data-lang="php">PHP</button>
-                            <button class="tab-btn" data-lang="csharp">C# (.NET)</button>
-                            <button class="tab-btn" data-lang="java">Java</button>
-                            <button class="tab-btn" data-lang="go">Go</button>
-                        </div>
-                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
-                    </div>
+                <?php $renderSubhead('conventions-request-id', $t('docs.conventions.request_id_title')); ?>
+                <p><?= $esc($t('docs.conventions.request_id_text')) ?></p>
 
-                    <pre class="code-pane is-active" data-lang="curl"><code># Consultar hemograma en NBU
-curl -s -X GET "https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma" \
-  -H "Authorization: Bearer TU_API_KEY"</code></pre>
+                <?php $renderSubhead('conventions-language', $t('docs.conventions.lang_title')); ?>
+                <p><?= $esc($t('docs.conventions.lang_text')) ?></p>
 
-                    <pre class="code-pane" data-lang="js"><code>const res = await fetch('https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma', {
-  headers: { 'Authorization': 'Bearer TU_API_KEY' }
-});
-const items = await res.json();
-console.log(items.data);</code></pre>
+                <?php $renderSubhead('conventions-pagination', $t('docs.conventions.pagination_title')); ?>
+                <p><?= $esc($t('docs.conventions.pagination_text')) ?></p>
 
-                    <pre class="code-pane" data-lang="python"><code>import requests
+                <?php $renderSubhead('conventions-methods', $t('docs.conventions.methods_title')); ?>
+                <p><?= $esc($t('docs.conventions.methods_text')) ?></p>
 
-res = requests.get(
-    "https://api.origen.ar/v1/catalogs/nbu/items",
-    headers={"Authorization": "Bearer TU_API_KEY"},
-    params={"q": "hemograma"}
-)
-print(res.json()["data"])</code></pre>
-
-                    <pre class="code-pane" data-lang="php"><code>&lt;?php
-$ch = curl_init('https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma');
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer TU_API_KEY', 'Accept: application/json']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$data = json_decode(curl_exec($ch), true);
-curl_close($ch);
-print_r($data['data']);</code></pre>
-
-                    <pre class="code-pane" data-lang="csharp"><code>using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Authorization", "Bearer TU_API_KEY");
-var json = await client.GetStringAsync("https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma");
-Console.WriteLine(json);</code></pre>
-
-                    <pre class="code-pane" data-lang="java"><code>HttpRequest req = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma"))
-    .header("Authorization", "Bearer TU_API_KEY").GET().build();
-HttpResponse&lt;String&gt; resp = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
-System.out.println(resp.body());</code></pre>
-
-                    <pre class="code-pane" data-lang="go"><code>req, _ := http.NewRequest("GET", "https://api.origen.ar/v1/catalogs/nbu/items?q=hemograma", nil)
-req.Header.Set("Authorization", "Bearer TU_API_KEY")
-resp, _ := http.DefaultClient.Do(req)
-body, _ := io.ReadAll(resp.Body)
-fmt.Println(string(body))</code></pre>
-                </div>
-
-                <h3 id="catalogs-mappings"><?= e($t('docs.mappings_title')) ?></h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/mappings?system={system}&amp;code={code}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.mappings_text'))
-                    ?>
-                </p>
-
-                <h3 id="catalogs-pharma"><?= e($t('docs.pharma_title')) ?></h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/medicines/identifiers/{system}/{code}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.pharma_text'))
-                    ?>
-                </p>
+                <?php $renderSubhead('conventions-headers', $t('docs.conventions.headers_title')); ?>
+                <p><?= $esc($t('docs.conventions.headers_text')) ?></p>
+                <?php $renderArticleNav('conventions'); ?>
             </section>
 
-            <!-- 2. UNIFIED SEARCH -->
-            <section id="search" class="docs-section">
-                <h2><?= e($t('docs.search_title')) ?></h2>
-                <p><?= e($t('docs.search_text')) ?></p>
+            <section id="quickstart" class="docs-section" data-article="quickstart">
+                <h2><?= $esc($t('docs.article.quickstart.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.quickstart.lead')) ?></p>
+                <?php $renderEndpoint('/v1/catalogs/dentar-pr/items?q=evaluacion&limit=5'); ?>
+                <p><strong><?= $esc($t('docs.quickstart.endpoint_label')) ?>:</strong> <code><?= $esc($apiBase . '/v1/catalogs/dentar-pr/items') ?></code></p>
 
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/search?q={query}&amp;domains={d1,d2}&amp;lang={es-AR|en|pt-BR}&amp;limit={n}</code>
-                </div>
+                <?php $renderSubhead('quickstart-steps', $t('docs.quickstart.code_title')); ?>
+                <ol><li><?= $esc($t('docs.quickstart.step1')) ?></li><li><?= $esc($t('docs.quickstart.step2')) ?></li><li><?= $esc($t('docs.quickstart.step3')) ?></li></ol>
+                <?php $renderCode('quickstart', $quickstartSnippets); ?>
 
-                <table class="param-table">
-                    <thead>
-                        <tr>
-                            <th><?= e($t('docs.table_parameter')) ?></th>
-                            <th><?= e($t('docs.table_type')) ?></th>
-                            <th><?= e($t('docs.table_default')) ?></th>
-                            <th><?= e($t('docs.table_description')) ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><code>q</code></td>
-                            <td>string</td>
-                            <td><em><?= e($t('docs.table_required')) ?></em></td>
-                            <td><?= e($t('docs.search_q')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><code>domains</code></td>
-                            <td>string</td>
-                            <td><code>snomed,cie10,odontologia</code></td>
-                            <td><?= e($t('docs.search_domains')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><code>limit</code></td>
-                            <td>integer</td>
-                            <td><code>20</code></td>
-                            <td><?= e($t('docs.search_limit')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><code>lang</code></td>
-                            <td>string</td>
-                            <td><code>es-AR</code></td>
-                            <td><?= e($t('docs.search_lang')) ?></td>
-                        </tr>
-                        <tr>
-                            <td><code>Accept-Language</code></td>
-                            <td>header</td>
-                            <td><code>es-AR</code></td>
-                            <td><?= e($t('docs.search_accept_language')) ?></td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <!-- MULTI-LANGUAGE CODE TABS EXAMPLE 1 -->
-                <div class="code-container" data-container="search">
-                    <div class="code-tabs-header">
-                        <div class="code-tabs-list">
-                            <button class="tab-btn is-active" data-lang="curl">cURL</button>
-                            <button class="tab-btn" data-lang="js">JavaScript</button>
-                            <button class="tab-btn" data-lang="python">Python</button>
-                            <button class="tab-btn" data-lang="php">PHP</button>
-                            <button class="tab-btn" data-lang="csharp">C# (.NET)</button>
-                            <button class="tab-btn" data-lang="java">Java</button>
-                            <button class="tab-btn" data-lang="go">Go</button>
-                        </div>
-                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
-                    </div>
-
-                    <!-- cURL -->
-                    <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/search?q=caries&amp;domains=odontologia,snomed,cie10&amp;lang=<?= e(I18n::metadata($locale)['api_language']) ?>&amp;limit=5" \
-  -H "Authorization: Bearer TU_API_KEY" \
-  -H "Accept: application/json" \
-  -H "Accept-Language: <?= e(I18n::metadata($locale)['api_language']) ?>"</code></pre>
-
-                    <!-- JavaScript -->
-                    <pre class="code-pane" data-lang="js"><code>const apiKey = 'TU_API_KEY';
-const language = '<?= e(I18n::metadata($locale)['api_language']) ?>';
-const url = 'https://api.origen.ar/v1/search?q=caries&amp;domains=odontologia,snomed,cie10&amp;lang=' + language + '&amp;limit=5';
-
-const response = await fetch(url, {
-  method: 'GET',
-  headers: {
-    'Authorization': `Bearer ${apiKey}`,
-    'Accept': 'application/json',
-    'Accept-Language': language
-  }
-});
-
-const result = await response.json();
-console.log(result.data);</code></pre>
-
-                    <!-- Python -->
-                    <pre class="code-pane" data-lang="python"><code>import requests
-
-api_key = "TU_API_KEY"
-url = "https://api.origen.ar/v1/search"
-params = {
-    "q": "caries",
-    "domains": "odontologia,snomed,cie10",
-    "limit": 5
-}
-headers = {
-    "Authorization": f"Bearer {api_key}",
-    "Accept": "application/json"
-}
-
-response = requests.get(url, headers=headers, params=params)
-data = response.json()
-print(data["data"])</code></pre>
-
-                    <!-- PHP -->
-                    <pre class="code-pane" data-lang="php"><code>&lt;?php
-$apiKey = 'TU_API_KEY';
-$url = 'https://api.origen.ar/v1/search?' . http_build_query([
-    'q' => 'caries',
-    'domains' => 'odontologia,snomed,cie10',
-    'limit' => 5
-]);
-
-$ch = curl_init($url);
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => [
-        'Authorization: Bearer ' . $apiKey,
-        'Accept: application/json'
-    ]
-]);
-
-$response = curl_exec($ch);
-curl_close($ch);
-$result = json_decode($response, true);
-print_r($result['data']);</code></pre>
-
-                    <!-- C# -->
-                    <pre class="code-pane" data-lang="csharp"><code>using System;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading.Tasks;
-
-using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "TU_API_KEY");
-client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-var url = "https://api.origen.ar/v1/search?q=caries&domains=odontologia,snomed,cie10&limit=5";
-var response = await client.GetStringAsync(url);
-Console.WriteLine(response);</code></pre>
-
-                    <!-- Java -->
-                    <pre class="code-pane" data-lang="java"><code>import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-
-public class Main {
-    public static void main(String[] args) throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("https://api.origen.ar/v1/search?q=caries&domains=odontologia,snomed,cie10&limit=5"))
-            .header("Authorization", "Bearer TU_API_KEY")
-            .header("Accept", "application/json")
-            .GET()
-            .build();
-
-        HttpResponse&lt;String&gt; response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.out.println(response.body());
-    }
-}</code></pre>
-
-                    <!-- Go -->
-                    <pre class="code-pane" data-lang="go"><code>package main
-
-import (
-	"fmt"
-	"io"
-	"net/http"
-)
-
-func main() {
-	url := "https://api.origen.ar/v1/search?q=caries&domains=odontologia,snomed,cie10&limit=5"
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer TU_API_KEY")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
-}</code></pre>
-                </div>
+                <?php $renderSubhead('quickstart-response', $t('docs.quickstart.response_title')); ?>
+                <?php $renderResponse($t('docs.quickstart.response_title'), $quickstartResponse, $t('docs.quickstart.response_note') . ' ' . $t('common.illustrative')); ?>
+                <?php $renderCallout('danger', $t('docs.auth.warning_title'), $t('docs.quickstart.security_note')); ?>
+                <?php $renderArticleNav('quickstart'); ?>
             </section>
 
-            <!-- 3. DENTAL MODULE (DENTAR) -->
-            <section id="dental-diagnoses" class="docs-section">
-                <h2><?= e($t('docs.dental_title')) ?></h2>
-                <p>
-                    <?= e($t('docs.dental_text'))
-                    ?>
-                </p>
+            <section id="search" class="docs-section" data-article="search">
+                <h2><?= $esc($t('docs.article.search.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.search.lead')) ?></p>
 
-                <h3><?= e($t('docs.dental_diagnoses_title')) ?></h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/odontologia/diagnosticos[?q=...&amp;snomed=...&amp;cie10=...]</code>
-                </div>
+                <?php $renderSubhead('search-routes', $t('docs.search.endpoints_title')); ?>
+                <p><?= $esc($t('docs.search.endpoints_text')) ?></p>
+                <?php $renderEndpoint('/v1/search'); ?>
+                <?php $renderEndpoint('/v1/search/{domain}'); ?>
+                <?php $renderEndpoint('/v1/concepts/search'); ?>
 
-                <!-- MULTI-LANGUAGE CODE TABS EXAMPLE 2 -->
-                <div class="code-container" data-container="dental-diag">
-                    <div class="code-tabs-header">
-                        <div class="code-tabs-list">
-                            <button class="tab-btn is-active" data-lang="curl">cURL</button>
-                            <button class="tab-btn" data-lang="js">JavaScript</button>
-                            <button class="tab-btn" data-lang="python">Python</button>
-                            <button class="tab-btn" data-lang="php">PHP</button>
-                            <button class="tab-btn" data-lang="csharp">C# (.NET)</button>
-                            <button class="tab-btn" data-lang="java">Java</button>
-                            <button class="tab-btn" data-lang="go">Go</button>
-                        </div>
-                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
-                    </div>
+                <?php $renderSubhead('search-domains', $t('docs.search.domains_title')); ?>
+                <p><?= $esc($t('docs.search.domains_text')) ?></p>
 
-                    <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos?snomed=80967001" \
-  -H "Authorization: Bearer TU_API_KEY"</code></pre>
+                <?php $renderSubhead('search-params', $t('docs.search.params_title')); ?>
+                <?php $renderParams([
+                    ['name' => 'q', 'type' => 'string', 'default' => '—', 'required' => $t('common.required'), 'text' => $t('docs.search.param_q')],
+                    ['name' => 'domains', 'type' => 'csv', 'default' => 'snomed,cie10,anmat', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_domains')],
+                    ['name' => 'lang', 'type' => 'string', 'default' => 'es', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_lang')],
+                    ['name' => 'limit', 'type' => 'integer', 'default' => '20', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_limit')],
+                    ['name' => 'offset', 'type' => 'integer', 'default' => '0', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_offset')],
+                    ['name' => 'cie10_type', 'type' => 'enum', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_cie10')],
+                    ['name' => 'refset', 'type' => 'csv', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_refset')],
+                ]); ?>
 
-                    <pre class="code-pane" data-lang="js"><code>const response = await fetch('https://api.origen.ar/v1/odontologia/diagnosticos?snomed=80967001', {
-  headers: { 'Authorization': 'Bearer TU_API_KEY' }
-});
-const diagnoses = await response.json();
-console.log(diagnoses.data);</code></pre>
+                <?php $renderSubhead('search-example', $t('docs.search.example_title')); ?>
+                <?php $renderCode('search', ['curl' => $searchCurl]); ?>
+                <?php $renderResponse($t('docs.quickstart.response_title'), $searchResponse, $t('common.illustrative')); ?>
 
-                    <pre class="code-pane" data-lang="python"><code>import requests
+                <?php $renderSubhead('search-meta', $t('docs.search.meta_title')); ?>
+                <p><?= $esc($t('docs.search.meta_text')) ?></p>
 
-res = requests.get(
-    "https://api.origen.ar/v1/odontologia/diagnosticos",
-    headers={"Authorization": "Bearer TU_API_KEY"},
-    params={"snomed": "80967001"}
-)
-print(res.json()["data"])</code></pre>
-
-                    <pre class="code-pane" data-lang="php"><code>&lt;?php
-$ch = curl_init('https://api.origen.ar/v1/odontologia/diagnosticos?snomed=80967001');
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer TU_API_KEY', 'Accept: application/json']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$data = json_decode(curl_exec($ch), true);
-curl_close($ch);
-print_r($data['data']);</code></pre>
-
-                    <pre class="code-pane" data-lang="csharp"><code>using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Authorization", "Bearer TU_API_KEY");
-var json = await client.GetStringAsync("https://api.origen.ar/v1/odontologia/diagnosticos?snomed=80967001");
-Console.WriteLine(json);</code></pre>
-
-                    <pre class="code-pane" data-lang="java"><code>HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.origen.ar/v1/odontologia/diagnosticos?snomed=80967001"))
-    .header("Authorization", "Bearer TU_API_KEY")
-    .GET().build();
-HttpResponse&lt;String&gt; response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-System.out.println(response.body());</code></pre>
-
-                    <pre class="code-pane" data-lang="go"><code>req, _ := http.NewRequest("GET", "https://api.origen.ar/v1/odontologia/diagnosticos?snomed=80967001", nil)
-req.Header.Set("Authorization", "Bearer TU_API_KEY")
-resp, _ := http.DefaultClient.Do(req)
-body, _ := io.ReadAll(resp.Body)
-fmt.Println(string(body))</code></pre>
-                </div>
-
-                <div class="response-card">
-                    <div class="response-head">
-                        <span>Response JSON (200 OK)</span>
-                        <span>took_ms: 1.45</span>
-                    </div>
-                    <pre><code>{
-  "data": [
-    {
-      "code": "DNT-DX-0005",
-      "clinical_name": "Caries limitada al esmalte (manchas blancas / cavitación incipiente)",
-      "cie10": { "code": "K02.0", "description": "Caries limitada al esmalte" },
-      "snomed_ct": { "concept_id": "80967001", "term": "Caries dental" }
-    },
-    {
-      "code": "DNT-DX-0006",
-      "clinical_name": "Caries de la dentina (cavitación simple, compuesta o compleja)",
-      "cie10": { "code": "K02.1", "description": "Caries de la dentina" },
-      "snomed_ct": { "concept_id": "80967001", "term": "Caries dental" }
-    }
-  ],
-  "meta": { "total": 2, "language": "es" }
-}</code></pre>
-                </div>
+                <?php $renderSubhead('search-concepts', $t('docs.search.concepts_title')); ?>
+                <p><?= $esc($t('docs.search.concepts_text')) ?></p>
+                <?php $renderArticleNav('search'); ?>
             </section>
 
-            <!-- 4. CLINICAL JUSTIFICATIONS -->
-            <section id="dental-justifications" class="docs-section">
-                <h3><?= e($t('docs.dental_justification_title')) ?></h3>
-                <p>
-                    <?= e($t('docs.dental_justification_text'))
-                    ?>
-                </p>
+            <section id="catalogs" class="docs-section" data-article="catalogs">
+                <h2><?= $esc($t('docs.article.catalogs.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.catalogs.lead')) ?></p>
 
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/odontologia/{identificador}/diagnosticos</code>
+                <?php $renderSubhead('catalogs-list', $t('docs.catalogs.list_title')); ?>
+                <p><?= $esc($t('docs.catalogs.list_text')) ?></p>
+                <?php $renderEndpoint('/v1/catalogs'); ?>
+
+                <?php $renderSubhead('catalogs-releases', $t('docs.catalogs.releases_title')); ?>
+                <p><?= $esc($t('docs.catalogs.releases_text')) ?></p>
+                <?php $renderEndpoint('/v1/catalogs/{catalog_code}/releases'); ?>
+
+                <?php $renderSubhead('catalogs-items', $t('docs.catalogs.items_title')); ?>
+                <p><?= $esc($t('docs.catalogs.items_text')) ?></p>
+                <?php $renderEndpoint('/v1/catalogs/{catalog_code}/items'); ?>
+
+                <?php $renderSubhead('catalogs-detail', $t('docs.catalogs.detail_title')); ?>
+                <p><?= $esc($t('docs.catalogs.detail_text')) ?></p>
+                <?php $renderEndpoint('/v1/catalogs/{catalog_code}/items/{item}'); ?>
+
+                <?php $renderSubhead('catalogs-codes', $t('docs.catalogs.codes_title')); ?>
+                <p><?= $esc($t('docs.catalogs.codes_text')) ?></p>
+                <div class="table-wrap">
+                    <table class="param-table">
+                        <thead><tr><th scope="col"><?= $esc($t('table.catalog_code')) ?></th><th scope="col"><?= $esc($t('docs.search.domains_title')) ?></th></tr></thead>
+                        <tbody>
+                            <tr><td><code>dentar-pr</code></td><td><?= $esc($t('docs.catalogs.code_dentar_pr')) ?></td></tr>
+                            <tr><td><code>dentar-dx</code></td><td><?= $esc($t('docs.catalogs.code_dentar_dx')) ?></td></tr>
+                            <tr><td><code>nomenclador-odontologico-ar</code></td><td><?= $esc($t('docs.catalogs.code_nomenclador')) ?></td></tr>
+                            <tr><td><code>nbu</code></td><td><?= $esc($t('docs.catalogs.code_nbu')) ?></td></tr>
+                            <tr><td><code>nn-pmo</code></td><td><?= $esc($t('docs.catalogs.code_nn_pmo')) ?></td></tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- MULTI-LANGUAGE CODE TABS EXAMPLE 3 -->
-                <div class="code-container" data-container="dental-just">
-                    <div class="code-tabs-header">
-                        <div class="code-tabs-list">
-                            <button class="tab-btn is-active" data-lang="curl">cURL</button>
-                            <button class="tab-btn" data-lang="js">JavaScript</button>
-                            <button class="tab-btn" data-lang="python">Python</button>
-                            <button class="tab-btn" data-lang="php">PHP</button>
-                            <button class="tab-btn" data-lang="csharp">C# (.NET)</button>
-                            <button class="tab-btn" data-lang="java">Java</button>
-                            <button class="tab-btn" data-lang="go">Go</button>
-                        </div>
-                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
-                    </div>
+                <?php $renderSubhead('catalogs-editorial', $t('docs.catalogs.editorial_title')); ?>
+                <p><?= $esc($t('docs.catalogs.editorial_text')) ?></p>
 
-                    <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/odontologia/02.01/diagnosticos" \
-  -H "Authorization: Bearer TU_API_KEY"</code></pre>
-
-                    <pre class="code-pane" data-lang="js"><code>const res = await fetch('https://api.origen.ar/v1/odontologia/02.01/diagnosticos', {
-  headers: { 'Authorization': 'Bearer TU_API_KEY' }
-});
-const auditData = await res.json();
-console.log(auditData.data.clinical_justifications);</code></pre>
-
-                    <pre class="code-pane" data-lang="python"><code>import requests
-
-res = requests.get(
-    "https://api.origen.ar/v1/odontologia/02.01/diagnosticos",
-    headers={"Authorization": "Bearer TU_API_KEY"}
-)
-print(res.json()["data"]["clinical_justifications"])</code></pre>
-
-                    <pre class="code-pane" data-lang="php"><code>&lt;?php
-$ch = curl_init('https://api.origen.ar/v1/odontologia/02.01/diagnosticos');
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer TU_API_KEY', 'Accept: application/json']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$response = json_decode(curl_exec($ch), true);
-curl_close($ch);
-print_r($response['data']['clinical_justifications']);</code></pre>
-
-                    <pre class="code-pane" data-lang="csharp"><code>using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Authorization", "Bearer TU_API_KEY");
-var json = await client.GetStringAsync("https://api.origen.ar/v1/odontologia/02.01/diagnosticos");
-Console.WriteLine(json);</code></pre>
-
-                    <pre class="code-pane" data-lang="java"><code>HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.origen.ar/v1/odontologia/02.01/diagnosticos"))
-    .header("Authorization", "Bearer TU_API_KEY")
-    .GET().build();
-HttpResponse&lt;String&gt; response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-System.out.println(response.body());</code></pre>
-
-                    <pre class="code-pane" data-lang="go"><code>req, _ := http.NewRequest("GET", "https://api.origen.ar/v1/odontologia/02.01/diagnosticos", nil)
-req.Header.Set("Authorization", "Bearer TU_API_KEY")
-resp, _ := http.DefaultClient.Do(req)
-body, _ := io.ReadAll(resp.Body)
-fmt.Println(string(body))</code></pre>
-                </div>
+                <?php $renderSubhead('catalogs-pricing', $t('docs.catalogs.pricing_title')); ?>
+                <p><?= $esc($t('docs.catalogs.pricing_text')) ?></p>
+                <?php $renderArticleNav('catalogs'); ?>
             </section>
 
-            <!-- 5. SNOMED DENTAL LOOKUP -->
-            <section id="dental-snomed" class="docs-section">
-                <h3><?= e($t('docs.dental_snomed_title')) ?></h3>
-                <p>
-                    <?= e($t('docs.dental_snomed_text'))
-                    ?>
-                </p>
+            <section id="mappings" class="docs-section" data-article="mappings">
+                <h2><?= $esc($t('docs.article.mappings.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.mappings.lead')) ?></p>
 
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/odontologia/snomed/{sctid}</code>
-                </div>
+                <?php $renderSubhead('mappings-search', $t('docs.mappings.search_title')); ?>
+                <p><?= $esc($t('docs.mappings.search_text')) ?></p>
+                <?php $renderEndpoint('/v1/mappings'); ?>
+                <?php $renderCode('mappings', ['curl' => $mappingsCurl]); ?>
+                <?php $renderParams([
+                    ['name' => 'system', 'type' => 'string', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.mappings.param_system')],
+                    ['name' => 'code', 'type' => 'string', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.mappings.param_code')],
+                    ['name' => 'catalog', 'type' => 'string', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.mappings.param_catalog')],
+                ]); ?>
 
-                <div class="code-container" data-container="dental-snomed">
-                    <div class="code-tabs-header">
-                        <div class="code-tabs-list">
-                            <button class="tab-btn is-active" data-lang="curl">cURL</button>
-                            <button class="tab-btn" data-lang="js">JavaScript</button>
-                            <button class="tab-btn" data-lang="python">Python</button>
-                            <button class="tab-btn" data-lang="php">PHP</button>
-                            <button class="tab-btn" data-lang="csharp">C# (.NET)</button>
-                            <button class="tab-btn" data-lang="java">Java</button>
-                            <button class="tab-btn" data-lang="go">Go</button>
-                        </div>
-                        <button class="copy-btn"><?= e($t('docs.copy')) ?></button>
-                    </div>
+                <?php $renderSubhead('mappings-units', $t('docs.mappings.units_title')); ?>
+                <p><?= $esc($t('docs.mappings.units_text')) ?></p>
+                <?php $renderEndpoint('/v1/pricing-units'); ?>
 
-                    <pre class="code-pane is-active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/odontologia/snomed/80967001" \
-  -H "Authorization: Bearer TU_API_KEY"</code></pre>
-
-                    <pre class="code-pane" data-lang="js"><code>const res = await fetch('https://api.origen.ar/v1/odontologia/snomed/80967001', {
-  headers: { 'Authorization': 'Bearer TU_API_KEY' }
-});
-const data = await res.json();
-console.log(data.data.diagnoses);</code></pre>
-
-                    <pre class="code-pane" data-lang="python"><code>import requests
-
-res = requests.get(
-    "https://api.origen.ar/v1/odontologia/snomed/80967001",
-    headers={"Authorization": "Bearer TU_API_KEY"}
-)
-print(res.json()["data"])</code></pre>
-
-                    <pre class="code-pane" data-lang="php"><code>&lt;?php
-$ch = curl_init('https://api.origen.ar/v1/odontologia/snomed/80967001');
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer TU_API_KEY', 'Accept: application/json']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$res = json_decode(curl_exec($ch), true);
-curl_close($ch);
-print_r($res['data']);</code></pre>
-
-                    <pre class="code-pane" data-lang="csharp"><code>using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Authorization", "Bearer TU_API_KEY");
-var json = await client.GetStringAsync("https://api.origen.ar/v1/odontologia/snomed/80967001");
-Console.WriteLine(json);</code></pre>
-
-                    <pre class="code-pane" data-lang="java"><code>HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.origen.ar/v1/odontologia/snomed/80967001"))
-    .header("Authorization", "Bearer TU_API_KEY")
-    .GET().build();
-HttpResponse&lt;String&gt; response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-System.out.println(response.body());</code></pre>
-
-                    <pre class="code-pane" data-lang="go"><code>req, _ := http.NewRequest("GET", "https://api.origen.ar/v1/odontologia/snomed/80967001", nil)
-req.Header.Set("Authorization", "Bearer TU_API_KEY")
-resp, _ := http.DefaultClient.Do(req)
-body, _ := io.ReadAll(resp.Body)
-fmt.Println(string(body))</code></pre>
-                </div>
+                <?php $renderSubhead('mappings-pharma', $t('docs.mappings.pharma_title')); ?>
+                <p><?= $esc($t('docs.mappings.pharma_text')) ?></p>
+                <?php $renderEndpoint('/v1/medicines/identifiers/{system}/{code}'); ?>
+                <?php $renderArticleNav('mappings'); ?>
             </section>
 
-            <!-- CDT / NN: exposición real -->
-            <section id="cdt-nn" class="docs-section">
-                <h2><?= e($t('cdtnn.title')) ?></h2>
-                <p><?= e($t('cdtnn.intro')) ?></p>
+            <section id="clinical" class="docs-section" data-article="clinical">
+                <h2><?= $esc($t('docs.article.clinical.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.clinical.lead')) ?></p>
 
-                <h3><?= e($t('cdtnn.cdt_title')) ?></h3>
-                <p><?= e($t('cdtnn.cdt_text')) ?></p>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/search/odontologia?q={query}&amp;lang={locale}</code>
-                </div>
-                <div class="endpoint-badge" style="margin-top: 6px;">
-                    <span class="method-get">GET</span>
-                    <code>/v1/odontologia/{id}</code>
-                </div>
-                <div class="alert-box">
-                    <p><strong><?= e($t('cdtnn.no_cdt_endpoint')) ?></strong>
-                        <?= e($t('cdtnn.cdt_dialect')) ?></p>
-                </div>
+                <?php $renderSubhead('clinical-snomed', $t('docs.clinical.snomed_title')); ?>
+                <p><?= $esc($t('docs.clinical.snomed_text')) ?></p>
+                <?php $renderEndpoint('/v1/snomed/{sctid}'); ?>
+                <?php $renderEndpoint('/v1/concepts/{id}'); ?>
 
-                <h3><?= e($t('cdtnn.nn_title')) ?></h3>
-                <p><?= e($t('cdtnn.nn_text')) ?></p>
+                <?php $renderSubhead('clinical-cie10', $t('docs.clinical.cie10_title')); ?>
+                <p><?= $esc($t('docs.clinical.cie10_text')) ?></p>
+                <?php $renderEndpoint('/v1/cie10/{codigo}'); ?>
 
-                <h3><?= e($t('cdtnn.nomenclador_title')) ?></h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/nomenclador</code>
-                </div>
-                <p><?= e($t('cdtnn.nomenclador_text')) ?></p>
+                <?php $renderSubhead('clinical-loinc', $t('docs.clinical.loinc_title')); ?>
+                <p><?= $esc($t('docs.clinical.loinc_text')) ?></p>
+                <?php $renderEndpoint('/v1/loinc'); ?>
+                <?php $renderEndpoint('/v1/loinc/{code}'); ?>
+
+                <?php $renderSubhead('clinical-anmat', $t('docs.clinical.anmat_title')); ?>
+                <p><?= $esc($t('docs.clinical.anmat_text')) ?></p>
+                <?php $renderEndpoint('/v1/anmat/{id}'); ?>
+
+                <?php $renderSubhead('clinical-nomenclador', $t('docs.clinical.nomenclador_title')); ?>
+                <p><?= $esc($t('docs.clinical.nomenclador_text')) ?></p>
+                <?php $renderEndpoint('/v1/nomenclador'); ?>
+
+                <?php $renderSubhead('clinical-vademecum', $t('docs.clinical.vademecum_title')); ?>
+                <p><?= $esc($t('docs.clinical.vademecum_text')) ?></p>
+                <?php $renderEndpoint('/v1/vademecum'); ?>
+
+                <?php $renderSubhead('clinical-pmo', $t('docs.clinical.pmo_title')); ?>
+                <p><?= $esc($t('docs.clinical.pmo_text')) ?></p>
+                <?php $renderEndpoint('/v1/pmo/practicas'); ?>
+                <?php $renderEndpoint('/v1/pmo/practicas/{code}'); ?>
+                <?php $renderEndpoint('/v1/pmo/medicamentos'); ?>
+                <?php $renderEndpoint('/v1/pmo/normativa'); ?>
+
+                <?php $renderSubhead('clinical-local', $t('docs.clinical.local_title')); ?>
+                <p><?= $esc($t('docs.clinical.local_text')) ?></p>
+                <?php $renderEndpoint('/v1/{catalogo}/{id}'); ?>
+                <?php $renderArticleNav('clinical'); ?>
             </section>
 
-            <!-- 6. CLINICAL CATALOGS -->
-            <section id="snomed" class="docs-section">
-                <h2><?= e($t('docs.clinical_title')) ?></h2>
+            <section id="dental" class="docs-section" data-article="dental">
+                <h2><?= $esc($t('docs.article.dental.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.dental.lead')) ?></p>
 
-                <h3>SNOMED-CT Concept Detail (`/v1/snomed/{id}`)</h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/snomed/{concept_id}?lang={es|en}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.snomed_text'))
-                    ?>
-                </p>
+                <?php $renderSubhead('dental-codes', $t('docs.dental.codes_title')); ?>
+                <p><?= $esc($t('docs.dental.codes_text')) ?></p>
 
-                <h3>WHO ICD-10 (`/v1/cie10/{codigo}`)</h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/cie10/{codigo}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.cie10_text'))
-                    ?>
-                </p>
+                <?php $renderSubhead('dental-pr', $t('docs.dental.pr_title')); ?>
+                <p><?= $esc($t('docs.dental.pr_text')) ?></p>
+                <?php $renderEndpoint('/v1/catalogs/dentar-pr/items'); ?>
+                <?php $renderEndpoint('/v1/catalogs/dentar-pr/items/{item}'); ?>
 
-                <h3 id="anmat">ANMAT Pharmaceutical Vademecum (`/v1/anmat/{id}`)</h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/anmat/{id}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.anmat_text'))
-                    ?>
-                </p>
+                <?php $renderSubhead('dental-dx', $t('docs.dental.dx_title')); ?>
+                <p><?= $esc($t('docs.dental.dx_text')) ?></p>
+                <?php $renderEndpoint('/v1/odontologia/diagnosticos'); ?>
+                <?php $renderEndpoint('/v1/odontologia/diagnosticos/{identifier}'); ?>
+                <?php $renderCode('dental', ['curl' => $dentalCurl]); ?>
 
-                <h3 id="loinc">LOINC Laboratory & Clinical Observations (`/v1/loinc`)</h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/v1/loinc?q={query}&amp;class={class}&amp;status={status}&amp;limit={n}</code>
-                </div>
-                <div class="endpoint-badge" style="margin-top: 6px;">
-                    <span class="method-get">GET</span>
-                    <code>/v1/loinc/{code}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.loinc_text'))
-                    ?>
-                </p>
-                <div class="code-tabs">
-                    <div class="code-tab-nav">
-                        <button class="tab-btn active" data-lang="curl">cURL</button>
-                        <button class="tab-btn" data-lang="js">JavaScript</button>
-                        <button class="tab-btn" data-lang="py">Python</button>
-                        <button class="tab-btn" data-lang="php">PHP</button>
-                        <button class="tab-btn" data-lang="cs">C#</button>
-                        <button class="tab-btn" data-lang="java">Java</button>
-                        <button class="tab-btn" data-lang="go">Go</button>
-                    </div>
-                    <pre class="code-pane active" data-lang="curl"><code>curl -s -X GET "https://api.origen.ar/v1/loinc?q=hemograma" \
-  -H "Authorization: Bearer &lt;API_KEY&gt;"</code></pre>
-                    <pre class="code-pane" data-lang="js"><code>const res = await fetch('https://api.origen.ar/v1/loinc?q=hemograma', {
-  headers: { 'Authorization': 'Bearer &lt;API_KEY&gt;' }
-});
-const data = await res.json();
-console.log(data);</code></pre>
-                    <pre class="code-pane" data-lang="py"><code>import requests
+                <?php $renderSubhead('dental-just', $t('docs.dental.just_title')); ?>
+                <p><?= $esc($t('docs.dental.just_text')) ?></p>
+                <?php $renderEndpoint('/v1/odontologia/{identifier}/diagnosticos'); ?>
 
-r = requests.get(
-    "https://api.origen.ar/v1/loinc",
-    params={"q": "hemograma"},
-    headers={"Authorization": "Bearer &lt;API_KEY&gt;"}
-)
-print(r.json())</code></pre>
-                    <pre class="code-pane" data-lang="php"><code>$ch = curl_init('https://api.origen.ar/v1/loinc?q=hemograma');
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer &lt;API_KEY&gt;']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$res = json_decode(curl_exec($ch), true);
-curl_close($ch);
-print_r($res);</code></pre>
-                    <pre class="code-pane" data-lang="cs"><code>using var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Authorization", "Bearer &lt;API_KEY&gt;");
-var json = await client.GetStringAsync("https://api.origen.ar/v1/loinc?q=hemograma");
-Console.WriteLine(json);</code></pre>
-                    <pre class="code-pane" data-lang="java"><code>var client = HttpClient.newHttpClient();
-var req = HttpRequest.newBuilder()
-    .uri(URI.create("https://api.origen.ar/v1/loinc?q=hemograma"))
-    .header("Authorization", "Bearer &lt;API_KEY&gt;")
-    .GET().build();
-var res = client.send(req, HttpResponse.BodyHandlers.ofString());
-System.out.println(res.body());</code></pre>
-                    <pre class="code-pane" data-lang="go"><code>req, _ := http.NewRequest("GET", "https://api.origen.ar/v1/loinc?q=hemograma", nil)
-req.Header.Set("Authorization", "Bearer &lt;API_KEY&gt;")
-res, _ := http.DefaultClient.Do(req)
-body, _ := io.ReadAll(res.Body)
-fmt.Println(string(body))</code></pre>
-                </div>
+                <?php $renderSubhead('dental-snomed', $t('docs.dental.snomed_title')); ?>
+                <p><?= $esc($t('docs.dental.snomed_text')) ?></p>
+                <?php $renderEndpoint('/v1/odontologia/snomed/{sctid}'); ?>
+
+                <?php $renderSubhead('dental-nomenclador', $t('docs.dental.nomenclador_title')); ?>
+                <p><?= $esc($t('docs.dental.nomenclador_text')) ?></p>
+                <?php $renderEndpoint('/v1/catalogs/nomenclador-odontologico-ar/items'); ?>
+
+                <?php $renderSubhead('dental-cdt', $t('docs.dental.cdt_title')); ?>
+                <p><?= $esc($t('docs.dental.cdt_text')) ?></p>
+                <?php $renderCallout('warning', $t('common.warning'), $t('docs.dental.cdt_no_endpoint')); ?>
+                <p><?= $esc($t('docs.dental.nn_text')) ?></p>
+
+                <?php $renderSubhead('dental-relations', $t('docs.dental.relations_title')); ?>
+                <p><?= $esc($t('docs.dental.relations_text')) ?></p>
+                <?php $renderArticleNav('dental'); ?>
             </section>
 
-            <!-- 7. HL7 FHIR R4 -->
-            <section id="fhir-intro" class="docs-section">
-                <h2><?= e($t('docs.fhir_title')) ?></h2>
-                <p>
-                    <?= e($t('docs.fhir_text'))
-                    ?>
-                </p>
+            <section id="pending" class="docs-section" data-article="pending">
+                <h2><?= $esc($t('docs.article.pending.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.pending.lead')) ?></p>
+                <span class="badge badge--pending"><?= $esc($t('common.not_implemented')) ?></span>
 
-                <table class="param-table">
-                    <thead>
-                        <tr>
-                            <th><?= e($t('docs.table_terminology')) ?></th>
-                            <th>Canonical URI (System)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>SNOMED CT</strong></td>
-                            <td><code>http://snomed.info/sct</code></td>
-                        </tr>
-                        <tr>
-                            <td><strong>WHO ICD-10</strong></td>
-                            <td><code>http://hl7.org/fhir/sid/icd-10</code></td>
-                        </tr>
-                        <tr>
-                            <td><strong>DENTAR Procedures</strong></td>
-                            <td><code>https://origen.ar/fhir/CodeSystem/dentar-procedures</code></td>
-                        </tr>
-                        <tr>
-                            <td><strong>DENTAR Diagnoses</strong></td>
-                            <td><code>https://origen.ar/fhir/CodeSystem/dentar-diagnoses</code></td>
-                        </tr>
-                        <tr>
-                            <td><strong>ADA CDT 2025</strong></td>
-                            <td><code>http://www.ada.org/cdt</code></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Argentine Dental Nomenclator</strong></td>
-                            <td><code>https://origen.ar/fhir/CodeSystem/ar-nomenclador-odontologico</code></td>
-                        </tr>
-                        <tr>
-                            <td><strong>LOINC</strong></td>
-                            <td><code>http://loinc.org</code></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <?php $renderSubhead('pending-fhir', $t('docs.pending.fhir_title')); ?>
+                <p><?= $esc($t('docs.pending.fhir_text')) ?></p>
 
-                <h3 id="fhir-lookup">FHIR CodeSystem `$lookup`</h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/fhir/CodeSystem/$lookup?system={uri}&amp;code={codigo}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.fhir_lookup_text'))
-                    ?>
-                </p>
+                <?php $renderSubhead('pending-uvr', $t('docs.pending.uvr_title')); ?>
+                <p><?= $esc($t('docs.pending.uvr_text')) ?></p>
 
-                <h3 id="fhir-expand">FHIR ValueSet `$expand`</h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/fhir/ValueSet/$expand?url={valueset_url}&amp;filter={query}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.fhir_expand_text'))
-                    ?>
-                </p>
+                <?php $renderSubhead('pending-oauth', $t('docs.pending.oauth_title')); ?>
+                <p><?= $esc($t('docs.pending.oauth_text')) ?></p>
 
-                <h3 id="fhir-translate">FHIR ConceptMap `$translate`</h3>
-                <div class="endpoint-badge">
-                    <span class="method-get">GET</span>
-                    <code>/fhir/ConceptMap/$translate?code={code}&amp;system={source}&amp;target={target}</code>
-                </div>
-                <p>
-                    <?= e($t('docs.fhir_translate_text'))
-                    ?>
-                </p>
+                <?php $renderSubhead('pending-writes', $t('docs.pending.writes_title')); ?>
+                <p><?= $esc($t('docs.pending.writes_text')) ?></p>
 
-                <h3 id="fhir-resources"><?= e($t('docs.fhir_resources_title')) ?></h3>
-                <p>
-                    <?= e($t('docs.fhir_resources_text'))
-                    ?>
-                </p>
-                <div class="response-card">
-                    <div class="response-head">
-                        <span>FHIR R4 Procedure (Oral Health)</span>
-                        <span>application/fhir+json</span>
-                    </div>
-                    <pre><code>{
-  "resourceType": "Procedure",
-  "id": "proc-dental-36",
-  "status": "completed",
-  "code": {
-    "coding": [
-      {
-        "system": "https://origen.ar/fhir/CodeSystem/dentar-procedures",
-        "code": "DNT-PR-000007",
-        "display": "Restauración con amalgama - cavidad simple"
-      },
-      {
-        "system": "http://www.ada.org/cdt",
-        "code": "D2140",
-        "display": "Amalgam - one surface"
-      },
-      {
-        "system": "https://origen.ar/fhir/CodeSystem/ar-nomenclador-odontologico",
-        "code": "02.01"
-      }
-    ]
-  },
-  "subject": { "reference": "Patient/100234" },
-  "reasonReference": [
-    { "reference": "Condition/diag-caries-k021", "display": "Caries de la dentina (K02.1)" }
-  ],
-  "bodySite": [
-    {
-      "coding": [
-        {
-          "system": "http://snomed.info/sct",
-          "code": "245404008",
-          "display": "Estructura del primer molar inferior izquierdo permanente (Pieza 36)"
-        }
-      ],
-      "text": "Pieza 36 (FDI)"
-    }
-  ]
-}</code></pre>
-                </div>
+                <?php $renderSubhead('pending-console', $t('docs.pending.console_title')); ?>
+                <p><?= $esc($t('docs.pending.console_text')) ?></p>
+
+                <?php $renderSubhead('pending-catalogs', $t('docs.pending.catalogs_title')); ?>
+                <p><?= $esc($t('docs.pending.catalogs_text')) ?></p>
+
+                <?php $renderSubhead('pending-alignment', $t('docs.pending.alignment_title')); ?>
+                <p><?= $esc($t('docs.pending.alignment_text')) ?></p>
+                <?php $renderArticleNav('pending'); ?>
             </section>
-        </article>
+
+            <section id="openapi" class="docs-section" data-article="openapi">
+                <h2><?= $esc($t('docs.article.openapi.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.openapi.lead')) ?></p>
+
+                <?php $renderSubhead('openapi-spec', $t('docs.openapi.spec_title')); ?>
+                <p><?= $esc($t('docs.openapi.spec_text')) ?></p>
+                <p><strong><?= $esc($t('docs.openapi.spec_link')) ?></strong> <code>docs/api/openapi-3.1.yaml</code></p>
+                <?php $renderCallout('', $t('common.note'), $t('common.see_openapi')); ?>
+
+                <?php $renderSubhead('openapi-divergences', $t('docs.openapi.divergences_title')); ?>
+                <p><?= $esc($t('docs.openapi.divergences_text')) ?></p>
+                <ul>
+                    <li><?= $esc($t('docs.openapi.div_q')) ?></li>
+                    <li><?= $esc($t('docs.openapi.div_lang')) ?></li>
+                    <li><?= $esc($t('docs.openapi.div_limit')) ?></li>
+                    <li><?= $esc($t('docs.openapi.div_request_id')) ?></li>
+                    <li><?= $esc($t('docs.openapi.div_health')) ?></li>
+                    <li><?= $esc($t('docs.openapi.div_domains')) ?></li>
+                    <li><?= $esc($t('docs.openapi.div_params')) ?></li>
+                    <li><?= $esc($t('docs.openapi.div_methods')) ?></li>
+                </ul>
+
+                <?php $renderSubhead('openapi-generate', $t('docs.openapi.generate_title')); ?>
+                <p><?= $esc($t('docs.openapi.generate_text')) ?></p>
+                <?php $renderArticleNav('openapi'); ?>
+            </section>
+
+            <section id="support" class="docs-section" data-article="support">
+                <h2><?= $esc($t('docs.article.support.title')) ?></h2>
+                <p class="lead"><?= $esc($t('docs.support.lead')) ?></p>
+
+                <?php $renderSubhead('support-security', $t('docs.support.security_title')); ?>
+                <p><?= $esc($t('docs.support.security_text')) ?></p>
+
+                <?php $renderSubhead('support-logging', $t('docs.support.logging_title')); ?>
+                <p><?= $esc($t('docs.support.logging_text')) ?></p>
+
+                <?php $renderSubhead('support-contact', $t('docs.support.contact_title')); ?>
+                <p><?= $esc($t('docs.support.contact_text')) ?> <a href="<?= $esc($contactMailto) ?>">contacto@origen.ar</a>. <?= $esc($t('docs.support.no_credentials')) ?></p>
+
+                <?php $renderSubhead('support-legal', $t('docs.support.legal_title')); ?>
+                <p><?= $esc($t('docs.support.legal_text')) ?></p>
+                <?php $renderArticleNav('support'); ?>
+            </section>
+        </div>
+
+        <aside class="docs-toc" id="docs-toc" aria-label="<?= $esc($t('docs.a11y.toc_label')) ?>">
+            <h2><?= $esc($t('docs.a11y.toc_label')) ?></h2>
+            <ol id="docs-toc-list"></ol>
+        </aside>
     </div>
 </main>
 
 <footer class="site-footer">
-    <div class="container footer-grid">
-        <div class="footer-brand">
-            <a class="brand" href="/" aria-label="Origen Salud">
-                <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
-                    <rect width="40" height="40" rx="12" fill="currentColor"/>
-                    <path d="M20 11v18M11 20h18" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
-                </svg>
-                <span class="brand-name">Origen<span>Salud</span></span>
-            </a>
-            <p><?= e($t('footer.tagline')) ?></p>
-        </div>
-
+    <div class="container footer-inner">
         <div>
-            <h3><?= e($t('footer.product')) ?></h3>
-            <ul>
-                <li><a href="/#api"><?= e($t('footer.product_api')) ?></a></li>
-                <li><a href="/docs"><?= e($t('nav.docs')) ?></a></li>
-                <li><a href="/#snomed"><?= e($t('footer.product_snomed')) ?></a></li>
-                <li><a href="/#anmat"><?= e($t('footer.product_anmat')) ?></a></li>
-            </ul>
+            <a href="<?= $esc($legalMailto) ?>" class="footer-link"><?= $esc($t('footer.legal')) ?></a>
+            <a href="<?= $esc($privacyMailto) ?>" class="footer-link"><?= $esc($t('footer.legal_privacy')) ?></a>
         </div>
-
-        <div>
-            <h3><?= e($t('footer.company')) ?></h3>
-            <ul>
-                <li><a href="/#plataforma"><?= e($t('footer.company_about')) ?></a></li>
-                <li><a href="<?= e($contactMailto) ?>"><?= e($t('footer.company_contact')) ?></a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h3><?= e($t('footer.legal')) ?></h3>
-            <ul>
-                <li><a href="<?= e($legalMailto) ?>"><?= e($t('footer.legal_terms')) ?></a></li>
-                <li><a href="<?= e($legalMailto) ?>"><?= e($t('footer.legal_privacy')) ?></a></li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="container footer-bottom">
-        <p><?= e($t('footer.rights', ['%year%' => $year])) ?></p>
-        <p class="disclaimer"><?= e($t('footer.disclaimer')) ?></p>
+        <p><?= $esc(str_replace('%year%', (string) $year, $t('footer.rights'))) ?></p>
+        <p><small><?= $esc($t('docs.footer.disclaimer')) ?></small></p>
     </div>
 </footer>
 
 <script>
-    // Interactive Code Tabs and Language Synchronization
-    document.addEventListener('DOMContentLoaded', () => {
-        const containers = document.querySelectorAll('.code-container');
+(function () {
+    'use strict';
 
-        // Global switch: clicking a language in one container switches all code blocks to that language
-        const switchAllTabs = (targetLang) => {
-            containers.forEach(container => {
-                const buttons = container.querySelectorAll('.tab-btn');
-                const panes = container.querySelectorAll('.code-pane');
+    var searchInput = document.getElementById('docs-search-input');
+    var searchClear = document.getElementById('docs-search-clear');
+    var searchEmpty = document.getElementById('docs-search-empty');
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('[data-nav-link]'));
+    var sections = Array.prototype.slice.call(document.querySelectorAll('[data-article]'));
+    var articleMap = {};
+    sections.forEach(function (section) { articleMap[section.id] = section; });
 
-                buttons.forEach(btn => {
-                    if (btn.dataset.lang === targetLang) {
-                        btn.classList.add('is-active');
-                    } else {
-                        btn.classList.remove('is-active');
-                    }
-                });
-
-                panes.forEach(pane => {
-                    if (pane.dataset.lang === targetLang) {
-                        pane.classList.add('is-active');
-                    } else {
-                        pane.classList.remove('is-active');
-                    }
-                });
-            });
+    var articleData = {};
+    navLinks.forEach(function (link) {
+        articleData[link.getAttribute('href').slice(1)] = {
+            link: link,
+            search: link.getAttribute('data-search') || '',
+            title: link.textContent.trim()
         };
-
-        containers.forEach(container => {
-            const buttons = container.querySelectorAll('.tab-btn');
-            const copyBtn = container.querySelector('.copy-btn');
-
-            buttons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const lang = btn.dataset.lang;
-                    switchAllTabs(lang);
-                });
-            });
-
-            if (copyBtn) {
-                copyBtn.addEventListener('click', async () => {
-                    const activePane = container.querySelector('.code-pane.is-active code');
-                    if (!activePane) return;
-
-                    try {
-                        await navigator.clipboard.writeText(activePane.innerText);
-                        const originalText = copyBtn.innerText;
-                        copyBtn.innerText = <?= json_encode($t('docs.copied'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-                        setTimeout(() => {
-                            copyBtn.innerText = originalText;
-                        }, 2000);
-                    } catch (err) {
-                        console.error('Failed to copy', err);
-                    }
-                });
-            }
-        });
-
-        // Sidebar active link highlighting on scroll
-        const sections = document.querySelectorAll('.docs-section');
-        const navLinks = document.querySelectorAll('.docs-sidebar a');
-
-        window.addEventListener('scroll', () => {
-            let currentId = '';
-            sections.forEach(section => {
-                const top = section.offsetTop - 120;
-                if (window.scrollY >= top) {
-                    currentId = section.getAttribute('id');
-                }
-            });
-
-            navLinks.forEach(link => {
-                if (link.getAttribute('href') === '#' + currentId) {
-                    link.classList.add('is-active');
-                } else {
-                    link.classList.remove('is-active');
-                }
-            });
-        }, { passive: true });
     });
+
+    function filterDocs() {
+        var term = (searchInput.value || '').trim().toLocaleLowerCase();
+        var visible = 0;
+        navLinks.forEach(function (link) {
+            var haystack = (link.getAttribute('data-search') || '');
+            var match = term === '' || haystack.indexOf(term) !== -1;
+            link.parentElement.hidden = !match;
+            if (match) { visible++; }
+        });
+        searchEmpty.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', filterDocs);
+        searchClear.addEventListener('click', function () {
+            searchInput.value = '';
+            filterDocs();
+            searchInput.focus();
+        });
+    }
+
+    document.addEventListener('keydown', function (event) {
+        var tag = (event.target.tagName || '').toLowerCase();
+        var typing = tag === 'input' || tag === 'textarea' || event.target.isContentEditable;
+        if ((event.key === '/' && !typing) || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) {
+            event.preventDefault();
+            if (searchInput) { searchInput.focus(); }
+        }
+    });
+
+    var codeBlocks = Array.prototype.slice.call(document.querySelectorAll('[data-code-block]'));
+    var storageKey = 'origen_docs_code_lang';
+    var preferredLang = null;
+    try { preferredLang = window.localStorage.getItem(storageKey); } catch (error) { preferredLang = null; }
+
+    function availableLanguages() {
+        for (var i = 0; i < codeBlocks.length; i++) {
+            var tabs = codeBlocks[i].querySelectorAll('[data-code-lang]');
+            if (tabs.length) { return Array.prototype.map.call(tabs, function (tab) { return tab.getAttribute('data-code-lang'); }); }
+        }
+        return [];
+    }
+
+    function selectCodeLanguage(lang) {
+        var available = availableLanguages();
+        if (available.indexOf(lang) === -1) { lang = available[0]; }
+        if (!lang) { return; }
+        codeBlocks.forEach(function (block) {
+            var tabs = Array.prototype.slice.call(block.querySelectorAll('[data-code-lang]'));
+            var panes = Array.prototype.slice.call(block.querySelectorAll('[data-code-pane]'));
+            var matched = tabs.filter(function (tab) { return tab.getAttribute('data-code-lang') === lang; })[0];
+            var chosen = matched ? lang : (tabs[0] ? tabs[0].getAttribute('data-code-lang') : null);
+            tabs.forEach(function (tab) {
+                var active = tab.getAttribute('data-code-lang') === chosen;
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+                tab.tabIndex = active ? 0 : -1;
+            });
+            panes.forEach(function (pane) { pane.hidden = pane.getAttribute('data-code-pane') !== chosen; });
+        });
+        try { window.localStorage.setItem(storageKey, lang); } catch (error) { /* almacenamiento no disponible */ }
+    }
+
+    codeBlocks.forEach(function (block) {
+        block.addEventListener('click', function (event) {
+            var tab = event.target.closest('[data-code-lang]');
+            if (tab) { selectCodeLanguage(tab.getAttribute('data-code-lang')); }
+        });
+        block.addEventListener('keydown', function (event) {
+            var tab = event.target.closest('[data-code-lang]');
+            if (!tab || ['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(event.key) === -1) { return; }
+            var tabs = Array.prototype.slice.call(block.querySelectorAll('[data-code-lang]'));
+            var index = tabs.indexOf(tab);
+            var nextIndex = index;
+            if (event.key === 'ArrowLeft') { nextIndex = (index - 1 + tabs.length) % tabs.length; }
+            if (event.key === 'ArrowRight') { nextIndex = (index + 1) % tabs.length; }
+            if (event.key === 'Home') { nextIndex = 0; }
+            if (event.key === 'End') { nextIndex = tabs.length - 1; }
+            event.preventDefault();
+            var next = tabs[nextIndex];
+            selectCodeLanguage(next.getAttribute('data-code-lang'));
+            next.focus();
+        });
+    });
+    selectCodeLanguage(preferredLang);
+
+    function copyText(text, button, doneLabel, originalLabel) {
+        function finish() {
+            var old = button.textContent;
+            button.textContent = doneLabel;
+            window.setTimeout(function () { button.textContent = originalLabel || old; }, 1600);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(finish).catch(function () { fallback(); });
+        } else {
+            fallback();
+        }
+        function fallback() {
+            var area = document.createElement('textarea');
+            area.value = text;
+            area.setAttribute('readonly', '');
+            area.style.position = 'fixed';
+            area.style.opacity = '0';
+            document.body.appendChild(area);
+            area.select();
+            try { document.execCommand('copy'); finish(); } catch (error) { /* sin portapapeles */ }
+            document.body.removeChild(area);
+        }
+    }
+
+    document.addEventListener('click', function (event) {
+        var endpointButton = event.target.closest('[data-endpoint]');
+        if (endpointButton) {
+            copyText(endpointButton.getAttribute('data-endpoint'), endpointButton,
+                <?= json_encode($t('docs.a11y.endpoint_copied'), JSON_UNESCAPED_UNICODE) ?>,
+                <?= json_encode($t('docs.a11y.copy_endpoint'), JSON_UNESCAPED_UNICODE) ?>);
+            return;
+        }
+        var copyButton = event.target.closest('[data-copy-code]');
+        if (copyButton) {
+            var block = copyButton.closest('[data-code-block]');
+            var activePane = block ? block.querySelector('[data-code-pane]:not([hidden])') : null;
+            if (activePane) {
+                copyText(activePane.textContent, copyButton,
+                    <?= json_encode($t('docs.a11y.copied'), JSON_UNESCAPED_UNICODE) ?>,
+                    <?= json_encode($t('docs.a11y.copy'), JSON_UNESCAPED_UNICODE) ?>);
+            }
+        }
+    });
+
+    var breadcrumbGroup = document.querySelector('[data-breadcrumb-group]');
+    var breadcrumbArticle = document.querySelector('[data-breadcrumb-article]');
+    var tocList = document.getElementById('docs-toc-list');
+    var activeId = 'overview';
+
+    function renderToc(section) {
+        if (!tocList || !section) { return; }
+        tocList.innerHTML = '';
+        var headings = Array.prototype.slice.call(section.querySelectorAll('h3[id]'));
+        headings.forEach(function (heading) {
+            var li = document.createElement('li');
+            var link = document.createElement('a');
+            link.href = '#' + heading.id;
+            link.textContent = heading.textContent;
+            link.setAttribute('data-toc-link', heading.id);
+            li.appendChild(link);
+            tocList.appendChild(li);
+        });
+    }
+
+    function activate(id) {
+        if (!articleMap[id] || id === activeId && breadcrumbArticle.textContent) {
+            renderToc(articleMap[id]);
+            return;
+        }
+        activeId = id;
+        var data = articleData[id];
+        navLinks.forEach(function (link) { link.classList.toggle('is-active', link.getAttribute('href') === '#' + id); });
+        if (data && breadcrumbArticle) {
+            breadcrumbArticle.textContent = data.title;
+            var group = articleMap[id].getAttribute('data-group-label');
+            if (group && breadcrumbGroup) { breadcrumbGroup.textContent = group; }
+        }
+        renderToc(articleMap[id]);
+    }
+
+    sections.forEach(function (section) {
+        var index = articleData[section.id];
+        if (index) {
+            section.setAttribute('data-group-label', index.link.closest('.docs-nav-group').querySelector('h3').textContent);
+        }
+    });
+
+    if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+            var best = null;
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting && (!best || entry.intersectionRatio > best.intersectionRatio)) { best = entry; }
+            });
+            if (best) { activate(best.target.id); }
+        }, { rootMargin: '-15% 0px -70% 0px', threshold: [0, 0.25, 0.5, 1] });
+        sections.forEach(function (section) { observer.observe(section); });
+    }
+
+    window.addEventListener('hashchange', function () {
+        var id = window.location.hash.slice(1);
+        if (articleMap[id]) { activate(id); }
+    });
+    if (window.location.hash) {
+        var initial = window.location.hash.slice(1);
+        if (articleMap[initial]) { activate(initial); }
+    } else {
+        activate('overview');
+    }
+
+    document.querySelectorAll('[data-lang-link]').forEach(function (link) {
+        if (window.location.hash) { link.href += window.location.hash; }
+    });
+}());
 </script>
 </body>
 </html>

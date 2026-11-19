@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Generador de la Arquitectura DENTAR Core + Módulo de Diagnósticos y Justificación Clínica (CIE-10 / SNOMED CT).
-Genera: sql/dentar_core_and_diagnosis.sql (PostgreSQL 18)
+Genera: sql/03_dentar/dentar_core_and_diagnosis.sql (PostgreSQL 18)
 """
 import os, sys
 
 def load_odontologico_rows():
-    sql_path = os.path.join(os.path.dirname(__file__), "..", "sql", "odontologico.sql")
+    sql_path = os.path.join(
+        os.path.dirname(__file__), "..", "tools", "sources", "odontologico", "odontologico.sql"
+    )
     with open(sql_path, "r", encoding="utf-8") as f:
         sql = f.read()
 
@@ -905,7 +907,7 @@ UNION ALL SELECT 'dentar_concept_diagnosis', count(*) FROM dentar_concept_diagno
 """)
 
 full_sql = "\n".join(out)
-output_path = os.path.join(os.path.dirname(__file__), "..", "sql", "dentar_core_and_diagnosis.sql")
+output_path = os.path.join(os.path.dirname(__file__), "..", "sql", "03_dentar", "dentar_core_and_diagnosis.sql")
 with open(output_path, "w", encoding="utf-8") as f:
     f.write(full_sql)
 

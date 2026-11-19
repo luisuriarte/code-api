@@ -58,7 +58,9 @@ $countLabel = $result['total'] === 1
                 $officialSystem = (string) ($entry['official_system'] ?? '');
                 $officialCode = (string) ($entry['official_code'] ?? '');
                 $officialLabel = $officialCode !== ''
-                    ? ($officialSystem !== '' ? $officialSystem . ': ' . $officialCode : $officialCode)
+                    ? ($officialSystem !== ''
+                        ? $identifierSystemLabel($officialSystem) . ': ' . $officialCode
+                        : $officialCode)
                     : '';
                 ?>
                 <li class="browse-result browse-result--selectable browse-result-row<?= $selected ? ' is-selected' : '' ?>"

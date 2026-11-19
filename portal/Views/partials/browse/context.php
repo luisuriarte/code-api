@@ -269,6 +269,43 @@ $reviewLabel = static function (string $status) use ($t, $reviewLabels): string 
     return isset($reviewLabels[$status]) ? $t($reviewLabels[$status]) : $status;
 };
 
+// Etiquetas de sistemas de identificadores. El valor crudo de la base nunca
+// se traduce como terminología clínica: solo se muestra con su nombre público.
+$identifierSystemLabels = [
+    'NOMENCLADOR_AR' => 'browse.identifier_system_nomenclador',
+    'NOMENCLADOR-AR' => 'browse.identifier_system_nomenclador',
+    'CIE-10' => 'browse.identifier_system_cie10',
+    'CDT-2025' => 'browse.identifier_system_cdt',
+    'SNOMED-CT' => 'browse.identifier_system_snomed',
+    'DENTAR-PR' => 'browse.identifier_system_dentar_pr',
+    'dentar-pr' => 'browse.identifier_system_dentar_pr',
+    'dentar-dx' => 'browse.identifier_system_dentar_dx',
+    'nomenclador-odontologico-ar' => 'browse.identifier_system_nomenclador',
+];
+$identifierSystemLabel = static function (string $system) use ($t, $identifierSystemLabels): string {
+    return isset($identifierSystemLabels[$system]) ? $t($identifierSystemLabels[$system]) : $system;
+};
+
+$sourceAttributeLabels = [
+    'factura' => 'browse.source_attribute_factura',
+    'ficha_odontolog' => 'browse.source_attribute_ficha_odontolog',
+    'ficha_periodontal' => 'browse.source_attribute_ficha_periodontal',
+    'pieza' => 'browse.source_attribute_pieza',
+    'caras' => 'browse.source_attribute_caras',
+    'rx_pre' => 'browse.source_attribute_rx_pre',
+    'rx_post' => 'browse.source_attribute_rx_post',
+    'material' => 'browse.source_attribute_material',
+    'maxilar' => 'browse.source_attribute_maxilar',
+    'agrupamiento' => 'browse.source_attribute_agrupamiento',
+];
+$sourceAttributeLabel = static function (array $attribute) use ($t, $sourceAttributeLabels): string {
+    $code = (string) ($attribute['code'] ?? '');
+
+    return isset($sourceAttributeLabels[$code])
+        ? $t($sourceAttributeLabels[$code])
+        : ((string) ($attribute['label'] ?? $code));
+};
+
 $isCurrentValidity = static function (array $row): bool {
     if (($row['release_status'] ?? '') !== 'published') {
         return false;

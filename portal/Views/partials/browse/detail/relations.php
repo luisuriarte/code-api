@@ -27,7 +27,7 @@ foreach ($relations as $relation) {
         $relationTypes[$type] = $relationTypeLabel($type);
     }
     if ($system !== '') {
-        $relationSystems[$system] = $system;
+        $relationSystems[$system] = $identifierSystemLabel($system);
     }
 }
 asort($relationTypes);
@@ -81,7 +81,7 @@ ksort($relationSystems);
                     <?php foreach ($groups as $system => $entries): ?>
                         <details class="browse-diagram__group" <?= count($entries) <= 3 ? 'open' : '' ?>>
                             <summary class="browse-diagram__system">
-                                <?= e($system !== '' ? (string) $system : $t('browse.relation_system')) ?>
+                                <?= e($system !== '' ? $identifierSystemLabel((string) $system) : $t('browse.relation_system')) ?>
                                 <span class="browse-diagram__count"><?= count($entries) ?></span>
                             </summary>
                             <div class="browse-diagram__nodes">
@@ -147,7 +147,7 @@ ksort($relationSystems);
                             <tr class="browse-rel-row"
                                 data-rel-type="<?= e((string) ($relation['type'] ?? '')) ?>"
                                 data-rel-system="<?= e((string) ($relation['system'] ?? '')) ?>">
-                                <td><?= e((string) ($relation['system'] ?? '')) ?></td>
+                                <td><?= e($identifierSystemLabel((string) ($relation['system'] ?? ''))) ?></td>
                                 <td>
                                     <?php if ($targetKey !== ''): ?>
                                         <a class="browse-relations-link"

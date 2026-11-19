@@ -2640,6 +2640,12 @@ svg {
     color: var(--teal-dark);
 }
 
+.browse-explorer .browse-cat__tag--source {
+    border-color: #d8b96f;
+    background: #fff8e8;
+    color: #7a5a15;
+}
+
 .browse-explorer .browse-cat__tag--warn {
     border-style: dashed;
     background: var(--paper);

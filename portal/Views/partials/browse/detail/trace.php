@@ -21,7 +21,13 @@ $row = static function (string $labelKey, mixed $value) use ($t, $formatValue, $
     <?php else: ?>
         <div class="detail-grid browse-detail-grid">
             <?php $row('browse.trace_source', $trace['source'] ?? null); ?>
-            <?php $row('browse.trace_system', $trace['system'] ?? null); ?>
+            <?php
+            $traceSystem = $trace['system'] ?? null;
+            if (is_string($traceSystem) && $traceSystem !== '') {
+                $traceSystem = $identifierSystemLabel($traceSystem);
+            }
+            $row('browse.trace_system', $traceSystem);
+            ?>
             <?php $row('browse.trace_external_id', $trace['external_id'] ?? null); ?>
             <?php $row('browse.trace_version', $trace['version'] ?? null); ?>
             <?php $row('browse.trace_release_status', $trace['release_status'] ?? null); ?>

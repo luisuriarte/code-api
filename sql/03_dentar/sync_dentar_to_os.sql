@@ -337,6 +337,8 @@ SELECT iv.id,
 
 -- -----------------------------------------------------------------------------
 -- 4.4 DENTAR-PR · identificador del Nomenclador Argentino
+-- El código nacional se conserva como identificador secundario y buscable.
+-- DENTAR-PR sigue siendo el código permanente principal de la ficha.
 -- -----------------------------------------------------------------------------
 DELETE FROM os_catalog_identifier ident
  USING os_catalog_item i, _dentar_sync_release rel
@@ -346,7 +348,7 @@ DELETE FROM os_catalog_identifier ident
    AND ident.system_name = 'NOMENCLADOR_AR';
 
 INSERT INTO os_catalog_identifier (item_id, system_name, value, is_primary)
-SELECT x.item_id, 'NOMENCLADOR_AR', x.external_code, x.rn = 1
+SELECT x.item_id, 'NOMENCLADOR_AR', x.external_code, FALSE
   FROM (
       SELECT i.id AS item_id,
              m.external_code,

@@ -98,100 +98,335 @@ footer:
     disclaimer: "SNOMED CT® é uma marca registrada da SNOMED International. A Origen Salud não é afiliada nem endossada pela SNOMED International. Os dados ANMAT e dos catálogos locais são usados como fonte de referência."
 
 docs:
-    meta_title: "Documentação de API e FHIR | Origen Salud"
-    meta_description: "Documentação para desenvolvedores da API REST B2B da Origen Salud e dos serviços terminológicos HL7 FHIR R4, com exemplos em várias linguagens."
-    nav_index: "Índice da documentação"
-    nav_getting_started: "Primeiros passos"
-    nav_overview: "Visão geral e URL base"
-    nav_auth: "Autenticação"
-    nav_domains: "Domínios clínicos"
-    nav_catalog_engine: "Motor de catálogos (Argentina)"
-    nav_catalogs: "Catálogos (/v1/catalogs)"
-    nav_catalog_items: "Prestações e itens (/v1/catalogs/{id}/items)"
-    nav_mappings: "Mapeamentos semânticos (/v1/mappings)"
-    nav_pharma: "Identificadores farmacêuticos (Troquel/GTIN)"
-    nav_unified_search: "Busca unificada"
-    nav_search: "Busca multimodelo (/v1/search)"
-    nav_cdt_nn: "CDT e NN (rotas reais)"
-    nav_dental: "Odontologia (DENTAR)"
-    nav_dental_diagnoses: "Diagnósticos odontológicos e CIE-10"
-    nav_dental_justifications: "Justificativas clínicas (auditoria)"
-    nav_dental_snomed: "Consulta por SNOMED-CT"
-    nav_dental_cdt: "Regras de prestações e CDT"
-    nav_clinical_catalogs: "Catálogos clínicos"
-    nav_snomed: "Conceitos SNOMED CT"
-    nav_cie10: "CIE-10 da OMS"
-    nav_anmat: "Medicamentos ANMAT"
-    nav_loinc: "Observações LOINC"
-    nav_local_catalogs: "Laboratório, vacinas e imagens"
-    nav_fhir: "HL7® FHIR® R4"
-    nav_fhir_intro: "Servidor terminológico FHIR"
-    nav_fhir_lookup: "Operação $lookup do CodeSystem"
-    nav_fhir_expand: "Operação $expand do ValueSet"
-    nav_fhir_translate: "Operação $translate do ConceptMap"
-    nav_fhir_resources: "Recursos Procedure e Condition"
-    header_title: "Documentação da API para desenvolvedores"
-    header_lead: "Conecte seus prontuários eletrônicos, motores de auditoria odontológica e sistemas de prescrição eletrônica à infraestrutura de terminologia clínica unificada da Origen Salud."
-    overview_title: "1. Visão geral e URLs base"
-    overview_text: "Todas as requisições são feitas por HTTPS e retornam respostas JSON codificadas em UTF-8."
-    table_environment: "Ambiente"
-    table_description: "Descrição"
-    env_rest: "API REST unificada para consultas e auditorias terminológicas."
-    env_fhir: "Servidor terminológico padrão HL7 FHIR Release 4."
-    env_health: "Endpoint público para balanceadores e monitoramento de disponibilidade."
-    auth_title: "2. Autenticação"
-    auth_text: "A autenticação é feita com uma API Key corporativa enviada nos cabeçalhos HTTP. Ela pode ser enviada como Bearer token padrão ou diretamente no cabeçalho X-API-Key:"
-    auth_important: "Importante:"
-    auth_warning: "Nunca exponha sua API Key em aplicações client-side (SPAs, páginas públicas ou aplicativos móveis sem backend). Todas as chamadas devem partir de servidores seguros."
-    catalogs_title: "3. Motor de catálogos e nomencladores argentinos"
-    catalogs_text: "O Origen Catalog Engine 1.0 oferece acesso desacoplado e versionado aos nomencladores nacionais argentinos, catálogos próprios (DENTAR), esquemas tarifários (UB, Galenos, Módulos, Pesos) e identificadores farmacêuticos (Troquel, AlfaBeta, Kairos, GTIN)."
-    table_scope: "Âmbito"
-    table_catalog_code: "Código do catálogo"
-    catalog_dentar: "Sistema DENTAR: prestações odontológicas harmonizadas com ADA CDT 2025 e CIE-10."
-    catalog_pmo: "Nomenclador Nacional Médico e Cirúrgico (PMO) com Galenos."
-    catalog_nbu: "Nomenclador Bioquímico Único da CUBRA com Unidades Bioquímicas (UB) e LOINC."
-    catalog_hospitales: "Nomenclador de Hospitais Públicos Descentralizados (recuperação hospitalar)."
-    catalog_discapacidad: "Nomenclador de Prestações Básicas para Pessoas com Deficiência (ANDIS)."
-    catalog_fisioterapia: "Nomenclador de Fisioterapia e Quinesiologia motora e respiratória."
-    catalog_psicologia: "Nomenclador de Psicologia e Saúde Mental (psicoterapias e perícias)."
-    catalog_items_title: "Consultar prestações de um catálogo"
-    copy: "Copiar"
-    mappings_title: "Mapeamentos cruzados (SNOMED-CT, CIE-10, LOINC)"
-    mappings_text: "Descubra quais prestações correspondem a um conceito clínico internacional (ou vice-versa)."
-    pharma_title: "Farmácia: identificadores comerciais (Troquel / AlfaBeta / Kairos / GTIN)"
-    pharma_text: "Valide receitas eletrônicas e coberturas de farmácia pelo número de Troquel, código AlfaBeta, código Kairos ou código de barras GTIN."
-    search_title: "3. Busca unificada multimodelo"
-    search_text: "Realize buscas simultâneas ultrarrápidas em vários vocabulários clínicos. A correspondência por trigramas (pg_trgm) e a ponderação fonética toleram erros de digitação."
-    table_parameter: "Parâmetro"
-    table_type: "Tipo"
-    table_default: "Padrão"
-    table_required: "Obrigatório"
-    search_q: "Termo de busca, palavra-chave clínica ou código exato."
-    search_domains: "Lista de domínios clínicos separada por vírgulas."
-    search_limit: "Número de resultados por página (máximo 100)."
-    search_lang: "Idioma das descrições (es-AR, en, pt-BR; es e pt são alias)."
-    search_accept_language: "Cabeçalho Accept-Language; usado quando lang não é enviado."
-    dental_title: "4. Módulo odontológico (DENTAR / ADA CDT / CIE-10)"
-    dental_text: "O DENTAR-PR harmoniza procedimentos odontológicos e o DENTAR-DX, diagnósticos do Nomenclador Odontológico Argentino, ADA CDT 2025 (12 categorias), códigos permanentes DNT-XXXXXX, procedimentos clínicos SNOMED-CT e justificativas CIE-10 (K00–K14)."
-    dental_diagnoses_title: "Catálogo e busca de diagnósticos odontológicos"
-    dental_justification_title: "Justificativa clínica e auditoria de prestações"
-    dental_justification_text: "Consulte quais diagnósticos justificam um procedimento odontológico antes da autorização ou faturamento. Aceita código argentino (02.01), CDT (D2140), DENTAR (DNT-PR-000007), ID interno ou SCTID do SNOMED-CT (424759004)."
-    dental_snomed_title: "Resolução odontológica direta por SNOMED-CT"
-    dental_snomed_text: "Consulte qualquer Concept ID do SNOMED-CT para descobrir imediatamente se ele representa um procedimento odontológico, um diagnóstico ou ambos, com todos os mapeamentos cruzados."
-    clinical_title: "5. Catálogos clínicos e endpoints de conceitos"
-    snomed_text: "Retorna nomes totalmente especificados (FSN), sinônimos ativos, hierarquia direta (pais e filhos), mapeamentos para CIE-10 e um bloco odontológico enriquecido quando o conceito pertence à saúde bucal."
-    cie10_text: "Consulte qualquer código CIE-10 da OMS (por exemplo, K02.1 ou K021) com descrições oficiais bilíngues em espanhol e inglês e equivalências cruzadas com SNOMED-CT."
-    anmat_text: "Consulte especialidades medicinais autorizadas pela ANMAT Argentina, incluindo número de certificado, nome genérico e comercial, forma farmacêutica, apresentação, laboratório e conceito SNOMED-CT associado."
-    loinc_text: "Busque mais de 112.400 conceitos oficiais do LOINC 2.83 com nomes localizados em espanhol (México e Argentina), propriedades, unidades UCUM, vínculos MapTo e mapeamentos para o Nomenclador Bioquímico Único (NBU)."
-    fhir_title: "6. Serviços terminológicos HL7® FHIR® R4"
-    fhir_text: "A Origen Salud suporta o padrão oficial HL7 FHIR Release 4 para servidores terminológicos, permitindo integração direta com prontuários eletrônicos como Epic, Cerner, GNU Health e OpenEMR."
-    table_terminology: "Terminologia"
-    fhir_lookup_text: "Inspeciona um código e retorna designações legíveis, propriedades de auditoria (por exemplo, dente obrigatório, radiografias pré/pós-operatórias) e agrupamentos categóricos em um recurso FHIR Parameters padrão."
-    fhir_expand_text: "Expande um ValueSet para busca clínica em tempo real, listas suspensas e autocomplete na interface do prontuário."
-    fhir_translate_text: "Traduz códigos entre sistemas (por exemplo, Nomenclador Argentino para ADA CDT 2025, ou Procedimento para diagnósticos CIE-10 que o justificam)."
-    fhir_resources_title: "Modelagem de recursos clínicos"
-    fhir_resources_text: "Exemplo de representação de uma intervenção odontológica restauradora em um recurso HL7 FHIR Procedure com o dente 36 (sistema FDI) em bodySite:"
-    copied: "Copiado!"
+    meta:
+        title: 'Documentação da API · Origen Salud'
+        description: 'Documentação técnica da API REST v1 pública da Origen Salud: autenticação, busca, catálogos, terminologias clínicas, odontologia DENTAR e status das funcionalidades pendentes.'
+    a11y:
+        skip: 'Pular para o conteúdo principal'
+        search_label: 'Buscar nesta documentação'
+        search_placeholder: 'Buscar artigos, endpoints ou parâmetros…'
+        search_clear: 'Limpar busca'
+        search_no_results: 'Nenhum artigo corresponde à busca.'
+        toc_label: 'Conteúdo deste artigo'
+        breadcrumb_label: 'Trilha de navegação'
+        previous: 'Artigo anterior'
+        next: 'Próximo artigo'
+        copy: 'Copiar código'
+        copy_endpoint: 'Copiar endpoint'
+        copied: Copiado
+        endpoint_copied: 'Endpoint copiado'
+        code_language: 'Linguagem do exemplo'
+        active_section: 'Seção ativa'
+        menu: 'Menu da documentação'
+    header:
+        title: 'Central de documentação para desenvolvedores'
+        lead: 'O contrato real da API pública da Origen Salud. Consulte endpoints, parâmetros, envelopes, exemplos verificáveis e o status das funcionalidades pendentes.'
+        badge: 'API v1 · REST · JSON'
+    nav:
+        index: 'Índice da documentação'
+        search: 'Busca interna'
+        groups:
+            start: Começar
+            core: 'Núcleo da API'
+            domain: 'Domínios e catálogos'
+            operations: 'Operação e suporte'
+    breadcrumb:
+        home: Início
+        docs: Documentação
+    article:
+        overview:
+            title: 'Visão geral'
+            lead: 'URL base, formato de resposta e health check público da API.'
+            keywords: 'introdução urls base health json api.origen.ar'
+        auth:
+            title: Autenticação
+            lead: 'Como enviar a API Key e o que ainda não está implementado para gerenciá-la.'
+            keywords: 'api key bearer x-api-key credenciais segurança'
+        conventions:
+            title: 'Convenções da API'
+            lead: 'Envelopes, erros, idioma, paginação, cabeçalhos e métodos suportados.'
+            keywords: 'envelope request_id erros paginação limites content-language'
+        quickstart:
+            title: 'Primeiras chamadas'
+            lead: 'Um exemplo completo em seis linguagens contra um endpoint real.'
+            keywords: 'curl php python java node csharp exemplo rápido'
+        search:
+            title: 'Busca unificada'
+            lead: 'Busca multimodelo, domínios, refsets e projeção de conceitos SNOMED.'
+            keywords: 'search domínios q refsets cie10_type concepts'
+        catalogs:
+            title: 'Motor de catálogos'
+            lead: 'Listagem de catálogos, releases, itens, detalhe editorial e preços vigentes.'
+            keywords: 'catalogs releases items pricing dentar-pr dentar-dx nomenclador-odontologico-ar'
+        mappings:
+            title: 'Mapeamentos e farmácia'
+            lead: 'Mapeamentos cruzados, unidades tarifárias e identificadores comerciais de medicamentos.'
+            keywords: 'mappings pricing-units medicines identifiers troquel gtin alfabeta kairos'
+        clinical:
+            title: 'Terminologias clínicas'
+            lead: 'SNOMED CT, CIE-10, LOINC, ANMAT, nomencladores, vademecum e PMO.'
+            keywords: 'snomed cie10 loinc anmat vademecum pmo nomenclador'
+        dental:
+            title: 'Odontologia e DENTAR'
+            lead: 'DENTAR-PR, DENTAR-DX, justificativas, SNOMED, Nomenclador Odontológico Nacional e CDT/NN.'
+            keywords: 'dentar odontologia diagnosticos procedimentos cdt nn nomenclador odontologico'
+        pending:
+            title: 'Funcionalidades pendentes'
+            lead: 'O que ainda não existe na API e não deve ser considerado disponível.'
+            keywords: 'fhir uvr oauth rate limiting escrita console pendente não implementado'
+        openapi:
+            title: 'OpenAPI e geração de clientes'
+            lead: 'Especificação vigente, desvios conhecidos e recomendações de integração.'
+            keywords: 'openapi swagger spec clientes desvios validação'
+        support:
+            title: 'Segurança e suporte'
+            lead: 'Boas práticas, registro de solicitações, contato e avisos legais.'
+            keywords: 'segurança suporte contato logs legais privacidade'
+    common:
+        rest_url: 'https://api.origen.ar'
+        health_url: 'https://api.origen.ar/health'
+        production: Produção
+        public: Público
+        authenticated: 'Requer API Key'
+        required: Obrigatório
+        optional: Opcional
+        'yes': Sim
+        'no': Não
+        default: Padrão
+        max: Máximo
+        illustrative: 'Exemplo ilustrativo: os valores concretos dependem dos dados carregados no ambiente.'
+        note: Observação
+        warning: Aviso
+        pending: Pendente
+        not_implemented: 'Não implementado'
+        implemented: Disponível
+        method_get: GET
+        method_options: OPTIONS
+        see_openapi: 'A fonte canônica de rotas e esquemas é o arquivo OpenAPI 3.1 do repositório.'
+        json_only: 'Todas as respostas usam application/json; charset=utf-8. Não há negociação por Accept nem formatos alternativos.'
+    overview:
+        title: '1. Visão geral'
+        lead: 'A API pública da Origen Salud é um serviço REST somente leitura. Todas as operações são realizadas por HTTPS no host api.origen.ar.'
+        env_col: Ambiente
+        url_col: URL
+        access_col: Acesso
+        rest_desc: 'Superfície /v1/* com API Key. Apenas os métodos GET e OPTIONS são suportados.'
+        health_desc: 'Verificação pública de disponibilidade; executa SELECT 1 no banco de dados.'
+        health_title: 'Health check'
+        health_note: 'Ao contrário do restante da API, /health retorna um objeto plano: não inclui data, meta nem request_id no corpo. O request_id é enviado no cabeçalho X-Request-Id.'
+        response_title: 'Formato de resposta'
+        response_text: 'As rotas /v1/* retornam um envelope com data, meta e request_id. Os erros usam error e request_id. Não há versionamento por cabeçalho, query ou corpo: a versão é o prefixo /v1 da rota.'
+    auth:
+        title: '2. Autenticação'
+        lead: 'Toda rota que começa com /v1/ exige uma API Key ativa. Rotas inexistentes dentro de /v1/ também retornam 401 se a credencial não for enviada.'
+        header_title: 'Cabeçalhos aceitos'
+        header_text: 'Envie a chave em um destes dois cabeçalhos. Se ambos estiverem presentes, X-API-Key tem prioridade sobre Authorization.'
+        bearer: 'Authorization: Bearer TU_API_KEY'
+        xapikey: 'X-API-Key: TU_API_KEY'
+        warning_title: 'Não exponha a credencial'
+        warning_text: 'A API Key deve permanecer em um backend seguro. Não a inclua em HTML público, aplicações SPA, bundles JavaScript, repositórios nem aplicativos móveis sem uma camada intermediária.'
+        management_title: 'Gerenciamento de credenciais'
+        management_text: 'Atualmente não há registro self-service, emissão, rotação, expiração nem revogação por API. A tabela api_clients dispõe apenas de is_active. O registro e a rotação continuam pendentes.'
+        format_title: 'Formato e validação'
+        format_text: 'A chave aceita até 128 caracteres ASCII imprimíveis. Uma credencial ausente, vazia, mal formatada, inativa ou inexistente retorna 401 com error.code = unauthorized.'
+        header: Cabeçalho
+    conventions:
+        title: '3. Convenções da API'
+        lead: 'Estas regras se aplicam a todas as rotas /v1/* salvo indicação explícita.'
+        success_title: 'Envelope de sucesso'
+        error_title: 'Envelope de erro'
+        request_id_title: 'Identificador da solicitação'
+        request_id_text: 'O servidor gera um hexadecimal de 32 caracteres quando X-Request-Id não é enviado. Esse mesmo valor é retornado no cabeçalho X-Request-Id e em request_id no corpo. Em /health, aparece apenas no cabeçalho.'
+        lang_title: 'Idioma do conteúdo'
+        lang_text: 'O parâmetro lang tem prioridade; em seguida é usado Accept-Language e, por fim, API_DEFAULT_LANG (es). Os aliases es e pt são resolvidos para es-AR e pt-BR. Textos sem revisão editorial aprovada são publicados como null com untranslated=true.'
+        pagination_title: 'Paginação e limites'
+        pagination_text: 'Em /v1/search, limit tem por padrão 20 e o máximo efetivo é 50, salvo configuração explícita de API_PAGE_LIMIT_MAX (limite 100). offset varia de 0 a 5000. Outros endpoints têm limites próprios: /v1/catalogs/*/items usa 1–100 fixo, /v1/mappings retorna até 50 sem paginação e /v1/odontologia/diagnosticos não é paginado.'
+        methods_title: 'Métodos e CORS'
+        methods_text: 'Não existem operações de escrita. Os métodos suportados são GET e um OPTIONS global que responde 204 antes da autenticação. O CORS emite cabeçalhos apenas se API_CORS_ORIGINS estiver configurado; por padrão, https://med.origen.ar é permitido.'
+        headers_title: 'Cabeçalhos de resposta'
+        headers_text: 'Além de Content-Type e X-Request-Id, a API envia Cache-Control: no-store, X-Content-Type-Options: nosniff, Referrer-Policy: no-referrer e, quando aplicável, Content-Language, Vary e WWW-Authenticate.'
+        codes_col: HTTP
+        code_col: error.code
+        meaning_col: Significado
+        err_400: 'Parâmetro ausente ou inválido; details pode explicar o motivo.'
+        err_401: 'API Key ausente, inválida ou inativa. Inclui WWW-Authenticate: Bearer.'
+        err_404: 'Rota ou recurso inexistente.'
+        err_405: 'Método não permitido. Inclui Allow: GET, OPTIONS.'
+        err_500: 'Erro interno. Mensagens sensíveis nunca são expostas ao cliente.'
+        err_503: 'Banco de dados indisponível ou API não configurada.'
+        no_403: 'A API não emite 403 nem 429. Não há cotas nem suspensão por comportamento implementadas no serviço.'
+    quickstart:
+        title: '4. Primeiras chamadas'
+        lead: 'O exemplo a seguir consulta os itens do catálogo dentar-pr. Substitua TU_API_KEY por uma credencial válida emitida pela Origen Salud.'
+        endpoint_label: 'Endpoint do exemplo'
+        code_title: 'Exemplo por linguagem'
+        response_title: 'Resposta 200'
+        response_note: 'A forma de data depende do catálogo consultado. O envelope e o request_id são comuns a todas as rotas /v1/*.'
+        security_note: 'Execute estas chamadas a partir do seu servidor. Nunca cole uma API Key real em uma página pública nem em um repositório.'
+        step1: '1. Obtenha uma API Key ativa da Origen Salud.'
+        step2: '2. Envie X-API-Key ou Authorization: Bearer em toda solicitação /v1/*.'
+        step3: '3. Leia data para o resultado e request_id para correlacionar logs.'
+    search:
+        title: '5. Busca unificada'
+        lead: 'A busca consulta vários vocabulários em uma única chamada e retorna resultados com domain, source, id, code, term, language, kind, score e metadata.'
+        endpoints_title: 'Rotas disponíveis'
+        endpoints_text: 'GET /v1/search busca nos domínios indicados. GET /v1/search/{domain} força um domínio. GET /v1/concepts/search força SNOMED CT e retorna uma projeção de descrições.'
+        domains_title: Domínios
+        domains_text: 'Domínios válidos: snomed, cie10, anmat, laboratorio, vacunas, odontologia, prestaciones, programas, imagenes, nomenclador, vademecum e loinc. domains=all ou domains=* inclui todos. Sem domains, são usados snomed, cie10 e anmat.'
+        params_title: Parâmetros
+        param_q: 'Termo de 2 a 80 caracteres. Obrigatório.'
+        param_domains: 'Lista separada por vírgulas ou parâmetros repetidos. Alias: domain.'
+        param_lang: 'Idioma solicitado para as descrições.'
+        param_limit: 'Resultados por página. Padrão 20; máximo efetivo 50.'
+        param_offset: 'Deslocamento de 0 a 5000.'
+        param_cie10: 'Filtra CIE-10 pelos valores diagnostico ou procedimiento.'
+        param_refset: 'Um a 10 códigos de refset. Alias: refsets. Aplica-se apenas quando snomed está incluído.'
+        meta_title: 'Metadados da busca'
+        meta_text: 'meta inclui query, language, domains, cie10_type, refsets, limit, offset, returned, has_more, next_offset, page_counts e took_ms.'
+        concepts_title: 'Projeção de conceitos'
+        concepts_text: 'GET /v1/concepts/search retorna description_id, concept_id, term, language, term_type, type_id e score em vez do resultado genérico.'
+        example_title: 'Exemplo com cURL'
+    catalogs:
+        title: '6. Motor de catálogos'
+        lead: 'O motor expõe catálogos versionados, releases publicadas, itens ativos, identifiers oficiais, mapeamentos e tarifas vigentes.'
+        list_title: 'Listar catálogos'
+        list_text: 'GET /v1/catalogs retorna code, name, short_name, family, role, organization, country, domain_type, items_count e website. Os catálogos family aparecem primeiro.'
+        releases_title: Releases
+        releases_text: 'GET /v1/catalogs/{catalog_code}/releases retorna release_id, version, valid_from, valid_to, normative e status.'
+        items_title: Itens
+        items_text: 'GET /v1/catalogs/{catalog_code}/items aceita q ou query, category, limit e offset. Retorna permanent_code, official_code, term, category e pricing.'
+        detail_title: 'Detalhe de um item'
+        detail_text: 'GET /v1/catalogs/{catalog_code}/items/{item} acrescenta definições, critérios clínicos, sinônimos, mappings, identifiers e metadados editoriais por campo.'
+        codes_title: 'Catálogos publicados'
+        codes_text: 'Esses códigos estão disponíveis por meio do motor de catálogos quando a release correspondente está publicada.'
+        code_dentar_pr: 'Procedimentos odontológicos próprios com códigos DNT-PR-NNNNNN.'
+        code_dentar_dx: 'Diagnósticos odontológicos próprios com códigos DNT-DX-NNNNNN.'
+        code_nomenclador: 'Nomenclador Odontológico Nacional como catálogo de origem e identificador secundário de DENTAR-PR.'
+        code_nbu: 'Nomenclador Bioquímico Único com Unidades Bioquímicas.'
+        code_nn_pmo: 'Nomenclador Nacional de práticas médicas e cirúrgicas.'
+        editorial_title: 'Controle editorial de idioma'
+        editorial_text: 'Campos com revisão aprovada vigente são servidos no idioma efetivo. Se não houver revisão, o valor é null e untranslated=true. Um dialeto nunca é inferido a partir de uma tradução genérica.'
+        pricing_title: 'Tarifas vigentes'
+        pricing_text: 'pricing expõe unit_type, unit_name, units, fixed_price e expenses de os_fee_item para a data atual. Não inclui valores UVR nem conversões para pesos.'
+    mappings:
+        title: '7. Mapeamentos e farmácia'
+        lead: 'Relações entre catálogos e identificadores de produtos farmacêuticos.'
+        search_title: 'GET /v1/mappings'
+        search_text: 'Aceita system, code e catalog. Retorna catalog, catalog_code, term, target_system, target_uri, target_code, target_display, equivalence, role, rationale e field_languages. Está limitado a 50 resultados sem paginação.'
+        units_title: 'GET /v1/pricing-units'
+        units_text: 'Lista code, name, organization e description das unidades tarifárias configuradas, por exemplo UB.'
+        pharma_title: 'GET /v1/medicines/identifiers/{system}/{code}'
+        pharma_text: 'Busca um medicamento por TROQUEL, ALFABETA, KAIROS ou GTIN. system é normalizado para maiúsculas. Retorna marca, laboratório, ingrediente, apresentação, forma farmacêutica, tipo de venda, ação farmacológica e identifiers.'
+        param_system: 'Sistema de identificador: troquel, alfabeta, kairos ou gtin.'
+        param_code: 'Código dentro do sistema indicado.'
+        param_catalog: 'Código de catálogo; filtra os mapeamentos retornados.'
+        example_title: 'Exemplo com cURL'
+    clinical:
+        title: '8. Terminologias clínicas'
+        lead: 'Endpoints específicos para as fontes terminológicas mais utilizadas.'
+        snomed_title: 'SNOMED CT'
+        snomed_text: 'GET /v1/snomed/{sctid} e GET /v1/concepts/{id} retornam concept_id, descrições agrupadas por idioma, pais, filhos, códigos CIE-10 e um bloco odontológico quando existem dados vinculados.'
+        cie10_title: CIE-10
+        cie10_text: 'GET /v1/cie10/{codigo} valida o formato do código e retorna type, descriptions por idioma e até 50 snomed_concepts relacionados.'
+        loinc_title: LOINC
+        loinc_text: 'GET /v1/loinc aceita q, class, status, system, limit e offset. GET /v1/loinc/{code} acrescenta definição, fórmula, MapTo e nomencladores argentinos associados.'
+        anmat_title: ANMAT
+        anmat_text: 'GET /v1/anmat/{id} retorna certificate, commercial_name, generic_name, pharmaceutical_form, presentation, laboratory e snomed_concept quando o vínculo existe.'
+        nomenclador_title: 'Nomencladores argentinos'
+        nomenclador_text: 'GET /v1/nomenclador consulta nomencladores_argentina com q, type ou tipo e limit. type aceita NN_PMO, NBU, NHPGD, ANDIS, KINESIOLOGIA e SALUD_MENTAL.'
+        vademecum_title: Vademecum
+        vademecum_text: 'GET /v1/vademecum aceita q, troquel, alfabeta, kairos, gtin e limit. Retorna dados comerciais e o concept_id SNOMED vinculado.'
+        pmo_title: PMO
+        pmo_text: 'GET /v1/pmo/practicas, /v1/pmo/practicas/{code}, /v1/pmo/medicamentos e /v1/pmo/normativa expõem práticas, medicamentos e texto normativo com seus próprios filtros.'
+        local_title: 'Catálogos locais'
+        local_text: 'GET /v1/{laboratorio|vacunas|odontologia|prestaciones|programas|imagenes}/{id} retorna o detalhe genérico destes catálogos locais. Relações de UI como focus, tab ou compare não fazem parte deste contrato REST.'
+    dental:
+        title: '9. Odontologia e DENTAR'
+        lead: 'A DENTAR publica procedimentos e diagnósticos próprios, sem duplicar equivalências clínicas presumidas entre fontes.'
+        codes_title: 'Códigos visíveis'
+        codes_text: 'Os códigos permanentes têm o formato DNT-PR-NNNNNN para procedimentos e DNT-DX-NNNNNN para diagnósticos. Os códigos oficiais de cada fonte são preservados como identificadores secundários rotulados.'
+        pr_title: 'Procedimentos DENTAR-PR'
+        pr_text: 'GET /v1/catalogs/dentar-pr/items e /items/{code} expõem serviços odontológicos com seu código permanente, código oficial, categoria, tarifa e mapeamentos.'
+        dx_title: 'Diagnósticos DENTAR-DX'
+        dx_text: 'GET /v1/odontologia/diagnosticos busca por q, snomed ou cie10. GET /v1/odontologia/diagnosticos/{identifier} aceita código DENTAR, SCTID, CIE-10 ou ID numérico.'
+        just_title: 'Justificativa de serviços'
+        just_text: 'GET /v1/odontologia/{identifier}/diagnosticos retorna o serviço e os diagnósticos que o justificam, com relationship_type e clinical_rationale literalmente da fonte.'
+        snomed_title: 'Resolução por SNOMED-CT'
+        snomed_text: 'GET /v1/odontologia/snomed/{sctid} informa has_procedures, has_diagnoses e as coleções procedures e diagnoses vinculadas ao conceito.'
+        nomenclador_title: 'Nomenclador Odontológico Nacional'
+        nomenclador_text: 'Está integrado como catálogo de origem consultável (nomenclador-odontologico-ar) e como identificador secundário pesquisável em DENTAR-PR. Não são publicadas traduções nem equivalências clínicas inferidas.'
+        cdt_title: 'CDT e NN 2025'
+        cdt_text: 'O CDT permanece em suas tabelas nativas e é exposto por busca e detalhe de odontologia. Um texto CDT em es nunca é apresentado como es-AR sem evidência regional.'
+        cdt_no_endpoint: 'Não existe /v1/cdt.'
+        nn_title: 'NN 2025'
+        nn_text: 'Permanece em nomenclador_2025. Não tem endpoint próprio nem mapeamento para as tabelas os_*; sua exposição futura está pendente.'
+        relations_title: 'Relações literais'
+        relations_text: 'As relações entre procedimentos, diagnósticos e códigos externos são mostradas exatamente como constam na fonte. Dois códigos não devem ser interpretados como clinicamente equivalentes, a menos que a fonte declare isso explicitamente.'
+        example_title: 'Exemplo com cURL'
+    pending:
+        title: '10. Funcionalidades pendentes'
+        lead: 'Tudo o que está listado neste artigo está fora do contrato atual. Não deve ser documentado nem consumido como disponível.'
+        fhir_title: 'HL7 FHIR R4'
+        fhir_text: 'Não existe nenhuma rota /fhir em api/index.php. README-FHIR.md descreve um contrato proposto. A proteção de autenticação atual cobre apenas /v1/, portanto qualquer implementação futura deve revisar esse escopo antes da publicação.'
+        uvr_title: UVR
+        uvr_text: 'As tabelas UVR estão propostas e vazias. Nenhum endpoint consulta valores UVR, componentes, conversões ou índices geográficos.'
+        oauth_title: 'OAuth, scopes e rate limiting'
+        oauth_text: 'Não há OAuth 2.0, JWT, scopes, cotas nem 429. O campo rate_limit_per_second é consultado, mas não aplicado. Também não existe 403 por suspensão ou cota.'
+        writes_title: 'Operações de escrita'
+        writes_text: 'Não há POST, PUT, PATCH nem DELETE. A API é somente leitura e não gerencia catálogos, credenciais nem traduções.'
+        console_title: 'Console de desenvolvedores'
+        console_text: 'Não há registro self-service, painel de API Keys, rotação automática nem expiração/revogação por endpoint. As chaves são armazenadas em texto simples atualmente, e seu hash é uma tarefa pendente.'
+        catalogs_title: 'Catálogos reservados'
+        catalogs_text: 'dentar-an, dentar-cl, dentar-in, dentar-pd e dentar-eq estão reservados sem dados públicos. Também não são expostas relações os_catalog_relation pela API, nem conteúdo PHI como imagens PACS.'
+        alignment_title: 'Alinhamento da especificação'
+        alignment_text: 'A OpenAPI vigente tem desvios conhecidos em relação ao código: request_id declarado como UUID, /health com request_id no body, q.maxLength=200, lang padrão es-AR e parâmetros ausentes em vários endpoints. Corrigir a spec é uma tarefa pendente.'
+    openapi:
+        title: '11. OpenAPI e geração de clientes'
+        lead: 'A especificação existente é a referência para client generation, mas deve ser confrontada com o código até que o alinhamento seja concluído.'
+        spec_title: 'Especificação vigente'
+        spec_text: 'docs/api/openapi-3.1.yaml declara openapi 3.1.0, 30 paths, 30 operações GET e referências válidas. Não inclui /fhir/* porque não está implementado.'
+        spec_link: 'Arquivo de especificação'
+        divergences_title: 'Desvios conhecidos'
+        divergences_text: 'Use esta tabela como lista de verificação ao gerar clientes ou testes de contrato.'
+        div_q: 'q: a spec declara 200 caracteres; o código valida 2–80 em /v1/search.'
+        div_lang: 'lang: a spec declara es-AR por padrão; a API usa es salvo configuração.'
+        div_limit: 'limit: a spec declara máximo 100; o máximo efetivo é 50.'
+        div_request_id: 'request_id: a spec declara UUID; o código gera 32 caracteres hexadecimais.'
+        div_health: '/health: a spec declara request_id no body; a resposta real é plana.'
+        div_domains: 'Domain: a spec declara strings; a resposta real usa id e label/description por idioma.'
+        div_params: 'Faltam parâmetros implementados como cie10_type, refset, class, status, system, offset, alfabeta, kairos e gtin.'
+        div_methods: 'OPTIONS/204 e 405 não são documentados, embora existam no código.'
+        generate_title: 'Recomendação de integração'
+        generate_text: 'Gere o cliente a partir da spec, adicione testes de contrato para os desvios listados e mantenha a API Key fora do código gerado e de qualquer artefato público.'
+    support:
+        title: '12. Segurança e suporte'
+        lead: 'Boas práticas operacionais e canais de contato.'
+        security_title: Segurança
+        security_text: 'Use HTTPS, armazene a credencial em um gerenciador de segredos, gire-a manualmente quando apropriado e não a registre em logs. A API não expõe mensagens internas em erros 500.'
+        logging_title: Rastreabilidade
+        logging_text: 'Os logs do servidor registram request_id, método, rota e classe de exceção, mas não termos de busca nem dados clínicos. Salve o request_id do cabeçalho para correlacionar incidentes.'
+        contact_title: Contato
+        contact_text: 'Para solicitar uma API Key, relatar um desvio de contrato ou consultar a disponibilidade de dados, escreva para contacto@origen.ar.'
+        legal_title: 'Avisos legais'
+        legal_text: 'SNOMED CT® é uma marca registrada da SNOMED International. A Origen Salud não é afiliada nem endossada pela SNOMED International. As fontes oficiais são usadas como referência e mantêm seus termos de uso.'
+        no_credentials: ' Este site nunca solicitará uma API Key real.'
+    footer:
+        rights: '© 2026 Origen Salud. Todos os direitos reservados.'
+        disclaimer: 'Documentação baseada no contrato real da API pública v1.'
+    lang:
+        label: 'Idioma da documentação'
+        es: 'Espanhol (Argentina)'
+        en: Inglês
+        pt: 'Português (Brasil)'
+    code:
+        curl: cURL
+        php: PHP
+        python: Python
+        java: Java
+        javascript: 'JavaScript / Node.js'
+        csharp: 'C#'
+    table:
+        catalog_code: 'Código do catálogo'
 
 search:
     title: "Buscar terminologia clínica"
@@ -444,6 +679,27 @@ browse:
     synonyms: "Sinônimos"
     identifiers: "Identificadores"
     identifier_primary: "Identificador principal"
+    identifier_system_nomenclador: "Nomenclador Odontológico Nacional"
+    identifier_system_cie10: "CID-10"
+    identifier_system_cdt: "CDT-2025"
+    identifier_system_snomed: "SNOMED-CT"
+    identifier_system_dentar_pr: "DENTAR-PR"
+    identifier_system_dentar_dx: "DENTAR-DX"
+    source_attributes: "Campos da fonte"
+    source_attributes_note: "Valores literais do Nomenclador Odontológico Nacional. Não são critérios clínicos inferidos."
+    source_attribute_factura: "Faturável"
+    source_attribute_ficha_odontolog: "Ficha odontológica"
+    source_attribute_ficha_periodontal: "Ficha periodontal"
+    source_attribute_pieza: "Dente"
+    source_attribute_caras: "Faces"
+    source_attribute_rx_pre: "Radiografia pré-operatória"
+    source_attribute_rx_post: "Radiografia pós-operatória"
+    source_attribute_material: "Material"
+    source_attribute_maxilar: "Arco"
+    source_attribute_agrupamiento: "Agrupamento"
+    yes: "Sim"
+    no: "Não"
+    tag_source: "Fonte"
     stable_link: "Link estável"
     copy_code: "Copiar código"
     copy_link: "Copiar link"
@@ -570,6 +826,7 @@ dentar:
     dx_text: "Diagnósticos e condições odontológicas com relações terminológicas verificáveis."
     dx_prefix: "Prefixo DNT-DX-NNNNNN"
     dx_action: "Consultar DENTAR-DX"
+    nomenclador_badge: "Nomenclador Odontológico Nacional"
     fields_label: "Campos previstos conforme disponibilidade real"
     field_code: "Código identificador"
     field_status: "Estado"

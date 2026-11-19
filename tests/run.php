@@ -139,6 +139,62 @@ $check(
     'La fila debe mostrar el código DENTAR y, si existe, el identificador externo como badge.'
 );
 
+// 4b. Nomenclador Odontológico Nacional: catálogo propio + identificador secundario.
+$nomencladorSqlPath = $root . '/sql/03_dentar/nomenclador_odontologico_nacional.sql';
+$check(is_file($nomencladorSqlPath), 'Debe existir el artefacto del Nomenclador Odontológico Nacional.');
+$nomencladorSql = is_file($nomencladorSqlPath) ? (string) file_get_contents($nomencladorSqlPath) : '';
+$check(str_contains($nomencladorSql, 'nomenclador-odontologico-ar'), 'El artefacto debe registrar el catálogo propio.');
+$check(str_contains($nomencladorSql, "'NOMENCLADOR_AR'"), 'DENTAR-PR debe conservar el identificador de origen.');
+$syncSql = (string) file_get_contents($root . '/sql/03_dentar/sync_dentar_to_os.sql');
+$check(
+    str_contains($syncSql, "SELECT x.item_id, 'NOMENCLADOR_AR', x.external_code, FALSE"),
+    'El sync no debe marcar el identificador del nomenclador como principal.'
+);
+$check(str_contains($nomencladorSql, 'referencia_literal'), 'El vínculo entre nomenclador y DENTAR-PR debe ser literal.');
+$check(
+    str_contains($nomencladorSql, 'sin juicio de equivalencia clínica'),
+    'El artefacto no debe declarar equivalencias clínicas asumidas.'
+);
+$check(
+    str_contains($nomencladorSql, "    ('01.01', 'Examen-Diagnóstico")
+    && str_contains($nomencladorSql, "    ('11.02', 'Relleno óseo")
+    && substr_count($nomencladorSql, "    ('") >= 135,
+    'El artefacto debe conservar las 135 filas del dump MariaDB.'
+);
+$check(
+    str_contains($repository, "'nomenclador-odontologico-ar'"),
+    'El repositorio debe admitir el catálogo del nomenclador en la whitelist.'
+);
+$check(
+    str_contains($repository, 'FROM os_catalog_identifier ki')
+    && str_contains($repository, 'FROM os_catalog_identifier pi'),
+    'La búsqueda debe consultar cualquier identificador real, no solo el principal.'
+);
+$check(
+    str_contains($resultsSource, '$identifierSystemLabel($officialSystem)'),
+    'El badge secundario debe usar la etiqueta pública del sistema de identificadores.'
+);
+$conceptSource = (string) file_get_contents($root . '/portal/Views/partials/browse/detail/concept.php');
+$check(
+    str_contains($conceptSource, "concept['source_attributes']")
+    && str_contains($conceptSource, '$sourceAttributeLabel($attribute)'),
+    'La ficha debe mostrar los campos literales del nomenclador cuando existan.'
+);
+$nomencladorKeys = [
+    'identifier_system_nomenclador', 'identifier_system_dentar_dx',
+    'source_attributes', 'source_attributes_note',
+    'source_attribute_agrupamiento', 'yes', 'no', 'tag_source',
+];
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $locale) {
+    $messages = Yaml::parseFile($root . '/portal/translations/messages.' . $locale . '.yaml');
+    $browse = $messages['browse'] ?? [];
+    foreach ($nomencladorKeys as $key) {
+        $check(isset($browse[$key]), $locale . ': falta browse.' . $key . '.');
+    }
+    $dentarMessages = $messages['dentar'] ?? [];
+    $check(isset($dentarMessages['nomenclador_badge']), $locale . ': falta dentar.nomenclador_badge.');
+}
+
 // 5. Documentación alineada con el estado real.
 $dentarReadme = (string) file_get_contents($root . '/docs/dentar/README.md');
 foreach (['844', '223', '624', '218', 'origen_codes', 'DENTAR-IN'] as $needle) {
@@ -175,6 +231,104 @@ $check(
     !str_contains($sitemapXml, 'dentar-in') && !str_contains($sitemapXml, 'dentar-pd')
     && !str_contains($sitemapXml, 'dentar-eq'),
     'El sitemap no debe incluir catálogos reservados.'
+);
+
+// 7. Docs: página independiente, i18n equivalente y contrato real.
+$docsSource = (string) file_get_contents($root . '/web/docs.php');
+$check(str_contains($docsSource, "/docs?lang='"), 'Docs debe canónizar y cambiar idioma por /docs?lang=.');
+$check(str_contains($docsSource, 'data-lang-link'), 'Docs debe renderizar su propio selector de idioma.');
+$check(!str_contains($docsSource, 'I18n::alternateLinks'), 'Docs no debe usar alternateLinks() sobre la ruta legacy.');
+$check(!str_contains($docsSource, 'language-switcher.php'), 'Docs no debe reutilizar el selector que genera /{locale}/docs.');
+$check(str_contains($docsSource, 'docs-search-input'), 'Docs debe incluir búsqueda interna.');
+$check(str_contains($docsSource, 'docs-toc-list'), 'Docs debe incluir índice contextual por artículo.');
+$check(str_contains($docsSource, 'data-breadcrumb-article'), 'Docs debe incluir breadcrumbs dinámicos.');
+$check(str_contains($docsSource, 'nomenclador-odontologico-ar'), 'Docs debe documentar el Nomenclador Odontológico Nacional.');
+$check(str_contains($docsSource, 'dentar-pr'), 'Docs debe usar el catálogo real dentar-pr en los ejemplos.');
+$check(str_contains($docsSource, 'DNT-PR-000001'), 'Docs debe usar ejemplos de código DENTAR coherentes.');
+$check(!str_contains($docsSource, 'DNT-XXXXXX'), 'Docs no debe conservar el formato inventado DNT-XXXXXX.');
+$check(!str_contains($docsSource, 'api.origen.ar/fhir'), 'Docs no debe publicar /fhir como entorno disponible.');
+$check(!str_contains($docsSource, 'tab-btn active'), 'Docs no debe conservar el estado roto de pestañas del bloque LOINC.');
+foreach (['$lookup', '$expand', '$translate'] as $fhirOperation) {
+    $check(!str_contains($docsSource, $fhirOperation), 'Docs no debe documentar ' . $fhirOperation . ' como operación disponible.');
+}
+$check(substr_count($docsSource, '"request_id"') >= 4, 'Los envelopes de ejemplo deben incluir request_id.');
+
+preg_match_all('/href="#([A-Za-z0-9_-]+)"/', $docsSource, $docsAnchors);
+preg_match_all('/id="([A-Za-z0-9_-]+)"/', $docsSource, $docsIds);
+preg_match_all("/renderSubhead\\('([A-Za-z0-9_-]+)'/", $docsSource, $docsSubheads);
+$docsAvailableIds = array_merge($docsIds[1], $docsSubheads[1]);
+foreach (array_unique($docsAnchors[1]) as $docsAnchor) {
+    $check(in_array($docsAnchor, $docsAvailableIds, true), 'Docs: ancla rota #' . $docsAnchor . '.');
+}
+
+preg_match_all("/^\s+'(curl|php|python|java|javascript|csharp)' =>/m", $docsSource, $docsCodeLangs);
+$docsExpectedLangs = ['csharp', 'curl', 'java', 'javascript', 'php', 'python'];
+sort($docsExpectedLangs);
+$docsActualLangs = array_values(array_unique($docsCodeLangs[1]));
+sort($docsActualLangs);
+$check($docsActualLangs === $docsExpectedLangs, 'Docs debe ofrecer exactamente los seis lenguajes de ejemplo acordados.');
+$check(str_contains($docsSource, 'data-code-pane="'), 'Cada lenguaje de ejemplo debe tener un panel de código.');
+$check(str_contains($docsSource, 'foreach ($snippets as $lang => $code)'), 'Los paneles de código deben derivarse del mismo conjunto de ejemplos.');
+
+$docsFlat = [];
+$docsKeySets = [];
+foreach (['es-AR', 'en', 'pt-BR'] as $locale) {
+    $messages = Yaml::parseFile($root . '/portal/translations/messages.' . $locale . '.yaml');
+    $docsNode = $messages['docs'] ?? [];
+    $flat = [];
+    $flattenDocs = static function (array $node, string $prefix) use (&$flattenDocs, &$flat): void {
+        foreach ($node as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix . '.' . $key;
+            if (is_array($value)) {
+                $flattenDocs($value, $path);
+            } else {
+                $flat[$path] = $value;
+            }
+        }
+    };
+    $flattenDocs(is_array($docsNode) ? $docsNode : [], '');
+    $docsFlat[$locale] = $flat;
+    $docsKeySets[$locale] = array_keys($flat);
+    foreach ($flat as $key => $value) {
+        $check(is_string($value) && trim($value) !== '', 'Docs ' . $locale . ': valor vacío en docs.' . $key . '.');
+    }
+}
+$docsBaseKeys = $docsKeySets['es-AR'];
+sort($docsBaseKeys);
+foreach (['en', 'pt-BR'] as $locale) {
+    $localeKeys = $docsKeySets[$locale];
+    sort($localeKeys);
+    $check($localeKeys === $docsBaseKeys, 'Docs: paridad de claves entre es-AR y ' . $locale . '.');
+}
+
+preg_match_all("/\\\$t\\('([^']+)'/", $docsSource, $docsUsedKeys);
+$docsArticles = ['overview', 'auth', 'conventions', 'quickstart', 'search', 'catalogs', 'mappings', 'clinical', 'dental', 'pending', 'openapi', 'support'];
+$docsDynamicKeys = [];
+foreach ($docsArticles as $docsArticle) {
+    foreach (['title', 'lead', 'keywords'] as $docsField) {
+        $docsDynamicKeys[] = 'docs.article.' . $docsArticle . '.' . $docsField;
+    }
+}
+foreach (['start', 'core', 'domain', 'operations'] as $docsGroup) {
+    $docsDynamicKeys[] = 'docs.nav.groups.' . $docsGroup;
+}
+foreach (['es', 'en', 'pt'] as $docsLanguage) {
+    $docsDynamicKeys[] = 'docs.lang.' . $docsLanguage;
+}
+foreach (array_unique(array_merge($docsUsedKeys[1], $docsDynamicKeys)) as $docsKey) {
+    if (!str_starts_with($docsKey, 'docs.') || str_ends_with($docsKey, '.')) {
+        continue;
+    }
+    $check(array_key_exists(substr($docsKey, 5), $docsFlat['es-AR']), 'Docs: falta la clave ' . $docsKey . '.');
+}
+$check(
+    str_contains($docsFlat['es-AR']['pending.fhir_text'], 'No existe ninguna ruta /fhir'),
+    'Docs debe declarar FHIR como no implementado.'
+);
+$check(
+    str_contains($docsFlat['es-AR']['dental.codes_text'], 'DNT-PR-NNNNNN')
+    && str_contains($docsFlat['es-AR']['dental.codes_text'], 'DNT-DX-NNNNNN'),
+    'Docs debe usar los formatos reales de códigos DENTAR-PR y DENTAR-DX.'
 );
 
 // Resultado.

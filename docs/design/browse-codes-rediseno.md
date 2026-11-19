@@ -1,6 +1,6 @@
 # Rediseño integral de Browse Codes — Propuesta visual e implementación
 
-**Estado: Etapa 1 aprobada; Etapa 2 implementada y verificada.**
+**Estado: Etapa 1 aprobada; Etapa 2 implementada y verificada; Nomenclador Odontológico Nacional incorporado como catálogo fuente e identificador secundario (pendiente de carga/deploy).**
 
 Este documento cumple la Etapa 1 solicitada: auditar la implementación actual,
 definir la nueva distribución, presentar una propuesta visual completa y
@@ -492,11 +492,11 @@ datos ni el OpenAPI ya publicado.
 
 ### 14.2 Verificación
 
-- `php -l` sin errores en los cinco PHP modificados.
+- `php -l` sin errores en todos los PHP modificados.
 - `node --check web/assets/js/browse-explorer.js` sin errores.
-- Tres archivos YAML parseados con 224 claves `browse.*` cada uno, sin
+- Tres archivos YAML activos parseados con 245 claves `browse.*` cada uno, sin
   diferencias de claves entre idiomas.
-- `php tests/run.php` → `OK: 135 comprobaciones.`
+- `php tests/run.php` → `OK: 186 comprobaciones.`
 - Render local con Chrome headless: sin errores JavaScript; columnas medidas en
   434 px y 708 px (38/62) sobre 1440 px; desplazamiento independiente de la
   columna izquierda; pestañas móviles ocultas en escritorio y visibles a
@@ -508,7 +508,37 @@ datos ni el OpenAPI ya publicado.
   11 nodos reservados y 0 enlaces reservados en el DOM verificado.
 - No aparecen registros ficticios ni importes UVR estimados.
 
-### 14.3 Límites que permanecen
+### 14.3 Nomenclador Odontológico Nacional
+
+El usuario eligió exponerlo de las dos formas acordadas, sin sustituir el código
+permanente DENTAR:
+
+1. **Catálogo de origen consultable:** `nomenclador-odontologico-ar`, con las
+   135 numeraciones originales (`01.01`, `10.16`, …) como códigos permanentes,
+   agrupamiento literal y los diez indicadores de la fuente MariaDB.
+2. **Identificador secundario en DENTAR-PR:** `NOMENCLADOR_AR` vuelve a ser
+   buscable y se muestra con la etiqueta pública «Nomenclador Odontológico
+   Nacional». El badge sigue siendo secundario: DNT-PR-NNNNNN continúa siendo el
+   código visible.
+
+El vínculo entre ambos se registra como `referencia_literal` en la pestaña
+Relaciones. No se afirma equivalencia clínica: solo se conserva la procedencia
+de cada registro. La tabla `os_catalog_source_attribute` expone en la ficha los
+campos literales `factura`, `ficha_odontolog`, `ficha_periodontal`, `pieza`,
+`caras`, `rx_pre`, `rx_post`, `material`, `maxilar` y `agrupamiento`, solo
+cuando la fuente fue cargada. El repositorio busca ahora en **cualquier**
+identificador real (`NOMENCLADOR_AR`, CIE-10, CDT, DENTAR) y muestra etiquetas
+públicas en resultados, Concepto, Relaciones y Fuentes, sin exponer los nombres
+crudos de sistema. `sync_dentar_to_os.sql` deja el identificador del nomenclador
+como secundario para que una resincronización no lo convierta en principal.
+
+**Artefacto generado, no ejecutado:**
+`sql/03_dentar/nomenclador_odontologico_nacional.sql` (PostgreSQL), construido
+por `tools/generate_nomenclador_odontologico_sql.py` desde
+`tools/sources/odontologico/odontologico.sql`. Requiere autorización explícita
+para DDL, carga, migración y deploy.
+
+### 14.4 Límites que permanecen
 
 Sin conexión a `origen_codes` en el entorno de verificación, por lo que no se
 pudieron confirmar en vivo recuentos, vigencias ni el detalle de conceptos. La

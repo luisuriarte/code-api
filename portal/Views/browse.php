@@ -8,8 +8,9 @@ $mobileView = $focus !== '' ? 'detail' : 'results';
 
 // Catálogos DENTAR publicados: único filtro de producto admitido por el backend.
 $publishedCatalogs = [
-    ['code' => 'dentar-pr', 'label' => $t('dentar.pr_badge')],
-    ['code' => 'dentar-dx', 'label' => $t('dentar.dx_badge')],
+    ['code' => 'dentar-pr', 'label' => $t('dentar.pr_badge'), 'tag' => 'browse.tag_own'],
+    ['code' => 'dentar-dx', 'label' => $t('dentar.dx_badge'), 'tag' => 'browse.tag_own'],
+    ['code' => 'nomenclador-odontologico-ar', 'label' => $t('dentar.nomenclador_badge'), 'tag' => 'browse.tag_source'],
 ];
 
 // Catálogos en artefactos o propuestos. Ninguno se enlaza como consultable.
@@ -64,7 +65,11 @@ $facetSelects = [
                 <div class="browse-dentar-banner">
                     <strong><?= e($t('browse.dentar_badge')) ?></strong>
                     <p><?= e($t('browse.dentar_intro', [
-                        '%catalog%' => $t('dentar.' . ($catalogs[0] === 'dentar-dx' ? 'dx_badge' : 'pr_badge')),
+                        '%catalog%' => $t(match ($catalogs[0]) {
+                            'dentar-dx' => 'dentar.dx_badge',
+                            'nomenclador-odontologico-ar' => 'dentar.nomenclador_badge',
+                            default => 'dentar.pr_badge',
+                        }),
                     ])) ?></p>
                     <a class="dentar-text-link" href="<?= e($dentarUrl) ?>"><?= e($t('browse.dentar_back')) ?> →</a>
                 </div>
@@ -178,7 +183,7 @@ $facetSelects = [
                                                            value="<?= e($option['code']) ?>" <?= $isChecked ? 'checked' : '' ?>>
                                                     <span class="browse-cat__code"><?= e(strtoupper($option['code'])) ?></span>
                                                     <span class="browse-cat__name"><?= e($option['label']) ?></span>
-                                                    <span class="browse-cat__tag browse-cat__tag--own"><?= e($t('browse.tag_own')) ?></span>
+                                                    <span class="browse-cat__tag browse-cat__tag--<?= $option['tag'] === 'browse.tag_source' ? 'source' : 'own' ?>"><?= e($t($option['tag'])) ?></span>
                                                 </label>
                                             <?php endforeach; ?>
                                             <?php foreach ($reservedDentar as $option): ?>
