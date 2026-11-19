@@ -1067,7 +1067,7 @@ inválidos (D-34).
 | 2 | Conciliar OpenAPI, READMEs y verificadores; corregir errores de API | **Ejecutada el 2026-11-19**: 17 desvíos corregidos, README reconciliado, expectativa legacy retirada; `php tests/run.php` en verde | Sí (otorgada) |
 | 3 | Completar i18n según el acta de D-01..D-41: `os_catalog_language`, D-31 y corte `OS_IMPORT_MODE` | **Cerrada el 2026-11-19**: D-31 activo, 22 filas sembradas, desempate `es-AR` corregido, apartados 2/3/4/8 en 0 filas y modo `dual` confirmado | Sí (otorgada) |
 | 4 | Relations/mapeos generales | **Cerrada el 2026-11-19**: `fase3_relaciones_mapeos.sql` (nombre histórico) + `verificacion_fase4.sql`; 13 columnas, 6 constraints, 2 índices, 2 tablas nuevas, 603 relaciones intactas y navegables; decisión 10 formalizada sin cambio de código | Sí (otorgada) |
-| 5 | Gobernanza y auditoría unificadas | Requests/reviews/decisions con actores reales | Sí |
+| 5 | Gobernanza y auditoría unificadas | **Autorizada y preparada el 2026-11-19**: `fase4_gobernanza.sql` (nombre histórico) + `verificacion_fase5.sql`; 4 tablas vacías, 4 FK a `os_admin.app_user`, 4 triggers, auditoría append-only y `REVOKE` por DEFAULT ACL. Pendiente de ejecución por el usuario | Sí (otorgada) |
 | 6 | Modelo de productos/presentaciones/identificadores, vacío | Tablas y constraints; ningún producto sin fuente | Sí |
 | 7 | Módulo UVR, sin valores inventados | `os_uvr_*` vacías o con datos auditados; reglas §10.3 | Sí |
 | 8 | DENTAR-IN/PD/EQ solo si se aprueban | Catálogos reservados/creados con gobernanza propia | Sí |
@@ -1101,8 +1101,12 @@ La **Fase 4** fue autorizada el mismo día: `fase3_relaciones_mapeos.sql` extien
 cambio de código porque `itemRelations()` ya consume la tabla. El usuario la
 ejecutó con backup verificado: 603 relaciones y 15 tipos intactos, 13 columnas,
 6 constraints, 2 índices, 2 tablas nuevas, 0 grantees no deseados y 603
-relaciones navegables. **Fase 4 cerrada en base.** La Fase 9 fue ejecutada por el
-usuario con autorización,
+relaciones navegables. **Fase 4 cerrada en base.** La **Fase 5** fue autorizada
+el mismo día: `fase4_gobernanza.sql` crea solicitudes, revisiones, decisiones y
+`os_audit_log` append-only, con actores referenciados a `os_admin.app_user` y
+`REVOKE` por el `DEFAULT ACL`. **Artefactos preparados; ejecución pendiente del
+usuario con backup verificado.** La Fase 9 fue ejecutada por el usuario con
+autorización,
 backup y verificación (§5.2).
 Las fases M1/M2 del panel administrativo están aplicadas y verificadas en
 `os_admin` (ver `docs/architecture/fase2-organizaciones-invitaciones.md`). Los
@@ -1137,7 +1141,10 @@ de esta tabla; la equivalencia completa está en el README de esa carpeta.
 8. **Fase 3 cerrada:** ejecutados `fase3_i18n.sql` y el correctivo de desempate,
    con `verificacion_fase3.sql` en verde; no se reejecutaron los scripts
    `01`..`15`.
-9. Implantar gobernanza, relaciones y mapeos generales.
+9. **Fase 5 autorizada:** ejecutar `fase4_gobernanza.sql` con backup y verificar
+   con `verificacion_fase5.sql`. Cuatro tablas vacías, actores reales de
+   `os_admin.app_user` y auditoría append-only; sin acceso de escritura para
+   roles de aplicación hasta una autorización nueva.
 10. Crear, vacío, el modelo de productos/presentaciones/identificadores.
 11. **Pendiente fuera de alcance de esta entrega:** homogeneizar importadores
     (no se modifican) y verificar la compuerta `OS_IMPORT_MODE`. El modo efectivo

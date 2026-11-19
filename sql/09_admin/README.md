@@ -107,7 +107,11 @@ invitaciones, memberships y eventos de auditoría se conservan como evidencia.
 ## Lo que NO cubre esta fase
 
 - Autorregistro público ni invitaciones globales sin organización.
-- Propuestas, revisiones, comentarios y decisiones (Fases 3-4).
+- Propuestas, revisiones, comentarios y decisiones (Fases 3-4 del panel). La
+  Fase 5 del §16 preparó su modelo en `public` con
+  `sql/08_arquitectura/fase4_gobernanza.sql`: actores referenciados a
+  `os_admin.app_user`, auditoría append-only y sin grants de escritura. Conectar
+  el panel a esas tablas requiere autorización nueva.
 - Publicación atómica de releases y relaciones (Fases 5-6).
 - Hash de `api_clients.api_key`, scopes y 429 (M6, requiere autorización aparte).
 - Activación de D-31 y llenado de `os_catalog_language` (M7; el Acta M0 lo

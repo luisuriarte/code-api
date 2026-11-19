@@ -38,7 +38,7 @@ para no romper referencias existentes en `tests/run.php` y en el documento.
 | — | 2 | Conciliar OpenAPI, READMEs y verificadores (no requiere SQL) |
 | `fase3_i18n.sql` | 3 | i18n: D-31 y sembrado de `os_catalog_language` |
 | `fase3_relaciones_mapeos.sql` | 4 | Extensión de relaciones y mapeos (+ `verificacion_fase4.sql`) |
-| `fase4_gobernanza.sql` | 5 | Solicitudes, revisiones, decisiones y auditoría |
+| `fase4_gobernanza.sql` | 5 | Solicitudes, revisiones, decisiones y auditoría (+ `verificacion_fase5.sql`) |
 | `fase5_productos.sql` | 6 | Concepto, producto, presentación e identificadores |
 | `fase6_uvr.sql` | 7 | Valoración UVR sin valores cargados |
 
@@ -225,6 +225,49 @@ terminó en `COMMIT` (13 columnas, 6 constraints, 2 índices, 2 tablas nuevas y
 en los apartados 6, 8 y 9, 0 huérfanos y **603 relaciones navegables** (decisión
 10), con `column_default = 'draft'`. **Fase 4 cerrada en base.**
 
+## Operación de Fase 5 (§16): gobernanza y auditoría unificadas
+
+Autorizada el 2026-11-19. El nombre `fase4_gobernanza.sql` conserva la numeración
+histórica; en §16 corresponde a la **Fase 5**. Artefactos: migración
+`fase4_gobernanza.sql` y verificación `verificacion_fase5.sql`
+(`BEGIN READ ONLY` / `ROLLBACK`). Requiere la Fase 1 y M1 (`os_admin.app_user`),
+ya aplicados.
+
+La migración crea cuatro tablas vacías —`os_governance_request`,
+`os_governance_review`, `os_governance_decision` y `os_audit_log`— con defaults
+`'draft'`/`'unreviewed'` y `evidence_reference` obligatoria. No siembra filas.
+
+- **Actores reales:** cada tabla incorpora una columna `<nombre>_user_id BIGINT`
+  que referencia `os_admin.app_user(id)`. Los campos textuales históricos se
+  conservan. El trigger toma `app.actor_id` (el mismo setting que D-31) cuando
+  la aplicación lo envía; si no, queda `NULL` y usa el rol de base como
+  procedencia.
+- **Auditoría append-only:** `trg_os_audit_log_immutable` impide `UPDATE` y
+  `DELETE` sobre `os_audit_log`, con el mismo patrón que
+  `os_admin.audit_log` en M1. Los otros tres triggers registran altas, cambios
+  y bajas de solicitudes, revisiones y decisiones.
+- **Privilegios:** `REVOKE` de `PUBLIC`/`origen_admin` sobre las cuatro tablas
+  nuevas por el `DEFAULT ACL` de `public`. No se otorga escritura a ningún rol
+  de aplicación: conectar el panel a estas tablas requiere autorización nueva.
+- No modifica `os_admin`, importadores, API pública, catálogos publicados ni
+  Browse Codes. No reejecuta los scripts `01`..`15`.
+
+```bash
+sudo -u postgres pg_dump -Fc origen_codes > origen_codes_pre_fase5.dump
+sudo -u postgres pg_restore -l origen_codes_pre_fase5.dump
+
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/fase4_gobernanza.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_fase5.sql
+```
+
+Criterios de aceptación: apartado 2 = 4 tablas; apartados 3 y 4 = 4 columnas y
+4 FK a `os_admin.app_user`; apartado 5 = 4 triggers activos (`O`); apartado 6 =
+`'draft'`/`'unreviewed'`; apartado 7 = `NO`; apartado 8 = 0 filas; apartado 9 =
+0 filas en las cuatro tablas; apartado 10 = 603 relaciones, 22 idiomas por
+catálogo y los usuarios `os_admin` intactos.
+
 ## Backup y rollback por fase
 
 Antes de cada fase: `pg_dump -Fc origen_codes > origen_codes_pre_faseN.dump` y
@@ -242,7 +285,7 @@ numeración histórica de los archivos; ver la tabla de alineación más arriba:
 | 3 (§16, i18n) | `DROP TRIGGER trg_ocm_invalidate_fr` y rellenar `os_catalog_language` desde el dump previo (solo si se quiere revertir; la vía principal es restaurar el dump). No crear ni eliminar tablas. |
 | 6 | `DROP TRIGGER trg_os_uvr_valuation_eligible`, `DROP VIEW v_os_uvr_valuation_total`, `DROP FUNCTION os_uvr_assert_eligible_service()`, tablas `os_uvr_geo_index`, `os_uvr_conversion`, `os_uvr_component`, `os_uvr_valuation`, `os_uvr_eligible_catalog`. |
 | 5 | Tablas `os_regulatory_records`, `os_product_manufacturer`, `os_product_identifiers`, `os_product_presentation`, `os_product`, `os_concept`, `os_manufacturer`, más los catálogos de tipos `os_product_identifier_type` y `os_manufacturer_role`. |
-| 4 | Triggers `trg_os_governance_*`, función `os_governance_audit_trigger()`, tablas `os_audit_log`, `os_governance_decision`, `os_governance_review`, `os_governance_request`. |
+| 4 (§16 = Fase 5 gobernanza) | Triggers `trg_os_governance_*`, `trg_os_audit_log_immutable`, funciones `os_governance_audit_trigger()` y `os_governance_audit_immutable()`, tablas `os_audit_log`, `os_governance_decision`, `os_governance_review`, `os_governance_request`. La vía principal es restaurar el dump. |
 | 3 (§16 = Fase 4 relaciones) | `ALTER TABLE os_concept_mapping ALTER COLUMN review_status SET DEFAULT 'approved'`; tablas `os_terminology_system_alias`, `os_mapping_metadata`; quitar columnas y constraints `fk_ocr_*`/`ck_ocr_validity` de `os_catalog_relation`. La vía principal es restaurar el dump. |
 | 1 | Tablas `os_review_state`, `os_relation_type`, `os_relation_kind`, `os_domain_registry`. |
 

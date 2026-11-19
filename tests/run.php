@@ -446,6 +446,70 @@ $check(
     'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 4.'
 );
 
+// 3e. Fase 5 del §16: gobernanza, actores reales y auditoría append-only.
+$fase5Path = $sqlDir . '/fase4_gobernanza.sql';
+$fase5VerifyPath = $sqlDir . '/verificacion_fase5.sql';
+$check(is_file($fase5Path), 'Debe existir la migración de gobernanza de la Fase 5.');
+$check(is_file($fase5VerifyPath), 'Debe existir la verificación de gobernanza de la Fase 5.');
+if (is_file($fase5Path)) {
+    $fase5Sql = (string) file_get_contents($fase5Path);
+    $check(
+        str_contains($fase5Sql, 'CREATE TABLE IF NOT EXISTS os_governance_request')
+            && str_contains($fase5Sql, 'CREATE TABLE IF NOT EXISTS os_governance_review')
+            && str_contains($fase5Sql, 'CREATE TABLE IF NOT EXISTS os_governance_decision')
+            && str_contains($fase5Sql, 'CREATE TABLE IF NOT EXISTS os_audit_log'),
+        'Fase 5 debe crear las cuatro tablas de gobernanza sin sembrar datos.'
+    );
+    $check(
+        substr_count($fase5Sql, 'BIGINT REFERENCES os_admin.app_user(id) ON DELETE SET NULL') === 4,
+        'Fase 5 debe referenciar actores reales de os_admin.app_user en las cuatro tablas.'
+    );
+    $check(
+        str_contains($fase5Sql, 'trg_os_audit_log_immutable')
+            && str_contains($fase5Sql, 'BEFORE UPDATE OR DELETE ON os_audit_log')
+            && str_contains($fase5Sql, 'RAISE EXCEPTION'),
+        'Fase 5 debe hacer append-only la auditoría.'
+    );
+    $check(
+        str_contains($fase5Sql, "NULLIF(current_setting('app.actor_id', TRUE), '')"),
+        'Fase 5 debe tomar el actor real de app.actor_id, igual que D-31.'
+    );
+    $check(
+        str_contains($fase5Sql, 'REVOKE ALL PRIVILEGES ON TABLE')
+            && str_contains($fase5Sql, 'FROM PUBLIC')
+            && str_contains($fase5Sql, 'FROM origen_admin')
+            && substr_count($fase5Sql, 'public.os_governance_request') >= 2,
+        'Fase 5 debe revocar el DEFAULT ACL sobre sus cuatro tablas nuevas.'
+    );
+    $check(
+        str_contains($fase5Sql, 'evidence_reference TEXT NOT NULL')
+            && str_contains($fase5Sql, "DEFAULT 'draft'")
+            && str_contains($fase5Sql, "DEFAULT 'unreviewed'"),
+        'Fase 5 debe exigir evidencia escrita y defaults editoriales seguros.'
+    );
+}
+if (is_file($fase5VerifyPath)) {
+    $fase5Verify = (string) file_get_contents($fase5VerifyPath);
+    $check(
+        str_contains($fase5Verify, 'BEGIN READ ONLY;') && str_contains($fase5Verify, 'ROLLBACK;'),
+        'La verificación de Fase 5 debe ser de solo lectura.'
+    );
+    $check(
+        str_contains($fase5Verify, 'confrelid = to_regclass(\'os_admin.app_user\')')
+            && str_contains($fase5Verify, 'trg_os_audit_log_immutable')
+            && str_contains($fase5Verify, "grantee IN ('origen_admin', 'PUBLIC')")
+            && str_contains($fase5Verify, '(SELECT count(*) FROM os_catalog_relation)'),
+        'La verificación de Fase 5 debe comprobar actores, auditoría, privilegios y regresión.'
+    );
+}
+$check(str_contains($sqlReadme, 'verificacion_fase5.sql'), 'El README SQL debe documentar la verificación de Fase 5.');
+$check(
+    str_contains($architectureRaw, 'Fase 5** fue autorizada')
+        && str_contains($architectureRaw, '`os_audit_log` append-only')
+        && str_contains($architectureRaw, '`REVOKE` por el `DEFAULT ACL`'),
+    'El documento de arquitectura debe registrar la Fase 5 autorizada y preparada.'
+);
+
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.
 $relationTypes = [
     'alternate_benefit', 'billed_in_conjunction_with', 'concurrent_to',
