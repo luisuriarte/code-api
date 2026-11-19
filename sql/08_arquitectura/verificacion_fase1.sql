@@ -38,11 +38,13 @@ ORDER BY code;
 -- 6. Tipos de relación derivados de la tabla real (deben ser 15).
 SELECT count(*) AS relation_types FROM public.os_relation_type;
 
--- 7. Invariante CDT: os_catalog_relation conserva 333 filas y 15 tipos.
+-- 7. Invariante: 603 relaciones (333 CDT + 270 de la Fase 9) y 15 tipos.
 SELECT count(*) AS relaciones, count(DISTINCT relation_type) AS tipos
 FROM public.os_catalog_relation;
 
 -- 8. origen_admin no debe tener privilegios sobre las tablas nuevas (0 filas).
+-- El DEFAULT ACL de public puede concederlos automáticamente; en ese caso,
+-- ejecutar fase1_correcion_privilegios.sql y repetir esta verificación.
 SELECT table_name, string_agg(privilege_type, ', ' ORDER BY privilege_type) AS privilegios
 FROM information_schema.role_table_grants
 WHERE grantee = 'origen_admin'
@@ -52,5 +54,16 @@ WHERE grantee = 'origen_admin'
   )
 GROUP BY table_name
 ORDER BY table_name;
+
+-- 8b. Inventario completo: solo debe aparecer el propietario de las tablas.
+SELECT table_name, grantee,
+       string_agg(privilege_type, ', ' ORDER BY privilege_type) AS privilegios
+FROM information_schema.role_table_grants
+WHERE table_schema = 'public'
+  AND table_name IN (
+      'os_domain_registry', 'os_relation_kind', 'os_relation_type', 'os_review_state'
+  )
+GROUP BY table_name, grantee
+ORDER BY table_name, grantee;
 
 ROLLBACK;

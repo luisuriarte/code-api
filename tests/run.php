@@ -79,7 +79,11 @@ $check($missingRefs === [], 'Referencias OpenAPI sin resolver: ' . implode(', ',
 
 // 3. Artefactos SQL: sintaxis básica y prohibiciones del plan de migración.
 $sqlDir = $root . '/sql/08_arquitectura';
-$sqlFiles = glob($sqlDir . '/fase*.sql') ?: [];
+$sqlFiles = array_values(array_filter(
+    glob($sqlDir . '/*.sql') ?: [],
+    static fn (string $f): bool => !str_contains(basename($f), 'verificacion_')
+        && !str_contains(basename($f), 'correcion_')
+));
 $check(count($sqlFiles) === 5, 'Deben existir cinco artefactos SQL propuestos.');
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
@@ -135,6 +139,23 @@ $check(
         && str_contains($fase1Sql, 'SELECT DISTINCT r.relation_type'),
     'Fase 1 debe derivar los tipos de relación de la tabla real, sin inventar códigos.'
 );
+$check(
+    str_contains($fase1Sql, 'REVOKE ALL PRIVILEGES')
+        && str_contains($fase1Sql, 'FROM PUBLIC')
+        && str_contains($fase1Sql, "to_regrole('origen_admin')"),
+    'Fase 1 debe revocar los privilegios heredados del DEFAULT ACL de public.'
+);
+$fase1FixPath = $sqlDir . '/fase1_correcion_privilegios.sql';
+$check(is_file($fase1FixPath), 'Debe existir el correctivo de privilegios de Fase 1.');
+if (is_file($fase1FixPath)) {
+    $fase1Fix = (string) file_get_contents($fase1FixPath);
+    $check(
+        str_contains($fase1Fix, 'REVOKE ALL PRIVILEGES')
+            && str_contains($fase1Fix, 'FROM PUBLIC')
+            && str_contains($fase1Fix, 'origen_admin'),
+        'El correctivo debe revocar privilegios a origen_admin y PUBLIC.'
+    );
+}
 $fase1VerifyPath = $sqlDir . '/verificacion_fase1.sql';
 $check(is_file($fase1VerifyPath), 'Debe existir la verificación SELECT-only de Fase 1.');
 if (is_file($fase1VerifyPath)) {
@@ -148,6 +169,10 @@ if (is_file($fase1VerifyPath)) {
             && str_contains($fase1Verify, 'os_catalog_relation')
             && str_contains($fase1Verify, "grantee = 'origen_admin'"),
         'La verificación de Fase 1 debe comprobar dominios, invariante CDT y privilegios.'
+    );
+    $check(
+        str_contains($fase1Verify, '603') && str_contains($fase1Verify, '333 CDT'),
+        'La verificación de Fase 1 debe reflejar 603 relaciones (333 CDT + 270 Fase 9).'
     );
 }
 

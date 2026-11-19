@@ -101,9 +101,37 @@ INSERT INTO os_review_state (code, description, is_publication_allowed) VALUES
     ('deprecated',  'Obsoleto por reemplazo.', FALSE)
 ON CONFLICT (code) DO NOTHING;
 
+-- El DEFAULT ACL preexistente en public ("DEFAULT PRIVILEGES FOR TABLES
+-- postgres") concede automáticamente todos los privilegios a las tablas nuevas.
+-- Se revoca aquí para cumplir la regla de que origen_admin no tenga
+-- privilegios fuera de os_admin. No se toca el DEFAULT ACL global.
+REVOKE ALL PRIVILEGES ON TABLE
+    public.os_domain_registry,
+    public.os_relation_kind,
+    public.os_relation_type,
+    public.os_review_state
+FROM PUBLIC;
+
+DO $$
+BEGIN
+    IF to_regrole('origen_admin') IS NOT NULL THEN
+        EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE
+            public.os_domain_registry,
+            public.os_relation_kind,
+            public.os_relation_type,
+            public.os_review_state
+            FROM origen_admin';
+    END IF;
+END $$;
+
 COMMIT;
 
 -- Verificación sugerida (no ejecutar automáticamente):
 -- SELECT code, mode FROM os_domain_registry ORDER BY code;
 -- SELECT count(*) AS relation_types FROM os_relation_type;
 -- SELECT code FROM os_review_state WHERE is_publication_allowed;
+-- SELECT table_name, grantee FROM information_schema.role_table_grants
+--  WHERE table_schema = 'public'
+--    AND table_name IN ('os_domain_registry', 'os_relation_kind',
+--                       'os_relation_type', 'os_review_state')
+--    AND grantee IN ('origen_admin', 'PUBLIC');  -- debe devolver 0 filas

@@ -48,8 +48,9 @@ una por fase, con verificación y backup entre ellas. Los scripts
 
 ## Operación de Fase 1
 
-Artefactos: `fase1_infraestructura.sql` (migración) y `verificacion_fase1.sql`
-(verificación `SELECT`-only). La Fase 1 crea cuatro tablas de referencia en
+Artefactos: `fase1_infraestructura.sql` (migración), `verificacion_fase1.sql`
+(verificación `SELECT`-only) y `fase1_correcion_privilegios.sql` (correctivo,
+solo si hace falta). La Fase 1 crea cuatro tablas de referencia en
 `public` y siembra dominios, clasificaciones de relación y estados de revisión a
 partir de fuentes ya existentes. **No modifica** `os_catalog`, `os_catalog_item`,
 `os_catalog_relation`, importadores, API pública ni catálogos publicados.
@@ -74,8 +75,32 @@ Criterios de aceptación de la verificación:
   `published` tienen `is_publication_allowed = true`.
 - `os_relation_type` se deriva de `os_catalog_relation` (15 tipos esperados),
   sin códigos inventados.
-- `os_catalog_relation` queda intacta: 333 filas y 15 tipos distintos.
+- `os_catalog_relation` queda intacta: **603 filas** (333 de las CDT + 270 del
+  Nomenclador Odontológico Nacional de la Fase 9) y 15 tipos distintos.
 - `origen_admin` no recibe privilegios sobre estas cuatro tablas.
+
+### Hallazgo operativo: DEFAULT ACL en `public`
+
+`origen_codes` tiene un `DEFAULT PRIVILEGES FOR TABLES postgres` que concede
+automáticamente `SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER`
+a `origen_admin` sobre **toda tabla nueva** creada en `public` por `postgres`.
+Por eso la primera ejecución de la Fase 1 devolvió 4 filas en el apartado 8 de
+la verificación, aunque el DDL terminó en `COMMIT`.
+
+La migración ya incluye el `REVOKE` correctivo al final. Si se aplicó una versión
+anterior del archivo, ejecutar una sola vez:
+
+```bash
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/fase1_correcion_privilegios.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_fase1.sql
+```
+
+El apartado 8 debe devolver **0 filas**. No se modifica el `DEFAULT ACL` global
+porque afectaría a tablas de otras fases; las fases 4, 6 y 7 deben incluir el
+mismo `REVOKE` sobre sus tablas nuevas. Si el apartado 8b muestra otros grantees
+además del propietario, retirarlos con el mismo criterio.
 
 ## Backup y rollback por fase
 
@@ -99,4 +124,4 @@ numeración histórica de los archivos; ver la tabla de alineación más arriba:
 
 Si una fase posterior depende de una anterior, revertir primero la posterior.
 Después de cualquier rollback, repetir las consultas de verificación de la fase
-y confirmar que `os_catalog_relation` conserva sus 333 filas y 15 tipos.
+y confirmar que `os_catalog_relation` conserva sus 603 filas y 15 tipos.

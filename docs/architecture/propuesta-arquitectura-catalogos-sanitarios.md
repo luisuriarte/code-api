@@ -1009,14 +1009,19 @@ inválidos (D-34).
 | 11 | Medicamentos, dispositivos y registros | Integración con ANMAT/UDI/GTIN reales | Sí |
 | 12 | FHIR R4 como proyección | Endpoints autenticados y mapeados desde modelo interno | Sí |
 
-**Estado al 2026-11-19.** La Fase 1 tiene su artefacto preparado en
-`sql/08_arquitectura/fase1_infraestructura.sql`, con verificación `SELECT`-only
-en `verificacion_fase1.sql`; **no ejecutada**. La Fase 9 fue ejecutada por el
-usuario con autorización, backup y verificación (§5.2). Las fases M1/M2 del
-panel administrativo están aplicadas y verificadas en `os_admin` (ver
-`docs/architecture/fase2-organizaciones-invitaciones.md`). Los nombres
-`fase3..fase6` de `sql/08_arquitectura/` corresponden a las Fases 4..7 de esta
-tabla; la equivalencia completa está en el README de esa carpeta.
+**Estado al 2026-11-19.** La Fase 1 fue **ejecutada por el usuario** en
+`origen_codes` con backup verificado y terminó en `COMMIT`: 4 tablas nuevas,
+12 dominios, 7 clasificaciones de relación y 10 estados de revisión. Su
+verificación `SELECT`-only (`verificacion_fase1.sql`) registró dos hallazgos
+documentados en el README de `sql/08_arquitectura/`: el total de relaciones es
+603 (333 de las CDT + 270 del Nomenclador Odontológico Nacional de la Fase 9),
+y un `DEFAULT ACL` de `public` concedió privilegios a `origen_admin` sobre las
+tablas nuevas, corregidos mediante `fase1_correcion_privilegios.sql`. La Fase 9
+fue ejecutada por el usuario con autorización, backup y verificación (§5.2).
+Las fases M1/M2 del panel administrativo están aplicadas y verificadas en
+`os_admin` (ver `docs/architecture/fase2-organizaciones-invitaciones.md`). Los
+nombres `fase3..fase6` de `sql/08_arquitectura/` corresponden a las Fases 4..7
+de esta tabla; la equivalencia completa está en el README de esa carpeta.
 
 ---
 
