@@ -12,6 +12,8 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 - 🏥 [Guía de Interoperabilidad HL7® FHIR® R4](README-FHIR.md) — **contrato propuesto, aún no implementado**: `CodeSystem`, `ValueSet`, `ConceptMap`, `$lookup`, `$expand`, `$translate` y modelado clínico (`Procedure`, `Condition`, `Claim`).
 - 🧮 [Metodología UVR/SVP](web/uvr.php) — página independiente, **propuesta sin valores cargados ni endpoints**.
 - 🏗️ [Propuesta de arquitectura de catálogos sanitarios](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md) — diagnóstico, modelo objetivo, plan por etapas y decisiones pendientes.
+- 🔐 [Fase 1 / M1 — Identidad, autenticación y RBAC](docs/architecture/fase1-admin-identidad.md) — estado, controles y verificación en `origen_codes`.
+- 👥 [Fase 2 / M2 — Organizaciones, invitaciones y memberships](docs/architecture/fase2-organizaciones-invitaciones.md) — acta de diseño propuesto, pendiente de autorización.
 
 ### Estado real de DENTAR en `origen_codes`
 

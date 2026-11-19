@@ -9,6 +9,7 @@ use DateTimeInterface;
 use DateTimeZone;
 use OrigenSalud\Portal\Config;
 use OrigenSalud\Portal\Repositories\AuthThrottleRepository;
+use OrigenSalud\Portal\Repositories\MembershipRepository;
 use OrigenSalud\Portal\Repositories\PasswordResetRepository;
 use OrigenSalud\Portal\Repositories\RbacRepository;
 use OrigenSalud\Portal\Repositories\RepositoryException;
@@ -104,6 +105,19 @@ final class AuthService
             return ['ok' => false, 'error' => 'invalid'];
         }
 
+        $context = $this->resolveContext((int) $user['id'], null);
+
+        if (!$context['ok']) {
+            AuditLogger::record('login_failed', [
+                'actor_user_id' => (int) $user['id'],
+                'actor_email' => (string) $user['email'],
+                'reason' => 'no_active_context',
+                'ip_hash' => $ipHash,
+            ]);
+
+            return ['ok' => false, 'error' => 'no_context'];
+        }
+
         $rawToken = Token::random();
         $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
             ->modify('+' . max(60, (int) $this->config['session_lifetime']) . ' seconds')
@@ -119,6 +133,7 @@ final class AuthService
         Session::set('admin.user_id', (int) $user['id']);
         Session::set('admin.email', (string) $user['email']);
         Session::set('admin.token', $rawToken);
+        Session::set('admin.active_org_id', $context['org']);
         Csrf::rotate();
 
         AuditLogger::record('login_success', [
@@ -159,12 +174,22 @@ final class AuthService
         }
     }
 
+    private static function clear(): void
+    {
+        Session::set('admin.user_id', null);
+        Session::set('admin.email', null);
+        Session::set('admin.token', null);
+        Session::set('admin.active_org_id', null);
+    }
+
     /**
      * @return array{
      *     user: array{id: int, email: string, full_name: string, status: string},
      *     roles: list<array{code: string, name: string}>,
      *     permissions: list<string>,
-     *     grants: list<array{catalog_code: string, operation: string, allowed: bool}>
+     *     grants: list<array{catalog_code: string, operation: string, allowed: bool}>,
+     *     active_org_id: int|null,
+     *     contexts: list<array{id: int|null, name: string, code: string|null}>
      * }|null
      */
     public function current(): ?array
@@ -199,14 +224,44 @@ final class AuthService
             return null;
         }
 
+        $requested = Session::get('admin.active_org_id');
+
+        try {
+            $context = $this->resolveContext((int) $user['id'], $requested);
+        } catch (RepositoryException) {
+            return null;
+        }
+
+        if (!$context['ok']) {
+            self::clear();
+
+            return null;
+        }
+
+        if ($context['changed']) {
+            Session::set('admin.active_org_id', $context['org']);
+            AuditLogger::record('organization_context_invalidated', [
+                'actor_user_id' => (int) $user['id'],
+                'reason' => 'context_no_longer_available',
+                'after_state' => ['active_org_id' => $context['org']],
+            ]);
+        }
+
         try {
             SessionRepository::touch((int) $sessionRow['id']);
-            $roles = RbacRepository::rolesForUser((int) $user['id']);
-            $permissions = RbacRepository::permissionsForUser((int) $user['id']);
-            $grants = RbacRepository::grantsForUser((int) $user['id']);
+            $roles = RbacRepository::rolesForUser((int) $user['id'], $context['org']);
+            $permissions = RbacRepository::permissionsForUser((int) $user['id'], $context['org']);
+            $grants = RbacRepository::grantsForUser((int) $user['id'], $context['org']);
         } catch (RepositoryException) {
             // Without fresh RBAC data we cannot authorize anything.
             return null;
+        }
+
+        foreach ($roles as $role) {
+            if ($role['code'] === 'superadmin' && !in_array(Rbac::WILDCARD, $permissions, true)) {
+                $permissions[] = Rbac::WILDCARD;
+                break;
+            }
         }
 
         return [
@@ -219,7 +274,86 @@ final class AuthService
             'roles' => $roles,
             'permissions' => $permissions,
             'grants' => $grants,
+            'active_org_id' => $context['org'],
+            'contexts' => $context['contexts'],
         ];
+    }
+
+    /**
+     * Cambia el contexto activo de la sesión. Devuelve false si el usuario no
+     * tiene un membership vigente en la organización solicitada.
+     */
+    public function switchContext(mixed $requested): bool
+    {
+        $userId = Session::get('admin.user_id');
+
+        if (!is_int($userId)) {
+            return false;
+        }
+
+        $previous = Session::get('admin.active_org_id');
+        $context = $this->resolveContext($userId, $requested);
+
+        if (!$context['ok']) {
+            return false;
+        }
+
+        if ($previous === $context['org']) {
+            return true;
+        }
+
+        Session::set('admin.active_org_id', $context['org']);
+
+        AuditLogger::record('organization_context_switched', [
+            'actor_user_id' => $userId,
+            'entity_type' => 'app_user',
+            'entity_id' => (string) $userId,
+            'before_state' => ['active_org_id' => $previous],
+            'after_state' => ['active_org_id' => $context['org']],
+        ]);
+
+        Csrf::rotate();
+
+        return true;
+    }
+
+    /**
+     * @return array{ok: bool, org: int|null, contexts: list<array{id: int|null, name: string, code: string|null}>, changed: bool}
+     */
+    private function resolveContext(int $userId, mixed $requested): array
+    {
+        $globalRoles = MembershipRepository::globalRoleCodes($userId);
+        $organizations = MembershipRepository::activeContexts($userId);
+        $contexts = [];
+
+        if ($globalRoles !== []) {
+            $contexts[] = ['id' => null, 'name' => 'Plataforma', 'code' => null];
+        }
+
+        foreach ($organizations as $organization) {
+            $contexts[] = $organization;
+        }
+
+        if ($contexts === []) {
+            return ['ok' => false, 'org' => null, 'contexts' => [], 'changed' => false];
+        }
+
+        $desired = null;
+
+        if (is_int($requested) || (is_string($requested) && ctype_digit($requested))) {
+            $desired = (int) $requested;
+        }
+
+        foreach ($contexts as $context) {
+            if ($context['id'] === $desired) {
+                return ['ok' => true, 'org' => $desired, 'contexts' => $contexts, 'changed' => false];
+            }
+        }
+
+        // El contexto guardado dejó de ser válido: se elige el primero disponible.
+        $fallback = $contexts[0]['id'];
+
+        return ['ok' => true, 'org' => $fallback, 'contexts' => $contexts, 'changed' => $fallback !== $desired];
     }
 
     /** @return array{ok: bool} */
@@ -250,7 +384,7 @@ final class AuthService
                 $ipHash
             );
 
-            $link = Config::baseUrl() . '/admin/reset?token=' . rawurlencode($rawToken);
+            $link = Config::adminBaseUrl() . '/admin/reset?token=' . rawurlencode($rawToken);
             $text = "Solicitud de restablecimiento de contraseña.\n\n" . $link . "\n\n"
                 . 'Si no fue usted, ignore este correo. El vínculo vence en '
                 . (int) $this->config['reset_ttl'] . " segundos.\n";
@@ -306,13 +440,6 @@ final class AuthService
         ]);
 
         return ['ok' => true, 'error' => null];
-    }
-
-    private static function clear(): void
-    {
-        Session::set('admin.user_id', null);
-        Session::set('admin.email', null);
-        Session::set('admin.token', null);
     }
 
     private function pepper(): string

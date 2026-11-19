@@ -67,6 +67,29 @@ final class UserRepository
         }
     }
 
+    /** Alta por invitación: el token acredita el correo, sin verificación extra. */
+    public static function createInvited(string $email, string $passwordHash, string $fullName): int
+    {
+        try {
+            $statement = AdminDatabase::connection()->prepare(
+                'INSERT INTO os_admin.app_user
+                     (email, password_hash, full_name, status, email_verified_at)
+                 VALUES (:email, :hash, :name, :status, now())
+                 RETURNING id'
+            );
+            $statement->execute([
+                ':email' => $email,
+                ':hash' => $passwordHash,
+                ':name' => $fullName,
+                ':status' => 'active',
+            ]);
+
+            return (int) $statement->fetchColumn();
+        } catch (PDOException) {
+            throw new RepositoryException('admin_user_create_failed');
+        }
+    }
+
     public static function assignRole(int $userId, string $roleCode, ?int $organizationId = null): void
     {
         try {

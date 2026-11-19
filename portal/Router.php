@@ -7,7 +7,11 @@ namespace OrigenSalud\Portal;
 use OrigenSalud\Portal\Admin\AdminGuard;
 use OrigenSalud\Portal\Controllers\AboutController;
 use OrigenSalud\Portal\Controllers\AdminAuthController;
+use OrigenSalud\Portal\Controllers\AdminContextController;
 use OrigenSalud\Portal\Controllers\AdminHomeController;
+use OrigenSalud\Portal\Controllers\AdminInvitationController;
+use OrigenSalud\Portal\Controllers\AdminMembershipController;
+use OrigenSalud\Portal\Controllers\AdminOrganizationController;
 use OrigenSalud\Portal\Controllers\BrowseController;
 use OrigenSalud\Portal\Controllers\ContactController;
 use OrigenSalud\Portal\Controllers\DentarController;
@@ -214,7 +218,148 @@ final class Router
             return;
         }
 
+        // Gobernanza (M2): rutas con identificadores y acciones.
+        $segments = $section === '' ? [] : explode('/', $section);
+
+        if ($this->governance($segments, $method, $path)) {
+            return;
+        }
+
         $this->notFound(I18n::locale(), $path);
+    }
+
+    /**
+     * @param list<string> $segments
+     */
+    private function governance(array $segments, string $method, string $path): bool
+    {
+        $count = count($segments);
+        $first = $segments[0] ?? '';
+        $id = isset($segments[1]) && ctype_digit($segments[1]) ? (int) $segments[1] : 0;
+
+        if ($first === 'organizations' && $id > 0) {
+            if ($count === 2) {
+                if ($method === 'GET') {
+                    AdminOrganizationController::show($id);
+
+                    return true;
+                }
+
+                if ($method === 'POST') {
+                    AdminOrganizationController::update($id);
+
+                    return true;
+                }
+
+                return false;
+            }
+
+            if ($count === 3 && $method === 'POST') {
+                $action = $segments[2];
+
+                if ($action === 'deactivate') {
+                    AdminOrganizationController::deactivate($id);
+
+                    return true;
+                }
+
+                if ($action === 'reactivate') {
+                    AdminOrganizationController::reactivate($id);
+
+                    return true;
+                }
+
+                if ($action === 'members') {
+                    AdminOrganizationController::assignMember($id);
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if ($first === 'organizations' && $count === 1) {
+            if ($method === 'GET') {
+                AdminOrganizationController::index();
+
+                return true;
+            }
+
+            if ($method === 'POST') {
+                AdminOrganizationController::store();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        if ($first === 'invitations' && $id > 0 && $count === 3 && $method === 'POST') {
+            if ($segments[2] === 'resend') {
+                AdminInvitationController::resend($id);
+
+                return true;
+            }
+
+            if ($segments[2] === 'revoke') {
+                AdminInvitationController::revoke($id);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        if ($first === 'invitations' && $count === 1) {
+            if ($method === 'GET') {
+                AdminInvitationController::index();
+
+                return true;
+            }
+
+            if ($method === 'POST') {
+                AdminInvitationController::store();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        if ($first === 'invite' && $count === 1 && $method === 'GET') {
+            AdminInvitationController::showAccept();
+
+            return true;
+        }
+
+        if ($first === 'invite' && $count === 2 && $segments[1] === 'accept' && $method === 'POST') {
+            AdminInvitationController::accept();
+
+            return true;
+        }
+
+        if ($first === 'memberships' && $id > 0 && $count === 3
+            && $segments[2] === 'status' && $method === 'POST'
+        ) {
+            AdminMembershipController::status($id);
+
+            return true;
+        }
+
+        if ($first === 'grants' && $id > 0 && $count === 2 && $method === 'POST') {
+            AdminMembershipController::grant($id);
+
+            return true;
+        }
+
+        if ($first === 'context' && $count === 1 && $method === 'POST') {
+            AdminContextController::switch();
+
+            return true;
+        }
+
+        return false;
     }
 
     private function contact(string $locale, string $currentPath): void

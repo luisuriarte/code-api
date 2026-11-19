@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use OrigenSalud\Portal\Admin\Rbac;
 use OrigenSalud\Portal\Services\Csrf;
 use OrigenSalud\Web\I18n;
 
@@ -29,10 +30,42 @@ $adminCssHref = $adminCssVersion === false
     <div class="container admin-header-inner">
         <span class="admin-brand">Origen Salud <small><?= e($t('admin.brand')) ?></small></span>
         <?php if (!empty($adminUser)): ?>
+        <?php
+        $adminPermissions = is_array($current['permissions'] ?? null) ? $current['permissions'] : [];
+        $adminContexts = is_array($current['contexts'] ?? null) ? $current['contexts'] : [];
+        $adminActiveOrg = $current['active_org_id'] ?? null;
+        $adminNext = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/admin'), PHP_URL_PATH);
+        $adminNext = is_string($adminNext) && $adminNext !== '' ? $adminNext : '/admin';
+        ?>
         <nav class="admin-nav" aria-label="<?= e($t('admin.nav')) ?>">
             <a href="/admin"><?= e($t('admin.home.title')) ?></a>
+            <?php if (Rbac::hasPermission($adminPermissions, 'admin.orgs.manage')): ?>
+            <a href="/admin/organizations"><?= e($t('admin.orgs.title')) ?></a>
+            <?php endif; ?>
+            <?php if (Rbac::hasPermission($adminPermissions, 'admin.invites.manage')): ?>
+            <a href="/admin/invitations"><?= e($t('admin.invites.title')) ?></a>
+            <?php endif; ?>
+            <?php if (Rbac::hasPermission($adminPermissions, 'audit.view')): ?>
             <a href="/admin/audit"><?= e($t('admin.audit.title')) ?></a>
+            <?php endif; ?>
         </nav>
+        <?php if (count($adminContexts) > 1): ?>
+        <form method="post" action="/admin/context" class="admin-context">
+            <label for="admin-context-select"><?= e($t('admin.context.label')) ?></label>
+            <select id="admin-context-select" name="organization_id"
+                    onchange="this.form.submit()">
+                <?php foreach ($adminContexts as $context): ?>
+                    <option value="<?= $context['id'] === null ? '' : (int) $context['id'] ?>"
+                        <?= $context['id'] === $adminActiveOrg ? 'selected' : '' ?>>
+                        <?= e((string) $context['name']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <input type="hidden" name="next" value="<?= e($adminNext) ?>">
+            <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e(Csrf::token()) ?>">
+            <button type="submit" class="button button-small"><?= e($t('admin.context.switch')) ?></button>
+        </form>
+        <?php endif; ?>
         <form method="post" action="/admin/logout" class="admin-logout">
             <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e(Csrf::token()) ?>">
             <button type="submit" class="button button-small"><?= e($t('admin.logout')) ?></button>

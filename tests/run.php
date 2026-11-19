@@ -596,6 +596,159 @@ $check(
     'El saludo del panel debe interpolar %name% sin dejar los signos.'
 );
 
+// 7. Fase 2 / M2 — gobernanza: organizaciones, invitaciones y memberships.
+$m2Files = [
+    '/sql/09_admin/fase2_gobernanza.sql',
+    '/sql/09_admin/verificacion_fase2.sql',
+    '/docs/architecture/fase2-organizaciones-invitaciones.md',
+    '/portal/Admin/GovernanceException.php',
+    '/portal/Admin/GovernanceService.php',
+    '/portal/Repositories/OrganizationRepository.php',
+    '/portal/Repositories/MembershipRepository.php',
+    '/portal/Repositories/InvitationRepository.php',
+    '/portal/Repositories/CatalogGrantRepository.php',
+    '/portal/Repositories/CatalogReferenceRepository.php',
+    '/portal/Controllers/AdminForm.php',
+    '/portal/Controllers/AdminOrganizationController.php',
+    '/portal/Controllers/AdminInvitationController.php',
+    '/portal/Controllers/AdminMembershipController.php',
+    '/portal/Controllers/AdminContextController.php',
+    '/portal/Views/admin/organizations.php',
+    '/portal/Views/admin/organization.php',
+    '/portal/Views/admin/invitations.php',
+    '/portal/Views/admin/invite.php',
+    '/portal/Views/admin/_flash.php',
+];
+foreach ($m2Files as $m2File) {
+    $check(is_file($root . $m2File), 'Falta el artefacto M2 ' . $m2File . '.');
+}
+
+$m2Sql = (string) file_get_contents($root . '/sql/09_admin/fase2_gobernanza.sql');
+$check(str_starts_with(ltrim($m2Sql), '--'), 'La migración M2 debe comenzar con el aviso de no ejecución.');
+$check(
+    str_contains($m2Sql, 'BEGIN;') && str_contains($m2Sql, 'COMMIT;'),
+    'La migración M2 debe ser transaccional.'
+);
+$m2SqlSinComentarios = (string) preg_replace('/^\s*--.*$/m', '', $m2Sql);
+foreach (['DROP TABLE', 'DROP COLUMN', 'DROP SCHEMA', 'TRUNCATE', 'DELETE FROM'] as $forbiddenSql) {
+    $check(
+        !preg_match('/\b' . str_replace(' ', '\s+', $forbiddenSql) . '\b/i', $m2SqlSinComentarios),
+        'La migración M2 no debe contener ' . $forbiddenSql . '.'
+    );
+}
+foreach (['os_admin.invitation', 'os_admin.invitation_grant', 'token_hash', 'membership_id'] as $sqlPiece) {
+    $check(str_contains($m2Sql, $sqlPiece), 'La migración M2 debe incluir ' . $sqlPiece . '.');
+}
+$check(
+    str_contains($m2Sql, 'uq_catalog_grant_global') && str_contains($m2Sql, 'uq_catalog_grant_membership'),
+    'M2 debe separar los grants globales de los grants por membership con índices parciales.'
+);
+$check(
+    str_contains($m2Sql, 'trg_catalog_grant_membership_user'),
+    'M2 debe impedir grants de membership de otro usuario.'
+);
+foreach (['admin.orgs.manage', 'admin.invites.manage', 'admin.memberships.manage', 'admin.grants.manage'] as $newPermission) {
+    $check(str_contains($m2Sql, $newPermission), 'La migración M2 debe crear el permiso ' . $newPermission . '.');
+    $check(array_key_exists($newPermission, \OrigenSalud\Portal\Admin\Rbac::PERMISSIONS), 'RBAC debe exponer ' . $newPermission . '.');
+}
+$m2Verify = (string) file_get_contents($root . '/sql/09_admin/verificacion_fase2.sql');
+$check(str_contains($m2Verify, 'BEGIN READ ONLY'), 'La verificación M2 debe usar BEGIN READ ONLY.');
+$check(str_contains($m2Verify, 'ROLLBACK'), 'La verificación M2 debe finalizar con ROLLBACK.');
+
+$check(
+    \OrigenSalud\Portal\Admin\Rbac::canGrantRole(['*'], ['superadmin'], 'superadmin'),
+    'El superadministrador puede otorgar cualquier rol.'
+);
+$check(
+    !\OrigenSalud\Portal\Admin\Rbac::canGrantRole(['admin.view'], ['editor'], 'superadmin'),
+    'Nadie sin comodín puede otorgar superadmin.'
+);
+$check(
+    !\OrigenSalud\Portal\Admin\Rbac::canGrantRole(['admin.view'], ['editor'], 'reviewer'),
+    'El techo de permisos impide otorgar un rol con permisos ausentes.'
+);
+$check(
+    !\OrigenSalud\Portal\Admin\Rbac::canGrantRole(['*'], ['superadmin'], 'rol_inexistente'),
+    'No se pueden otorgar roles inexistentes.'
+);
+$check(\OrigenSalud\Portal\Admin\Rbac::isValidOrganizationType('health_center'), 'health_center debe ser un tipo válido.');
+$check(!\OrigenSalud\Portal\Admin\Rbac::isValidOrganizationType('otro'), 'Un tipo arbitrario debe ser rechazado.');
+$check(\OrigenSalud\Portal\Admin\Rbac::isValidOperation('propose'), 'propose debe ser una operación válida.');
+$check(!\OrigenSalud\Portal\Admin\Rbac::isValidOperation('drop'), 'La operación drop debe ser rechazada.');
+
+$configSource = (string) file_get_contents($root . '/portal/Config.php');
+$check(str_contains($configSource, 'function adminBaseUrl()'), 'Config debe exponer la URL base del panel.');
+$check(str_contains($configSource, "'invite_ttl'"), 'Config debe exponer el TTL de invitaciones.');
+$check(str_contains($configSource, "'invite_max_ttl'"), 'Config debe exponer el tope de TTL de invitaciones.');
+$envSource = (string) file_get_contents($root . '/.env.example');
+foreach (['ADMIN_BASE_URL=', 'ADMIN_INVITE_TTL=', 'ADMIN_INVITE_MAX_TTL=', 'ADMIN_INVITE_RESEND_MIN='] as $envKey) {
+    $check(str_contains($envSource, $envKey), '.env.example debe documentar ' . $envKey . '.');
+}
+
+$routerSource = (string) file_get_contents($root . '/portal/Router.php');
+foreach (['organizations', 'invitations', 'invite', 'memberships', 'context'] as $m2Route) {
+    $check(
+        str_contains($routerSource, "'" . $m2Route . "'"),
+        'El router debe registrar el segmento ' . $m2Route . ' bajo /admin.'
+    );
+}
+$m2Layout = (string) file_get_contents($root . '/portal/Views/layouts/admin.php');
+$check(str_contains($m2Layout, "action=\"/admin/context\""), 'El panel debe ofrecer el selector de contexto activo.');
+$check(str_contains($m2Layout, "Rbac::hasPermission"), 'La navegación debe ocultarse según permisos.');
+
+$governanceSource = (string) file_get_contents($root . '/portal/Admin/GovernanceService.php');
+foreach ([
+    'organization_created', 'invitation_created', 'invitation_resent', 'invitation_revoked',
+    'invitation_accepted', 'invitation_accept_failed', 'membership_created', 'membership_suspended',
+    'membership_revoked', 'catalog_grant_updated', 'organization_context_switched',
+] as $auditEvent) {
+    $check(
+        str_contains($governanceSource . $routerSource . (string) file_get_contents($root . '/portal/Admin/AuthService.php'), $auditEvent),
+        'M2 debe auditar el evento ' . $auditEvent . '.'
+    );
+}
+$check(
+    !str_contains($governanceSource, 'AuditLogger::record($token'),
+    'El token de invitación nunca debe enviarse a la auditoría.'
+);
+$check(
+    str_contains($governanceSource, 'Token::hash($token)'),
+    'Solo el hash del token debe persistirse.'
+);
+$check(
+    str_contains($governanceSource, 'countActiveGlobalSuperadmins') && str_contains($governanceSource, 'last_superadmin'),
+    'M2 debe proteger al último superadministrador global.'
+);
+$check(
+    str_contains($governanceSource, 'CatalogReferenceRepository::exists') && !str_contains($m2Sql, 'REFERENCES public.os_catalog'),
+    'El código de catálogo se valida con la conexión pública, sin FK desde os_admin.'
+);
+
+$m2I18nKeys = [
+    'admin.orgs.title', 'admin.invites.title', 'admin.members.title', 'admin.context.label',
+    'admin.invite.title', 'admin.grants.hint', 'admin.messages.invite_accepted',
+    'admin.errors.last_superadmin', 'admin.roles.org_type.health_center',
+];
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $m2Locale) {
+    $m2Messages = Yaml::parseFile($root . '/portal/translations/messages.' . $m2Locale . '.yaml');
+    $m2Flat = [];
+    $flattenM2 = static function (array $node, string $prefix) use (&$flattenM2, &$m2Flat): void {
+        foreach ($node as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix . '.' . (string) $key;
+            if (is_array($value)) {
+                $flattenM2($value, $path);
+            } else {
+                $m2Flat[$path] = $value;
+            }
+        }
+    };
+    $flattenM2(is_array($m2Messages['admin'] ?? null) ? $m2Messages['admin'] : [], '');
+    foreach ($m2I18nKeys as $m2Key) {
+        $m2Relative = substr($m2Key, strlen('admin.'));
+        $check(array_key_exists($m2Relative, $m2Flat), $m2Locale . ': falta la clave ' . $m2Key . '.');
+    }
+}
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

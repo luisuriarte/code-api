@@ -15,6 +15,9 @@ $error = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $flas
     <?php if (isset($_GET['reset'])): ?>
     <p class="admin-notice" role="status"><?= e($t('admin.reset.done')) ?></p>
     <?php endif; ?>
+    <?php if (is_array($flash) && !empty($flash['ok']) && is_string($flash['message'] ?? null)): ?>
+    <p class="admin-ok" role="status"><?= e($t('admin.messages.' . $flash['message'])) ?></p>
+    <?php endif; ?>
     <?php if ($error !== ''): ?>
     <p class="admin-error" role="alert"><?= e($t('admin.login.error_' . $error)) ?></p>
     <?php endif; ?>

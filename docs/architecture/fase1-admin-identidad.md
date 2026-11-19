@@ -1,9 +1,15 @@
 # Fase 1 / M1 — Identidad, autenticación y RBAC del panel de administración
 
-**Estado del código:** IMPLEMENTADO EN EL REPOSITORIO.
-**Estado de la base:** M1 **NO EJECUTADO**. El artefacto `sql/09_admin/fase1_identidad.sql` está propuesto y requiere revisión y ejecución manual.
+**Estado del código:** IMPLEMENTADO Y PROBADO EN EL REPOSITORIO.
+**Estado de la base:** M1 **APLICADO Y VERIFICADO** en `origen_codes` el 2026-11-19.
 **Autorización:** Acta M0 (2026-11-19) + autorización expresa del responsable para Fase 1 / M1.
 **No incluye:** DDL sobre `os_*`, cambios en la API pública, deploy ni commit.
+
+> **Cierre operativo:** la migración fue ejecutada por el responsable, el rol
+> `origen_admin` conecta contra `os_admin`, existe un superadministrador activo
+> y el login por HTTPS quedó registrado en auditoría. El detalle está en §6.
+> La Fase 2 de gobernanza se diseña en
+> [`fase2-organizaciones-invitaciones.md`](fase2-organizaciones-invitaciones.md).
 
 ## 1. Alcance
 
@@ -81,7 +87,7 @@ Ver `git status` para la lista exacta. Los principales son:
 ```bash
 php -l <cada archivo PHP nuevo>
 php tests/run.php
-# OK: 2448 comprobaciones.
+# OK: 2450 comprobaciones.
 ```
 
 Prueba HTTP local sin base (`php -S 127.0.0.1:8899 -t web`, con
@@ -98,38 +104,48 @@ Prueba HTTP local sin base (`php -S 127.0.0.1:8899 -t web`, con
 
 El servidor de prueba se detuvo al finalizar; no hubo conexión a PostgreSQL.
 
-## 6. Pasos pendientes del operador (NO realizados)
+## 6. Verificación en `origen_codes` (2026-11-19)
 
-1. Revisar y ejecutar `sql/09_admin/fase1_identidad.sql` contra `origen_codes` con `psql -v ON_ERROR_STOP=1`.
-2. Ejecutar `sql/09_admin/verificacion.sql` y archivar la salida.
-3. Asignar contraseña a `origen_admin` y completar `PORTAL_ADMIN_DB_*` y `ADMIN_PASSWORD_PEPPER` en el entorno del VPS.
-4. Configurar SMTP para la recuperación de contraseña.
-5. Crear el primer superadministrador:
-   ```bash
-   php tools/php/admin_bootstrap.php
-   ```
-   Si el usuario quedó creado pero falló la asignación de roles (por ejemplo,
-   por el permiso `INSERT` sobre `os_admin.membership`), completar sin cambiar
-   la contraseña con:
-   ```bash
-   php tools/php/admin_bootstrap.php --repair-existing
-   ```
-6. Forzar HTTPS en el vhost y mantener `ADMIN_REQUIRE_HTTPS=true`.
-7. Verificar `/admin/login` en los tres idiomas y que `/admin/audit` exija el permiso `audit.view`.
-8. Recién entonces solicitar autorización para Fase 2.
+El responsable ejecutó la migración y la verificación `SELECT`-only. Resultados:
 
-## 7. Gate de salida
+- 11 tablas en `os_admin`: `app_user`, `audit_log`, `auth_throttle`,
+  `catalog_grant`, `membership`, `organization`, `password_reset`,
+  `permission`, `role`, `role_permission`, `session`.
+- Rol `origen_admin` con `LOGIN`; `origen_admin` no tiene privilegios sobre
+  `os_catalog_*`.
+- Trigger `trg_audit_log_immutable` activo sobre `os_admin.audit_log`.
+- 8 roles de sistema y permisos mínimos cargados.
+- `origen_admin` puede conectar y `SELECT count(*) FROM os_admin.role`
+  devuelve `8`.
+- Primer superadministrador creado con id `1` (`luis.uriarte@gmail.com`),
+  roles globales `superadmin` y `viewer`.
+- La primera ejecución del bootstrap creó el usuario pero falló al asignar
+  roles porque faltaba `INSERT` sobre `os_admin.membership`. Se aplicó el
+  `GRANT` incremental y se completó con
+  `php tools/php/admin_bootstrap.php --repair-existing`, sin cambiar la
+  contraseña. La auditoría registró `bootstrap_superadmin_roles_repaired`.
+- Login por HTTPS verificado: evento `login_success` y una sesión vigente en
+  `os_admin.session`.
+- El saludo del panel se corrigió para interpolar `%name%` correctamente
+  (prueba de regresión incluida).
 
-La Fase 1 se considera cerrada cuando:
+## 7. Estado del gate de salida
 
-- M1 está aplicado y verificado en `origen_codes`.
-- Existe al menos un superadministrador creado por CLI.
-- Login/logout/reset funcionan sobre HTTPS con CSRF y auditoría.
-- Las pruebas siguen en verde y no hay cambios en la API pública.
+La Fase 1 se considera **cerrada** con estas condiciones:
+
+- [x] M1 aplicado y verificado en `origen_codes`.
+- [x] Existe al menos un superadministrador creado por CLI.
+- [x] Login/logout sobre HTTPS con CSRF, sesión persistida y auditoría.
+- [x] Las pruebas siguen en verde y no hay cambios en la API pública.
+- [ ] Recuperación de contraseña por SMTP: el flujo está implementado y
+  probado sin base, pero el envío real depende de configurar SMTP. No bloquea
+  el uso del panel.
 
 ## 8. Fuera de alcance (requiere autorización nueva)
 
-- Fase 2: organizaciones, invitaciones y memberships de colaboradores.
+- Fase 2 / M2: organizaciones, invitaciones y memberships de colaboradores.
+  Diseño propuesto en
+  [`fase2-organizaciones-invitaciones.md`](fase2-organizaciones-invitaciones.md).
 - Fases 3-5: propuestas, revisión y publicación atómica.
 - M6: hash de API keys, scopes, 429 y consola self-service.
 - M7: D-31 y llenado de `os_catalog_language`.

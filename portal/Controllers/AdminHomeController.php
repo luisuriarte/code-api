@@ -45,6 +45,7 @@ final class AdminHomeController
             'locale' => I18n::locale(),
             'currentPath' => '/admin/audit',
             'adminUser' => $current['user'],
+            'current' => $current,
             'events' => $events,
         ], 'admin');
     }

@@ -16,6 +16,20 @@ final class Config
         return $base === '' ? 'https://med.origen.ar' : $base;
     }
 
+    /**
+     * Base del panel de administración (M2).
+     *
+     * Puede vivir en un host distinto del portal público. Los vínculos de
+     * invitación y recuperación se construyen con esta base, nunca con el host
+     * de la petición, para evitar host header injection.
+     */
+    public static function adminBaseUrl(): string
+    {
+        $configurado = rtrim(trim((string) env('ADMIN_BASE_URL', '')), '/');
+
+        return $configurado !== '' ? $configurado : self::baseUrl();
+    }
+
     /** @return array{dsn: string, user: string, pass: string, timeout: int} */
     public static function database(): array
     {
@@ -95,7 +109,7 @@ final class Config
         ];
     }
 
-    /** @return array{pepper: string, session_lifetime: int, login_limit: int, login_window: int, lock_minutes: int, reset_ttl: int, require_https: bool} */
+    /** @return array{pepper: string, session_lifetime: int, login_limit: int, login_window: int, lock_minutes: int, reset_ttl: int, invite_ttl: int, invite_max_ttl: int, invite_resend_min: int, require_https: bool} */
     public static function adminAuth(): array
     {
         return [
@@ -105,6 +119,9 @@ final class Config
             'login_window' => (int) env('ADMIN_LOGIN_WINDOW', '900'),
             'lock_minutes' => (int) env('ADMIN_LOCK_MINUTES', '15'),
             'reset_ttl' => (int) env('ADMIN_RESET_TTL', '3600'),
+            'invite_ttl' => (int) env('ADMIN_INVITE_TTL', '604800'),
+            'invite_max_ttl' => (int) env('ADMIN_INVITE_MAX_TTL', '2592000'),
+            'invite_resend_min' => (int) env('ADMIN_INVITE_RESEND_MIN', '300'),
             'require_https' => filter_var(env('ADMIN_REQUIRE_HTTPS', true), FILTER_VALIDATE_BOOL),
         ];
     }

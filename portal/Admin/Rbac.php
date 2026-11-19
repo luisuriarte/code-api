@@ -26,6 +26,21 @@ final class Rbac
         'catalog.approve' => 'Aprobar propuestas revisadas',
         'catalog.publish' => 'Publicar versiones aprobadas',
         'audit.view' => 'Consultar auditoría de acceso',
+        'admin.orgs.manage' => 'Gestionar organizaciones',
+        'admin.invites.manage' => 'Gestionar invitaciones de colaboradores',
+        'admin.memberships.manage' => 'Gestionar memberships y roles',
+        'admin.grants.manage' => 'Gestionar permisos por catálogo',
+    ];
+
+    /** Tipos de organización admitidos por la UI (D-02). */
+    public const ORGANIZATION_TYPES = [
+        'external', 'ministry', 'health_center', 'university',
+        'professional_council', 'vendor', 'ngo', 'other',
+    ];
+
+    /** Operaciones válidas en un grant de catálogo. */
+    public const CATALOG_OPERATIONS = [
+        'view', 'propose', 'edit_draft', 'review', 'approve', 'publish',
     ];
 
     /** @var array<string, list<string>> */
@@ -118,5 +133,62 @@ final class Rbac
     public static function permissionsForRole(string $roleCode): array
     {
         return self::ROLE_PERMISSIONS[$roleCode] ?? [];
+    }
+
+    public static function isValidOrganizationType(string $type): bool
+    {
+        return in_array($type, self::ORGANIZATION_TYPES, true);
+    }
+
+    public static function isValidOperation(string $operation): bool
+    {
+        return in_array($operation, self::CATALOG_OPERATIONS, true);
+    }
+
+    public static function isValidOrganizationCode(string $code): bool
+    {
+        return preg_match('/^[a-z0-9][a-z0-9-]{1,39}$/', $code) === 1;
+    }
+
+    /**
+     * Techo de permisos: nadie puede otorgar un rol con permisos que no tiene.
+     *
+     * El rol `superadmin` se representa con el comodín de código, por eso se
+     * comprueba también la lista de roles del actor.
+     *
+     * @param array<int, string> $actorPermissions
+     * @param array<int, string> $actorRoles
+     */
+    public static function canGrantRole(
+        array $actorPermissions,
+        array $actorRoles,
+        string $targetRole
+    ): bool {
+        if (!array_key_exists($targetRole, self::ROLE_PERMISSIONS)) {
+            return false;
+        }
+
+        $isSuperadmin = in_array(self::WILDCARD, $actorPermissions, true)
+            || in_array('superadmin', $actorRoles, true);
+
+        if ($isSuperadmin) {
+            return true;
+        }
+
+        if ($targetRole === 'superadmin') {
+            return false;
+        }
+
+        foreach (self::permissionsForRole($targetRole) as $permission) {
+            if ($permission === self::WILDCARD) {
+                return false;
+            }
+
+            if (!in_array($permission, $actorPermissions, true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
