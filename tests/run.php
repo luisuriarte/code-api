@@ -207,9 +207,12 @@ $fhirReadme = (string) file_get_contents($root . '/README-FHIR.md');
 $check(str_contains($fhirReadme, 'contrato propuesto, no implementado'), 'README-FHIR.md debe declarar el estado no implementado.');
 
 // 6. Navegación: enlace /cart roto resuelto y sitemap real.
-foreach (['header.php', 'footer.php'] as $partial) {
+foreach (['header.php', 'footer.php', 'nav-links.php'] as $partial) {
     $source = (string) file_get_contents($root . '/portal/Views/partials/' . $partial);
     $check(!str_contains($source, "'/cart'"), $partial . ' no debe enlazar a /cart.');
+}
+foreach (['footer.php', 'nav-links.php'] as $partial) {
+    $source = (string) file_get_contents($root . '/portal/Views/partials/' . $partial);
     $check(str_contains($source, "#plataforma"), $partial . ' debe enlazar Servicios a #plataforma.');
 }
 $homeSource = (string) file_get_contents($root . '/portal/Views/home.php');

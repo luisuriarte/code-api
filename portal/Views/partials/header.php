@@ -3,17 +3,6 @@
 declare(strict_types=1);
 
 use OrigenSalud\Web\I18n;
-
-$navItems = [
-    ['label' => $t('nav.home'), 'href' => I18n::localizedPath($locale, '/')],
-    ['label' => $t('nav.dentar'), 'href' => I18n::localizedPath($locale, '/dentar'), 'class' => 'nav-dentar'],
-    ['label' => $t('nav.browse'), 'href' => I18n::localizedPath($locale, '/browse')],
-    ['label' => $t('nav.docs'), 'href' => I18n::localizedPath($locale, '/docs')],
-    ['label' => $t('nav.uvr'), 'href' => '/uvr?lang=' . rawurlencode($locale)],
-    ['label' => $t('nav.services'), 'href' => I18n::localizedPath($locale, '/') . '#plataforma'],
-    ['label' => $t('nav.about'), 'href' => I18n::localizedPath($locale, '/about')],
-    ['label' => $t('nav.contact'), 'href' => I18n::localizedPath($locale, '/contact')],
-];
 ?>
 <header class="site-header">
     <div class="container header-inner">
@@ -26,9 +15,7 @@ $navItems = [
         </a>
 
         <nav class="site-nav" aria-label="<?= e($t('nav.label')) ?>">
-            <?php foreach ($navItems as $item): ?>
-                <a class="<?= e($item['class'] ?? '') ?>" href="<?= e($item['href']) ?>"><?= e($item['label']) ?></a>
-            <?php endforeach; ?>
+            <?php require __DIR__ . '/nav-links.php'; ?>
         </nav>
 
         <div class="header-actions">

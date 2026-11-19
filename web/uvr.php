@@ -262,7 +262,6 @@ $renderArticleNav = static function (string $id) use ($articles, $articleIndex, 
         @media (max-width: 860px) {
             .uvr-shell { grid-template-columns: 1fr; gap: 24px; padding-top: 22px; }
             .uvr-sidebar, .uvr-toc { position: static; max-height: none; }
-            .site-nav { display: none; }
             .article-nav { flex-direction: column; }
             .article-nav__link { max-width: none; margin-left: 0 !important; text-align: left !important; }
         }
@@ -284,11 +283,7 @@ $renderArticleNav = static function (string $id) use ($articles, $articleIndex, 
         </a>
 
         <nav class="site-nav" aria-label="<?= $esc($t('nav.label')) ?>">
-            <a href="<?= $esc($homePath . '#plataforma') ?>"><?= $esc($t('nav.platform')) ?></a>
-            <a href="<?= $esc($homePath . '#snomed') ?>"><?= $esc($t('nav.snomed')) ?></a>
-            <a href="<?= $esc($homePath . '#api') ?>"><?= $esc($t('nav.api')) ?></a>
-            <a href="<?= $esc($docsPath) ?>"><?= $esc($t('nav.docs')) ?></a>
-            <a href="<?= $esc($contactPath) ?>"><?= $esc($t('nav.contact')) ?></a>
+            <?php $activeNav = 'uvr'; require dirname(__DIR__) . '/portal/Views/partials/nav-links.php'; ?>
         </nav>
 
         <div class="header-actions">

@@ -563,7 +563,6 @@ JSON;
         @media (max-width: 860px) {
             .docs-shell { grid-template-columns: 1fr; gap: 24px; padding-top: 22px; }
             .docs-sidebar, .docs-toc { position: static; max-height: none; }
-            .site-nav { display: none; }
             .article-nav { flex-direction: column; }
             .article-nav__link { max-width: none; margin-left: 0 !important; text-align: left !important; }
         }
@@ -585,11 +584,7 @@ JSON;
         </a>
 
         <nav class="site-nav" aria-label="<?= $esc($t('nav.label')) ?>">
-            <a href="<?= $esc($homePath . '#plataforma') ?>"><?= $esc($t('nav.platform')) ?></a>
-            <a href="<?= $esc($homePath . '#snomed') ?>"><?= $esc($t('nav.snomed')) ?></a>
-            <a href="<?= $esc($homePath . '#api') ?>"><?= $esc($t('nav.api')) ?></a>
-            <a href="<?= $esc($canonical) ?>" aria-current="page"><?= $esc($t('nav.docs')) ?></a>
-            <a href="<?= $esc($contactPath) ?>"><?= $esc($t('nav.contact')) ?></a>
+            <?php $activeNav = 'docs'; require dirname(__DIR__) . '/portal/Views/partials/nav-links.php'; ?>
         </nav>
 
         <div class="header-actions">
