@@ -76,4 +76,36 @@ final class Config
             'window' => (int) env('RATE_WINDOW', '3600'),
         ];
     }
+
+    /**
+     * Conexión de escritura acotada al esquema os_admin (M1).
+     *
+     * Es distinta de la conexión pública de solo lectura: el rol origen_admin
+     * no tiene permisos sobre os_catalog_* ni sobre la API pública.
+     *
+     * @return array{dsn: string, user: string, pass: string, timeout: int}
+     */
+    public static function adminDatabase(): array
+    {
+        return [
+            'dsn' => (string) env('PORTAL_ADMIN_DB_DSN', ''),
+            'user' => (string) env('PORTAL_ADMIN_DB_USER', 'origen_admin'),
+            'pass' => (string) env('PORTAL_ADMIN_DB_PASS', ''),
+            'timeout' => (int) env('PORTAL_ADMIN_DB_STATEMENT_TIMEOUT', '3'),
+        ];
+    }
+
+    /** @return array{pepper: string, session_lifetime: int, login_limit: int, login_window: int, lock_minutes: int, reset_ttl: int, require_https: bool} */
+    public static function adminAuth(): array
+    {
+        return [
+            'pepper' => (string) env('ADMIN_PASSWORD_PEPPER', ''),
+            'session_lifetime' => (int) env('ADMIN_SESSION_LIFETIME', '43200'),
+            'login_limit' => (int) env('ADMIN_LOGIN_LIMIT', '5'),
+            'login_window' => (int) env('ADMIN_LOGIN_WINDOW', '900'),
+            'lock_minutes' => (int) env('ADMIN_LOCK_MINUTES', '15'),
+            'reset_ttl' => (int) env('ADMIN_RESET_TTL', '3600'),
+            'require_https' => filter_var(env('ADMIN_REQUIRE_HTTPS', true), FILTER_VALIDATE_BOOL),
+        ];
+    }
 }

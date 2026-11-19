@@ -436,6 +436,151 @@ $check(
     'UVR debe corregir la fórmula geográfica del README.'
 );
 
+// 6. Fase 1 / M1 — identidad, RBAC y auditoría de acceso.
+$adminClasses = [
+    '/portal/Admin/PasswordHasher.php',
+    '/portal/Admin/Token.php',
+    '/portal/Admin/Rbac.php',
+];
+foreach ($adminClasses as $adminClass) {
+    $check(is_file($root . $adminClass), 'Falta la clase ' . $adminClass . '.');
+}
+require_once $root . '/portal/Admin/PasswordHasher.php';
+require_once $root . '/portal/Admin/Token.php';
+require_once $root . '/portal/Admin/Rbac.php';
+
+use OrigenSalud\Portal\Admin\PasswordHasher;
+use OrigenSalud\Portal\Admin\Rbac;
+use OrigenSalud\Portal\Admin\Token;
+
+$hasher = new PasswordHasher('pepper-de-prueba');
+$hash = $hasher->hash('clave-segura-de-prueba');
+$check($hash !== 'clave-segura-de-prueba', 'El hash no debe ser la contraseña en claro.');
+$check($hasher->verify('clave-segura-de-prueba', $hash), 'verify() debe aceptar la contraseña correcta.');
+$check(!$hasher->verify('otra-clave-de-prueba', $hash), 'verify() debe rechazar una contraseña distinta.');
+$check(
+    str_starts_with($hash, defined('PASSWORD_ARGON2ID') ? '$argon2id$' : '$2y$'),
+    'El hash debe usar Argon2id (o bcrypt como reserva).'
+);
+
+$tokenA = Token::random();
+$tokenB = Token::random();
+$check(strlen($tokenA) === 64 && $tokenA !== $tokenB, 'Los tokens deben ser aleatorios de 64 hexadecimales.');
+$check(Token::hash($tokenA) === hash('sha256', $tokenA), 'El token almacenado debe ser su hash SHA-256.');
+$check(Token::verify($tokenA, Token::hash($tokenA)), 'Token::verify() debe aceptar el token correcto.');
+$check(!Token::verify($tokenB, Token::hash($tokenA)), 'Token::verify() debe rechazar otro token.');
+$check(Token::isValidHex($tokenA) && !Token::isValidHex('no-hex'), 'isValidHex() debe validar el formato.');
+
+$check(Rbac::hasPermission(['catalog.view'], 'catalog.view'), 'RBAC debe reconocer un permiso otorgado.');
+$check(!Rbac::hasPermission(['catalog.view'], 'catalog.publish'), 'RBAC debe negar un permiso no otorgado.');
+$check(Rbac::hasPermission(['*'], 'catalog.publish'), 'El comodín debe otorgar todos los permisos.');
+$check(!Rbac::hasPermission(['catalog.view'], 'permission.inexistente'), 'RBAC debe negar códigos desconocidos.');
+$grants = [
+    ['catalog_code' => 'dentar-pr', 'operation' => 'propose', 'allowed' => true],
+    ['catalog_code' => 'dentar-pr', 'operation' => 'publish', 'allowed' => false],
+];
+$check(Rbac::canAccessCatalog($grants, 'dentar-pr', 'propose'), 'El grant explícito debe permitir la operación.');
+$check(!Rbac::canAccessCatalog($grants, 'dentar-pr', 'publish'), 'Una denegación explícita debe ganar.');
+$check(!Rbac::canAccessCatalog($grants, 'snomed', 'propose'), 'Sin grant no se permite el acceso.');
+$check(Rbac::canAccessCatalog([], 'snomed', 'propose', ['*']), 'El superadministrador accede a todo.');
+$check(
+    Rbac::canApprove('7', '8', ['catalog.approve']),
+    'La separación de funciones permite aprobar una propuesta ajena.'
+);
+$check(
+    !Rbac::canApprove('7', '7', ['catalog.approve']),
+    'Nadie debe aprobar su propia propuesta.'
+);
+
+$m1SqlPath = $root . '/sql/09_admin/fase1_identidad.sql';
+$check(is_file($m1SqlPath), 'Debe existir la migración propuesta de M1.');
+$m1Sql = is_file($m1SqlPath) ? (string) file_get_contents($m1SqlPath) : '';
+$check(str_starts_with(ltrim($m1Sql), '--'), 'La migración M1 debe comenzar con el aviso de no ejecución.');
+$check(str_contains($m1Sql, 'BEGIN;') && str_contains($m1Sql, 'COMMIT;'), 'M1 debe ser transaccional.');
+$check(str_contains($m1Sql, 'CREATE SCHEMA IF NOT EXISTS os_admin'), 'M1 debe crear el esquema os_admin.');
+$check(str_contains($m1Sql, 'os_admin.audit_log') && str_contains($m1Sql, 'trg_audit_log_immutable'), 'M1 debe crear la auditoría append-only.');
+$check(str_contains($m1Sql, 'origen_admin'), 'M1 debe crear el rol de aplicación aislado.');
+$check(!preg_match('/\bDROP\s+TABLE\b|\bDROP\s+COLUMN\b|\bTRUNCATE\b|\bDELETE\s+FROM\b/i', $m1Sql), 'M1 debe ser aditiva.');
+$check(!preg_match('/\bGRANT\s+[^\n]+\bTO\s+PUBLIC\b/i', $m1Sql), 'M1 no debe otorgar privilegios a PUBLIC.');
+$check(!preg_match('/\b(?:INSERT|UPDATE)\s+(?:INTO\s+)?(?:public\.)?os_catalog/i', $m1Sql), 'M1 no debe modificar os_catalog_*.');
+$check(is_file($root . '/sql/09_admin/README.md'), 'Debe existir el README de M1.');
+$check(is_file($root . '/sql/09_admin/verificacion.sql'), 'Debe existir la verificación SELECT-only de M1.');
+
+$m1Files = [
+    '/portal/Repositories/AdminDatabase.php',
+    '/portal/Repositories/AuditRepository.php',
+    '/portal/Repositories/UserRepository.php',
+    '/portal/Repositories/SessionRepository.php',
+    '/portal/Repositories/RbacRepository.php',
+    '/portal/Repositories/AuthThrottleRepository.php',
+    '/portal/Repositories/PasswordResetRepository.php',
+    '/portal/Admin/AuditLogger.php',
+    '/portal/Admin/AuthService.php',
+    '/portal/Admin/AdminGuard.php',
+    '/portal/Controllers/AdminAuthController.php',
+    '/portal/Controllers/AdminHomeController.php',
+    '/portal/Views/layouts/admin.php',
+    '/portal/Views/admin/login.php',
+    '/portal/Views/admin/forgot.php',
+    '/portal/Views/admin/reset.php',
+    '/portal/Views/admin/home.php',
+    '/portal/Views/admin/audit.php',
+    '/portal/Views/admin/denied.php',
+    '/tools/php/admin_bootstrap.php',
+];
+foreach ($m1Files as $m1File) {
+    $check(is_file($root . $m1File), 'Falta el artefacto de Fase 1: ' . $m1File . '.');
+}
+
+$configSource = (string) file_get_contents($root . '/portal/Config.php');
+$check(str_contains($configSource, 'function adminDatabase()'), 'Config debe exponer la conexión acotada a os_admin.');
+$check(str_contains($configSource, 'function adminAuth()'), 'Config debe exponer los parámetros de autenticación.');
+$envExample = (string) file_get_contents($root . '/.env.example');
+$check(str_contains($envExample, 'PORTAL_ADMIN_DB_DSN='), '.env.example debe documentar la DSN administrativa.');
+$check(str_contains($envExample, 'ADMIN_PASSWORD_PEPPER='), '.env.example debe documentar el pepper.');
+
+$routerSource = (string) file_get_contents($root . '/portal/Router.php');
+$check(str_contains($routerSource, "'/admin'"), 'El router debe registrar las rutas del panel.');
+$check(str_contains($routerSource, 'AdminGuard::requireSecure()'), 'Todas las rutas del panel deben exigir HTTPS configurable.');
+$adminLayout = (string) file_get_contents($root . '/portal/Views/layouts/admin.php');
+$check(!str_contains($adminLayout, 'nav-links.php'), 'El panel no debe usar la navegación pública.');
+$authServiceSource = (string) file_get_contents($root . '/portal/Admin/AuthService.php');
+$check(str_contains($authServiceSource, 'session_regenerate_id(true)'), 'El login debe regenerar el id de sesión.');
+$check(str_contains($authServiceSource, 'AuthThrottleRepository::checkAndHit'), 'El login debe usar aceleración persistente.');
+$check(!str_contains($authServiceSource, 'os_catalog'), 'AuthService no debe tocar tablas terminológicas.');
+
+$adminKeys = [
+    'admin/login/title', 'admin/login/lead', 'admin/login/submit',
+    'admin/forgot/title', 'admin/reset/title', 'admin/home/title',
+    'admin/audit/title', 'admin/denied/title', 'admin/logout',
+];
+$adminKeySets = [];
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $adminLocale) {
+    $adminMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $adminLocale . '.yaml');
+    $adminFlat = [];
+    $flattenAdmin = static function (array $node, string $prefix) use (&$flattenAdmin, &$adminFlat): void {
+        foreach ($node as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix . '.' . (string) $key;
+            if (is_array($value)) {
+                $flattenAdmin($value, $path);
+                continue;
+            }
+            $adminFlat[$path] = $value;
+        }
+    };
+    $flattenAdmin(is_array($adminMessages['admin'] ?? null) ? $adminMessages['admin'] : [], '');
+    foreach ($adminKeys as $adminKey) {
+        $check(array_key_exists(str_replace('/', '.', substr($adminKey, 6)), $adminFlat), $adminLocale . ': falta la clave ' . $adminKey . '.');
+    }
+    $adminKeySets[$adminLocale] = array_keys($adminFlat);
+}
+sort($adminKeySets['es-AR']);
+foreach (['en', 'pt-BR', 'es'] as $adminLocale) {
+    $otherKeys = $adminKeySets[$adminLocale];
+    sort($otherKeys);
+    $check($otherKeys === $adminKeySets['es-AR'], 'Fase 1: paridad de claves admin entre es-AR y ' . $adminLocale . '.');
+}
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

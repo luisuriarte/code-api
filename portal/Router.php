@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace OrigenSalud\Portal;
 
+use OrigenSalud\Portal\Admin\AdminGuard;
 use OrigenSalud\Portal\Controllers\AboutController;
+use OrigenSalud\Portal\Controllers\AdminAuthController;
+use OrigenSalud\Portal\Controllers\AdminHomeController;
 use OrigenSalud\Portal\Controllers\BrowseController;
 use OrigenSalud\Portal\Controllers\ContactController;
 use OrigenSalud\Portal\Controllers\DentarController;
@@ -30,6 +33,14 @@ final class Router
                 require $standalone;
                 exit;
             }
+        }
+
+        // Panel de administración (Fase 1). Va antes del router localized:
+        // /admin no lleva prefijo de idioma y tiene guardias propias.
+        if ($path === '/admin' || str_starts_with($path, '/admin/')) {
+            $this->admin($path);
+
+            return;
         }
 
         if ($path === '/') {
@@ -125,6 +136,85 @@ final class Router
         }
 
         $this->notFound($locale, $currentPath);
+    }
+
+    /** Rutas del panel: /admin, /admin/login, /admin/forgot, /admin/reset, /admin/audit, /admin/logout. */
+    private function admin(string $path): void
+    {
+        AdminGuard::requireSecure();
+        I18n::boot();
+
+        $section = trim(substr($path, strlen('/admin')), '/');
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+
+        if ($section === '') {
+            if ($method !== 'GET') {
+                $this->notFound(I18n::locale(), $path);
+
+                return;
+            }
+
+            // El panel exige sesión válida; AdminGuard redirige a /admin/login.
+            AdminHomeController::index();
+
+            return;
+        }
+
+        if ($section === 'login') {
+            if ($method === 'POST') {
+                AdminAuthController::loginSubmit();
+
+                return;
+            }
+
+            AdminAuthController::login();
+
+            return;
+        }
+
+        if ($section === 'logout') {
+            if ($method !== 'POST') {
+                $this->notFound(I18n::locale(), $path);
+
+                return;
+            }
+
+            AdminAuthController::logout();
+
+            return;
+        }
+
+        if ($section === 'forgot') {
+            if ($method === 'POST') {
+                AdminAuthController::forgotSubmit();
+
+                return;
+            }
+
+            AdminAuthController::forgot();
+
+            return;
+        }
+
+        if ($section === 'reset') {
+            if ($method === 'POST') {
+                AdminAuthController::resetSubmit();
+
+                return;
+            }
+
+            AdminAuthController::reset();
+
+            return;
+        }
+
+        if ($section === 'audit' && $method === 'GET') {
+            AdminHomeController::audit();
+
+            return;
+        }
+
+        $this->notFound(I18n::locale(), $path);
     }
 
     private function contact(string $locale, string $currentPath): void
