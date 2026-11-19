@@ -5,24 +5,31 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 | Frente | Dominio | Contenido |
 | --- | --- | --- |
 | Portal institucional | `med.origen.ar` | Sitio trilingüe con locales canónicos `es-AR`, `en` y `pt-BR` (alias de entrada `es` y `pt`), selector persistente y URLs `/{locale}/...`. |
-| API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, familia odontológica DENTAR (DENTAR-PR / DENTAR-DX / DENTAR-AN / DENTAR-CL, ADA CDT 2025), prestaciones, programas e imágenes. |
+| API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, familia odontológica DENTAR (PR/DX públicos; AN/CL sin exposición pública; ADA CDT 2025), prestaciones, programas e imágenes. |
 
 ### Documentación de Acceso e Interoperabilidad
 - 📖 [Documentación de la API REST (v1)](README-API.md) — Autenticación, endpoints unificados, catálogos nacionales y familia odontológica DENTAR (CDT / CIE-10 / SNOMED AR). Especificación: [`docs/api/openapi-3.1.yaml`](docs/api/openapi-3.1.yaml).
 - 🏥 [Guía de Interoperabilidad HL7® FHIR® R4](README-FHIR.md) — **contrato propuesto, aún no implementado**: `CodeSystem`, `ValueSet`, `ConceptMap`, `$lookup`, `$expand`, `$translate` y modelado clínico (`Procedure`, `Condition`, `Claim`).
+- 🧮 [Metodología UVR/SVP](web/uvr.php) — página independiente, **propuesta sin valores cargados ni endpoints**.
 - 🏗️ [Propuesta de arquitectura de catálogos sanitarios](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md) — diagnóstico, modelo objetivo, plan por etapas y decisiones pendientes.
 
 ### Estado real de DENTAR en `origen_codes`
 
+Verificado el 2026-11-19 con consultas de solo lectura (PostgreSQL 18.6). Detalle
+y metodología en el [§1.6 de la propuesta arquitectónica](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md).
+
 | Catálogo | Ítems | Observaciones |
 | --- | ---: | --- |
-| `DENTAR-PR` | 844 | Procedimientos; códigos `DNT-PR-NNNNNN`. |
-| `DENTAR-DX` | 223 | Diagnósticos; códigos `DNT-DX-NNNNNN`. |
-| `DENTAR-AN` | 624 | Términos SNOMED AR RF2 en español; versión `en` publicada por trigger. |
-| `DENTAR-CL` | 218 | Términos SNOMED AR RF2 en español; versión `en` publicada por trigger. |
-| Relaciones CDT | 333 filas / 303 pares / 15 tipos | En `os_catalog_relation`, navegables desde Browse. |
+| `DENTAR-PR` | 844 | Procedimientos; códigos `DNT-PR-NNNNNN`. Consultable en Browse y API. |
+| `DENTAR-DX` | 223 | Diagnósticos; códigos `DNT-DX-NNNNNN`. Sin UVR. Consultable en Browse y API. |
+| `DENTAR-AN` | 624 | Anatomía; términos `es-AR` y `en`. Visible como "No publicado" por decisión editorial. |
+| `DENTAR-CL` | 218 | Hallazgos; términos `es-AR` y `en`. Visible como "No publicado" por decisión editorial. |
+| Relaciones CDT | 333 filas / 303 pares / 15 tipos | En `os_catalog_relation`; aún no navegables desde Browse. |
+| Identificadores `CDT-2025` | 805 | Sobre ítems DENTAR-PR. |
 
-`DENTAR-IN`, `DENTAR-PD` y `DENTAR-EQ` quedan **reservados**, sin datos cargados. El módulo UVR está diseñado pero **sin valores cargados**: no se publican conversaciones monetarias ni UVR inventados.
+El **Nomenclador Odontológico Nacional** fue desplegado el 2026-11-19 con autorización explícita y backup previo: `nomenclador-odontologico-ar` tiene 135 ítems, 135 versiones `es-AR` y 270 relaciones `referencia_literal` con DENTAR-PR. Es consultable en `/browse?catalog=nomenclador-odontologico-ar`; las 333 relaciones CDT quedaron intactas. Detalle en el [§5.2](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md).
+
+`DENTAR-IN`, `DENTAR-PD` y `DENTAR-EQ` quedan **reservados**, sin datos cargados. El módulo UVR está diseñado pero **sin valores cargados**: no se publican conversiones monetarias ni UVR inventados.
 
 ## Stack
 
@@ -39,17 +46,16 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 ├── bootstrap.php              # Autoload, .env, errores y helpers globales
 ├── composer.json
 ├── .env.example
-├── sql/
-│   ├── README.md              # Orden de carga y mapa de esquemas
-│   ├── design.sql             # Esquema base y extensiones de PostgreSQL
-│   ├── origen_catalog_engine.sql  # Catálogos, nomencladores, aranceles y familia DENTAR
-│   ├── pmo.sql                # Programa Médico Obligatorio
-│   ├── dentar_family.sql      # Registro DENTAR-PR / DENTAR-DX y migración de códigos
-│   ├── dentar_core_and_diagnosis.sql  # Núcleo editorial DENTAR-PR y DENTAR-DX
-│   ├── sync_dentar_to_os.sql  # Publica DENTAR-PR y DENTAR-DX en el Catalog Engine (os_*)
-│   ├── Argentina_dental_cdt_codes_2025.sql
-│   ├── importar_loinc.sql
-│   └── nomencladores_argentina.sql    # Legacy (subconjunto del engine)
+├── sql/                       # 44 archivos .sql en 9 subdirectorios
+│   ├── 01_schema/             # design.sql y README de convenciones
+│   ├── 02_catalogs/           # origen_catalog_engine.sql (motor canónico os_*)
+│   ├── 03_dentar/             # familia, núcleo editorial, sync y nomenclador (no ejecutado)
+│   ├── 04_pmo/                # Programa Médico Obligatorio
+│   ├── 05_loinc.sql/          # esquema, importador y nombres de consumidor
+│   ├── 06_nomencladores/      # Legacy
+│   ├── 07_multilingue/        # capa i18n 01..18
+│   ├── 08_arquitectura/       # fase1..fase6: propuestas NO ejecutadas
+│   └── portal/                # roles y GRANTs
 ├── docs/
 │   ├── dentar/                # Familia DENTAR: formato CSV, plantillas e importación
 │   └── adopcion/              # Informe mensual de adopción institucional
@@ -92,13 +98,17 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 │   │   ├── Request.php
 │   │   └── Response.php
 │   └── .htaccess
+├── portal/
+│   ├── Router.php             # Rutas /{locale}/... del portal
+│   ├── Controllers/, Views/, Repositories/, Services/
+│   ├── i18n/I18n.php          # Resolución de locale, canónica y hreflang
+│   └── translations/          # messages.{es-AR,en,pt-BR}.yaml (+ messages.es.yaml legacy)
 └── web/
-    ├── index.php              # Portal bilingüe
-    ├── includes/
-    │   └── i18n.php           # Translator de Symfony + helper trans()
-    ├── translations/
-    │   ├── messages.es.yaml
-    │   └── messages.en.yaml
+    ├── index.php              # Front controller del portal
+    ├── docs.php               # Docs standalone (/docs?lang=)
+    ├── uvr.php                # Metodología UVR standalone (/uvr?lang=)
+    ├── search.php             # Buscador legacy (/search)
+    ├── sitemap.php            # /sitemap.xml
     ├── assets/css/app.css
     └── .htaccess
 ```
@@ -110,7 +120,7 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 - PHP 8.2 o superior con `pdo_pgsql`, `mbstring` y `json`. Para importar el ZIP
   oficial de SNOMED CT conviene tener también `zip` (si falta, descomprimir a mano).
   Para convertir los Excel de NBU/GTIN alcanza con `zlib`, `dom` y `xmlreader`.
-- PostgreSQL 18 con la extensión `pg_trgm` (la crea `sql/design.sql`).
+- PostgreSQL 18 con la extensión `pg_trgm` (la crea `sql/01_schema/design.sql`).
 - Composer 2.
 
 ### 2. Dependencias y entorno
@@ -124,22 +134,29 @@ Editá `.env` con las credenciales reales. En producción las variables también
 
 ### 3. Base de datos
 
+La base de trabajo es **`origen_codes`**, confirmada por verificación de solo
+lectura en el VPS (PostgreSQL 18.6); `origen_salud` es la antigua y solo
+conserva restos aislados. Detalle en el §1.6 de la propuesta arquitectónica.
+
 ```bash
-createdb -E UTF8 origen_salud
-psql -d origen_salud -f sql/design.sql
+createdb -E UTF8 origen_codes
+psql -d origen_codes -f sql/01_schema/design.sql
 ```
 
-El usuario de la API solo necesita permisos de lectura:
+El usuario de la API solo necesita permisos de lectura (los GRANTs versionados
+están en `sql/portal/`):
 
 ```sql
-GRANT CONNECT ON DATABASE origen_salud TO origen_api;
+GRANT CONNECT ON DATABASE origen_codes TO origen_api;
 GRANT USAGE ON SCHEMA public TO origen_api;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO origen_api;
 ```
 
-`sql/design.sql` solo crea el esquema base. El resto de los catálogos
+`sql/01_schema/design.sql` solo crea el esquema base. El resto de los catálogos
 (nomencladores argentinos, PMO, familia DENTAR, LOINC) se cargan en un orden
-específico: ver [`sql/README.md`](sql/README.md).
+específico: ver [`sql/01_schema/README.md`](sql/01_schema/README.md). Ese README
+todavía cita rutas antiguas en la raíz de `sql/`; usar el árbol real mostrado
+arriba.
 
 ### 4. Crear un cliente B2B
 
@@ -164,20 +181,20 @@ final y publicación en las tablas de la API.
 
 ```bash
 # 1. Esquema de staging sct2 (destructivo sólo para sct2)
-psql -d origen_salud -v ON_ERROR_STOP=1 -f tools/sql/snomed/01_esquema.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f tools/sql/snomed/01_esquema.sql
 
 # 2. Generar 02_carga.sql desde el ZIP oficial
 php tools/php/generar_carga_snomed.php \
     "D:\sct\SnomedCT_Argentina-EditionRelease_PRODUCTION_20260820T120000Z.zip"
 
 # 3. Cargar los archivos (el servidor los lee desde su disco)
-psql -d origen_salud -v ON_ERROR_STOP=1 -f tools/sql/snomed/02_carga.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f tools/sql/snomed/02_carga.sql
 
 # 4. Índices, tablas derivadas, vistas y publicación
-psql -d origen_salud -v ON_ERROR_STOP=1 -f tools/sql/snomed/03_postcarga.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f tools/sql/snomed/03_postcarga.sql
 
 # 5. Opcional: refsets filtrables para la API
-psql -d origen_salud -v ON_ERROR_STOP=1 -f tools/sql/snomed/04_codigos_opcional.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f tools/sql/snomed/04_codigos_opcional.sql
 
 # 6. Opcional: mapeos NBU y GTIN
 php tools/php/convertir_excel_maps.php "D:\sct\20260820\Resources"
@@ -185,18 +202,18 @@ php tools/php/convertir_excel_maps.php "D:\sct\20260820\Resources"
 # resuelven contra el directorio actual de psql, así que hay que pararse
 # en la carpeta que los contiene (no se pasan -v ruta_nbu / -v ruta_gtin).
 cd /ruta/al/20260820/Resources
-sudo -u postgres psql -d origen_salud -v ON_ERROR_STOP=1 \
+sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 \
      -f /var/www/html/origen.ar/code-api/tools/sql/snomed/05_map_excel.sql
 
 # 7. Verificación
-psql -d origen_salud -f tools/sql/snomed/99_verificacion.sql
+psql -d origen_codes -f tools/sql/snomed/99_verificacion.sql
 ```
 
 Si los archivos están en la PC y no en el servidor:
 
 ```bash
 php tools/php/generar_carga_snomed.php "D:\sct\20260820" --cliente
-psql -h servidor -d origen_salud -v ON_ERROR_STOP=1 -f tools/sql/snomed/02_carga.sql
+psql -h servidor -d origen_codes -v ON_ERROR_STOP=1 -f tools/sql/snomed/02_carga.sql
 ```
 
 Opciones del generador:
@@ -586,15 +603,17 @@ Códigos usados: `bad_request`, `unauthorized`, `not_found`, `method_not_allowed
 ### Catálogos, nomencladores y familia DENTAR
 
 Endpoints del Origen Catalog Engine. Requieren los scripts de
-[`sql/README.md`](sql/README.md) cargados (`origen_catalog_engine.sql`,
-`pmo.sql`, `dentar_family.sql`, `dentar_core_and_diagnosis.sql`); si faltan,
-responden `not_found` con la indicación del script a ejecutar.
+[`sql/01_schema/README.md`](sql/01_schema/README.md) cargados desde sus rutas
+reales (`sql/02_catalogs/origen_catalog_engine.sql`, `sql/04_pmo/pmo.sql`,
+`sql/03_dentar/dentar_family.sql`,
+`sql/03_dentar/dentar_core_and_diagnosis.sql`); si faltan, responden `not_found`
+con la indicación del script a ejecutar.
 
 | Endpoint | Parámetros | Devuelve |
 | --- | --- | --- |
 | `GET /v1/catalogs` | — | Catálogos publicados (`nn-pmo`, `nbu`, `nhpgd`, `andis`, `dentar-pr`, `dentar-dx`, …) con organización, tipo de dominio y metadatos de familia (`role`, `family`, `short_name`). |
 | `GET /v1/catalogs/{code}/releases` | — | Versiones del catálogo con vigencia y estado. |
-| `GET /v1/catalogs/{code}/items` | `q`, `category`, `limit` (1-100), `offset` | Ítems publicados con código oficial, término preferido, categoría y arancel vigente. |
+| `GET /v1/catalogs/{code}/items` | `q`, `category`, `limit` (default 50; tope configurable 100), `offset` | Ítems publicados con código oficial, término preferido, categoría y arancel vigente. |
 | `GET /v1/catalogs/{code}/items/{item}` | — | Detalle de un ítem por código permanente, oficial o término, con `clinical_criteria` y familia. |
 | `GET /v1/mappings` | `system`, `code`, `catalog` | Mapeos cruzados (`SNOMED-CT`, `CIE-10`, `CDT-2025`, `LOINC`) con tipo de relación. |
 | `GET /v1/pricing-units` | — | Unidades arancelarias (UB, Galeno, Módulo, Sesión, Pesos). |
@@ -632,7 +651,7 @@ curl -s -H "X-API-Key: $KEY" \
 
 # Justificación clínica de una prestación odontológica
 curl -s -H "X-API-Key: $KEY" \
-  "https://api.origen.ar/v1/odontologia/DNT-PR-000007/diagnosticos"
+  "https://api.origen.ar/v1/odontologia/DNT-PR-000001/diagnosticos"
 ```
 
 La familia DENTAR se carga y versiona desde CSV:
@@ -643,20 +662,25 @@ transacción. El seguimiento de adopción institucional tiene plantilla mensual 
 
 ## i18n
 
-`web/includes/i18n.php` resuelve el idioma en este orden:
+El portal usa URLs con prefijo de idioma (`/{locale}/...`) y resolución en
+`portal/i18n/I18n.php`: segmento de URL → `?lang=` → cookie `origen_locale`
+(HttpOnly, SameSite=Lax, 1 año) → `Accept-Language` → `WEB_DEFAULT_LOCALE`.
+Los locales canónicos son `es-AR`, `en` y `pt-BR` (`es→es-AR`, `pt→pt-BR` son
+alias de entrada).
 
-1. `?lang=es|en`
-2. Cookie `origen_locale` (HttpOnly, SameSite=Lax, 1 año)
-3. Header `Accept-Language`
-4. `WEB_DEFAULT_LOCALE`
+Las páginas standalone Docs, UVR y Search usan `?lang=` con canónica y selector
+propios. Docs y UVR lo hacen de forma coherente; `/search` genera alternativas
+`/{locale}/search` que no existen en el router y está pendiente de corrección.
 
 Para agregar un idioma:
 
 1. Sumarlo a `I18n::SUPPORTED`.
-2. Crear `web/translations/messages.<locale>.yaml`.
-3. Agregar el enlace en el selector de `web/index.php`.
+2. Crear `portal/translations/messages.<locale>.yaml`.
+3. Agregar el enlace en `portal/Views/partials/language-switcher.php`.
 
-Las claves nuevas se agregan a todos los YAML; si falta una traducción, Symfony usa el fallback `es`.
+Las claves nuevas se agregan a los tres YAML activos, que tienen paridad exacta
+(1101 claves planas). `messages.es.yaml` es legado y no se carga en rutas
+públicas.
 
 ## Producción
 
@@ -721,7 +745,7 @@ server {
 
 ### Checklist de seguridad
 
-- **API Keys:** `sql/design.sql` las guarda en texto plano. Antes de producción, migrar a un hash SHA-256 con *pepper* y comparar con `hash_equals()`.
+- **API Keys:** `sql/01_schema/design.sql` las guarda en texto plano y la comparación en PHP es directa. Antes de producción, migrar a un hash SHA-256 con *pepper* y comparar con `hash_equals()`.
 - **Rate limiting:** `api_clients.rate_limit_per_second` ya existe, pero no se aplica en PHP. Aplicarlo en el gateway (Nginx, Kong, Cloudflare) o con Redis; un límite en memoria por proceso no es confiable.
 - **HTTPS obligatorio** y HSTS a nivel de servidor.
 - **CORS:** definir solo los orígenes reales en `API_CORS_ORIGINS`.
@@ -732,7 +756,7 @@ server {
 
 ### Rendimiento
 
-Los índices GIN con trigramas de `sql/design.sql` cubren `snomed_descriptions.term`, `anmat_medicamentos.nombre_comercial` y `nombre_generico`. Ajustar `DB_TRGM_THRESHOLD` según los datos y validar con:
+Los índices GIN con trigramas de `sql/01_schema/design.sql` cubren `snomed_descriptions.term`, `anmat_medicamentos.nombre_comercial` y `nombre_generico`. Ajustar `DB_TRGM_THRESHOLD` según los datos y validar con:
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS)

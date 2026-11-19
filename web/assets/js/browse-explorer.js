@@ -818,8 +818,12 @@
             }
         });
 
+        // La whitelist viene del servidor (mismo conjunto que el backend).
+        // Evita que un catálogo publicado sea descartado por una lista fija.
+        var allowed = (form.getAttribute('data-catalogs') || 'dentar-pr,dentar-dx,nomenclador-odontologico-ar')
+            .split(',').map(function (code) { return code.trim(); }).filter(Boolean);
         var catalogs = dedupe(catalogValues).filter(function (code) {
-            return code === 'dentar-pr' || code === 'dentar-dx';
+            return allowed.indexOf(code) !== -1;
         }).sort();
         if (catalogs.length > 0) {
             params.set('catalog', catalogs.join(','));

@@ -120,7 +120,8 @@ $facetSelects = [
             <div class="browse-explorer__layout">
                 <section class="browse-pane browse-pane--results browse-rail"
                          aria-label="<?= e($t('browse.explore_title')) ?>">
-                    <form class="browse-form browse-rail-form" method="get" action="<?= e($baseBrowsePath) ?>">
+                    <form class="browse-form browse-rail-form" method="get" action="<?= e($baseBrowsePath) ?>"
+                          data-catalogs="<?= e(implode(',', array_column($publishedCatalogs, 'code'))) ?>">
                         <div class="browse-rail__head">
                             <h2><?= e($t('browse.explore_title')) ?></h2>
                             <p><?= e($t('browse.explore_hint')) ?></p>

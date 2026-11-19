@@ -6,6 +6,11 @@
 > [!NOTE]
 > Especificación OpenAPI 3.1 de la API real: [`docs/api/openapi-3.1.yaml`](docs/api/openapi-3.1.yaml).
 > Cubre `/health` y las rutas `/v1/*` implementadas en `api/index.php`. No incluye `/fhir/*` porque aún no está implementado.
+>
+> La spec y este README tienen desvíos documentados frente al código (17 y
+> varios, respectivamente). Inventario y detalle en el
+> [§13.2 de la propuesta arquitectónica](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md);
+> su corrección está pendiente de aprobación.
 
 ---
 
@@ -25,15 +30,15 @@
 | `X-API-Key` | Request | Alternativo | Clave API enviada directamente: `<TU_API_KEY>` |
 | `Accept` | Request | Recomendado | `application/json` |
 | `Accept-Language` | Request | Opcional | Negociación por `q`. Seleccionables: `es-AR`, `en`, `pt-BR`. `es` y `pt` son alias de entrada; `es-MX` no es alias. |
-| `X-Request-Id` | Response | Siempre | UUID único de trazabilidad para cada solicitud |
+| `X-Request-Id` | Request/Response | Siempre | Trazabilidad. Generado por el servidor como **32 hexadecimales**; si el cliente envía la cabecera, se aceptan 8–64 caracteres `[A-Za-z0-9._-]` (no es UUID). |
 | `Vary` | Response | Siempre | `Accept-Language`. Se agrega sin reemplazar el `Vary: Origin` de CORS. |
 | `Content-Language` | Response | Según respuesta | Idioma efectivo del contenido cuando es único. |
 
 ### Negociación de idioma (Fase 9)
 
 - Entrada: parámetro `lang` → alias → `Accept-Language` ordenado por `q` →
-  `API_DEFAULT_LANG`. Todas las entradas con `q=0` fuerzan el default con
-  `fallback_reason='no_acceptable_language'`.
+  `API_DEFAULT_LANG` (**default real `es`**). Todas las entradas con `q=0`
+  fuerzan el default con `fallback_reason='no_acceptable_language'`.
 - `lang=es` resuelve a `es-AR` **como entrada**. Un código de contenido ya
   aprobado en `es` se devuelve como `es`: nunca se reescribe a `es-AR`.
 - Solo se publican campos con `review_status='approved'` (o revisión vigente en
@@ -61,10 +66,11 @@
 
 ### Portal y exposición real de CDT/NN (Fase 10)
 
-- El portal (`med.origen.ar`) ofrece `es-AR`, `en` y `pt-BR` mediante `?lang=`
-  y negocia `Accept-Language`. Los alias `es→es-AR` y `pt→pt-BR` son de entrada;
-  `es-MX` no se aliasa. Cada vista emite `hreflang`, `og:locale`,
-  `Vary: Accept-Language` y `Content-Language`.
+- El portal (`med.origen.ar`) ofrece `es-AR`, `en` y `pt-BR` mediante URLs con
+  prefijo `/{locale}/...` y negocia `Accept-Language`. Los alias `es→es-AR` y
+  `pt→pt-BR` son de entrada; `es-MX` no se aliasa. Cada vista emite `hreflang`,
+  `og:locale`, `Vary: Accept-Language` y `Content-Language`. Las páginas
+  standalone Docs y UVR usan `?lang=` con canónica y selector propios.
 - El buscador público `/search` consume `GET /v1/search` desde el servidor,
   reenvía `lang` y `Accept-Language` con el locale seleccionado y muestra
   `meta.requested_language`, `meta.effective_language`, `meta.field_languages`,
@@ -100,12 +106,16 @@ curl -s -X GET "https://api.origen.ar/v1/domains" \
 | `200 OK` | Éxito | La solicitud se completó correctamente. |
 | `204 No Content` | Sin contenido | Respuestas pre-flight `OPTIONS` de CORS. |
 | `400 Bad Request` | Petición inválida | Parámetros faltantes, tipos incorrectos o sintaxis errónea. |
-| `401 Unauthorized` | No autenticado | API Key faltante, expirada o revocada. |
-| `403 Forbidden` | Acceso denegado | Cuenta suspendida o cuota mensual excedida. |
+| `401 Unauthorized` | No autenticado | API Key faltante, inactiva o inválida (mensaje idéntico en todos los casos). |
 | `404 Not Found` | No encontrado | El recurso, código o concepto no existe. |
-| `405 Method Not Allowed`| Método no permitido | Se utilizó un método HTTP diferente a `GET` u `OPTIONS`. |
-| `500 Internal Error`| Error interno | Error no recuperable del servidor (registrado en log). |
+| `405 Method Not Allowed`| Método no permitido | Se utilizó un método HTTP diferente a `GET` u `OPTIONS`; incluye `Allow: GET, OPTIONS`. |
+| `500 Internal Error`| Error interno | Error no recuperable del servidor; mensaje genérico, detalle solo en log. |
 | `503 Service Unavailable`| Mantenimiento | Base de datos o servicio no disponible temporalmente. |
+
+**No se emiten `403` ni `429`.** `api_clients.rate_limit_per_second` se consulta
+pero no se aplica en PHP; no hay suspensión de cuentas ni cuotas ejecutadas.
+Tampoco hay OAuth 2.0, JWT ni scopes, ni operaciones de escritura (`POST`,
+`PUT`, `PATCH`, `DELETE`).
 
 ---
 
@@ -119,56 +129,42 @@ curl -s -X GET "https://api.origen.ar/v1/domains" \
   -H "Authorization: Bearer <TU_API_KEY>"
 ```
 
-#### Respuesta de ejemplo
+#### Respuesta de ejemplo (abreviada)
+
+La forma real de cada dominio es `id`, `label` y `description` como objetos
+`{es, en}`, `source` y `mode` (**no** `code` ni textos planos).
+
 ```json
 {
   "data": [
     {
-      "code": "snomed",
-      "label": "SNOMED CT",
-      "description": "Terminología clínica integral internacional y edición argentina.",
+      "id": "snomed",
+      "label": { "es": "SNOMED-CT", "en": "SNOMED-CT" },
+      "description": {
+        "es": "Ontología clínica completa: hallazgos, procedimientos, productos, sustancias y estructuras.",
+        "en": "Full clinical ontology: findings, procedures, products, substances and body structures."
+      },
+      "source": "snomed",
       "mode": "full"
     },
     {
-      "code": "cie10",
-      "label": "CIE-10",
-      "description": "Clasificación Internacional de Enfermedades, 10.ª revisión.",
+      "id": "cie10",
+      "label": { "es": "CIE-10", "en": "ICD-10" },
+      "description": {
+        "es": "Diagnósticos y procedimientos CIE-10 con descripciones bilingües y mapeo a SNOMED-CT.",
+        "en": "ICD-10 diagnoses and procedures with bilingual descriptions and SNOMED-CT mappings."
+      },
+      "source": "cie10",
       "mode": "full"
     },
     {
-      "code": "odontologia",
-      "label": "Odontología",
-      "description": "Nomenclador de prestaciones odontológicas, ADA CDT 2025, DENTAR y vínculos SNOMED-CT.",
-      "mode": "catalog"
-    },
-    {
-      "code": "anmat",
-      "label": "Medicamentos ANMAT",
-      "description": "Vademécum nacional de especialidades medicinales con código SNOMED-CT.",
-      "mode": "catalog"
-    },
-    {
-      "code": "laboratorio",
-      "label": "Laboratorio",
-      "description": "Prácticas de laboratorio con códigos LOINC y SNOMED-CT.",
-      "mode": "catalog"
-    },
-    {
-      "code": "vacunas",
-      "label": "Vacunas",
-      "description": "Catálogo oficial de vacunas MSAL y calendarios de inmunización.",
-      "mode": "catalog"
-    },
-    {
-      "code": "prestaciones",
-      "label": "Prestaciones Médicas",
-      "description": "Nomenclador nacional de prestaciones médicas y PMO.",
-      "mode": "catalog"
-    },
-    {
-      "code": "imagenes",
-      "label": "Diagnóstico por Imágenes",
-      "description": "Estudios diagnósticos por imágenes con modalidad DICOM y LOINC.",
+      "id": "odontologia",
+      "label": { "es": "Odontología", "en": "Dentistry" },
+      "description": {
+        "es": "Nomenclador de prestaciones odontológicas y su vínculo con SNOMED-CT.",
+        "en": "Dental procedure nomenclator and its SNOMED-CT links."
+      },
+      "source": "odontologia",
       "mode": "catalog"
     }
   ],
@@ -176,7 +172,7 @@ curl -s -X GET "https://api.origen.ar/v1/domains" \
     "domains": ["snomed", "cie10", "anmat", "laboratorio", "vacunas", "odontologia", "prestaciones", "programas", "imagenes", "nomenclador", "vademecum", "loinc"],
     "default_domains": ["snomed", "cie10", "anmat"]
   },
-  "request_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+  "request_id": "7f3c9a1e8b2d4f60"
 }
 ```
 

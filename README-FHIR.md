@@ -10,7 +10,10 @@
 > Key cubre solo `/v1/*`, por lo que cualquier endpoint `/fhir/*` que se agregue
 > debe incorporarse explícitamente a esa guardia antes de publicarse. Las URI
 > canónicas y los ejemplos de respuesta son propuestas editoriales pendientes de
-> aprobación formal, no hechos implementados.
+> aprobación formal, no hechos implementados. Los ejemplos usan códigos
+> ilustrativos heredados (`DNT-000007`) que **deben reemplazarse** por códigos
+> reales `DNT-PR-NNNNNN` antes de cualquier publicación; no deben interpretarse
+> como identificadores válidos.
 
 ---
 

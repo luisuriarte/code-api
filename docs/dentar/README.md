@@ -11,10 +11,23 @@ prefijo de código, reglas de mapeo y ciclo de versiones:
 | **DENTAR-AN** | Anatomía dental | `DNT-AN-NNNNNN` | SNOMED AR RF2 (es-AR), versión `en` por trigger |
 | **DENTAR-CL** | Hallazgos clínicos | `DNT-CL-NNNNNN` | SNOMED AR RF2 (es-AR), versión `en` por trigger |
 
-Los cuatro productos están activos en `origen_codes`. `DENTAR-IN`,
-`DENTAR-PD` y `DENTAR-EQ` quedan **reservados**: no tienen códigos ni datos
-cargados. AN/CL no se cargan con `import_dentar_csv.php` (que solo acepta
-PR/DX), sino con el artefacto SQL propio documentado más abajo.
+La actividad de los cuatro productos en `origen_codes` quedó **verificada el
+2026-11-19** con consultas de solo lectura (PostgreSQL 18.6) **[BD]**. Los
+artefactos SQL versionados para AN/CL y CDT siguen rotulados "NO EJECUTADO"
+**[REPO]**, pero ese rótulo describe al archivo, no a la base: los datos sí están
+cargados. Ver el §1.6 de la
+[propuesta arquitectónica](../architecture/propuesta-arquitectura-catalogos-sanitarios.md).
+`DENTAR-IN`, `DENTAR-PD` y `DENTAR-EQ` quedan **reservados**: no tienen códigos
+ni datos cargados. AN/CL no se cargan con `import_dentar_csv.php` (que solo
+acepta PR/DX), sino con el artefacto SQL propio documentado más abajo.
+
+El **Nomenclador Odontológico Nacional** (`nomenclador-odontologico-ar`) quedó
+desplegado el 2026-11-19 **[BD]** con 135 ítems, 135 versiones `es-AR`, 270
+relaciones `referencia_literal` hacia/desde DENTAR-PR y las 333 relaciones CDT
+preexistentes intactas. Se consulta en
+`/browse?catalog=nomenclador-odontologico-ar`. Su código nacional es
+**secundario**: el visible sigue siendo `DNT-PR-NNNNNN`. Procedimiento,
+backup y verificación en el [§5.2 de la propuesta arquitectónica](../architecture/propuesta-arquitectura-catalogos-sanitarios.md#52-nomenclador-odontologico-nacional).
 
 La marca `DENTAR` no tiene códigos ni releases propias. En la API figura como
 catálogo de rol `family`, con `family_code = null`; los productos declaran
@@ -22,18 +35,23 @@ catálogo de rol `family`, con `family_code = null`; los productos declaran
 
 ## Estado actual
 
+> Los conteos están verificados en base **[BD]** el 2026-11-19. El SQL versionado
+> contiene 138 PR y 38 DX **[REPO]**: es un seed parcial, no el estado real.
+> Detalle en el §1.6 de la
+> [propuesta arquitectónica](../architecture/propuesta-arquitectura-catalogos-sanitarios.md).
+
 | Pieza | Estado |
 | --- | --- |
-| Registro de la familia | `sql/dentar_family.sql` → `dentar_catalog` |
-| Esquema editorial (`dentar_*`) | `sql/dentar_core_and_diagnosis.sql` |
-| Base correcta | `origen_codes` (`origen_salud` es la vieja y solo conserva restos aislados) |
-| Procedimientos cargados | **844** (DENTAR-PR) |
-| Diagnósticos cargados | **223** (DENTAR-DX) |
-| Anatomía cargada | **624** (DENTAR-AN) |
-| Hallazgos clínicos cargados | **218** (DENTAR-CL) |
-| Relaciones CDT | **333 filas / 303 pares / 15 tipos** en `os_catalog_relation` |
+| Registro de la familia | `sql/03_dentar/dentar_family.sql` → `dentar_catalog` |
+| Esquema editorial (`dentar_*`) | `sql/03_dentar/dentar_core_and_diagnosis.sql` |
+| Base correcta [BD] | `origen_codes` (`origen_salud` es la vieja y solo conserva restos aislados) |
+| Procedimientos [BD] | **844** (DENTAR-PR) |
+| Diagnósticos [BD] | **223** (DENTAR-DX) |
+| Anatomía [BD] | **624** (DENTAR-AN), sin exposición pública por decisión editorial |
+| Hallazgos clínicos [BD] | **218** (DENTAR-CL), sin exposición pública por decisión editorial |
+| Relaciones CDT [BD] | **333 filas / 303 pares / 15 tipos** en `os_catalog_relation` (tabla presente en base, ausente del motor canónico versionado; aún no navegable) |
 | Importador masivo | `tools/php/import_dentar_csv.php` (solo PR/DX) |
-| Sincronización con la API de catálogos | `sql/sync_dentar_to_os.sql` (ejecutar con `psql -1`) |
+| Sincronización con la API de catálogos | `sql/03_dentar/sync_dentar_to_os.sql` (ejecutar con `psql -1`) |
 | API | `GET /v1/catalogs`, `GET /v1/catalogs/dentar-pr/items`, `GET /v1/catalogs/dentar-dx/items`, `GET /v1/odontologia/diagnosticos` |
 
 El seed del SQL no escala a 800 códigos: editar cientos de bloques de `INSERT` a
@@ -42,23 +60,30 @@ el importador, que es idempotente y valida códigos, categorías y mapeos.
 
 ## Orden de carga
 
+> Secuencia documentada **[DOC]**; el resultado final está verificado **[BD]**,
+> pero esta auditoría **no ejecutó ninguno** de estos comandos. Los artefactos
+> generados siguen rotulados "NO EJECUTADO" **[REPO]**. No volver a ejecutar nada
+> de lo siguiente sin aprobación explícita y backup verificado: los importadores
+> y el sync son idempotentes en parte, pero `sync_dentar_to_os.sql` borra y
+> reinserta mapeos.
+
 ```bash
 # Esquema base (solo en una instalación nueva)
-psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/origen_catalog_engine.sql
-psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/pmo.sql
-psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/dentar_family.sql
-psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/dentar_core_and_diagnosis.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/02_catalogs/origen_catalog_engine.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/04_pmo/pmo.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/03_dentar/dentar_family.sql
+psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/03_dentar/dentar_core_and_diagnosis.sql
 
-# Carga real ya verificada de PR/DX (importador masivo) → sincronización
+# PR/DX (importador masivo) → sincronización
 psql -d origen_codes -v ON_ERROR_STOP=1 -1 -f sql/03_dentar/sync_dentar_to_os.sql
 
-# Carga real ya verificada de AN/CL y relaciones CDT
+# AN/CL y relaciones CDT: artefactos generados (resultado ya cargado en base [BD])
 psql -d origen_codes -v ON_ERROR_STOP=1 -f docs/dentar/generado/dentar-an-cl-propuerto.sql
 psql -d origen_codes -v ON_ERROR_STOP=1 -1 -f sql/03_dentar/sync_dentar_to_os.sql
 psql -d origen_codes -v ON_ERROR_STOP=1 -f docs/dentar/generado/dentar-cdt-relaciones-propuerto.sql
 ```
 
-Orden final verificado: **AN/CL → `sync_dentar_to_os.sql` → relaciones CDT**.
+Orden propuesto: **AN/CL → `sync_dentar_to_os.sql` → relaciones CDT**.
 No ejecutar `Argentina_dental_cdt_codes_2025_postgres.corregido.sql` como carga
 final: el artefacto propuesto ya crea los sistemas, identificadores y relaciones
 con claves únicas corregidas. `sync_dentar_to_os.sql` elimina y reinserta
@@ -172,14 +197,15 @@ AR RF2 y sus conversiones. Detalles y exclusiones están en
 - Los términos de AN/CL se publican en `es-AR` con el texto de la fuente. El
   inglés se publica como versión `language_code='en'` mediante el trigger §4.2,
   **no** como sinónimo dentro de `es-AR`.
-- Las relaciones CDT se cargan con
-  `docs/dentar/generado/dentar-cdt-relaciones-propuerto.sql`. `os_catalog_relation`
-  conserva los 15 tipos reales; `context_text` integra la clave única para no
-  perder las 333 filas reales (303 pares únicos).
-- `CatalogRepository::itemRelations()` consulta `os_catalog_relation` junto con
-  `os_concept_mapping`, por lo que la pestaña Relaciones de Browse muestra ambos
-  sentidos, el contexto literal y enlaces al concepto opuesto cuando la
-  resolución es inequívoca.
+- Las relaciones CDT se cargaron con
+  `docs/dentar/generado/dentar-cdt-relaciones-propuerto.sql` **[BD]**: 333 filas,
+  303 pares únicos y 15 tipos en `os_catalog_relation`, con `context_text` en la
+  clave única. El rótulo "NO EJECUTADO" del artefacto [REPO] no refleja la base.
+- **Pendiente de integración [REPO]:** `CatalogRepository::itemRelations()` no
+  consulta `os_catalog_relation`, por lo que la pestaña Relaciones de Browse no
+  muestra hoy ese contenido. La afirmación contraria era documentación previa no
+  verificada. Ver la decisión pendiente 10 del §15.2 de la propuesta
+  arquitectónica.
 
 Cada producto calcula su propia release:
 
@@ -223,11 +249,11 @@ sigue siendo responsabilidad del comité editorial.
 
 | Fase | Estado | Salida verificable |
 | --- | --- | --- |
-| 0. Auditoría del seed | Cerrada | 844 PR y 223 DX cargados y verificados en `origen_codes`. |
-| 1. Candidatos | Cerrada para la carga actual | Origen: `docs/dentar/generado/dentar-pr-cdt-2025.csv` y mapeos DX. |
-| 2. Priorización | Cerrada para la carga actual | Secuencia AN/CL → sync → relaciones CDT. |
-| 3. Revisión clínica | Parcial | AN/CL y CDT cargados con `review_status='reviewed'`; falta aprobación formal de D-01…D-41. |
-| 4. Carga y publicación | Cerrada para la carga actual | `os_catalog_identifier` con 805 identificadores `CDT-2025`; 333 relaciones navegables. |
+| 0. Auditoría del seed | Cerrada [BD] | 844 PR y 223 DX verificados en `origen_codes`. |
+| 1. Candidatos | Cerrada para la carga actual [DOC] | Origen: `docs/dentar/generado/dentar-pr-cdt-2025.csv` y mapeos DX. |
+| 2. Priorización | Ejecutada [BD] | Secuencia AN/CL → sync → relaciones CDT, reflejada en la base. |
+| 3. Revisión clínica | Parcial [BD] | AN/CL y CDT cargados; 419 aprobaciones D-19 sobre mapeos. Falta el acta formal de D-01…D-41. |
+| 4. Carga y publicación | Cargada [BD]; publicación pendiente | 805 identificadores `CDT-2025`; 333 relaciones presentes pero **no navegables** en Browse. |
 | 5. Gobernanza UVR | Pendiente | Definir responsable de aprobación y factores de conversión antes de cargar cualquier valor. |
 | 6. FHIR | Pendiente | Contrato documentado en `README-FHIR.md`, sin enrutamiento ni guardia de auth. |
 

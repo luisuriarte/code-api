@@ -22,6 +22,16 @@ final class Router
         $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
         $path = is_string($path) && $path !== '' ? $path : '/';
 
+        // Fallback para instalaciones donde el rewrite de /docs y /uvr no está
+        // activo: las páginas standalone se sirven igual desde el front controller.
+        if ($path === '/docs' || $path === '/uvr') {
+            $standalone = dirname(__DIR__) . '/web/' . ($path === '/docs' ? 'docs.php' : 'uvr.php');
+            if (is_file($standalone)) {
+                require $standalone;
+                exit;
+            }
+        }
+
         if ($path === '/') {
             $this->redirect('/' . I18n::DEFAULT_LOCALE . '/');
 

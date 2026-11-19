@@ -9,6 +9,7 @@ $navItems = [
     ['label' => $t('nav.dentar'), 'href' => I18n::localizedPath($locale, '/dentar'), 'class' => 'nav-dentar'],
     ['label' => $t('nav.browse'), 'href' => I18n::localizedPath($locale, '/browse')],
     ['label' => $t('nav.docs'), 'href' => I18n::localizedPath($locale, '/docs')],
+    ['label' => $t('nav.uvr'), 'href' => '/uvr?lang=' . rawurlencode($locale)],
     ['label' => $t('nav.services'), 'href' => I18n::localizedPath($locale, '/') . '#plataforma'],
     ['label' => $t('nav.about'), 'href' => I18n::localizedPath($locale, '/about')],
     ['label' => $t('nav.contact'), 'href' => I18n::localizedPath($locale, '/contact')],
