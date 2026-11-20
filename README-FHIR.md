@@ -14,6 +14,12 @@
 > ilustrativos heredados (`DNT-000007`) que **deben reemplazarse** por códigos
 > reales `DNT-PR-NNNNNN` antes de cualquier publicación; no deben interpretarse
 > como identificadores válidos.
+>
+> **Contrato formal (Fase 12 del §16):** la proyección de recursos, las reglas
+> de gobernanza y el mapa desde el modelo interno se formalizan en
+> [`docs/architecture/fase12-fhir-contrato.md`](docs/architecture/fase12-fhir-contrato.md).
+> Es un documento de contrato: no implementa rutas ni modifica la guardia de
+> autenticación.
 
 ---
 
@@ -514,3 +520,25 @@ Para clientes que consumen la API REST directa de Origen Salud (`api.origen.ar/v
 | `/v1/cie10/{code}` | `code` | `CodeableConcept` | `coding[system='http://hl7.org/fhir/sid/icd-10']` |
 | `/v1/laboratorio/{id}` | `metadata.loinc_code` | `Observation.code` | `coding[system='http://loinc.org']` |
 | `/v1/anmat/{id}` | `certificate` / `generic_name` | `Medication.code` | `coding[system='https://origen.ar/fhir/...']` |
+
+---
+
+## 7. Contrato de proyección sobre el modelo interno (Fase 12)
+
+La [Fase 12 del §16](docs/architecture/fase12-fhir-contrato.md) formaliza estas
+correspondencias desde el modelo gobernado, **sin implementar ninguna ruta**:
+
+| Recurso FHIR R4 | Origen interno | Estado |
+|---|---|---|
+| `CodeSystem` | `os_catalog` + `os_catalog_item` | Solo catálogos activos; las reservas DENTAR/OS tienen `catalog_id` nulo y no se proyectan |
+| `ValueSet` | `os_catalog_category` / listas por release | Solo releases publicadas |
+| `ConceptMap` | `os_catalog_relation` + mapeos | 603 relaciones; sin juicio clínico nuevo |
+| `Procedure` / `ServiceRequest` | `dentar-pr` | Códigos `DNT-PR-NNNNNN` |
+| `Condition` | `dentar-dx` + CIE-10 | Códigos `DNT-DX-NNNNNN` |
+| `Medication` / `MedicationKnowledge` | `os_product`, presentación y registros (Fase 6) | 0 instancias: el modelo sigue vacío y el legado no se migra |
+| `Device` / `DeviceDefinition` | `os_product` con clase `device` / `equipment` (Fase 10) | 0 instancias: `OS-DIS`/`OS-EQP` son reservas |
+| `ChargeItem` / `ChargeItemDefinition` | UVR derivado (Fase 7) | Importe **estimado**, nunca arancel oficial |
+
+Toda proyección futura exigirá `review_status` con publicación permitida y
+`source_reference` verificable. `/fhir/*` seguirá sin enrutarse hasta que una
+fase posterior extienda la guardia de API Key, actualmente limitada a `/v1/*`.

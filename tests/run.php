@@ -208,7 +208,7 @@ $sqlFiles = array_values(array_filter(
     static fn (string $f): bool => !str_contains(basename($f), 'verificacion_')
         && !str_contains(basename($f), 'correcion_')
 ));
-$check(count($sqlFiles) === 8, 'Deben existir ocho artefactos SQL propuestos (incluidas las Fases 3, 8 y 10).');
+$check(count($sqlFiles) === 9, 'Deben existir nueve artefactos SQL propuestos (incluidas las Fases 3, 8, 10 y 11).');
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
     $name = basename($file);
@@ -776,6 +776,132 @@ if (is_file($fase10VerifyPath)) {
 }
 $check(str_contains($sqlReadme, 'verificacion_fase10.sql'), 'El README SQL debe documentar la verificación de Fase 10.');
 $check(str_contains($sqlReadme, 'Operación de Fase 10'), 'El README SQL debe documentar la operación de Fase 10.');
+$check(str_contains($sqlReadme, 'Fase 10 cerrada en base'), 'El README SQL debe registrar el cierre en base de la Fase 10.');
+$check(
+    str_contains($architectureRaw, 'Fase 10 cerrada en base')
+        && str_contains($architectureRaw, '0 duplicados'),
+    'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 10.'
+);
+
+// 3j. Fase 11 del §16: integración farmacéutica sin cargar datos.
+$fase11Path = $sqlDir . '/fase11_integracion_farmacia.sql';
+$fase11VerifyPath = $sqlDir . '/verificacion_fase11.sql';
+$check(is_file($fase11Path), 'Debe existir la migración de integración farmacéutica de la Fase 11.');
+$check(is_file($fase11VerifyPath), 'Debe existir la verificación de integración farmacéutica de la Fase 11.');
+if (is_file($fase11Path)) {
+    $fase11Sql = (string) file_get_contents($fase11Path);
+    $check(
+        str_contains($fase11Sql, 'CREATE TABLE IF NOT EXISTS os_pharma_source')
+            && str_contains($fase11Sql, 'CREATE TABLE IF NOT EXISTS os_pharma_import_batch')
+            && str_contains($fase11Sql, 'CREATE TABLE IF NOT EXISTS os_pharma_import_row'),
+        'Fase 11 debe crear fuentes, lotes y staging sin cargar datos.'
+    );
+    $check(
+        !preg_match('/INSERT\s+INTO\s+(?:os_pharma_source|os_pharma_import_batch|os_pharma_import_row)\b/i', $fase11Sql)
+            && !preg_match('/INSERT\s+INTO\s+(?:os_concept|os_product|os_product_presentation|os_regulatory_records)\b/i', $fase11Sql),
+        'Fase 11 no debe sembrar fuentes ni migrar filas al modelo de la Fase 6.'
+    );
+    $check(
+        str_contains($fase11Sql, 'source_reference TEXT NOT NULL')
+            && str_contains($fase11Sql, "DEFAULT 'unreviewed'")
+            && str_contains($fase11Sql, 'os_admin.app_user')
+            && str_contains($fase11Sql, 'raw_payload JSONB NOT NULL')
+            && str_contains($fase11Sql, 'target_entity VARCHAR(60) NOT NULL CHECK'),
+        'Fase 11 debe exigir fuente, gobernanza, actores reales y staging tipificado.'
+    );
+    $check(
+        str_contains($fase11Sql, 'trg_os_pharma_import_row_review')
+            && str_contains($fase11Sql, 'v_review_allows IS DISTINCT FROM TRUE')
+            && str_contains($fase11Sql, 'v_os_pharma_reconciliation'),
+        'Fase 11 debe validar aprobaciones y exponer conciliación sin transferir datos.'
+    );
+    $check(
+        str_contains($fase11Sql, 'REVOKE ALL PRIVILEGES ON TABLE')
+            && str_contains($fase11Sql, 'public.os_pharma_source')
+            && str_contains($fase11Sql, 'public.os_pharma_import_batch')
+            && str_contains($fase11Sql, 'public.os_pharma_import_row')
+            && str_contains($fase11Sql, 'FROM PUBLIC')
+            && str_contains($fase11Sql, 'FROM origen_admin'),
+        'Fase 11 debe revocar el DEFAULT ACL sobre sus tres tablas nuevas.'
+    );
+}
+if (is_file($fase11VerifyPath)) {
+    $fase11Verify = (string) file_get_contents($fase11VerifyPath);
+    $check(
+        str_contains($fase11Verify, 'BEGIN READ ONLY;') && str_contains($fase11Verify, 'ROLLBACK;'),
+        'La verificación de Fase 11 debe ser de solo lectura.'
+    );
+    $check(
+        !str_contains($fase11Verify, 'ORDER BY tabla::text'),
+        'La verificación de Fase 11 no debe ordenar por un alias dentro de una expresión.'
+    );
+    $check(
+        str_contains($fase11Verify, "FROM os_substance")
+            && str_contains($fase11Verify, 'v_os_pharma_reconciliation')
+            && str_contains($fase11Verify, "grantee IN ('origen_admin', 'PUBLIC')")
+            && str_contains($fase11Verify, '(SELECT count(*) FROM os_catalog_relation)'),
+        'La verificación de Fase 11 debe comprobar legado intacto, conciliación, privilegios y regresión.'
+    );
+}
+$check(str_contains($sqlReadme, 'verificacion_fase11.sql'), 'El README SQL debe documentar la verificación de Fase 11.');
+$check(str_contains($sqlReadme, 'Operación de Fase 11'), 'El README SQL debe documentar la operación de Fase 11.');
+$check(str_contains($sqlReadme, 'Fase 11 cerrada en base'), 'El README SQL debe registrar el cierre en base de la Fase 11.');
+$check(
+    str_contains($architectureRaw, 'Fase 11 cerrada en base')
+        && str_contains($architectureRaw, 'legado intacto'),
+    'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 11.'
+);
+
+// 3k. Fase 12 del §16: contrato FHIR documental, sin endpoints ni cambios en la guardia.
+$fase12Path = $root . '/docs/architecture/fase12-fhir-contrato.md';
+$check(is_file($fase12Path), 'Debe existir el contrato FHIR de la Fase 12.');
+$fhirContract = is_file($fase12Path) ? (string) file_get_contents($fase12Path) : '';
+$check(
+    str_contains($fhirContract, 'Estado:** PREPARADA (contrato documental). **No implementada.**')
+        && str_contains($fhirContract, 'No incluye:** DDL/DML'),
+    'El contrato FHIR debe declarar su estado no implementado y sin cambios en base.'
+);
+$check(
+    str_contains($fhirContract, '| `CodeSystem` |')
+        && str_contains($fhirContract, '| `ConceptMap` |')
+        && str_contains($fhirContract, '| `Medication` |')
+        && str_contains($fhirContract, '| `Device` / `DeviceDefinition` |')
+        && str_contains($fhirContract, '| `ChargeItem` / `ChargeItemDefinition` |'),
+    'El contrato FHIR debe mapear los recursos del §14.2 desde el modelo interno.'
+);
+$check(
+    str_contains($fhirContract, 'catalog_id = NULL')
+        && str_contains($fhirContract, 'Fase 8')
+        && str_contains($fhirContract, 'Fase 10')
+        && str_contains($fhirContract, 'no se proyectan'),
+    'El contrato FHIR debe excluir de la proyección las reservas DENTAR y OS.'
+);
+$check(
+    str_contains($fhirContract, 'nunca un arancel oficial')
+        && str_contains($fhirContract, 'importe estimado y derivado')
+        && str_contains($fhirContract, 'total_uvr'),
+    'El contrato FHIR debe declarar el importe UVR como estimado, nunca arancel oficial.'
+);
+$check(
+    str_contains($fhirContract, 'no enrutada')
+        && str_contains($fhirContract, 'no crea rutas ni modifica la guardia')
+        && str_contains($fhirContract, '0 instancias'),
+    'El contrato FHIR debe dejar las operaciones sin enrutar y el modelo vacío.'
+);
+$apiRouterSource = (string) file_get_contents($root . '/api/index.php');
+$check(!str_contains($apiRouterSource, '/fhir'), 'El enrutador no debe contener rutas /fhir.');
+$check(
+    str_contains($apiRouterSource, "str_starts_with(\$path, '/v1/')"),
+    'La guardia de autenticación debe seguir cubriendo solo /v1/*.'
+);
+$fhirReadmeContracto = (string) file_get_contents($root . '/README-FHIR.md');
+$check(
+    str_contains($fhirReadmeContracto, 'fase12-fhir-contrato.md')
+        && str_contains($fhirReadmeContracto, 'contrato propuesto, no implementado'),
+    'README-FHIR debe referenciar el contrato y mantener el aviso de no implementado.'
+);
+$check(!isset($spec['paths']['/fhir/metadata']), 'La OpenAPI no debe declarar /fhir como implementado.');
+$check(str_contains($architectureRaw, 'Preparada el 2026-11-20 como contrato'), 'El documento de arquitectura debe registrar la Fase 12 preparada.');
 
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.
 $relationTypes = [

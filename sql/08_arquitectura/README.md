@@ -46,6 +46,7 @@ ejecutó desde otra carpeta, por lo que no hay un script `fase9_*` aquí.
 | `fase7_catalogos_reservados.sql` | 8 | Reserva de DENTAR-IN/PD/EQ con gobernanza (+ `verificacion_fase8.sql`) |
 | — | 9 | Nomenclador Odontológico Nacional, ya ejecutado desde `sql/03_dentar/nomenclador_odontologico_nacional.sql` |
 | `fase10_catalogos_os.sql` | 10 | Familia `OS-PRODUCTS` y etiquetas OS-* reservadas (+ `verificacion_fase10.sql`) |
+| `fase11_integracion_farmacia.sql` | 11 | Integración ANMAT/UDI/GTIN: estructura vacía (+ `verificacion_fase11.sql`) |
 
 Cada migración es independiente y está envuelta en `BEGIN`/`COMMIT`. Ejecutar
 una por fase, con verificación y backup entre ellas. Los scripts
@@ -469,6 +470,55 @@ constraint de alcance y guardián activo (`O`); 0 grantees no deseados; 0
 vinculaciones y 0 catálogos reales en ambos bloques DENTAR/OS; regresión
 603/22/0/0. El `NOTICE: trigger ... does not exist, skipping` es esperado en la
 primera ejecución por el `DROP TRIGGER IF EXISTS`. **Fase 10 cerrada en base.**
+
+## Operación de Fase 11 (§16): integración ANMAT/UDI/GTIN sin datos
+
+Autorizada el 2026-11-20 en modalidad **solo integración, sin cargar datos**.
+Artefactos: migración `fase11_integracion_farmacia.sql` y verificación
+`verificacion_fase11.sql` (`BEGIN READ ONLY` / `ROLLBACK`). Requiere la Fase 1,
+la Fase 5 (`os_admin.app_user`), la Fase 6 y el legado farmacéutico.
+
+La migración crea **tres tablas vacías**: `os_pharma_source` (fuentes
+verificables pendientes de registro), `os_pharma_import_batch` (lotes con
+metodología, fuente y actor real de `os_admin.app_user`) y
+`os_pharma_import_row` (staging con `target_entity` acotado a las seis tablas de
+la Fase 6, `raw_payload JSONB` y `target_id` nulo). No se registra ninguna
+fuente, lote ni fila; **no se migran** las 9 sustancias, 10 productos, 10
+presentaciones ni 40 identificadores heredados. El trigger
+`trg_os_pharma_import_row_review` solo valida cuando el estado permite
+publicación: exige fuente activa aprobada, lote aprobado, payload y fuente no
+vacíos y destino resuelto. La vista `v_os_pharma_reconciliation` muestra la
+diferencia entre legado y modelo sin transferir datos. No se tocan
+importadores, API pública, catálogos publicados ni Browse Codes. Se revoca
+`PUBLIC`/`origen_admin` sobre las tres tablas por el `DEFAULT ACL` de `public`.
+
+```bash
+sudo -u postgres pg_dump -Fc origen_codes > origen_codes_pre_fase11.dump
+sudo -u postgres pg_restore -l origen_codes_pre_fase11.dump
+
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/fase11_integracion_farmacia.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_fase11.sql
+```
+
+Criterios de aceptación: apartado 1 = 3 tablas; apartados 2 y 3 = 0 filas en
+staging y en el modelo de la Fase 6; apartado 4 = legado 9/10/10/40 intacto;
+apartado 6 = FK a fuentes, actores y estados; apartado 7 = trigger y CHECK de
+destino; apartado 8 = 0 filas; apartado 9 = 603 relaciones, 22 idiomas,
+0 solicitudes, 0 valoraciones UVR, 3 reservas DENTAR y 7 reservas OS.
+
+**Estado final (2026-11-20): ejecutada y verificada en base.** La migración
+terminó en `COMMIT`: 3 tablas vacías, 6 FK (fuentes, lotes, actores de
+`os_admin.app_user` y estados de revisión), trigger de aprobación activo (`O`),
+CHECK de `target_entity` y `UNIQUE` de staging, vista de conciliación con el
+legado 9/10/10/40 intacto frente al modelo vacío, 0 grantees y regresión
+603/22/0/0/3/7. El `NOTICE: trigger ... does not exist, skipping` es esperado en
+la primera ejecución por el `DROP TRIGGER IF EXISTS`. La primera pasada del
+verificador se detuvo en el apartado 6 por un error de mi consulta
+(`ORDER BY tabla::text`, alias usado dentro de una expresión); se corrigió a
+`ORDER BY conrelid::regclass::text` y se añadió una prueba de regresión. La base
+no se vio afectada: la verificación era `BEGIN READ ONLY`. **Fase 11 cerrada en base.**
 
 ## Backup y rollback por fase
 

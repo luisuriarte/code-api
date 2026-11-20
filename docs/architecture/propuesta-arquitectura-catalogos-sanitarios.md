@@ -979,6 +979,9 @@ del guardia de autenticación. La OpenAPI lo declara no implementado.
 
 Implementar FHIR como **capa de proyección** sobre el modelo interno, después de
 consolidar el motor único y la gobernanza. No forzar FHIR donde no corresponda.
+El contrato formal de esta proyección, preparado en la Fase 12, está en
+[`fase12-fhir-contrato.md`](fase12-fhir-contrato.md): no implementa endpoints ni
+modifica la guardia de autenticación.
 `ChargeItemDefinition` debe declarar que el importe es estimado y derivado de
 UVR, no una tarifa oficial. Ajustar el guardia de autenticación antes de
 exponer cualquier `/fhir/*`.
@@ -1072,9 +1075,9 @@ inválidos (D-34).
 | 7 | Módulo UVR, sin valores inventados | **Cerrada el 2026-11-20**: `fase6_uvr.sql` (nombre histórico) + `verificacion_fase7.sql`; 5 tablas, 1 elegibilidad real de `dentar-pr` y 0 para `dentar-dx`, 4 tablas de valoración vacías, 7 constraints, trigger activo, vista derivada sin `total_uvr` almacenado, 0 grantees y regresión 603/22/0 | Sí (otorgada) |
 | 8 | DENTAR-IN/PD/EQ solo si se aprueban | **Cerrada el 2026-11-20**: `fase7_catalogos_reservados.sql` (nombre histórico) + `verificacion_fase8.sql`; 3 reservas con `catalog_id` nulo, fuente obligatoria y guardián de publicación activo; 0 catálogos reales, 0 ítems y 0 releases; 0 grantees y regresión 603/22/0/0 | Sí (otorgada) |
 | 9 | Nomenclador Odontológico Nacional | **Ejecutada por el usuario el 2026-11-19**: 135 ítems, 270 relaciones, CDT intactas (§5.2) | Sí (otorgada) |
-| 10 | Catálogos generales OS-* | **Preparada el 2026-11-20**: `fase10_catalogos_os.sql` + `verificacion_fase10.sql`; familia `OS-PRODUCTS`, 5 clases, 6 etiquetas reservadas, `catalog_id` nulo y guardián de publicación. Sin catálogos reales ni duplicados. Pendiente de ejecución por el usuario con backup | Sí (otorgada) |
-| 11 | Medicamentos, dispositivos y registros | Integración con ANMAT/UDI/GTIN reales | Sí |
-| 12 | FHIR R4 como proyección | Endpoints autenticados y mapeados desde modelo interno | Sí |
+| 10 | Catálogos generales OS-* | **Cerrada el 2026-11-20**: `fase10_catalogos_os.sql` + `verificacion_fase10.sql`; 2 tablas, 5 clases, 1 familia + 6 etiquetas con `catalog_id` nulo, guardián de publicación activo, 0 catálogos reales, 0 duplicados con DENTAR y regresión 603/22/0/0 | Sí (otorgada) |
+| 11 | Medicamentos, dispositivos y registros | **Cerrada el 2026-11-20** en modo solo integración: `fase11_integracion_farmacia.sql` + `verificacion_fase11.sql`; 3 tablas vacías, 6 FK, guardián de aprobación, vista de conciliación, legado 9/10/10/40 intacto, 0 grantees y regresión 603/22/0/0/3/7 | Sí (otorgada) |
+| 12 | FHIR R4 como proyección | **Preparada el 2026-11-20 como contrato, sin endpoints** ([`fase12-fhir-contrato.md`](fase12-fhir-contrato.md)): mapa de recursos desde el modelo interno, exclusión de reservas DENTAR/OS, reglas de gobernanza y advertencia UVR estimada. Sin DDL, rutas ni cambios en la guardia de autenticación | Sí (otorgada) |
 
 **Estado al 2026-11-19.** La Fase 1 fue **ejecutada por el usuario** en
 `origen_codes` con backup verificado y terminó en `COMMIT`: 4 tablas nuevas,
@@ -1124,8 +1127,21 @@ y preparada con la familia `OS-PRODUCTS` de §5.3: `fase10_catalogos_os.sql` cre
 `os_product_class` (5 clases) y `os_product_family_reservation` (la familia más
 6 etiquetas `OS-*`), todas con `catalog_id` nulo y un guardián que exige
 aprobación editorial; `verificacion_fase10.sql` comprueba que no se crearon
-catálogos reales ni duplicados con `DENTAR-IN/PD/EQ`. **Pendiente de ejecución
-por el usuario con backup verificado.**
+catálogos reales ni duplicados con `DENTAR-IN/PD/EQ`. El usuario la ejecutó con
+backup verificado el 2026-11-20: 5 clases, 7 reservas sin `catalog_id`, guardián
+activo, 0 catálogos reales, 0 ítems `OS-%`, 0 duplicados y regresión intacta.
+**Fase 10 cerrada en base.** La **Fase 11** está autorizada en modalidad "solo
+integración, sin cargar datos": `fase11_integracion_farmacia.sql` crea fuentes,
+lotes y staging vacíos con actores reales, validación de aprobación y la vista
+`v_os_pharma_reconciliation`; `verificacion_fase11.sql` comprueba que el legado
+sigue intacto y que no se migraron filas al modelo de la Fase 6. El usuario la
+ejecutó con backup verificado el 2026-11-20: 3 tablas vacías, 6 FK, guardián
+activo, legado intacto, 0 grantees y regresión intacta. **Fase 11 cerrada en base.**
+La **Fase 12** está preparada solo como contrato en
+[`fase12-fhir-contrato.md`](fase12-fhir-contrato.md): mapa de recursos desde el
+modelo interno, exclusión de las reservas de las Fases 8 y 10, reglas de
+publicación y advertencia de UVR estimado. No hay DDL, rutas ni cambios en la
+guardia de autenticación; su implementación exigiría autorización nueva.
 Las fases M1/M2 del panel administrativo están aplicadas y verificadas en
 `os_admin` (ver `docs/architecture/fase2-organizaciones-invitaciones.md`). Los
 nombres `fase3..fase6` de `sql/08_arquitectura/` corresponden a las Fases 4..7
