@@ -25,18 +25,19 @@ $deniedSelected = is_array($deniedSelected ?? null) ? $deniedSelected : [];
 $renderChips = static function (array $catalogs, array $selected, string $field) use ($t): void {
     foreach ($catalogs as $catalog) {
         ?>
-        <div class="admin-grants-row">
-            <div class="admin-grants-label">
-                <strong title="<?= e($catalog['name']) ?>">
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white px-3 py-2.5">
+            <div class="min-w-0">
+                <strong class="block truncate text-sm font-semibold text-ink" title="<?= e($catalog['name']) ?>">
                     <?= e($catalog['short_name'] !== '' ? $catalog['short_name'] : $catalog['name']) ?>
                 </strong>
-                <code><?= e($catalog['code']) ?></code>
+                <code class="ui-code"><?= e($catalog['code']) ?></code>
             </div>
-            <div class="admin-grants-chips">
+            <div class="flex flex-wrap gap-1.5">
                 <?php foreach (\OrigenSalud\Portal\Admin\Rbac::CATALOG_OPERATIONS as $operation): ?>
                     <?php $value = $catalog['code'] . '|' . $operation; ?>
-                    <label class="admin-grant-chip">
+                    <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft transition hover:border-teal hover:text-teal-dark has-[:checked]:border-teal has-[:checked]:bg-mint has-[:checked]:text-teal-dark">
                         <input type="checkbox" name="<?= e($field) ?>[]" value="<?= e($value) ?>"
+                               class="h-3.5 w-3.5 rounded border-line text-teal focus:ring-teal/30"
                                <?= in_array($value, $selected, true) ? 'checked' : '' ?>>
                         <span><?= e($t('admin.grants.ops.' . $operation)) ?></span>
                     </label>
@@ -47,28 +48,33 @@ $renderChips = static function (array $catalogs, array $selected, string $field)
     }
 };
 ?>
-<fieldset class="admin-grants">
-    <legend><?= e($t('admin.grants.title')) ?></legend>
+<fieldset class="ui-fieldset">
+    <legend class="ui-legend"><?= e($t('admin.grants.title')) ?></legend>
 
     <?php if ($catalogs === []): ?>
-        <p class="admin-help"><?= e($t('admin.grants.empty')) ?></p>
+        <p class="text-sm text-muted"><?= e($t('admin.grants.empty')) ?></p>
     <?php else: ?>
-        <p class="admin-help"><?= e($t('admin.grants.legend')) ?></p>
-        <div class="admin-grants-list">
+        <p class="text-sm text-muted"><?= e($t('admin.grants.legend')) ?></p>
+        <div class="ui-stack">
             <?php $renderChips($catalogs, $allowedSelected, 'grant_allow'); ?>
         </div>
 
-        <details class="admin-grants-deny">
-            <summary>
-                <?= e($t('admin.grants.deny_title')) ?>
-                <?php if ($deniedSelected !== []): ?>
-                    <span class="admin-grants-count"><?= count($deniedSelected) ?></span>
-                <?php endif; ?>
-            </summary>
-            <p class="admin-help"><?= e($t('admin.grants.deny_help')) ?></p>
-            <div class="admin-grants-list">
-                <?php $renderChips($catalogs, $deniedSelected, 'grant_deny'); ?>
-            </div>
-        </details>
+        <div class="overflow-hidden rounded-xl border border-line bg-white">
+            <details class="admin-grants-deny">
+                <summary class="cursor-pointer list-none rounded-xl px-4 py-3 text-sm font-semibold text-ink-soft transition hover:bg-paper">
+                    <span class="inline-flex items-center gap-2">
+                        <i data-lucide="shield-x" class="h-4 w-4 text-red-700"></i>
+                        <?= e($t('admin.grants.deny_title')) ?>
+                        <?php if ($deniedSelected !== []): ?>
+                            <span class="ui-badge"><?= count($deniedSelected) ?></span>
+                        <?php endif; ?>
+                    </span>
+                </summary>
+                <div class="ui-stack border-t border-line p-4">
+                    <p class="text-sm text-muted"><?= e($t('admin.grants.deny_help')) ?></p>
+                    <?php $renderChips($catalogs, $deniedSelected, 'grant_deny'); ?>
+                </div>
+            </details>
+        </div>
     <?php endif; ?>
 </fieldset>

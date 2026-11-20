@@ -1,0 +1,19 @@
+{
+    "name": "origen-salud-frontend",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Build local de CSS y JS para el portal de Origen Salud (sin CDN).",
+    "scripts": {
+        "build:css": "tailwindcss -i ./resources/css/admin.css -o ./web/assets/css/admin.css --minify",
+        "watch:css": "tailwindcss -i ./resources/css/admin.css -o ./web/assets/css/admin.css --watch",
+        "build:js": "node ./tools/build-assets.js",
+        "build": "npm run build:css && npm run build:js"
+    },
+    "devDependencies": {
+        "@tailwindcss/cli": "4.3.5",
+        "alpinejs": "3.17.5",
+        "flowbite": "4.0.2",
+        "lucide": "1.77.0",
+        "tailwindcss": "4.3.5"
+    }
+}

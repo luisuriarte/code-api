@@ -1,0 +1,149 @@
+@import "tailwindcss";
+@import "flowbite/src/themes/default";
+
+@plugin "flowbite/plugin";
+
+/* El build escana solo PHP: no hay Plantillas JS ni CDN. */
+@source "../../portal/Views/**/*.php";
+@source "../../web/**/*.php";
+@source "../../node_modules/flowbite";
+
+/*
+ * Tokens del sistema actual (web/assets/css/app.css). Se conservan los mismos
+ * colores y tipografias; solo cambia la forma de aplicarlos.
+ */
+@theme {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, "Liberation Mono", monospace;
+
+    --color-ink: #0b2239;
+    --color-ink-soft: #33495e;
+    --color-muted: #5b6d7e;
+    --color-teal: #0c7c86;
+    --color-teal-dark: #075b63;
+    --color-mint: #e9f6f4;
+    --color-paper: #f6f9fb;
+    --color-line: #dde6ec;
+    --color-white: #ffffff;
+
+    --radius-card: 18px;
+    --shadow-card: 0 8px 24px rgba(11, 34, 57, 0.06);
+    --shadow-panel: 0 24px 60px rgba(11, 34, 57, 0.1);
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply bg-paper text-ink font-sans antialiased;
+    }
+
+    a {
+        @apply text-teal-dark;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+/* Utilidades del sistema visual del panel. Conservan los tokens históricos. */
+@utility ui-card {
+    @apply rounded-2xl border border-line bg-white shadow-card;
+}
+
+@utility ui-card-pad {
+    @apply p-5 sm:p-6;
+}
+
+@utility ui-title {
+    @apply text-xl font-semibold tracking-tight text-ink sm:text-2xl;
+}
+
+@utility ui-subtitle {
+    @apply mt-1 text-sm leading-6 text-muted;
+}
+
+@utility ui-grid {
+    @apply grid gap-5 lg:grid-cols-2;
+}
+
+@utility ui-stack {
+    @apply space-y-4;
+}
+
+@utility ui-label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-soft;
+}
+
+@utility ui-input {
+    @apply w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink shadow-sm outline-none transition
+           placeholder:text-muted focus:border-teal focus:ring-2 focus:ring-teal/20;
+}
+
+@utility ui-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-teal px-4 py-2.5 text-sm font-semibold text-white
+           shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/30 focus:ring-offset-2;
+}
+
+@utility ui-btn-sm {
+    @apply px-3 py-1.5 text-xs;
+}
+
+@utility ui-btn-ghost {
+    @apply border border-line bg-white text-ink-soft hover:border-teal hover:text-teal-dark;
+}
+
+@utility ui-table-wrap {
+    @apply overflow-x-auto rounded-xl border border-line;
+}
+
+@utility ui-table {
+    @apply min-w-full divide-y divide-line text-sm;
+}
+
+@utility ui-th {
+    @apply bg-paper px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted;
+}
+
+@utility ui-td {
+    @apply px-4 py-3 align-top text-sm text-ink-soft;
+}
+
+@utility ui-code {
+    @apply rounded-md bg-paper px-2 py-0.5 font-mono text-xs text-ink;
+}
+
+@utility ui-badge {
+    @apply inline-flex items-center rounded-full bg-mint px-2.5 py-0.5 text-xs font-medium text-teal-dark;
+}
+
+@utility ui-alert {
+    @apply rounded-xl border px-4 py-3 text-sm;
+}
+
+@utility ui-empty {
+    @apply rounded-xl border border-dashed border-line bg-paper px-4 py-6 text-center text-sm text-muted;
+}
+
+@utility ui-fieldset {
+    @apply space-y-4 rounded-xl border border-line bg-paper/60 p-4;
+}
+
+@utility ui-legend {
+    @apply px-1 text-sm font-semibold text-ink;
+}
+
+@utility ui-dl {
+    @apply grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[minmax(10rem,auto)_1fr];
+}
+
+@utility ui-dt {
+    @apply font-medium text-muted;
+}
+
+@utility ui-dd {
+    @apply break-words text-ink;
+}

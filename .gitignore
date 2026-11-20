@@ -1,5 +1,6 @@
 # Dependencias
 /vendor/
+/node_modules/
 
 # Entorno y secretos
 .env
