@@ -841,6 +841,7 @@ admin:
         search_submit: 'Buscar'
         col_code: 'Código'
         col_term: 'Término preferido'
+        edit_title: 'Editar código'
         uvr_button: 'Ver UVR'
         new_title: 'Nuevo código'
         new_note: 'El alta se registra como propuesta; el código se crea solo tras aprobación y publicación.'

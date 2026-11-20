@@ -46,12 +46,14 @@ final class AdminCatalogController
         ]);
     }
 
-    /** Códigos de un catálogo, con búsqueda opcional por `q`. */
+    /** Códigos de un catálogo, con búsqueda opcional por `q` y edición por `edit`. */
     public static function show(string $code): void
     {
         $current = AdminGuard::require(['permission' => 'catalog.view']);
         $code = self::cleanCode($code);
         $query = self::query();
+        $editId = $_GET['edit'] ?? 0;
+        $editId = is_string($editId) && ctype_digit($editId) ? (int) $editId : 0;
 
         try {
             $items = $code === '' ? [] : self::service()->items($code, $query, $current);
@@ -62,11 +64,33 @@ final class AdminCatalogController
             $items = [];
         }
 
+        $editItem = null;
+        $editError = false;
+
+        if ($editId > 0 && $code !== '') {
+            try {
+                $detail = self::service()->item($code, $editId, $current);
+
+                if ((int) ($detail['item']['id'] ?? 0) === $editId) {
+                    $editItem = $detail;
+                } else {
+                    $editError = true;
+                }
+            } catch (RepositoryException) {
+                $editError = true;
+            } catch (UvrGovernanceException $exception) {
+                self::guardDenied($current, $exception);
+                $editError = true;
+            }
+        }
+
         self::render('admin/catalogs/index', $current, [
             'catalogs' => self::catalogs($current),
             'catalogCode' => $code,
             'items' => $items,
             'query' => $query,
+            'editItem' => $editItem,
+            'editError' => $editError,
         ]);
     }
 

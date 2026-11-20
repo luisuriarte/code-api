@@ -1573,6 +1573,7 @@ admin:
         search_submit: 'Search'
         col_code: 'Code'
         col_term: 'Preferred term'
+        edit_title: 'Edit code'
         uvr_button: 'View UVR'
         new_title: 'New code'
         new_note: 'Creation is recorded as a proposal; the code is created only after approval and publication.'
