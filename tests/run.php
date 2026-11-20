@@ -584,6 +584,70 @@ $check(
     'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 6.'
 );
 
+// 3g. Fase 7 del §16: módulo UVR sin valores inventados (nombre histórico fase6).
+$fase7Path = $sqlDir . '/fase6_uvr.sql';
+$fase7VerifyPath = $sqlDir . '/verificacion_fase7.sql';
+$check(is_file($fase7Path), 'Debe existir la migración UVR de la Fase 7.');
+$check(is_file($fase7VerifyPath), 'Debe existir la verificación UVR de la Fase 7.');
+if (is_file($fase7Path)) {
+    $fase7Sql = (string) file_get_contents($fase7Path);
+    $check(
+        str_contains($fase7Sql, 'CREATE TABLE IF NOT EXISTS os_uvr_eligible_catalog')
+            && str_contains($fase7Sql, 'CREATE TABLE IF NOT EXISTS os_uvr_valuation')
+            && str_contains($fase7Sql, 'CREATE TABLE IF NOT EXISTS os_uvr_component')
+            && str_contains($fase7Sql, 'CREATE TABLE IF NOT EXISTS os_uvr_conversion')
+            && str_contains($fase7Sql, 'CREATE TABLE IF NOT EXISTS os_uvr_geo_index'),
+        'Fase 7 debe crear las cinco tablas UVR sin valores cargados.'
+    );
+    $check(
+        str_contains($fase7Sql, "WHERE c.code = 'dentar-pr'")
+            && str_contains($fase7Sql, "catalog_code = 'dentar-dx'") === false
+            && str_contains($fase7Sql, 'trg_os_uvr_valuation_eligible')
+            && str_contains($fase7Sql, 'RAISE EXCEPTION'),
+        'Fase 7 debe sembrar solo la elegibilidad real de dentar-pr y bloquear ítems no elegibles.'
+    );
+    $check(
+        str_contains($fase7Sql, 'v_os_uvr_valuation_total')
+            && str_contains($fase7Sql, 'AS total_uvr')
+            && !preg_match('/\btotal_uvr\s+(?:NUMERIC|NUMERIC\(|\d)/i', $fase7Sql),
+        'Fase 7 debe derivar total_uvr en la vista, nunca como columna almacenada.'
+    );
+    $check(
+        str_contains($fase7Sql, 'REVOKE ALL PRIVILEGES ON TABLE')
+            && str_contains($fase7Sql, 'FROM PUBLIC')
+            && str_contains($fase7Sql, 'FROM origen_admin'),
+        'Fase 7 debe revocar el DEFAULT ACL sobre sus cinco tablas nuevas.'
+    );
+    $check(
+        str_contains($fase7Sql, 'os_review_state')
+            && str_contains($fase7Sql, 'source_reference TEXT NOT NULL')
+            && preg_match('/^\s*(?:DROP\s+TABLE|DELETE\s+FROM|TRUNCATE)\b/im', $fase7Sql) !== 1,
+        'Fase 7 debe ser aditiva, exigir fuentes verificables y no destruir datos.'
+    );
+}
+if (is_file($fase7VerifyPath)) {
+    $fase7Verify = (string) file_get_contents($fase7VerifyPath);
+    $check(
+        str_contains($fase7Verify, 'BEGIN READ ONLY;') && str_contains($fase7Verify, 'ROLLBACK;'),
+        'La verificación de Fase 7 debe ser de solo lectura.'
+    );
+    $check(
+        str_contains($fase7Verify, "catalog_code = 'dentar-dx'")
+            && str_contains($fase7Verify, "column_name = 'total_uvr'")
+            && str_contains($fase7Verify, "grantee IN ('origen_admin', 'PUBLIC')")
+            && str_contains($fase7Verify, '(SELECT count(*) FROM os_catalog_relation)'),
+        'La verificación de Fase 7 debe comprobar elegibilidad, vista derivada, privilegios y regresión.'
+    );
+}
+$check(str_contains($sqlReadme, 'verificacion_fase7.sql'), 'El README SQL debe documentar la verificación de Fase 7.');
+$check(str_contains($sqlReadme, 'Operación de Fase 7'), 'El README SQL debe documentar la operación de Fase 7.');
+$check(str_contains($sqlReadme, 'Fase 7 cerrada en base'), 'El README SQL debe registrar el cierre en base de la Fase 7.');
+$check(
+    str_contains($architectureRaw, 'Fase 7 cerrada en base')
+        && str_contains($architectureRaw, '0 valores UVR'),
+    'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 7.'
+);
+
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.
 $relationTypes = [
     'alternate_benefit', 'billed_in_conjunction_with', 'concurrent_to',

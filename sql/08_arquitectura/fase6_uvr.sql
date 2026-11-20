@@ -1,12 +1,68 @@
--- FASE 6 — Módulo UVR (propuesta, NO EJECUTAR sin aprobación)
--- Requiere fase1 y fase4. ESTRUCTURA VACÍA: no carga valores UVR, conversiones
--- monetarias, índices geográficos ni pagos estimados.
--- Regla canónica: total_uvr = work_uvr + practice_expense_uvr + professional_liability_uvr
+-- =============================================================================
+-- FASE 7 (§16) · Módulo de valoración relativa UVR
+-- =============================================================================
+-- NOTA DE NUMERACIÓN: el nombre del archivo conserva la numeración histórica
+-- de la carpeta. Según §16 del documento de arquitectura esto es la FASE 7.
+-- Ver la tabla de alineación en sql/08_arquitectura/README.md.
+--
+-- PROPUESTA PREPARADA EL 2026-11-20. NO EJECUTAR SIN APROBACIÓN Y BACKUP.
+-- Autorización registrada: "Fase 7: UVR". Requiere la Fase 1 y la Fase 4
+-- ejecutadas (os_review_state, os_catalog_relation) y backup verificado.
+--
+-- ESTRUCTURA VACÍA: no carga valores UVR, componentes, conversiones monetarias,
+-- índices geográficos ni pagos estimados. La única fila sembrada es la
+-- elegibilidad del catálogo REAL 'dentar-pr' (prestaciones odontológicas),
+-- derivada de os_catalog; no se inventan dominios ni se habilita DENTAR-DX.
+--
+-- REGLAS DURAS §10.3 aplicadas:
+--   1. Solo prestaciones: trigger de elegibilidad bloquea ítems que no
+--      pertenezcan a un catálogo elegible activo. DENTAR-DX queda sin UVR.
+--   2. Valoración relativa y conversión monetaria en tablas separadas.
+--   3. Histórico versionado: nueva valoración = nueva fila (version_tag en la
+--      UNIQUE); no se renombran columnas ni se borran tablas.
+--   4. Sin evidencia no se cargan índices regionales ni valores monetarios.
+--   5. total_uvr es derivado: se calcula en la vista, nunca se almacena como
+--      columna editable. No constituye arancel ni pago oficial.
+--   6. Fuentes verificables y revisión son obligatorias en todas las tablas.
+--
+-- ADITIVO Y TRANSACCIONAL:
+--   · CREATE TABLE IF NOT EXISTS, CREATE OR REPLACE FUNCTION/VIEW,
+--     CREATE TRIGGER IF NOT EXISTS, INSERT ... ON CONFLICT DO NOTHING, REVOKE.
+--   · DROP TRIGGER IF EXISTS solo sobre el trigger propio de este módulo, para
+--     idempotencia. No elimina tablas, columnas ni datos; no hay sentencias
+--     destructivas de datos.
+--   · No modifica importadores, API pública, catálogos publicados ni
+--     Browse Codes. No existe ruta /v1/uvr; no se crea ninguna.
+--
+-- PRIVILEGIOS: se revoca PUBLIC/origen_admin sobre las cinco tablas nuevas por
+-- el DEFAULT ACL de public, en la misma transacción.
+--
+-- ROLLBACK: restaurar el dump previo (ver README). No hay DDL destructivo.
+-- =============================================================================
+
+SET client_encoding = 'UTF8';
 
 BEGIN;
 
--- Elegibilidad: solo prestaciones. Se siembra desde un catálogo REAL ya
--- existente; no se inventan dominios ni se habilita DENTAR-DX.
+-- ---------------------------------------------------------------------------
+-- 0. Preflight
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF to_regclass('public.os_review_state') IS NULL
+       OR to_regclass('public.os_catalog') IS NULL
+       OR to_regclass('public.os_catalog_item') IS NULL
+       OR to_regclass('public.os_catalog_release') IS NULL THEN
+        RAISE EXCEPTION 'Fase 7 requiere la Fase 1 y el motor de catálogos';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM os_catalog WHERE code = 'dentar-pr' AND is_active) THEN
+        RAISE EXCEPTION 'Fase 7 requiere el catálogo real dentar-pr activo';
+    END IF;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 1. Elegibilidad: solo prestaciones, nunca diagnósticos ni productos
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_uvr_eligible_catalog (
     catalog_code VARCHAR(60) PRIMARY KEY,
     source_reference TEXT NOT NULL,
@@ -20,6 +76,12 @@ SELECT c.code, 'os_catalog(code=''' || c.code || ''')'
  WHERE c.code = 'dentar-pr'
 ON CONFLICT (catalog_code) DO NOTHING;
 
+COMMENT ON TABLE os_uvr_eligible_catalog IS
+    'Catálogos elegibles para UVR. Solo prestaciones; DENTAR-DX queda excluido (§10.3 regla 1).';
+
+-- ---------------------------------------------------------------------------
+-- 2. Valoración relativa y componentes
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_uvr_valuation (
     id BIGSERIAL PRIMARY KEY,
     service_item_id INT NOT NULL REFERENCES os_catalog_item(id) ON DELETE RESTRICT,
@@ -50,8 +112,12 @@ CREATE TABLE IF NOT EXISTS os_uvr_component (
     UNIQUE (valuation_id, component_type)
 );
 
--- Conversión monetaria: aislada de la valoración relativa. Cambiar uvr_value
--- no modifica componentes y revisar un componente no modifica uvr_value.
+COMMENT ON TABLE os_uvr_valuation IS
+    'Valoración relativa por release/metodología. total_uvr NO se almacena: se deriva en v_os_uvr_valuation_total (§10.3 regla 5).';
+
+-- ---------------------------------------------------------------------------
+-- 3. Conversión monetaria: aislada de la valoración relativa
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_uvr_conversion (
     id BIGSERIAL PRIMARY KEY,
     uvr_value NUMERIC(14, 6) NOT NULL CHECK (uvr_value > 0),
@@ -74,6 +140,12 @@ CREATE TABLE IF NOT EXISTS os_uvr_conversion (
         CHECK (period_end IS NULL OR period_start IS NULL OR period_end > period_start)
 );
 
+COMMENT ON TABLE os_uvr_conversion IS
+    'Conversión a money. Cambiar uvr_value por inflación no modifica los *_uvr; revisar una prestación no modifica uvr_value (§10.3 regla 2).';
+
+-- ---------------------------------------------------------------------------
+-- 4. Índices geográficos por componente y jurisdicción
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_uvr_geo_index (
     id BIGSERIAL PRIMARY KEY,
     component_type VARCHAR(40) NOT NULL CHECK (component_type IN (
@@ -95,9 +167,11 @@ CREATE TABLE IF NOT EXISTS os_uvr_geo_index (
 );
 
 COMMENT ON TABLE os_uvr_geo_index IS
-    'Índices por componente y jurisdicción. Sin evidencia no se cargan filas: el valor nacional uniforme es el default implícito.';
+    'Índices por componente y jurisdicción. Sin evidencia no se cargan filas: el valor nacional uniforme es el default implícito (§10.3 regla 4).';
 
--- Solo prestaciones elegibles pueden tener valoración UVR.
+-- ---------------------------------------------------------------------------
+-- 5. Trigger de elegibilidad (§10.3 regla 1)
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION os_uvr_assert_eligible_service()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -128,7 +202,9 @@ CREATE TRIGGER trg_os_uvr_valuation_eligible
     BEFORE INSERT OR UPDATE OF service_item_id ON os_uvr_valuation
     FOR EACH ROW EXECUTE FUNCTION os_uvr_assert_eligible_service();
 
--- Total derivado: nunca se almacena como columna editable.
+-- ---------------------------------------------------------------------------
+-- 6. Vista derivada: total_uvr nunca se almacena (§10.3 regla 5)
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE VIEW v_os_uvr_valuation_total AS
 SELECT v.id AS valuation_id,
        v.service_item_id,
@@ -151,13 +227,44 @@ SELECT v.id AS valuation_id,
     ON c_liability.valuation_id = v.id AND c_liability.component_type = 'professional_liability';
 
 COMMENT ON VIEW v_os_uvr_valuation_total IS
-    'total_uvr es derivado de los tres componentes. No constituye arancel ni pago oficial.';
+    'total_uvr es derivado de los tres componentes. No constituye arancel ni pago oficial. estimated_payment se calcula en la capa de presentación con uvr_value.';
+
+-- ---------------------------------------------------------------------------
+-- 7. DEFAULT ACL: retirar privilegios automáticos sobre las tablas nuevas
+-- ---------------------------------------------------------------------------
+REVOKE ALL PRIVILEGES ON TABLE
+    public.os_uvr_eligible_catalog,
+    public.os_uvr_valuation,
+    public.os_uvr_component,
+    public.os_uvr_conversion,
+    public.os_uvr_geo_index
+FROM PUBLIC;
+
+DO $$
+BEGIN
+    IF to_regrole('origen_admin') IS NOT NULL THEN
+        EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE
+            public.os_uvr_eligible_catalog,
+            public.os_uvr_valuation,
+            public.os_uvr_component,
+            public.os_uvr_conversion,
+            public.os_uvr_geo_index
+            FROM origen_admin';
+    END IF;
+END $$;
 
 COMMIT;
 
--- Verificación sugerida (no ejecutar automáticamente):
--- SELECT * FROM os_uvr_eligible_catalog;
--- SELECT 'os_uvr_valuation' AS tabla, count(*) FROM os_uvr_valuation
--- UNION ALL SELECT 'os_uvr_component', count(*) FROM os_uvr_component
--- UNION ALL SELECT 'os_uvr_conversion', count(*) FROM os_uvr_conversion
--- UNION ALL SELECT 'os_uvr_geo_index', count(*) FROM os_uvr_geo_index;
+-- ---------------------------------------------------------------------------
+-- Comprobaciones posteriores (solo lectura)
+-- ---------------------------------------------------------------------------
+SELECT '=== Fase 7 · elegibilidad ===' AS seccion;
+SELECT * FROM os_uvr_eligible_catalog;
+
+SELECT '=== Fase 7 · tablas VACÍAS ===' AS seccion;
+SELECT 'os_uvr_valuation' AS tabla, count(*) AS filas FROM os_uvr_valuation
+UNION ALL SELECT 'os_uvr_component', count(*) FROM os_uvr_component
+UNION ALL SELECT 'os_uvr_conversion', count(*) FROM os_uvr_conversion
+UNION ALL SELECT 'os_uvr_geo_index', count(*) FROM os_uvr_geo_index;
+
+-- Fin de Fase 7 (§16) · módulo UVR sin valores inventados.
