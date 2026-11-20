@@ -1118,6 +1118,61 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $locale) {
     $check(isset($dentarMessages['nomenclador_badge']), $locale . ': falta dentar.nomenclador_badge.');
 }
 
+// 4c. Code Browser rediseñado: barra full-width, drawer de filtros y sin rail izquierdo.
+$browseView = (string) file_get_contents($root . '/portal/Views/browse.php');
+$check(
+    str_contains($browseView, 'popovertarget="browse-filters"')
+    && str_contains($browseView, 'popover="auto"')
+    && str_contains($browseView, 'browse-filter-drawer'),
+    'Los filtros deben abrirse en un drawer nativo en el borde derecho.'
+);
+$check(
+    !str_contains($browseView, 'browse-rail')
+    && !str_contains($browseView, 'browse-catalogs'),
+    'El listado lateral de catálogos/códigos debe desaparecer del browser.'
+);
+$check(
+    str_contains($browseView, 'data-pane="results"')
+    && str_contains($browseView, 'data-pane="detail"')
+    && str_contains($browseView, 'group-data-[mobile-view=detail]:hidden'),
+    'Los resultados y la ficha deben conservar los hooks del explorador AJAX.'
+);
+$check(
+    str_contains($resultsSource, 'browse-results--explorer')
+    && str_contains($resultsSource, 'sm:grid-cols-2')
+    && str_contains($resultsSource, 'data-focus-url'),
+    'Los resultados deben renderizarse como tarjetas responsive sin perder la navegación AJAX.'
+);
+$publicCssSource = (string) file_get_contents($root . '/resources/css/public.css');
+$check(
+    str_contains($publicCssSource, 'layer(legacy)')
+    && str_contains($publicCssSource, '../../web/assets/css/app.css'),
+    'El CSS público debe conservar la ficha histórica en una capa legacy.'
+);
+$publicCssBuilt = $root . '/web/assets/css/public.css';
+$check(is_file($publicCssBuilt), 'Debe existir el build público de Tailwind.');
+if (is_file($publicCssBuilt)) {
+    $publicCss = (string) file_get_contents($publicCssBuilt);
+    $check(str_contains($publicCss, ':popover-open'), 'El build debe incluir el estado open del Popover API.');
+    $check(str_contains($publicCss, 'has(:checked)'), 'El build debe incluir el estado has-checked de los filtros.');
+    $check(str_contains($publicCss, '@layer legacy') && str_contains($publicCss, '@layer utilities'), 'El build debe mantener el orden de capas.');
+}
+$layoutSource = (string) file_get_contents($root . '/portal/Views/layouts/main.php');
+$check(
+    str_contains($layoutSource, "'page-browse'")
+    && str_contains($layoutSource, '/assets/css/public.css'),
+    'Solo el Code Browser debe cargar el CSS público de Tailwind.'
+);
+$packageRaw = (string) file_get_contents($root . '/package.json');
+$check(str_contains($packageRaw, 'build:css:public'), 'El build debe generar el CSS público.');
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $locale) {
+    $messages = Yaml::parseFile($root . '/portal/translations/messages.' . $locale . '.yaml');
+    $browse = $messages['browse'] ?? [];
+    foreach (['active_filters', 'close_filters'] as $key) {
+        $check(isset($browse[$key]), $locale . ': falta browse.' . $key . '.');
+    }
+}
+
 // 5. Documentación alineada con el estado real.
 $dentarReadme = (string) file_get_contents($root . '/docs/dentar/README.md');
 foreach (['844', '223', '624', '218', 'origen_codes', 'DENTAR-IN'] as $needle) {

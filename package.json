@@ -4,7 +4,9 @@
     "private": true,
     "description": "Build local de CSS y JS para el portal de Origen Salud (sin CDN).",
     "scripts": {
-        "build:css": "tailwindcss -i ./resources/css/admin.css -o ./web/assets/css/admin.css --minify",
+        "build:css": "npm run build:css:admin && npm run build:css:public",
+        "build:css:admin": "tailwindcss -i ./resources/css/admin.css -o ./web/assets/css/admin.css --minify",
+        "build:css:public": "tailwindcss -i ./resources/css/public.css -o ./web/assets/css/public.css --minify",
         "watch:css": "tailwindcss -i ./resources/css/admin.css -o ./web/assets/css/admin.css --watch",
         "build:js": "node ./tools/build-assets.js",
         "build": "npm run build:css && npm run build:js"

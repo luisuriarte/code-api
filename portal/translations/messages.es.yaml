@@ -313,6 +313,8 @@ browse:
     no: "No"
     tag_source: "Fuente"
     filters: "Filtros"
+    active_filters: "Filtros activos"
+    close_filters: "Cerrar filtros"
     filter_all: "Todos"
     catalogs: "Catálogos DENTAR"
     family: "Familia"

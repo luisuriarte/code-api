@@ -734,6 +734,8 @@ browse:
     no_clinical: "No clinical criteria recorded in the source."
     no_trace: "No traceability data recorded in the source."
     filters: "Filters"
+    active_filters: "Active filters"
+    close_filters: "Close filters"
     filter_all: "All"
     catalogs: "DENTAR catalogs"
     family: "Family"
