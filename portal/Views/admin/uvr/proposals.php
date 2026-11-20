@@ -332,17 +332,17 @@ if ($uvrLanguage === '') {
                         <div>
                             <label for="uvr-evaluated" class="ui-label"><?= e($t('admin.uvr.evaluated_at')) ?></label>
                             <input id="uvr-evaluated" type="date" name="evaluated_at" required
-                                   value="<?= $uvrValue('evaluated_at') ?>" class="ui-input">
+                                   value="<?= $uvrValue('evaluated_at') ?>" class="ui-date">
                         </div>
                         <div>
                             <label for="uvr-valid-from" class="ui-label"><?= e($t('admin.uvr.valid_from')) ?></label>
                             <input id="uvr-valid-from" type="date" name="valid_from"
-                                   value="<?= $uvrValue('valid_from') ?>" class="ui-input">
+                                   value="<?= $uvrValue('valid_from') ?>" class="ui-date">
                         </div>
                         <div>
                             <label for="uvr-valid-to" class="ui-label"><?= e($t('admin.uvr.valid_to')) ?></label>
                             <input id="uvr-valid-to" type="date" name="valid_to"
-                                   value="<?= $uvrValue('valid_to') ?>" class="ui-input">
+                                   value="<?= $uvrValue('valid_to') ?>" class="ui-date">
                         </div>
                     </div>
 

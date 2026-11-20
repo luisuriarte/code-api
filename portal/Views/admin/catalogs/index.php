@@ -262,12 +262,12 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                             <div>
                                 <label for="edit-valid-from" class="ui-label"><?= e($t('admin.uvr.valid_from')) ?></label>
                                 <input id="edit-valid-from" type="date" name="valid_from"
-                                       value="<?= e($editDate('valid_from')) ?>" class="ui-input">
+                                       value="<?= e($editDate('valid_from')) ?>" class="ui-date">
                             </div>
                             <div>
                                 <label for="edit-valid-to" class="ui-label"><?= e($t('admin.uvr.valid_to')) ?></label>
                                 <input id="edit-valid-to" type="date" name="valid_to"
-                                       value="<?= e($editDate('valid_to')) ?>" class="ui-input">
+                                       value="<?= e($editDate('valid_to')) ?>" class="ui-date">
                             </div>
                             <div class="sm:col-span-2">
                                 <label for="edit-release-status" class="ui-label"><?= e($t('admin.uvr.col_status')) ?></label>
@@ -463,7 +463,7 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                         <div>
                             <label for="catalog-valid-from" class="ui-label"><?= e($t('admin.uvr.valid_from')) ?></label>
                             <input id="catalog-valid-from" type="date" name="valid_from"
-                                   value="<?= $catalogValue('valid_from') ?>" class="ui-input">
+                                   value="<?= $catalogValue('valid_from') ?>" class="ui-date">
                         </div>
                         <div class="sm:col-span-2">
                             <label for="catalog-source" class="ui-label"><?= e($t('admin.uvr.col_source')) ?></label>

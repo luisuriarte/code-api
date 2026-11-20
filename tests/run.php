@@ -2042,6 +2042,43 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $catalogLocale) {
     }
 }
 
+// 17. Calendarios del panel: inputs nativos con estilo Tailwind reutilizable.
+$adminDateInputs = [
+    '/portal/Views/admin/catalogs/item.php' => ['catalog-item-valid-from', 'catalog-item-valid-to'],
+    '/portal/Views/admin/catalogs/index.php' => ['edit-valid-from', 'edit-valid-to', 'catalog-valid-from'],
+    '/portal/Views/admin/uvr/proposals.php' => ['uvr-evaluated', 'uvr-valid-from', 'uvr-valid-to'],
+];
+$adminDateCount = 0;
+foreach ($adminDateInputs as $adminDateFile => $adminDateIds) {
+    $adminDateSource = (string) file_get_contents($root . $adminDateFile);
+    $check(substr_count($adminDateSource, 'type="date"') === count($adminDateIds), $adminDateFile . ': cambió la cantidad de campos de fecha.');
+    foreach ($adminDateIds as $adminDateId) {
+        $adminDatePosition = strpos($adminDateSource, 'id="' . $adminDateId . '"');
+        $adminDateTag = $adminDatePosition === false ? '' : substr($adminDateSource, $adminDatePosition, 320);
+        $adminDateCount += (int) str_contains($adminDateTag, 'type="date"');
+        $check(
+            str_contains($adminDateTag, 'ui-date') && !str_contains($adminDateTag, 'class="ui-input"'),
+            $adminDateFile . ': ' . $adminDateId . ' debe usar la utilidad ui-date.'
+        );
+    }
+}
+$check($adminDateCount === 8, 'Los 8 calendarios del panel deben conservar el calendario nativo.');
+
+$adminCssSource = (string) file_get_contents($root . '/resources/css/admin.css');
+$check(str_contains($adminCssSource, '@utility ui-date'), 'Debe existir la utilidad ui-date en el CSS de administración.');
+$check(
+    str_contains($adminCssSource, '::-webkit-calendar-picker-indicator')
+    && str_contains($adminCssSource, 'scheme-light'),
+    'La utilidad ui-date debe estilizar el indicador y fijar el esquema claro.'
+);
+$adminCssBuilt = $root . '/web/assets/css/admin.css';
+$check(is_file($adminCssBuilt), 'Debe existir el build compilado del CSS de administración.');
+if (is_file($adminCssBuilt)) {
+    $adminCssCompiled = (string) file_get_contents($adminCssBuilt);
+    $check(str_contains($adminCssCompiled, '.ui-date'), 'El build admin debe incluir la utilidad ui-date.');
+    $check(str_contains($adminCssCompiled, '.ui-date::-webkit-calendar-picker-indicator'), 'El build admin debe incluir el ícono de calendario clicable.');
+}
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

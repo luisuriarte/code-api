@@ -200,11 +200,11 @@ $catalogCoverage = ['original', 'complete', 'partial', 'planned', 'undetermined'
                         </div>
                         <div>
                             <label for="catalog-item-valid-from" class="ui-label"><?= e($t('admin.uvr.valid_from')) ?></label>
-                            <input id="catalog-item-valid-from" type="date" name="valid_from" class="ui-input">
+                            <input id="catalog-item-valid-from" type="date" name="valid_from" class="ui-date">
                         </div>
                         <div>
                             <label for="catalog-item-valid-to" class="ui-label"><?= e($t('admin.uvr.valid_to')) ?></label>
-                            <input id="catalog-item-valid-to" type="date" name="valid_to" class="ui-input">
+                            <input id="catalog-item-valid-to" type="date" name="valid_to" class="ui-date">
                         </div>
                         <div class="sm:col-span-2">
                             <label for="catalog-item-release-status" class="ui-label"><?= e($t('admin.uvr.col_status')) ?></label>

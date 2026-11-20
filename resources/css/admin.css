@@ -83,6 +83,39 @@
            placeholder:text-muted focus:border-teal focus:ring-2 focus:ring-teal/20;
 }
 
+/*
+ * Fechas: se conserva el calendario nativo (accesible y sin dependencias), pero
+ * con el ícono y los tokens del panel. El indicador del navegador se vuelve
+ * invisible y cubre todo el campo, así que click en cualquier punto abre el
+ * calendario. `scheme-light` evita el calendario oscuro del sistema.
+ */
+@utility ui-date {
+    @apply ui-input relative appearance-none pe-11 scheme-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%230c7c86' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.125rem 1.125rem;
+}
+
+@layer components {
+    .ui-date::-webkit-calendar-picker-indicator {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        opacity: 0;
+    }
+
+    /* Firefox dibuja su propio ícono: no duplicamos el SVG de fondo. */
+    @supports (-moz-appearance: none) {
+        .ui-date {
+            background-image: none;
+            padding-right: 0.75rem;
+        }
+    }
+}
+
 @utility ui-btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl bg-teal px-4 py-2.5 text-sm font-semibold text-white
            shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-2 focus:ring-teal/30 focus:ring-offset-2;
