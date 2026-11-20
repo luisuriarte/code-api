@@ -517,6 +517,7 @@ admin:
         title: "Acceso al panel"
         lead: "Acceso restringido a colaboradores autorizados. Las acciones quedan registradas en auditoría."
         submit: "Ingresar"
+        back_site: "Ir al Origen Salud"
         logged_out: "La sesión se cerró correctamente."
         error_csrf: "La sesión expiró. Intente nuevamente."
         error_database: "El servicio de autenticación no está disponible. Intente más tarde."

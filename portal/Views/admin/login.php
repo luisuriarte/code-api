@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use OrigenSalud\Web\I18n;
+
 /** @var callable $t */
 $error = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $flash['error'] : '';
 ?>
@@ -63,6 +65,11 @@ $error = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $flas
             <p class="border-t border-line pt-4 text-center text-sm text-muted">
                 <a href="/admin/forgot" class="font-medium no-underline hover:underline"><?= e($t('admin.forgot.link')) ?></a>
             </p>
+            <a href="<?= e(I18n::localizedPath($locale, '/')) ?>"
+               class="ui-btn ui-btn-ghost w-full no-underline">
+                <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                <?= e($t('admin.login.back_site')) ?>
+            </a>
         </div>
     </div>
 </section>

@@ -1245,6 +1245,7 @@ admin:
         title: 'Admin sign in'
         lead: 'Restricted access for authorized collaborators. All actions are recorded in the audit log.'
         submit: 'Sign in'
+        back_site: 'Go to Origen Salud'
         logged_out: 'You have signed out successfully.'
         error_csrf: 'Your session expired. Please try again.'
         error_database: 'The authentication service is unavailable. Please try again later.'

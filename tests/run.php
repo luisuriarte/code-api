@@ -1173,6 +1173,20 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $locale) {
     }
 }
 
+// "Todos" del browser debe incluir odontología; la API mantiene su default acotado.
+$portalRepoSource = (string) file_get_contents($root . '/portal/Repositories/CatalogRepository.php');
+require_once $root . '/portal/Repositories/CatalogRepository.php';
+$portalDomains = \OrigenSalud\Portal\Repositories\CatalogRepository::DOMAINS;
+$check(in_array('odontologia', $portalDomains, true), 'El browser debe publicar el dominio odontología.');
+$check(
+    str_contains($portalRepoSource, "\$domains = \$domain === '' ? self::DOMAINS : [\$domain];"),
+    'Sin filtros, el browser debe consultar todas las fuentes, no solo las tres núcleo.'
+);
+$check(
+    str_contains($serviceSource, 'return self::DEFAULT_DOMAINS;'),
+    'La API debe conservar su default acotado por coste.'
+);
+
 // 5. Documentación alineada con el estado real.
 $dentarReadme = (string) file_get_contents($root . '/docs/dentar/README.md');
 foreach (['844', '223', '624', '218', 'origen_codes', 'DENTAR-IN'] as $needle) {
@@ -1543,13 +1557,19 @@ $check(str_contains($routerSource, "'/admin'"), 'El router debe registrar las ru
 $check(str_contains($routerSource, 'AdminGuard::requireSecure()'), 'Todas las rutas del panel deben exigir HTTPS configurable.');
 $adminLayout = (string) file_get_contents($root . '/portal/Views/layouts/admin.php');
 $check(!str_contains($adminLayout, 'nav-links.php'), 'El panel no debe usar la navegación pública.');
+$adminLoginSource = (string) file_get_contents($root . '/portal/Views/admin/login.php');
+$check(
+    str_contains($adminLoginSource, "I18n::localizedPath(\$locale, '/')")
+    && str_contains($adminLoginSource, "e(\$t('admin.login.back_site'))"),
+    'El login del panel debe ofrecer un enlace localizado de vuelta al sitio público.'
+);
 $authServiceSource = (string) file_get_contents($root . '/portal/Admin/AuthService.php');
 $check(str_contains($authServiceSource, 'session_regenerate_id(true)'), 'El login debe regenerar el id de sesión.');
 $check(str_contains($authServiceSource, 'AuthThrottleRepository::checkAndHit'), 'El login debe usar aceleración persistente.');
 $check(!str_contains($authServiceSource, 'os_catalog'), 'AuthService no debe tocar tablas terminológicas.');
 
 $adminKeys = [
-    'admin/login/title', 'admin/login/lead', 'admin/login/submit',
+    'admin/login/title', 'admin/login/lead', 'admin/login/submit', 'admin/login/back_site',
     'admin/forgot/title', 'admin/reset/title', 'admin/home/title',
     'admin/audit/title', 'admin/denied/title', 'admin/logout',
 ];

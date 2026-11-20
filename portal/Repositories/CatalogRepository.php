@@ -496,7 +496,11 @@ final class CatalogRepository
         $pdo = PortalDatabase::connection();
         $term = self::normalizeTerm($query);
         $language = self::contentLanguage($pdo, $requestedLanguage);
-        $domains = $domain === '' ? self::DEFAULT_DOMAINS : [$domain];
+        // En el browser público, "Todos" significa todas las fuentes publicadas.
+        // La API conserva su DEFAULT_DOMAINS acotado por coste; aquí un código
+        // DENTAR (DNT-PR/DNT-DX) debe encontrarse sin necesidad de marcar un
+        // catálogo a mano. Con catálogo o filtros el ámbito se reduce abajo.
+        $domains = $domain === '' ? self::DOMAINS : [$domain];
         $catalogs = self::normalizeCatalogs($catalog);
         $filters = self::normalizeFilters($filters);
         if ($catalogs !== []) {
