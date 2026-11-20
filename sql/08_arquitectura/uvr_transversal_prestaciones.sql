@@ -39,7 +39,7 @@ BEGIN
         RAISE EXCEPTION 'U7-B requiere Fase 1, Fase 5, Fase 7 y gobernanza U0–U6 ejecutadas';
     END IF;
 
-    IF to_regclass('public.os_uvr_audit_trigger') IS NULL THEN
+    IF to_regprocedure('public.os_uvr_audit_trigger()') IS NULL THEN
         RAISE EXCEPTION 'U7-B requiere la función de auditoría append-only de U0–U6';
     END IF;
 END $$;

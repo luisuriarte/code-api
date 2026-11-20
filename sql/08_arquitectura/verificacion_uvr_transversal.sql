@@ -61,7 +61,7 @@ SELECT conrelid::regclass AS tabla, conname, pg_get_constraintdef(oid) AS defini
         'public.os_uvr_prestacion_valuation'::regclass,
         'public.os_uvr_prestacion_component'::regclass
    )
- ORDER BY tabla::text, conname;
+ ORDER BY conrelid::regclass::text, conname;
 
 SELECT '=== 5. CHECK de evidencia y aplicabilidad ===' AS seccion;
 SELECT conrelid::regclass AS tabla, conname, pg_get_constraintdef(oid) AS definicion
@@ -73,7 +73,7 @@ SELECT conrelid::regclass AS tabla, conname, pg_get_constraintdef(oid) AS defini
         'public.os_uvr_profile_component'::regclass,
         'public.os_uvr_prestacion_component'::regclass
    )
- ORDER BY tabla::text, conname;
+ ORDER BY conrelid::regclass::text, conname;
 
 SELECT '=== 6. Triggers U7 activos ===' AS seccion;
 SELECT c.relname AS tabla, t.tgname

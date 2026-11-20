@@ -244,6 +244,14 @@ $check(
 );
 $check(str_contains($u7Sql, 'importe_referencial'), 'U7-B debe derivar el importe referencial.');
 $check(!str_contains($u7Sql, 'estimated_payment'), 'U7-B no debe exponer estimated_payment.');
+$check(
+    str_contains($u7Sql, "to_regprocedure('public.os_uvr_audit_trigger()')"),
+    'U7-B debe verificar la función de auditoría con to_regprocedure.'
+);
+$check(
+    !str_contains($u7Sql, "to_regclass('public.os_uvr_audit_trigger')"),
+    'U7-B no debe tratar la función de auditoría como una relación.'
+);
 $check(str_contains($u7Sql, 'FROM PUBLIC'), 'U7-B debe revocar privilegios a PUBLIC.');
 $check(str_contains($u7Sql, "to_regrole('origen_med')"), 'U7-B debe conceder solo la vista al portal.');
 $check(!preg_match('/\bGRANT\s+ALL\b/i', $u7Sql), 'U7-B no debe usar GRANT ALL.');
@@ -251,6 +259,14 @@ $u7Verify = (string) file_get_contents($sqlDir . '/verificacion_uvr_transversal.
 $check(
     str_contains($u7Verify, 'BEGIN READ ONLY;') && str_contains($u7Verify, 'ROLLBACK;'),
     'U7-B debe verificarse solo con BEGIN READ ONLY / ROLLBACK.'
+);
+$check(
+    !str_contains($u7Verify, 'ORDER BY tabla::text'),
+    'El verificador U7 no debe ordenar por un alias dentro de una expresión.'
+);
+$check(
+    str_contains($u7Verify, 'ORDER BY conrelid::regclass::text'),
+    'El verificador U7 debe ordenar usando la expresión de la columna.'
 );
 $u7PublicRepository = (string) file_get_contents(
     $root . '/portal/Repositories/UvrPublicRepository.php'
