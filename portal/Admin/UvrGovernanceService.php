@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrigenSalud\Portal\Admin;
 
+use OrigenSalud\Portal\Repositories\CatalogGovernanceRepository;
 use OrigenSalud\Portal\Repositories\CatalogReferenceRepository;
 use OrigenSalud\Portal\Repositories\UvrRepository;
 
@@ -105,6 +106,37 @@ final class UvrGovernanceService
         return CatalogReferenceRepository::all();
     }
 
+    /**
+     * Catálogos desde los que se puede proponer UVR.
+     *
+     * Mientras la fase U7-B no esté autorizada, la elegibilidad sigue siendo la
+     * de U0–U6 (acta U7 §5): un solo catálogo, leído de la misma constante que
+     * valida `propose()`. No se consulta `os_uvr_eligible_catalog` porque
+     * `origen_admin` no tiene SELECT sobre esa tabla.
+     *
+     * @param array<string, mixed> $actor @return list<array<string, mixed>>
+     */
+    public function proposalCatalogs(array $actor): array
+    {
+        $this->require($actor, 'catalog.view', 'view');
+
+        if (!CatalogReferenceRepository::exists(self::CATALOG_CODE)) {
+            return [];
+        }
+
+        foreach (CatalogReferenceRepository::all() as $catalog) {
+            if ($catalog['code'] === self::CATALOG_CODE) {
+                return [$catalog];
+            }
+        }
+
+        return [[
+            'code' => self::CATALOG_CODE,
+            'name' => self::CATALOG_CODE,
+            'short_name' => '',
+        ]];
+    }
+
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
     public function conversions(array $actor): array
     {
@@ -138,6 +170,13 @@ final class UvrGovernanceService
 
         if ($serviceItemId === null || $versionTag === '' || $methodology === '' || $source === '' || $evaluatedAt === '') {
             throw new UvrGovernanceException('uvr_invalid_valuation');
+        }
+
+        // El código debe pertenecer al catálogo elegible. El trigger de base
+        // también lo comprueba, pero aquí el error es comprensible para quien
+        // carga la propuesta desde el panel.
+        if (CatalogGovernanceRepository::item(self::CATALOG_CODE, $serviceItemId) === null) {
+            throw new UvrGovernanceException('catalog_item_not_found');
         }
 
         $components = $input['components'] ?? null;

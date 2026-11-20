@@ -6,6 +6,11 @@
 **Autorización:** plan U0–U6 aprobado y acta
 [`gobernanza-uvr-acta-u0.md`](gobernanza-uvr-acta-u0.md) con C1–C12 cerrados.
 
+> **Ampliación posterior:** el acta
+> [`gobernanza-uvr-acta-u7.md`](gobernanza-uvr-acta-u7.md) declara la gobernanza
+> transversal de prestaciones. No modifica este cierre ni autoriza SQL: las
+> fases U7-B/C/D quedan pendientes de aprobación nueva.
+
 ---
 
 ## 1. Lo que quedó cerrado

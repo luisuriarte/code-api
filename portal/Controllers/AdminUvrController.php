@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrigenSalud\Portal\Controllers;
 
 use OrigenSalud\Portal\Admin\AdminGuard;
+use OrigenSalud\Portal\Admin\CatalogGovernanceService;
 use OrigenSalud\Portal\Admin\UvrGovernanceException;
 use OrigenSalud\Portal\Admin\UvrGovernanceService;
 use OrigenSalud\Portal\Repositories\RepositoryException;
@@ -74,15 +75,88 @@ final class AdminUvrController
             $proposals = [];
         }
 
-        $prefill = [];
-        $requestedItem = $_GET['service_item_id'] ?? null;
+        $catalogs = [];
 
-        if (is_string($requestedItem) && ctype_digit($requestedItem) && (int) $requestedItem > 0) {
-            $prefill['service_item_id'] = $requestedItem;
+        try {
+            $catalogs = self::service()->proposalCatalogs($current);
+        } catch (RepositoryException) {
+            $catalogs = [];
+        } catch (UvrGovernanceException $exception) {
+            self::guardDenied($current, $exception);
+            $catalogs = [];
+        }
+
+        $codes = array_column($catalogs, 'code');
+        $requestedCatalog = $_GET['catalog'] ?? '';
+        $requestedCatalog = is_string($requestedCatalog)
+            && preg_match('/^[a-z0-9][a-z0-9-]{1,49}$/', $requestedCatalog) === 1
+                ? $requestedCatalog
+                : '';
+        $catalogCode = in_array($requestedCatalog, $codes, true)
+            ? $requestedCatalog
+            : (string) ($codes[0] ?? '');
+
+        $query = $_GET['q'] ?? '';
+        $query = is_string($query) ? trim(mb_substr($query, 0, 100)) : '';
+
+        // `service_item_id` es el enlace histórico desde Gestión de Catálogos;
+        // `item` es el parámetro del nuevo flujo catálogo → código → propuesta.
+        $requestedItem = $_GET['item'] ?? $_GET['service_item_id'] ?? null;
+        $itemId = is_string($requestedItem) && ctype_digit($requestedItem) ? (int) $requestedItem : 0;
+
+        $prefill = [];
+        $selectedItem = null;
+        $itemError = $itemId > 0;
+        $catalogService = new CatalogGovernanceService();
+
+        if ($itemId > 0 && $catalogCode !== '') {
+            try {
+                $detail = $catalogService->item($catalogCode, $itemId, $current);
+
+                if ((int) ($detail['item']['id'] ?? 0) === $itemId) {
+                    $selectedItem = $detail['item'];
+                    $itemError = false;
+                    $prefill['service_item_id'] = (string) $itemId;
+                    $version = is_array($detail['versions'][0] ?? null) ? $detail['versions'][0] : [];
+
+                    if ((int) ($version['release_id'] ?? 0) > 0) {
+                        $prefill['release_id'] = (string) (int) $version['release_id'];
+                    }
+                    if ((string) ($version['version_tag'] ?? '') !== '') {
+                        $prefill['version_tag'] = (string) $version['version_tag'];
+                    }
+                }
+            } catch (RepositoryException) {
+                // Se muestra el aviso de código no encontrado.
+            } catch (UvrGovernanceException $exception) {
+                self::guardDenied($current, $exception);
+            }
+        }
+
+        $items = [];
+        if ($catalogCode !== '') {
+            $itemQuery = $query !== '' ? $query : (string) ($selectedItem['permanent_code'] ?? '');
+
+            if ($itemQuery !== '') {
+                try {
+                    $items = $catalogService->items($catalogCode, $itemQuery, $current);
+                } catch (RepositoryException) {
+                    $items = [];
+                } catch (UvrGovernanceException $exception) {
+                    self::guardDenied($current, $exception);
+                }
+            }
         }
 
         self::render('admin/uvr/proposals', 'C', '/admin/uvr/proposals', $current, [
             'proposals' => $proposals,
+            'catalogs' => $catalogs,
+            'catalogCode' => $catalogCode,
+            'query' => $query,
+            'items' => $items,
+            'itemId' => $itemId,
+            'selectedItem' => $selectedItem,
+            'itemError' => $itemError,
             'prefill' => $prefill,
         ]);
     }
@@ -204,13 +278,15 @@ final class AdminUvrController
         AdminForm::requirePost();
         $current = AdminGuard::require(['permission' => 'catalog.propose']);
 
+        $input = self::values();
+        $back = self::proposalBack($input);
+
         if (!AdminForm::validCsrf()) {
-            AdminForm::fail('/admin/uvr/proposals', 'csrf', self::values());
+            AdminForm::fail($back, 'csrf', $input);
 
             return;
         }
 
-        $input = self::values();
         $components = [];
         $posted = $_POST['components'] ?? [];
 
@@ -237,7 +313,7 @@ final class AdminUvrController
         try {
             $id = self::service()->propose($input, $current);
         } catch (\Throwable $exception) {
-            AdminForm::exception('/admin/uvr/proposals', $exception, self::values());
+            AdminForm::exception($back, $exception, $input);
 
             return;
         }
@@ -348,7 +424,7 @@ final class AdminUvrController
     private static function values(): array
     {
         $keys = [
-            'service_item_id', 'release_id', 'version_tag', 'methodology',
+            'catalog', 'q', 'service_item_id', 'release_id', 'version_tag', 'methodology',
             'source_reference', 'evaluated_at', 'valid_from', 'valid_to',
             'review_role', 'rationale', 'outcome', 'evidence_reference',
         ];
@@ -361,6 +437,28 @@ final class AdminUvrController
         }
 
         return $values;
+    }
+
+    /** Conserva catálogo, búsqueda y código al volver por un error de formulario. */
+    private static function proposalBack(array $values): string
+    {
+        $params = [];
+
+        foreach (['catalog', 'q'] as $key) {
+            if (isset($values[$key]) && is_string($values[$key]) && $values[$key] !== '') {
+                $params[$key] = $values[$key];
+            }
+        }
+
+        $item = $values['service_item_id'] ?? '';
+
+        if (is_string($item) && ctype_digit($item) && (int) $item > 0) {
+            $params['item'] = $item;
+        }
+
+        return $params === []
+            ? '/admin/uvr/proposals'
+            : '/admin/uvr/proposals?' . http_build_query($params);
     }
 
     private static function service(): UvrGovernanceService

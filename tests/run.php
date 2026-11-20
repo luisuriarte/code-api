@@ -1661,6 +1661,22 @@ for ($uvrConflict = 1; $uvrConflict <= 12; $uvrConflict++) {
     $check(str_contains($uvrActa, 'C' . $uvrConflict), 'El acta U0 debe cerrar C' . $uvrConflict . '.');
 }
 $check(str_contains($uvrActa, 'APROBADA') && str_contains($uvrActa, 'importe_referencial'), 'El acta U0 debe aprobar el nombre del importe.');
+$uvrActaU7 = (string) file_get_contents($root . '/docs/architecture/gobernanza-uvr-acta-u7.md');
+foreach ([
+    'APROBADA',
+    'Sistema de Gobernanza y Valoración de Prestaciones Sanitarias',
+    'os_prestacion',
+    'os_uvr_profile',
+    'equivalencia económica',
+    'U7-B',
+] as $uvrU7Piece) {
+    $check(str_contains($uvrActaU7, $uvrU7Piece), 'El acta U7 debe registrar ' . $uvrU7Piece . '.');
+}
+$uvrSqlReadme = (string) file_get_contents($root . '/sql/08_arquitectura/README.md');
+$check(
+    str_contains($uvrSqlReadme, 'gobernanza-uvr-acta-u7.md') && str_contains($uvrSqlReadme, 'U7-B'),
+    'El README SQL debe referenciar U7 sin autorizar su migración.'
+);
 $uvrActaVerificacion = (string) file_get_contents($root . '/docs/architecture/gobernanza-uvr-acta-verificacion.md');
 foreach (['COMMIT', 'ROLLBACK', '603 | 22 | 0 | 0 | 9 | 10 | 10 | 40', 'U1 cerrado en base', '0 grantees `PUBLIC`'] as $uvrEvidencia) {
     $check(str_contains($uvrActaVerificacion, $uvrEvidencia), 'El acta de verificación debe registrar ' . $uvrEvidencia . '.');
@@ -1722,6 +1738,24 @@ $check(substr_count($uvrControllerSource, 'AdminForm::validCsrf()') >= 4, 'Los f
 $check(
     !str_contains($uvrControllerSource, '/v1/uvr') && !str_contains($uvrControllerSource, '/fhir/'),
     'El panel no debe anunciar rutas de API inexistentes.'
+);
+$uvrProposalViewSource = (string) file_get_contents($root . '/portal/Views/admin/uvr/proposals.php');
+foreach ([
+    'name="catalog"',
+    'name="q"',
+    'name="service_item_id"',
+    'admin.catalogs.select_title',
+    'admin.catalogs.search_title',
+] as $uvrFlowPiece) {
+    $check(str_contains($uvrProposalViewSource, $uvrFlowPiece), 'La propuesta UVR debe incluir ' . $uvrFlowPiece . '.');
+}
+$check(
+    str_contains($uvrServiceSource, 'proposalCatalogs(') && str_contains($uvrServiceSource, 'catalog_item_not_found'),
+    'El servicio debe exponer los catálogos elegibles y validar el código propuesto.'
+);
+$check(
+    str_contains($uvrControllerSource, 'proposalCatalogs(') && str_contains($uvrControllerSource, 'new CatalogGovernanceService()'),
+    'El controlador debe resolver catálogo y código antes de proponer.'
 );
 
 $uvrImporte = \OrigenSalud\Portal\Admin\UvrImporteService::calcular(

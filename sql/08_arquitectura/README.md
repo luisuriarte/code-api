@@ -9,6 +9,10 @@ Esta carpeta contiene DDL **aditivo** derivado de
 - **U0–U6 y gestión de catálogos:** `uvr_gobernanza_datos.sql` y
   `catalogos_gestion_gobernada.sql` fueron aplicados y verificados en
   `origen_codes` el 2026-11-20. Los verificadores terminaron en `ROLLBACK`.
+- **U7 (decisión documental):** aprobada el 2026-11-20 en
+  `docs/architecture/gobernanza-uvr-acta-u7.md`. Amplía el alcance a la
+  gobernanza transversal de prestaciones. **No tiene SQL asociado ni autoriza
+  ejecutarlo**; las fases U7-B/C/D requieren aprobación nueva.
 - **No contienen datos inventados.** Los únicos `INSERT` son:
   - registros ya existentes en el código (`DOMAINS`/`DOMAIN_CATALOG`), y
   - tipos de relación leídos de `os_catalog_relation` cuando la tabla existe.
@@ -52,6 +56,7 @@ ejecutó desde otra carpeta, por lo que no hay un script `fase9_*` aquí.
 | `fase11_integracion_farmacia.sql` | 11 | Integración ANMAT/UDI/GTIN: estructura vacía (+ `verificacion_fase11.sql`) |
 | `uvr_gobernanza_datos.sql` | U0–U6 | Gestión UVR aditiva: actores, evidencia, guardián y auditoría (+ `verificacion_uvr_gobernanza.sql`) |
 | `catalogos_gestion_gobernada.sql` | C0–C6 | Aplicador controlado de cambios de catálogo; sin grants de escritura directa (+ `verificacion_catalogos_gestion.sql`). **Aplicado y verificado el 2026-11-20.** |
+| — | U7 | Documental: `gobernanza-uvr-acta-u7.md`. Sin artefacto SQL; la migración U7-B no está autorizada. |
 
 Cada migración es independiente y está envuelta en `BEGIN`/`COMMIT`. Ejecutar
 una por fase, con verificación y backup entre ellas. Los scripts
@@ -581,6 +586,22 @@ completó los diez apartados con `ROLLBACK`: 12 objetos presentes, 5 columnas,
 Las vistas muestran privilegios heredados amplios para `origen_admin`; la
 migración solo concedió `SELECT` y no introdujo `GRANT ALL` ni
 `ALTER DEFAULT PRIVILEGES`. `php tests/run.php` → `OK: 3023 comprobaciones`.
+
+## U7: gobernanza transversal de prestaciones (solo documental)
+
+El acta [`gobernanza-uvr-acta-u7.md`](../../docs/architecture/gobernanza-uvr-acta-u7.md)
+amplía el alcance: la valoración UVR pasa a ser una capacidad del **Sistema de
+Gobernanza y Valoración de Prestaciones Sanitarias**, aplicable a cualquier
+prestación valorable con independencia del catálogo donde esté codificada.
+Declara once decisiones (U7.1–U7.11) y un modelo objetivo sin modificar C1–C12.
+
+No hay archivo SQL para U7 y **no se ejecuta ninguna migración**. El modelo
+objetivo describe `os_prestacion`, `os_prestacion_codigo`, `os_uvr_profile` y
+`os_uvr_profile_component`, pero su creación (fase U7-B) requiere autorización
+nueva, backup verificado y verificación `BEGIN READ ONLY` / `ROLLBACK`. Hasta
+entonces rigen los datos y privilegios actuales: `dentar-pr` como único catálogo
+elegible y el nombre visible «Gestión». Los códigos de diagnóstico, medicamentos,
+insumos y conceptos clínicos generales no reciben UVR por existir en un catálogo.
 
 ## Backup y rollback por fase
 
