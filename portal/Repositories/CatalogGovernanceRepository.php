@@ -18,13 +18,20 @@ final class CatalogGovernanceRepository
 {
     private const SUBJECT = 'catalog_change';
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * Listado de códigos. El término visible prioriza la versión canónica es-AR:
+     * AN/CL tienen también una versión 'en' posterior y un ORDER BY id DESC la
+     * elegiría, mostrando el término inglés aunque el panel esté en es-AR.
+     *
+     * @return list<array<string, mixed>>
+     */
     public static function items(string $code, string $query): array
     {
         return self::publicRows(
             'SELECT i.id, i.permanent_code, i.status,
                     (SELECT v.preferred_term FROM public.os_catalog_item_version v
-                      WHERE v.item_id = i.id ORDER BY v.id DESC LIMIT 1) AS preferred_term
+                      WHERE v.item_id = i.id
+                      ORDER BY (v.language_code = \'es-AR\') DESC, v.id DESC LIMIT 1) AS preferred_term
                FROM public.os_catalog_item i
                JOIN public.os_catalog c ON c.id = i.catalog_id
               WHERE c.code = :code
@@ -48,7 +55,12 @@ final class CatalogGovernanceRepository
         );
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * Versiones del ítem. La canónica es-AR va primero para que el editor
+     * precargue el término en español de AN/CL antes que la versión 'en'.
+     *
+     * @return list<array<string, mixed>>
+     */
     public static function versions(int $itemId): array
     {
         return self::publicRows(
@@ -57,7 +69,8 @@ final class CatalogGovernanceRepository
                FROM public.os_catalog_item_version v
                JOIN public.os_catalog_release r ON r.id = v.release_id
               WHERE v.item_id = :id
-              ORDER BY r.valid_from DESC NULLS LAST, v.id DESC
+              ORDER BY (v.language_code = \'es-AR\') DESC,
+                       r.valid_from DESC NULLS LAST, v.id DESC
               LIMIT 50',
             [':id' => $itemId]
         );
