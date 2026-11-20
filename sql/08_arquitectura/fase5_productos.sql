@@ -1,11 +1,51 @@
--- FASE 5 — Productos, presentaciones e identificadores (propuesta, NO EJECUTAR)
--- Requiere fase1 y fase4. Crea estructura VACÍA: no carga productos, marcas,
--- registros sanitarios ni identificadores sin fuente verificable.
--- Las tablas farmacéuticas existentes (os_substance, os_medicinal_product,
--- os_product_package, os_product_identifier) se conservan como legado.
+-- =============================================================================
+-- FASE 6 (§16) · Modelo de productos, presentaciones e identificadores
+-- =============================================================================
+-- NOTA DE NUMERACIÓN: el nombre del archivo conserva la numeración histórica
+-- de la carpeta. Según §16 del documento de arquitectura esto es la FASE 6.
+-- Ver la tabla de alineación en sql/08_arquitectura/README.md.
+--
+-- PROPUESTA PREPARADA EL 2026-11-20. NO EJECUTAR SIN APROBACIÓN Y BACKUP.
+-- Autorización registrada: "Fase 6: productos". Requiere la Fase 1 ejecutada
+-- (os_domain_registry, os_review_state) y backup verificado.
+--
+-- ESTRUCTURA VACÍA: no carga productos, marcas, fabricantes, registros
+-- sanitarios ni identificadores sin fuente verificable. Los únicos INSERT son
+-- los tipos de identificador y los roles de fabricante documentados en §8.3.
+-- Las tablas farmacéuticas heredadas (os_substance, os_medicinal_product,
+-- os_product_package, os_product_identifier) NO se modifican.
+--
+-- ADITIVO Y TRANSACCIONAL:
+--   · CREATE TABLE IF NOT EXISTS, CREATE INDEX IF NOT EXISTS,
+--     INSERT ... ON CONFLICT DO NOTHING y REVOKE.
+--   · No elimina tablas, columnas ni datos. No contiene DDL destructivo.
+--   · No modifica importadores, API pública, catálogos publicados ni
+--     Browse Codes.
+--
+-- PRIVILEGIOS: se revoca PUBLIC/origen_admin sobre las nueve tablas nuevas
+-- por el DEFAULT ACL de public, en la misma transacción.
+--
+-- ROLLBACK: restaurar el dump previo (ver README). No hay DDL destructivo.
+-- =============================================================================
+
+SET client_encoding = 'UTF8';
 
 BEGIN;
 
+-- ---------------------------------------------------------------------------
+-- 0. Preflight
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF to_regclass('public.os_domain_registry') IS NULL
+       OR to_regclass('public.os_review_state') IS NULL THEN
+        RAISE EXCEPTION 'Fase 6 requiere la Fase 1 (os_domain_registry y os_review_state)';
+    END IF;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 1. Fabricantes y conceptos generales
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_manufacturer (
     id BIGSERIAL PRIMARY KEY,
     legal_name VARCHAR(255) NOT NULL,
@@ -31,6 +71,9 @@ CREATE TABLE IF NOT EXISTS os_concept (
 COMMENT ON COLUMN os_concept.concept_kind IS
     'Clasificación del concepto general; los valores deben derivarse del modelo aprobado, no inventarse por similitud de nombres.';
 
+-- ---------------------------------------------------------------------------
+-- 2. Producto comercial y presentación
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_product (
     id BIGSERIAL PRIMARY KEY,
     concept_id BIGINT NOT NULL REFERENCES os_concept(id) ON DELETE CASCADE,
@@ -60,6 +103,9 @@ CREATE TABLE IF NOT EXISTS os_product_presentation (
     UNIQUE (product_id, presentation_text)
 );
 
+-- ---------------------------------------------------------------------------
+-- 3. Identificadores por presentación
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_product_identifier_type (
     code VARCHAR(40) PRIMARY KEY,
     description TEXT,
@@ -92,6 +138,9 @@ CREATE TABLE IF NOT EXISTS os_product_identifiers (
 COMMENT ON TABLE os_product_identifiers IS
     'Identificadores por presentación. Corrige la UNIQUE global del modelo farmacéutico heredado: el mismo valor puede ser legítimo en más de una presentación.';
 
+-- ---------------------------------------------------------------------------
+-- 4. Roles de fabricante y registro sanitario
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS os_manufacturer_role (
     code VARCHAR(40) PRIMARY KEY,
     description TEXT,
@@ -144,11 +193,52 @@ CREATE INDEX IF NOT EXISTS idx_os_product_identifiers_value
 CREATE INDEX IF NOT EXISTS idx_os_regulatory_record_number
     ON os_regulatory_records (authority, record_number);
 
+-- ---------------------------------------------------------------------------
+-- 5. DEFAULT ACL: retirar privilegios automáticos sobre las tablas nuevas
+-- ---------------------------------------------------------------------------
+REVOKE ALL PRIVILEGES ON TABLE
+    public.os_manufacturer,
+    public.os_concept,
+    public.os_product,
+    public.os_product_presentation,
+    public.os_product_identifier_type,
+    public.os_product_identifiers,
+    public.os_manufacturer_role,
+    public.os_product_manufacturer,
+    public.os_regulatory_records
+FROM PUBLIC;
+
+DO $$
+BEGIN
+    IF to_regrole('origen_admin') IS NOT NULL THEN
+        EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE
+            public.os_manufacturer,
+            public.os_concept,
+            public.os_product,
+            public.os_product_presentation,
+            public.os_product_identifier_type,
+            public.os_product_identifiers,
+            public.os_manufacturer_role,
+            public.os_product_manufacturer,
+            public.os_regulatory_records
+            FROM origen_admin';
+    END IF;
+END $$;
+
 COMMIT;
 
--- Verificación sugerida (no ejecutar automáticamente):
--- SELECT 'os_concept' AS tabla, count(*) FROM os_concept
--- UNION ALL SELECT 'os_product', count(*) FROM os_product
--- UNION ALL SELECT 'os_product_presentation', count(*) FROM os_product_presentation
--- UNION ALL SELECT 'os_product_identifiers', count(*) FROM os_product_identifiers
--- UNION ALL SELECT 'os_regulatory_records', count(*) FROM os_regulatory_records;
+-- ---------------------------------------------------------------------------
+-- Comprobaciones posteriores (solo lectura)
+-- ---------------------------------------------------------------------------
+SELECT '=== Fase 6 · tablas nuevas vacías ===' AS seccion;
+SELECT 'os_concept' AS tabla, count(*) AS filas FROM os_concept
+UNION ALL SELECT 'os_product', count(*) FROM os_product
+UNION ALL SELECT 'os_product_presentation', count(*) FROM os_product_presentation
+UNION ALL SELECT 'os_product_identifiers', count(*) FROM os_product_identifiers
+UNION ALL SELECT 'os_regulatory_records', count(*) FROM os_regulatory_records;
+
+SELECT '=== Fase 6 · catálogos de tipos semilla ===' AS seccion;
+SELECT code FROM os_product_identifier_type ORDER BY code;
+SELECT code FROM os_manufacturer_role ORDER BY code;
+
+-- Fin de Fase 6 (§16) · productos, presentaciones e identificadores.

@@ -495,6 +495,11 @@ if (is_file($fase5VerifyPath)) {
         'La verificación de Fase 5 debe ser de solo lectura.'
     );
     $check(
+        str_contains($fase5Verify, "column_name = 'outcome'")
+            && str_contains($fase5Verify, "column_name = 'review_status'"),
+        'La verificación de Fase 5 debe comprobar review_status y outcome, no dos review_status.'
+    );
+    $check(
         str_contains($fase5Verify, 'confrelid = to_regclass(\'os_admin.app_user\')')
             && str_contains($fase5Verify, 'trg_os_audit_log_immutable')
             && str_contains($fase5Verify, "grantee IN ('origen_admin', 'PUBLIC')")
@@ -503,11 +508,80 @@ if (is_file($fase5VerifyPath)) {
     );
 }
 $check(str_contains($sqlReadme, 'verificacion_fase5.sql'), 'El README SQL debe documentar la verificación de Fase 5.');
+$check(str_contains($sqlReadme, 'Fase 5 cerrada en base'), 'El README SQL debe registrar el cierre en base de la Fase 5.');
 $check(
-    str_contains($architectureRaw, 'Fase 5** fue autorizada')
+    str_contains($architectureRaw, 'Fase 5 cerrada en base')
         && str_contains($architectureRaw, '`os_audit_log` append-only')
         && str_contains($architectureRaw, '`REVOKE` por el `DEFAULT ACL`'),
-    'El documento de arquitectura debe registrar la Fase 5 autorizada y preparada.'
+    'El documento de arquitectura debe registrar la Fase 5 ejecutada y cerrada.'
+);
+
+// 3f. Fase 6 del §16: productos, presentaciones e identificadores (nombre histórico fase5).
+$fase6Path = $sqlDir . '/fase5_productos.sql';
+$fase6VerifyPath = $sqlDir . '/verificacion_fase6.sql';
+$check(is_file($fase6Path), 'Debe existir la migración de productos de la Fase 6.');
+$check(is_file($fase6VerifyPath), 'Debe existir la verificación de productos de la Fase 6.');
+if (is_file($fase6Path)) {
+    $fase6Sql = (string) file_get_contents($fase6Path);
+    $check(
+        str_contains($fase6Sql, 'CREATE TABLE IF NOT EXISTS os_concept')
+            && str_contains($fase6Sql, 'CREATE TABLE IF NOT EXISTS os_product')
+            && str_contains($fase6Sql, 'CREATE TABLE IF NOT EXISTS os_product_presentation')
+            && str_contains($fase6Sql, 'CREATE TABLE IF NOT EXISTS os_product_identifiers')
+            && str_contains($fase6Sql, 'CREATE TABLE IF NOT EXISTS os_regulatory_records'),
+        'Fase 6 debe crear el modelo vacío de concepto, producto, presentación e identificadores.'
+    );
+    $check(
+        str_contains($fase6Sql, "('GTIN',")
+            && str_contains($fase6Sql, "('UDI',")
+            && str_contains($fase6Sql, "('MANUFACTURER',")
+            && str_contains($fase6Sql, "('fabricante',")
+            && str_contains($fase6Sql, "('titular',")
+            && str_contains($fase6Sql, "('importador',")
+            && str_contains($fase6Sql, "('distribuidor',")
+            && !preg_match('/INSERT\s+INTO\s+os_(concept|product|product_presentation|manufacturer)\b/i', $fase6Sql),
+        'Fase 6 debe sembrar solo tipos y roles documentados, nunca productos ni fabricantes.'
+    );
+    $check(
+        str_contains($fase6Sql, 'UNIQUE (presentation_id, identifier_type, identifier_value, valid_from)')
+            && str_contains($fase6Sql, 'ck_os_product_identifier_validity'),
+        'Fase 6 debe hacer la unicidad de identificadores por presentación y validar vigencia.'
+    );
+    $check(
+        str_contains($fase6Sql, 'REVOKE ALL PRIVILEGES ON TABLE')
+            && str_contains($fase6Sql, 'FROM PUBLIC')
+            && str_contains($fase6Sql, 'FROM origen_admin'),
+        'Fase 6 debe revocar el DEFAULT ACL sobre sus nueve tablas nuevas.'
+    );
+    $check(
+        str_contains($fase6Sql, 'os_domain_registry')
+            && str_contains($fase6Sql, 'os_review_state')
+            && !str_contains($fase6Sql, 'DROP TABLE')
+            && !str_contains($fase6Sql, 'DELETE FROM'),
+        'Fase 6 debe ser aditiva y depender solo de la Fase 1.'
+    );
+}
+if (is_file($fase6VerifyPath)) {
+    $fase6Verify = (string) file_get_contents($fase6VerifyPath);
+    $check(
+        str_contains($fase6Verify, 'BEGIN READ ONLY;') && str_contains($fase6Verify, 'ROLLBACK;'),
+        'La verificación de Fase 6 debe ser de solo lectura.'
+    );
+    $check(
+        str_contains($fase6Verify, "'os_product_identifier_type'")
+            && str_contains($fase6Verify, "'os_manufacturer_role'")
+            && str_contains($fase6Verify, "grantee IN ('origen_admin', 'PUBLIC')")
+            && str_contains($fase6Verify, '(SELECT count(*) FROM os_catalog_relation)'),
+        'La verificación de Fase 6 debe comprobar semillas, privilegios y regresión.'
+    );
+}
+$check(str_contains($sqlReadme, 'verificacion_fase6.sql'), 'El README SQL debe documentar la verificación de Fase 6.');
+$check(str_contains($sqlReadme, 'Operación de Fase 6'), 'El README SQL debe documentar la operación de Fase 6.');
+$check(str_contains($sqlReadme, 'Fase 6 cerrada en base'), 'El README SQL debe registrar el cierre en base de la Fase 6.');
+$check(
+    str_contains($architectureRaw, 'Fase 6 cerrada en base')
+        && str_contains($architectureRaw, 'regresión 603/22/0'),
+    'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 6.'
 );
 
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.

@@ -69,11 +69,15 @@ SELECT tgname, tgenabled
    AND tgname = 'trg_os_audit_log_immutable';
 
 \echo '========== 6. Defaults de gobernanza =========='
+-- Debe devolver dos filas: request.review_status = 'draft' y review.outcome
+-- = 'unreviewed'. La tabla de revisiones NO tiene columna review_status.
 SELECT table_name, column_name, column_default
   FROM information_schema.columns
  WHERE table_schema = 'public'
-   AND table_name IN ('os_governance_request', 'os_governance_review')
-   AND column_name = 'review_status'
+   AND (
+       (table_name = 'os_governance_request' AND column_name = 'review_status')
+       OR (table_name = 'os_governance_review' AND column_name = 'outcome')
+   )
  ORDER BY table_name;
 
 \echo '========== 7. Evidencia obligatoria en decisiones =========='

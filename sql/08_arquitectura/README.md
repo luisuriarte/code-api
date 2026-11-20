@@ -39,7 +39,7 @@ para no romper referencias existentes en `tests/run.php` y en el documento.
 | `fase3_i18n.sql` | 3 | i18n: D-31 y sembrado de `os_catalog_language` |
 | `fase3_relaciones_mapeos.sql` | 4 | Extensión de relaciones y mapeos (+ `verificacion_fase4.sql`) |
 | `fase4_gobernanza.sql` | 5 | Solicitudes, revisiones, decisiones y auditoría (+ `verificacion_fase5.sql`) |
-| `fase5_productos.sql` | 6 | Concepto, producto, presentación e identificadores |
+| `fase5_productos.sql` | 6 | Concepto, producto, presentación e identificadores (+ `verificacion_fase6.sql`) |
 | `fase6_uvr.sql` | 7 | Valoración UVR sin valores cargados |
 
 Cada migración es independiente y está envuelta en `BEGIN`/`COMMIT`. Ejecutar
@@ -264,9 +264,68 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
 
 Criterios de aceptación: apartado 2 = 4 tablas; apartados 3 y 4 = 4 columnas y
 4 FK a `os_admin.app_user`; apartado 5 = 4 triggers activos (`O`); apartado 6 =
-`'draft'`/`'unreviewed'`; apartado 7 = `NO`; apartado 8 = 0 filas; apartado 9 =
-0 filas en las cuatro tablas; apartado 10 = 603 relaciones, 22 idiomas por
-catálogo y los usuarios `os_admin` intactos.
+2 filas (`request.review_status = 'draft'` y `review.outcome = 'unreviewed'`);
+apartado 7 = `NO`; apartado 8 = 0 filas; apartado 9 = 0 filas en las cuatro
+tablas; apartado 10 = 603 relaciones, 22 idiomas por catálogo y los usuarios
+`os_admin` intactos.
+
+**Estado final (2026-11-20): ejecutada y verificada en base.** La migración
+terminó en `COMMIT`. Las cuatro tablas ya existían de una ejecución anterior
+(`NOTICE: relation ... already exists, skipping`), por lo que `CREATE TABLE
+IF NOT EXISTS` fue idempotente; en esa misma transacción se añadieron las 4
+columnas de actor, las 4 FK, los 4 triggers y el `REVOKE`. La verificación
+confirmó: 4 tablas, 4 columnas y 4 FK a `os_admin.app_user`, 4 triggers activos
+(incluido `trg_os_audit_log_immutable`), `evidence_reference` `NOT NULL`, 0
+grantees no deseados, 0 filas en las tablas nuevas y regresión intacta (603
+relaciones, 22 configuraciones de idioma, 1 usuario administrativo). La primera
+salida del apartado 6 mostró solo `'draft'` por un error en la consulta de
+verificación —buscaba `review_status` también en la tabla de revisiones—; se
+corrigió para consultar `outcome`. **Fase 5 cerrada en base.**
+
+## Operación de Fase 6 (§16): productos e identificadores
+
+Autorizada el 2026-11-20. El nombre `fase5_productos.sql` conserva la numeración
+histórica; en §16 corresponde a la **Fase 6**. Artefactos: migración
+`fase5_productos.sql` y verificación `verificacion_fase6.sql`
+(`BEGIN READ ONLY` / `ROLLBACK`). Requiere la Fase 1 ejecutada.
+
+La migración crea **nueve tablas vacías** siguiendo §8: `os_manufacturer`,
+`os_concept`, `os_product`, `os_product_presentation`,
+`os_product_identifier_type`, `os_product_identifiers`, `os_manufacturer_role`,
+`os_product_manufacturer` y `os_regulatory_records`, más cuatro índices y seis
+constraints de unicidad/vigencia. Los únicos datos son los **3 tipos de
+identificador** (GTIN, UDI, MANUFACTURER) y los **4 roles de fabricante**
+(fabricante, titular, importador, distribuidor) documentados en §8.3. No se
+carga ningún producto, marca, fabricante, registro sanitario ni identificador.
+
+La `UNIQUE` de identificadores es por presentación, tipo, valor y vigencia; no
+repite el error del `UNIQUE(system_code, identifier_value)` global heredado. Las
+tablas farmacéuticas antiguas (`os_substance`, `os_medicinal_product`,
+`os_product_package`, `os_product_identifier`) no se modifican. Se revoca
+`PUBLIC`/`origen_admin` sobre las nueve tablas nuevas por el `DEFAULT ACL` de
+`public`. No se tocan importadores, API pública, catálogos publicados ni Browse
+Codes; no se reejecutan los scripts `01`..`15`.
+
+```bash
+sudo -u postgres pg_dump -Fc origen_codes > origen_codes_pre_fase6.dump
+sudo -u postgres pg_restore -l origen_codes_pre_fase6.dump
+
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/fase5_productos.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_fase6.sql
+```
+
+Criterios de aceptación: apartado 1 = 9 tablas; apartado 2 = 3 tipos y 4 roles;
+apartado 3 = 0 filas en las siete tablas de negocio; apartado 4 = 6 constraints;
+apartado 5 = 4 índices; apartado 6 = 0 filas; apartado 8 = 603 relaciones, 22
+configuraciones de idioma y 0 solicitudes de gobernanza.
+
+**Estado final (2026-11-20): ejecutada y verificada en base.** La verificación
+confirmó 9 tablas, 3 tipos de identificador y 4 roles de fabricante, 0 filas en
+las siete tablas de negocio, 6 constraints de integridad, 4 índices, 0 grantees
+no deseados, modelo farmacéutico heredado intacto (9 sustancias, 10 productos,
+10 presentaciones y 40 identificadores) y regresión 603/22/0. **Fase 6 cerrada en base.**
 
 ## Backup y rollback por fase
 

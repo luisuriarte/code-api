@@ -1067,8 +1067,8 @@ inválidos (D-34).
 | 2 | Conciliar OpenAPI, READMEs y verificadores; corregir errores de API | **Ejecutada el 2026-11-19**: 17 desvíos corregidos, README reconciliado, expectativa legacy retirada; `php tests/run.php` en verde | Sí (otorgada) |
 | 3 | Completar i18n según el acta de D-01..D-41: `os_catalog_language`, D-31 y corte `OS_IMPORT_MODE` | **Cerrada el 2026-11-19**: D-31 activo, 22 filas sembradas, desempate `es-AR` corregido, apartados 2/3/4/8 en 0 filas y modo `dual` confirmado | Sí (otorgada) |
 | 4 | Relations/mapeos generales | **Cerrada el 2026-11-19**: `fase3_relaciones_mapeos.sql` (nombre histórico) + `verificacion_fase4.sql`; 13 columnas, 6 constraints, 2 índices, 2 tablas nuevas, 603 relaciones intactas y navegables; decisión 10 formalizada sin cambio de código | Sí (otorgada) |
-| 5 | Gobernanza y auditoría unificadas | **Autorizada y preparada el 2026-11-19**: `fase4_gobernanza.sql` (nombre histórico) + `verificacion_fase5.sql`; 4 tablas vacías, 4 FK a `os_admin.app_user`, 4 triggers, auditoría append-only y `REVOKE` por DEFAULT ACL. Pendiente de ejecución por el usuario | Sí (otorgada) |
-| 6 | Modelo de productos/presentaciones/identificadores, vacío | Tablas y constraints; ningún producto sin fuente | Sí |
+| 5 | Gobernanza y auditoría unificadas | **Cerrada el 2026-11-20**: `fase4_gobernanza.sql` (nombre histórico) + `verificacion_fase5.sql`; 4 tablas vacías, 4 FK a `os_admin.app_user`, 4 triggers, auditoría append-only y `REVOKE` por DEFAULT ACL, con regresión intacta | Sí (otorgada) |
+| 6 | Modelo de productos/presentaciones/identificadores, vacío | **Cerrada el 2026-11-20**: `fase5_productos.sql` (nombre histórico) + `verificacion_fase6.sql`; 9 tablas vacías, 3 tipos de identificador y 4 roles de fabricante, 6 constraints, 4 índices, 0 grantees y regresión 603/22/0; modelo farmacéutico heredado intacto | Sí (otorgada) |
 | 7 | Módulo UVR, sin valores inventados | `os_uvr_*` vacías o con datos auditados; reglas §10.3 | Sí |
 | 8 | DENTAR-IN/PD/EQ solo si se aprueban | Catálogos reservados/creados con gobernanza propia | Sí |
 | 9 | Nomenclador Odontológico Nacional | **Ejecutada por el usuario el 2026-11-19**: 135 ítems, 270 relaciones, CDT intactas (§5.2) | Sí (otorgada) |
@@ -1104,10 +1104,16 @@ ejecutó con backup verificado: 603 relaciones y 15 tipos intactos, 13 columnas,
 relaciones navegables. **Fase 4 cerrada en base.** La **Fase 5** fue autorizada
 el mismo día: `fase4_gobernanza.sql` crea solicitudes, revisiones, decisiones y
 `os_audit_log` append-only, con actores referenciados a `os_admin.app_user` y
-`REVOKE` por el `DEFAULT ACL`. **Artefactos preparados; ejecución pendiente del
-usuario con backup verificado.** La Fase 9 fue ejecutada por el usuario con
-autorización,
-backup y verificación (§5.2).
+`REVOKE` por el `DEFAULT ACL`. El usuario la ejecutó con backup verificado el
+2026-11-20: 4 tablas vacías, 4 actores referenciados, 4 triggers activos, 0
+grantees no deseados y regresión intacta. **Fase 5 cerrada en base.** La Fase 6
+está autorizada y preparada: `fase5_productos.sql` crea nueve tablas vacías con
+solo los tipos/roles documentados en §8.3, unicidad de identificadores por
+presentación y `REVOKE` por DEFAULT ACL; `verificacion_fase6.sql` comprueba el
+resultado sin escribir. El usuario la ejecutó con backup verificado el
+2026-11-20: 9 tablas, 3+4 semillas, 0 filas de negocio, 6 constraints, 4 índices,
+0 grantees y regresión intacta. **Fase 6 cerrada en base.** La Fase 9 fue ejecutada
+por el usuario con autorización, backup y verificación (§5.2).
 Las fases M1/M2 del panel administrativo están aplicadas y verificadas en
 `os_admin` (ver `docs/architecture/fase2-organizaciones-invitaciones.md`). Los
 nombres `fase3..fase6` de `sql/08_arquitectura/` corresponden a las Fases 4..7
@@ -1141,10 +1147,10 @@ de esta tabla; la equivalencia completa está en el README de esa carpeta.
 8. **Fase 3 cerrada:** ejecutados `fase3_i18n.sql` y el correctivo de desempate,
    con `verificacion_fase3.sql` en verde; no se reejecutaron los scripts
    `01`..`15`.
-9. **Fase 5 autorizada:** ejecutar `fase4_gobernanza.sql` con backup y verificar
-   con `verificacion_fase5.sql`. Cuatro tablas vacías, actores reales de
-   `os_admin.app_user` y auditoría append-only; sin acceso de escritura para
-   roles de aplicación hasta una autorización nueva.
+9. **Fase 5 cerrada:** ejecutados `fase4_gobernanza.sql` y
+   `verificacion_fase5.sql` con backup verificado. Cuatro tablas vacías,
+   actores reales de `os_admin.app_user` y auditoría append-only; sin acceso de
+   escritura para roles de aplicación hasta una autorización nueva.
 10. Crear, vacío, el modelo de productos/presentaciones/identificadores.
 11. **Pendiente fuera de alcance de esta entrega:** homogeneizar importadores
     (no se modifican) y verificar la compuerta `OS_IMPORT_MODE`. El modo efectivo
