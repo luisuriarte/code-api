@@ -283,9 +283,49 @@ $check(!str_contains($u7PublicRepository, 'estimated_payment'), 'U7-D no debe ex
 $u7Service = (string) file_get_contents($root . '/portal/Admin/UvrGovernanceService.php');
 $check(!str_contains($u7Service, 'private const CATALOG_CODE'), 'U7-C no debe fijar un catálogo único.');
 $check(str_contains($u7Service, 'LEGACY_CATALOG_CODE'), 'U7-C debe conservar el legado como fallback.');
+$check(
+    substr_count($u7Service, 'CatalogReferenceRepository::uvrCatalogs()') >= 2,
+    'El selector y la validación de propuestas deben usar los catálogos UVR gobernados.'
+);
+$check(
+    str_contains($u7Service, 'function isUvrCatalog('),
+    'La validación legacy debe aceptar cualquier catálogo UVR gobernado.'
+);
+$u7ControllerSource = (string) file_get_contents($root . '/portal/Controllers/AdminUvrController.php');
+$check(
+    str_contains($u7ControllerSource, 'CatalogGovernanceRepository::catalogCodeForItem'),
+    'El deep link histórico debe resolver el catálogo del código elegido.'
+);
+$u7CatalogRepo = (string) file_get_contents($root . '/portal/Repositories/CatalogReferenceRepository.php');
+$check(
+    str_contains($u7CatalogRepo, 'function uvrCatalogs()'),
+    'Debe existir el listado gobernado de catálogos UVR.'
+);
+$check(
+    str_contains($u7CatalogRepo, "'dentar-dx'") && str_contains($u7CatalogRepo, 'product_role ='),
+    'El selector UVR debe excluir diagnósticos y catálogos no prestacionales.'
+);
+$u7ProposalViewSource = (string) file_get_contents($root . '/portal/Views/admin/uvr/proposals.php');
+foreach (['extracted_values', 'new_values', 'select_item'] as $u7Key) {
+    $check(
+        str_contains($u7ProposalViewSource, 'admin.uvr.' . $u7Key),
+        'La vista UVR debe usar la clave ' . $u7Key . '.'
+    );
+}
+$check(
+    str_contains($u7ProposalViewSource, 'selectedVersions')
+    && str_contains($u7ProposalViewSource, 'onchange="this.form.submit()"'),
+    'El listado UVR debe cargar los valores extraídos en el card derecho.'
+);
+$u7Controller = (string) file_get_contents($root . '/portal/Controllers/AdminUvrController.php');
+$check(
+    str_contains($u7Controller, "'selectedVersions' => \$selectedVersions"),
+    'El controlador UVR debe propagar las versiones del código elegido.'
+);
 foreach ([
     'prestacion_id', 'profile_id', 'proposalCatalog',
     'visibleCatalogCodes', 'requireAnyCatalog', 'anyVisible',
+    'UvrRepository::prestaciones() !== []', 'UvrRepository::profiles() !== []',
 ] as $u7ServiceToken) {
     $check(str_contains($u7Service, $u7ServiceToken), 'U7-C debe gestionar ' . $u7ServiceToken . '.');
 }
@@ -1880,6 +1920,16 @@ $catalogArtifacts = [
 foreach ($catalogArtifacts as $catalogArtifact) {
     $check(is_file($root . $catalogArtifact), 'Falta el artefacto de gestión de catálogos ' . $catalogArtifact . '.');
 }
+
+$catalogRepoSource = (string) file_get_contents($root . '/portal/Repositories/CatalogGovernanceRepository.php');
+$check(
+    str_contains($catalogRepoSource, 'COALESCE(v.preferred_term'),
+    'El buscador de códigos debe encontrar también por término preferido.'
+);
+$check(
+    str_contains($catalogRepoSource, 'JOIN LATERAL'),
+    'El término preferido debe resolverse con la versión canónica del ítem.'
+);
 
 $catalogMigration = (string) file_get_contents($root . '/sql/08_arquitectura/catalogos_gestion_gobernada.sql');
 $catalogVerify = (string) file_get_contents($root . '/sql/08_arquitectura/verificacion_catalogos_gestion.sql');

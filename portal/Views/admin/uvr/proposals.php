@@ -9,6 +9,9 @@ declare(strict_types=1);
 /** @var list<array<string, mixed>> $items */
 /** @var int $itemId */
 /** @var array<string, mixed>|null $selectedItem */
+/** @var list<array<string, mixed>> $selectedVersions */
+/** @var list<array<string, mixed>> $selectedReleases */
+/** @var list<array<string, mixed>> $selectedLanguages */
 /** @var bool $itemError */
 /** @var bool $transversal */
 /** @var list<array<string, mixed>> $prestaciones */
@@ -35,6 +38,7 @@ $uvrTransversal = (bool) ($transversal ?? false);
 $uvrPrestaciones = is_array($prestaciones ?? null) ? $prestaciones : [];
 $uvrProfiles = is_array($profiles ?? null) ? $profiles : [];
 $uvrProfileComponents = is_array($profileComponents ?? null) ? $profileComponents : [];
+
 $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
     $params = ['catalog' => $catalogCode, 'item' => $id];
 
@@ -44,24 +48,48 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
 
     return '/admin/uvr/proposals?' . http_build_query($params);
 };
+
+$uvrVersions = is_array($selectedVersions ?? null) ? $selectedVersions : [];
+$uvrReleases = is_array($selectedReleases ?? null) ? $selectedReleases : [];
+$uvrLanguages = is_array($selectedLanguages ?? null) ? $selectedLanguages : [];
+$uvrVersion = is_array($uvrVersions[0] ?? null) ? $uvrVersions[0] : [];
+$uvrVersionReleaseId = (int) ($uvrVersion['release_id'] ?? 0);
+$uvrRelease = null;
+
+foreach ($uvrReleases as $release) {
+    if ((int) ($release['id'] ?? 0) === $uvrVersionReleaseId) {
+        $uvrRelease = $release;
+        break;
+    }
+}
+
+$uvrLanguage = (string) ($uvrVersion['language_code'] ?? '');
+if ($uvrLanguage === '') {
+    foreach ($uvrLanguages as $language) {
+        if (!empty($language['is_default'])) {
+            $uvrLanguage = (string) ($language['code'] ?? '');
+            break;
+        }
+    }
+}
 ?>
 <div class="ui-grid items-start">
     <?php if ($uvrCanPropose): ?>
         <article class="ui-card ui-card-pad">
             <div class="mb-5 flex items-start justify-between gap-4">
                 <div>
-                    <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.uvr.propose_title')) ?></h2>
-                    <p class="ui-subtitle"><?= e($t('admin.uvr.lead')) ?></p>
+                    <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.catalogs.select_title')) ?></h2>
+                    <p class="ui-subtitle"><?= e($t('admin.uvr.catalogs_note')) ?></p>
                 </div>
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint text-teal-dark">
-                    <i data-lucide="file-plus-2" class="h-5 w-5"></i>
+                    <i data-lucide="library" class="h-5 w-5"></i>
                 </span>
             </div>
 
             <form method="get" action="/admin/uvr/proposals" class="space-y-4">
                 <div>
-                    <label for="uvr-catalog" class="ui-label"><?= e($t('admin.catalogs.select_title')) ?></label>
-                    <select id="uvr-catalog" name="catalog" class="ui-input">
+                    <label for="uvr-catalog" class="ui-label"><?= e($t('admin.uvr.col_catalog')) ?></label>
+                    <select id="uvr-catalog" name="catalog" required onchange="this.form.submit()" class="ui-input">
                         <?php if ($catalogs === []): ?>
                             <option value=""><?= e($t('admin.uvr.empty')) ?></option>
                         <?php else: ?>
@@ -88,47 +116,130 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
                         <button type="submit" class="ui-btn ui-btn-sm"><?= e($t('admin.catalogs.search_submit')) ?></button>
                     </div>
                 </div>
-                <p class="ui-subtitle"><?= e($t('admin.uvr.catalogs_note')) ?></p>
             </form>
 
-            <div class="mt-5 border-t border-line pt-5">
-                <h3 class="mb-3 text-sm font-semibold text-ink"><?= e($t('admin.catalogs.search_title')) ?></h3>
+            <?php if ($catalogCode !== ''): ?>
+                <div class="mt-5 border-t border-line pt-5">
+                    <h3 class="mb-3 text-sm font-semibold text-ink"><?= e($t('admin.catalogs.search_title')) ?></h3>
 
-                <?php if ($itemError): ?>
-                    <p class="ui-empty"><?= e($t('admin.catalogs.item_not_found')) ?></p>
-                <?php elseif ($query === '' && $selectedItem === null): ?>
-                    <p class="ui-subtitle"><?= e($t('admin.catalogs.search_placeholder')) ?></p>
-                <?php elseif ($items === []): ?>
-                    <p class="ui-empty"><?= e($t('admin.uvr.empty')) ?></p>
-                <?php else: ?>
-                    <div class="ui-table-wrap">
-                        <table class="ui-table">
-                            <thead>
-                            <tr>
-                                <th class="ui-th"><?= e($t('admin.catalogs.col_code')) ?></th>
-                                <th class="ui-th"><?= e($t('admin.catalogs.col_term')) ?></th>
-                            </tr>
-                            </thead>
-                            <tbody class="divide-y divide-line">
-                            <?php foreach ($items as $item): ?>
-                                <?php $uvrItemId = (int) ($item['id'] ?? 0); ?>
-                                <tr class="transition hover:bg-paper/60"<?= $uvrItemId === $itemId ? ' aria-current="true"' : '' ?>>
-                                    <td class="ui-td">
-                                        <a href="<?= e($uvrStepHref($uvrItemId)) ?>" class="font-semibold no-underline">
-                                            <code class="ui-code"><?= e((string) ($item['permanent_code'] ?? '')) ?></code>
-                                        </a>
-                                    </td>
-                                    <td class="ui-td font-medium text-ink"><?= e((string) ($item['preferred_term'] ?? '')) ?></td>
+                    <?php if ($itemError): ?>
+                        <p class="ui-empty"><?= e($t('admin.catalogs.item_not_found')) ?></p>
+                    <?php elseif ($query === '' && $selectedItem === null): ?>
+                        <p class="ui-subtitle"><?= e($t('admin.catalogs.search_placeholder')) ?></p>
+                    <?php elseif ($items === []): ?>
+                        <p class="ui-empty"><?= e($t('admin.uvr.empty')) ?></p>
+                    <?php else: ?>
+                        <div class="ui-table-wrap">
+                            <table class="ui-table">
+                                <thead>
+                                <tr>
+                                    <th class="ui-th"><?= e($t('admin.catalogs.col_code')) ?></th>
+                                    <th class="ui-th"><?= e($t('admin.catalogs.col_term')) ?></th>
+                                    <th class="ui-th"><?= e($t('admin.uvr.col_status')) ?></th>
                                 </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </div>
+                                </thead>
+                                <tbody class="divide-y divide-line">
+                                <?php foreach ($items as $item): ?>
+                                    <?php
+                                    $uvrItemId = (int) ($item['id'] ?? 0);
+                                    $uvrEditing = $uvrItemId === $itemId;
+                                    ?>
+                                    <tr class="transition hover:bg-paper/60 <?= $uvrEditing ? 'bg-mint/40' : '' ?>">
+                                        <td class="ui-td">
+                                            <a href="<?= e($uvrStepHref($uvrItemId)) ?>"
+                                               class="font-semibold no-underline hover:underline"
+                                               aria-current="<?= $uvrEditing ? 'true' : 'false' ?>">
+                                                <code class="ui-code"><?= e((string) ($item['permanent_code'] ?? '')) ?></code>
+                                            </a>
+                                        </td>
+                                        <td class="ui-td font-medium text-ink"><?= e((string) ($item['preferred_term'] ?? '')) ?></td>
+                                        <td class="ui-td"><code class="ui-code"><?= e((string) ($item['status'] ?? '')) ?></code></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </article>
 
-            <?php if ($selectedItem !== null): ?>
-                <form method="post" action="/admin/uvr/proposals" class="mt-5 space-y-5 border-t border-line pt-5"
+        <article class="ui-card ui-card-pad">
+            <?php if ($selectedItem === null): ?>
+                <div class="mb-5 flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.uvr.propose_title')) ?></h2>
+                        <p class="ui-subtitle"><?= e($t('admin.uvr.select_item')) ?></p>
+                    </div>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint text-teal-dark">
+                        <i data-lucide="file-plus-2" class="h-5 w-5"></i>
+                    </span>
+                </div>
+            <?php else: ?>
+                <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.uvr.extracted_values')) ?></h2>
+                        <p class="ui-subtitle"><?= e($t('admin.uvr.catalogs_note')) ?></p>
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <code class="ui-code"><?= e((string) ($selectedItem['permanent_code'] ?? '')) ?></code>
+                            <span class="ui-badge">#<?= (int) ($selectedItem['id'] ?? 0) ?></span>
+                        </div>
+                    </div>
+                    <a href="<?= e('/admin/uvr/proposals?' . http_build_query(array_filter(['catalog' => $catalogCode, 'q' => $query]))) ?>"
+                       class="text-xs font-semibold no-underline hover:underline">
+                        <?= e($t('admin.catalogs.new_title')) ?>
+                    </a>
+                </div>
+
+                <div class="rounded-xl border border-line bg-paper p-4">
+                    <dl class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <dt class="ui-subtitle"><?= e($t('admin.catalogs.col_code')) ?></dt>
+                            <dd class="font-medium text-ink"><code class="ui-code"><?= e((string) ($selectedItem['permanent_code'] ?? '')) ?></code></dd>
+                        </div>
+                        <div>
+                            <dt class="ui-subtitle"><?= e($t('admin.catalogs.col_term')) ?></dt>
+                            <dd class="font-medium text-ink"><?= e((string) ($uvrVersion['preferred_term'] ?? '')) ?></dd>
+                        </div>
+                        <div>
+                            <dt class="ui-subtitle"><?= e($t('admin.uvr.col_status')) ?></dt>
+                            <dd class="font-medium text-ink"><code class="ui-code"><?= e((string) ($selectedItem['status'] ?? '')) ?></code></dd>
+                        </div>
+                        <div>
+                            <dt class="ui-subtitle"><?= e($t('admin.uvr.col_release')) ?></dt>
+                            <dd class="font-medium text-ink">
+                                <?= e((string) ($uvrVersion['version_tag'] ?? ($uvrRelease['version_tag'] ?? ''))) ?>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="ui-subtitle"><?= e($t('admin.uvr.version_tag')) ?></dt>
+                            <dd class="font-medium text-ink"><?= e((string) ($uvrVersion['version_tag'] ?? '')) ?></dd>
+                        </div>
+                        <div>
+                            <dt class="ui-subtitle"><?= e($t('admin.catalogs.col_language')) ?></dt>
+                            <dd class="font-medium text-ink"><?= e($uvrLanguage) ?></dd>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <dt class="ui-subtitle"><?= e($t('admin.catalogs.col_definition')) ?></dt>
+                            <dd class="text-sm text-ink-soft"><?= e((string) ($uvrVersion['definition'] ?? '')) ?></dd>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <dt class="ui-subtitle"><?= e($t('admin.catalogs.col_criteria')) ?></dt>
+                            <dd class="text-sm text-ink-soft"><?= e((string) ($uvrVersion['clinical_criteria'] ?? '')) ?></dd>
+                        </div>
+                        <div>
+                            <dt class="ui-subtitle"><?= e($t('admin.uvr.valid_from')) ?></dt>
+                            <dd class="font-medium text-ink"><?= e(substr((string) ($uvrRelease['valid_from'] ?? ''), 0, 10)) ?></dd>
+                        </div>
+                        <div>
+                            <dt class="ui-subtitle"><?= e($t('admin.uvr.valid_to')) ?></dt>
+                            <dd class="font-medium text-ink"><?= e(substr((string) ($uvrRelease['valid_to'] ?? ''), 0, 10)) ?></dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <h3 class="mb-3 mt-6 text-sm font-semibold text-ink"><?= e($t('admin.uvr.new_values')) ?></h3>
+                <form method="post" action="/admin/uvr/proposals" class="space-y-5"
                       x-data="{
                           selectedComponents() {
                               const select = this.$refs.profile;
@@ -145,22 +256,13 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
                     <input type="hidden" name="q" value="<?= e($query) ?>">
                     <input type="hidden" name="service_item_id" value="<?= (int) ($selectedItem['id'] ?? 0) ?>">
 
-                    <div class="rounded-xl border border-line bg-paper p-4">
-                        <p class="ui-subtitle"><?= e($t('admin.uvr.col_item')) ?></p>
-                        <p class="font-medium text-ink">
-                            <code class="ui-code"><?= e((string) ($selectedItem['permanent_code'] ?? '')) ?></code>
-                            <?= e((string) ($selectedItem['preferred_term'] ?? '')) ?>
-                        </p>
-                        <p class="text-xs text-muted"><?= e($catalogCode) ?></p>
-                    </div>
-
                     <?php if ($uvrTransversal): ?>
                         <p class="ui-subtitle"><?= e($t('admin.uvr.transversal_note')) ?></p>
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
                                 <label for="uvr-prestacion" class="ui-label"><?= e($t('admin.uvr.prestacion')) ?></label>
                                 <select id="uvr-prestacion" name="prestacion_id" required class="ui-input">
-                                    <option value=""><?= e($t('admin.catalogs.select_title')) ?></option>
+                                    <option value=""><?= e($t('admin.select')) ?></option>
                                     <?php foreach ($uvrPrestaciones as $prestacion): ?>
                                         <?php $prestacionId = (int) ($prestacion['id'] ?? 0); ?>
                                         <option value="<?= $prestacionId ?>"
@@ -177,7 +279,7 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
                             <div>
                                 <label for="uvr-profile" class="ui-label"><?= e($t('admin.uvr.profile')) ?></label>
                                 <select id="uvr-profile" name="profile_id" x-ref="profile" required class="ui-input">
-                                    <option value=""><?= e($t('admin.catalogs.select_title')) ?></option>
+                                    <option value=""><?= e($t('admin.select')) ?></option>
                                     <?php foreach ($uvrProfiles as $profile): ?>
                                         <?php
                                         $profileId = (int) ($profile['id'] ?? 0);
@@ -287,52 +389,52 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
             <?php endif; ?>
         </article>
     <?php endif; ?>
-
-    <article class="ui-card ui-card-pad">
-        <div class="mb-5 flex items-start justify-between gap-4">
-            <div>
-                <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.uvr.c')) ?></h2>
-                <p class="ui-subtitle"><?= e($t('admin.uvr.lead')) ?></p>
-            </div>
-            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-mint text-teal-dark">
-                <i data-lucide="inbox" class="h-5 w-5"></i>
-            </span>
-        </div>
-
-        <?php if ($proposals === []): ?>
-            <p class="ui-empty"><?= e($t('admin.uvr.empty')) ?></p>
-        <?php else: ?>
-            <div class="ui-table-wrap">
-                <table class="ui-table">
-                    <thead>
-                    <tr>
-                        <th class="ui-th"><?= e($t('admin.uvr.col_id')) ?></th>
-                        <th class="ui-th"><?= e($t('admin.uvr.col_subject')) ?></th>
-                        <th class="ui-th"><?= e($t('admin.uvr.col_source')) ?></th>
-                        <th class="ui-th"><?= e($t('admin.uvr.col_actor')) ?></th>
-                        <th class="ui-th"><?= e($t('admin.uvr.col_status')) ?></th>
-                        <th class="ui-th"><?= e($t('admin.uvr.col_created')) ?></th>
-                    </tr>
-                    </thead>
-                    <tbody class="divide-y divide-line">
-                    <?php foreach ($proposals as $proposal): ?>
-                        <tr class="transition hover:bg-paper/60">
-                            <td class="ui-td">
-                                <a href="/admin/uvr/proposals/<?= (int) $proposal['id'] ?>" class="font-semibold no-underline">
-                                    <?= (int) $proposal['id'] ?>
-                                </a>
-                            </td>
-                            <td class="ui-td"><code class="ui-code"><?= e((string) ($proposal['subject_id'] ?? '')) ?></code></td>
-                            <td class="ui-td"><?= e((string) ($proposal['source_reference'] ?? '')) ?></td>
-                            <td class="ui-td"><?= e((string) ($proposal['requested_by'] ?? '')) ?></td>
-                            <td class="ui-td"><code class="ui-code"><?= e((string) ($proposal['review_status'] ?? '')) ?></code></td>
-                            <td class="ui-td text-xs"><?= e((string) ($proposal['created_at'] ?? '')) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    </article>
 </div>
+
+<article class="ui-card ui-card-pad mt-6">
+    <div class="mb-5 flex items-start justify-between gap-4">
+        <div>
+            <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.uvr.c')) ?></h2>
+            <p class="ui-subtitle"><?= e($t('admin.uvr.lead')) ?></p>
+        </div>
+        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-mint text-teal-dark">
+            <i data-lucide="inbox" class="h-5 w-5"></i>
+        </span>
+    </div>
+
+    <?php if ($proposals === []): ?>
+        <p class="ui-empty"><?= e($t('admin.uvr.empty')) ?></p>
+    <?php else: ?>
+        <div class="ui-table-wrap">
+            <table class="ui-table">
+                <thead>
+                <tr>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_id')) ?></th>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_subject')) ?></th>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_source')) ?></th>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_actor')) ?></th>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_status')) ?></th>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_created')) ?></th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                <?php foreach ($proposals as $proposal): ?>
+                    <tr class="transition hover:bg-paper/60">
+                        <td class="ui-td">
+                            <a href="/admin/uvr/proposals/<?= (int) $proposal['id'] ?>" class="font-semibold no-underline">
+                                <?= (int) $proposal['id'] ?>
+                            </a>
+                        </td>
+                        <td class="ui-td"><code class="ui-code"><?= e((string) ($proposal['subject_id'] ?? '')) ?></code></td>
+                        <td class="ui-td"><?= e((string) ($proposal['source_reference'] ?? '')) ?></td>
+                        <td class="ui-td"><?= e((string) ($proposal['requested_by'] ?? '')) ?></td>
+                        <td class="ui-td"><code class="ui-code"><?= e((string) ($proposal['review_status'] ?? '')) ?></code></td>
+                        <td class="ui-td text-xs"><?= e((string) ($proposal['created_at'] ?? '')) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+</article>
 </section>

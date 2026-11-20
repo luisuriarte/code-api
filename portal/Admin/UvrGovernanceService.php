@@ -170,9 +170,17 @@ final class UvrGovernanceService
         return $catalogs;
     }
 
+    /**
+     * El modo transversal solo se activa cuando U7-B está aplicado **y** ya
+     * existen prestaciones y perfiles gobernados. Mientras las tablas nuevas
+     * estén vacías, el panel sigue operando con el flujo U0–U6 para no dejar
+     * de proponer UVR sobre códigos ya publicados.
+     */
     public function transversal(): bool
     {
-        return UvrRepository::hasTransversalSchema();
+        return UvrRepository::hasTransversalSchema()
+            && UvrRepository::prestaciones() !== []
+            && UvrRepository::profiles() !== [];
     }
 
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
@@ -220,27 +228,9 @@ final class UvrGovernanceService
     {
         $this->requirePermission($actor, 'catalog.view');
 
-        if (!UvrRepository::hasTransversalSchema()) {
-            if (!CatalogReferenceRepository::exists(self::LEGACY_CATALOG_CODE)) {
-                return [];
-            }
-
-            foreach (CatalogReferenceRepository::all() as $catalog) {
-                if ($catalog['code'] === self::LEGACY_CATALOG_CODE) {
-                    return [$catalog];
-                }
-            }
-
-            return [[
-                'code' => self::LEGACY_CATALOG_CODE,
-                'name' => self::LEGACY_CATALOG_CODE,
-                'short_name' => '',
-            ]];
-        }
-
         $catalogs = [];
 
-        foreach (CatalogReferenceRepository::all() as $catalog) {
+        foreach (CatalogReferenceRepository::uvrCatalogs() as $catalog) {
             $code = (string) ($catalog['code'] ?? '');
 
             if ($this->canAccess($actor, $code, 'view')) {
@@ -248,7 +238,35 @@ final class UvrGovernanceService
             }
         }
 
+        // Fallback legacy: si el catálogo histórico aún existe y el actor tiene
+        // acceso, se mantiene visible aunque el dato de product_role cambie.
+        if ($catalogs === []
+            && CatalogReferenceRepository::exists(self::LEGACY_CATALOG_CODE)
+            && $this->canAccess($actor, self::LEGACY_CATALOG_CODE, 'view')
+        ) {
+            foreach (CatalogReferenceRepository::all() as $catalog) {
+                if ($catalog['code'] === self::LEGACY_CATALOG_CODE) {
+                    return [$catalog];
+                }
+            }
+        }
+
         return $catalogs;
+    }
+
+    private function isUvrCatalog(string $code): bool
+    {
+        if ($code === self::LEGACY_CATALOG_CODE) {
+            return true;
+        }
+
+        foreach (CatalogReferenceRepository::uvrCatalogs() as $catalog) {
+            if ($catalog['code'] === $code) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
@@ -292,7 +310,7 @@ final class UvrGovernanceService
             throw new UvrGovernanceException('catalog_item_not_found');
         }
 
-        $transversal = UvrRepository::hasTransversalSchema();
+        $transversal = $this->transversal();
         $prestacionId = $this->positiveInt($input['prestacion_id'] ?? null);
         $profileId = $this->positiveInt($input['profile_id'] ?? null);
         $methodology = $this->text($input['methodology'] ?? null, 120);
@@ -342,7 +360,7 @@ final class UvrGovernanceService
                 'methodology' => $methodology,
             ];
         } else {
-            if ($catalogCode !== self::LEGACY_CATALOG_CODE || $methodology === '') {
+            if ($methodology === '' || !$this->isUvrCatalog($catalogCode)) {
                 throw new UvrGovernanceException('uvr_catalog_unavailable');
             }
         }

@@ -9,10 +9,10 @@
 > **Ampliación posterior:** el acta
 > [`gobernanza-uvr-acta-u7.md`](gobernanza-uvr-acta-u7.md) declara la gobernanza
 > transversal de prestaciones. No modifica este cierre. Las fases U7-B/C/D
-> fueron aprobadas el 2026-11-20: U7-B tiene un artefacto SQL preparado y
-> **no ejecutado**; U7-C y U7-D están implementados en código con detección de
-> esquema y **no desplegados**. La aprobación no habilita al agente a aplicar SQL
-> ni a publicar cambios.
+> fueron aprobadas el 2026-11-20: U7-B fue **aplicado y verificado por el
+> responsable** el mismo día, con backup verificado; U7-C y U7-D están
+> implementados en código con detección de esquema y **no desplegados**. La
+> aprobación no habilitó al agente a aplicar SQL ni a publicar cambios.
 
 ---
 

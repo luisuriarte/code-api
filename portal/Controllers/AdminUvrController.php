@@ -8,6 +8,7 @@ use OrigenSalud\Portal\Admin\AdminGuard;
 use OrigenSalud\Portal\Admin\CatalogGovernanceService;
 use OrigenSalud\Portal\Admin\UvrGovernanceException;
 use OrigenSalud\Portal\Admin\UvrGovernanceService;
+use OrigenSalud\Portal\Repositories\CatalogGovernanceRepository;
 use OrigenSalud\Portal\Repositories\RepositoryException;
 use OrigenSalud\Portal\View;
 use OrigenSalud\Web\I18n;
@@ -104,8 +105,25 @@ final class AdminUvrController
         $requestedItem = $_GET['item'] ?? $_GET['service_item_id'] ?? null;
         $itemId = is_string($requestedItem) && ctype_digit($requestedItem) ? (int) $requestedItem : 0;
 
+        // El enlace histórico no trae catálogo: lo resolvemos desde el código
+        // para no abrir un ítem de otro catálogo con el primero de la lista.
+        if ($itemId > 0 && !isset($_GET['catalog'])) {
+            try {
+                $itemCatalog = CatalogGovernanceRepository::catalogCodeForItem($itemId);
+
+                if ($itemCatalog !== null && in_array($itemCatalog, $codes, true)) {
+                    $catalogCode = $itemCatalog;
+                }
+            } catch (RepositoryException) {
+                // Se mantiene el catálogo por defecto y se mostrará el aviso.
+            }
+        }
+
         $prefill = [];
         $selectedItem = null;
+        $selectedVersions = [];
+        $selectedReleases = [];
+        $selectedLanguages = [];
         $itemError = $itemId > 0;
         $catalogService = new CatalogGovernanceService();
 
@@ -115,6 +133,9 @@ final class AdminUvrController
 
                 if ((int) ($detail['item']['id'] ?? 0) === $itemId) {
                     $selectedItem = $detail['item'];
+                    $selectedVersions = is_array($detail['versions'] ?? null) ? $detail['versions'] : [];
+                    $selectedReleases = is_array($detail['releases'] ?? null) ? $detail['releases'] : [];
+                    $selectedLanguages = is_array($detail['languages'] ?? null) ? $detail['languages'] : [];
                     $itemError = false;
                     $prefill['service_item_id'] = (string) $itemId;
                     $version = is_array($detail['versions'][0] ?? null) ? $detail['versions'][0] : [];
@@ -189,6 +210,9 @@ final class AdminUvrController
             'items' => $items,
             'itemId' => $itemId,
             'selectedItem' => $selectedItem,
+            'selectedVersions' => $selectedVersions,
+            'selectedReleases' => $selectedReleases,
+            'selectedLanguages' => $selectedLanguages,
             'itemError' => $itemError,
             'prefill' => $prefill,
             'transversal' => $transversal,

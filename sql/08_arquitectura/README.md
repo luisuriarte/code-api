@@ -10,11 +10,13 @@ Esta carpeta contiene DDL **aditivo** derivado de
   `catalogos_gestion_gobernada.sql` fueron aplicados y verificados en
   `origen_codes` el 2026-11-20. Los verificadores terminaron en `ROLLBACK`.
 - **U7 (gobernanza transversal):** U7-A aprobada y aplicada; U7-B/C/D aprobadas
-  el 2026-11-20 para implementación en
-  `docs/architecture/gobernanza-uvr-acta-u7.md`. Hay un artefacto SQL y un
-  verificador preparados, **no ejecutados**. La aprobación no autoriza al agente
-  a aplicarlos ni a desplegar: requieren backup verificado y ejecución por el
-  responsable.
+  el 2026-11-20 en `docs/architecture/gobernanza-uvr-acta-u7.md`.
+  `uvr_transversal_prestaciones.sql` fue **aplicado y verificado por el
+  responsable** el 2026-11-20 con backup verificado
+  (`origen_codes_pre_u7b_20261120_154958.dump`): `COMMIT` de la migración y
+  `ROLLBACK` del verificador de 11 secciones. El agente no ejecutó SQL ni
+  desplegó. Las seis tablas nuevas quedaron vacías: no se cargaron datos
+  inventados.
 - **No contienen datos inventados.** Los únicos `INSERT` son:
   - registros ya existentes en el código (`DOMAINS`/`DOMAIN_CATALOG`), y
   - tipos de relación leídos de `os_catalog_relation` cuando la tabla existe.

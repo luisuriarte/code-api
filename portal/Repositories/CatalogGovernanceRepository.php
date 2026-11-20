@@ -28,14 +28,20 @@ final class CatalogGovernanceRepository
     public static function items(string $code, string $query): array
     {
         return self::publicRows(
-            'SELECT i.id, i.permanent_code, i.status,
-                    (SELECT v.preferred_term FROM public.os_catalog_item_version v
-                      WHERE v.item_id = i.id
-                      ORDER BY (v.language_code = \'es-AR\') DESC, v.id DESC LIMIT 1) AS preferred_term
+            'SELECT i.id, i.permanent_code, i.status, v.preferred_term
                FROM public.os_catalog_item i
                JOIN public.os_catalog c ON c.id = i.catalog_id
+               JOIN LATERAL (
+                    SELECT v2.preferred_term
+                      FROM public.os_catalog_item_version v2
+                     WHERE v2.item_id = i.id
+                     ORDER BY (v2.language_code = \'es-AR\') DESC, v2.id DESC
+                     LIMIT 1
+               ) v ON TRUE
               WHERE c.code = :code
-                AND (i.permanent_code ILIKE :query OR i.permanent_code::TEXT ILIKE :query)
+                AND (i.permanent_code ILIKE :query
+                     OR i.permanent_code::TEXT ILIKE :query
+                     OR COALESCE(v.preferred_term, \'\') ILIKE :query)
               ORDER BY i.permanent_code
               LIMIT 200',
             [':code' => $code, ':query' => '%' . $query . '%']
@@ -269,6 +275,28 @@ final class CatalogGovernanceRepository
         } catch (PDOException) {
             throw new RepositoryException('catalog_publish_failed');
         }
+    }
+
+    /**
+     * Catálogo al que pertenece un código. Permite conservar el deep link
+     * histórico `?service_item_id=` cuando el selector ya no es único.
+     */
+    public static function catalogCodeForItem(int $itemId): ?string
+    {
+        if ($itemId <= 0) {
+            return null;
+        }
+
+        $row = self::publicRow(
+            'SELECT c.code
+               FROM public.os_catalog_item i
+               JOIN public.os_catalog c ON c.id = i.catalog_id
+              WHERE i.id = :id
+              LIMIT 1',
+            [':id' => $itemId]
+        );
+
+        return $row === null ? null : (string) ($row['code'] ?? '');
     }
 
     /** @return list<array<string, mixed>> */

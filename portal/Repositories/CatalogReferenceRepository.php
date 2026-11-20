@@ -54,16 +54,61 @@ final class CatalogReferenceRepository
                   ORDER BY name, code'
             );
 
-            return array_map(
-                static fn (array $row): array => [
-                    'code' => (string) $row['code'],
-                    'name' => (string) $row['name'],
-                    'short_name' => $row['short_name'] === null ? '' : (string) $row['short_name'],
-                ],
-                $statement->fetchAll()
-            );
+            return self::mapRows($statement->fetchAll());
         } catch (PDOException) {
             throw new RepositoryException('catalog_reference_unavailable');
         }
+    }
+
+    /**
+     * Catálogos sobre los que se puede proponer valoración UVR.
+     *
+     * La decisión U7.7 excluye diagnósticos, medicamentos, insumos y
+     * terminologías: no reciben UVR por el solo hecho de existir. Se conserva
+     * `dentar-dx` fuera del selector y se excluyen los códigos de terminología
+     * y de insumos. La familia DENTAR queda fuera por `product_role`.
+     *
+     * @return list<array{code: string, name: string, short_name: string}>
+     */
+    public static function uvrCatalogs(): array
+    {
+        $excluded = ['dentar-dx', 'cie10', 'anmat', 'snomed', 'loinc', 'insumos'];
+        $params = [];
+        $placeholders = [];
+
+        foreach ($excluded as $index => $code) {
+            $key = ':excluded_' . $index;
+            $params[$key] = $code;
+            $placeholders[] = $key;
+        }
+
+        try {
+            $statement = PortalDatabase::connection()->prepare(
+                'SELECT code, name, short_name
+                   FROM public.os_catalog
+                  WHERE is_active = true
+                    AND product_role = \'catalog\'
+                    AND code NOT IN (' . implode(', ', $placeholders) . ')
+                  ORDER BY name, code'
+            );
+            $statement->execute($params);
+
+            return self::mapRows($statement->fetchAll());
+        } catch (PDOException) {
+            throw new RepositoryException('catalog_reference_unavailable');
+        }
+    }
+
+    /** @param list<array<string, mixed>> $rows @return list<array{code: string, name: string, short_name: string}> */
+    private static function mapRows(array $rows): array
+    {
+        return array_map(
+            static fn (array $row): array => [
+                'code' => (string) $row['code'],
+                'name' => (string) $row['name'],
+                'short_name' => $row['short_name'] === null ? '' : (string) $row['short_name'],
+            ],
+            $rows
+        );
     }
 }

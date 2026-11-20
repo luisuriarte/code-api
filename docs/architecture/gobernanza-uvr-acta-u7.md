@@ -84,12 +84,16 @@ su verificación quedan a cargo del responsable de la base, con backup verificad
 | Fase | Contenido | Estado |
 |---|---|---|
 | U7-A | Esta acta y la referencia documental. Sin SQL. | **Aprobada y aplicada.** |
-| U7-B | SQL aditivo: seis entidades del §3, vista derivada, vista pública, REVOKE por tabla, grants puntuales a `origen_admin` y `origen_med`, auditoría append-only. Sin `UPDATE` al legado ni `ALTER DEFAULT PRIVILEGES`. | **Aprobada; artefacto preparado, no ejecutado.** |
+| U7-B | SQL aditivo: seis entidades del §3, vista derivada, vista pública, REVOKE por tabla, grants puntuales a `origen_admin` y `origen_med`, auditoría append-only. Sin `UPDATE` al legado ni `ALTER DEFAULT PRIVILEGES`. | **Aprobada; aplicada y verificada por el responsable el 2026-11-20** (`COMMIT` de la migración y `ROLLBACK` del verificador de 11 secciones). |
 | U7-C | PHP del panel: quitar `CATALOG_CODE` fijo, perfil + prestación, validación por prestación, ámbito por grants. Conserva fallback a U0–U6 cuando U7-B no está aplicado. | **Aprobada; implementada con detección de esquema, no desplegada.** |
 | U7-D | Exposición pública/Browse de la prestación valorada, sin `/v1/uvr` ni `/fhir/*`. `estimated_payment` nunca se expone; el importe visible es `importe_referencial`. | **Aprobada; implementada con vista filtrada, no desplegada.** |
 
-Hasta que el responsable aplique U7-B, el panel sigue operando con los datos
-vigentes (`dentar-pr` como único catálogo elegible), respetando íntegramente
-U0–U6. La detección de esquema evita consultar tablas inexistentes; cuando U7-B
-esté aplicado, la elegibilidad pasa a ser por prestación vinculada al código y
-se respetan los grants por catálogo sin crear permisos nuevos.
+Con U7-B aplicado, las seis tablas nuevas están vacías: no se cargaron
+prestaciones, perfiles ni valores inventados. El panel mantiene la degradación
+a U0–U6 mientras no existan prestaciones y perfiles gobernados, pero el selector
+de catálogos ya muestra todos los catálogos UVR gobernados (excluidos
+`dentar-dx`, terminologías e insumos según U7.7) y respeta los grants por
+catálogo sin crear permisos nuevos. La elegibilidad plena por prestación se
+activa cuando el responsable cargue, con aprobación, al menos una prestación y
+un perfil. Hasta ese momento, la **publicación** de valoraciones legacy sigue
+sujeta al guardián `os_uvr_eligible_catalog` de U0–U6 (`dentar-pr`).
