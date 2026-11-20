@@ -45,7 +45,17 @@ $uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2
                     $uvrImporte = is_array($valuation['importe'] ?? null) ? $valuation['importe'] : null;
                     ?>
                     <tr class="transition hover:bg-paper/60">
-                        <td class="ui-td"><code class="ui-code"><?= e((string) ($valuation['service_item_id'] ?? '')) ?></code></td>
+                        <td class="ui-td">
+                            <code class="ui-code"><?= e((string) ($valuation['service_item_id'] ?? '')) ?></code>
+                            <?php if (($valuation['valuation_kind'] ?? '') === 'prestacion'): ?>
+                                <span class="mt-0.5 block text-xs text-muted">
+                                    <?= e($t('admin.uvr.prestacion')) ?>:
+                                    <?= e((string) ($valuation['prestacion_name'] ?? '')) ?>
+                                    · <?= e($t('admin.uvr.profile')) ?>:
+                                    <?= e((string) ($valuation['profile_code'] ?? '')) ?>
+                                </span>
+                            <?php endif; ?>
+                        </td>
                         <td class="ui-td"><?= e((string) ($valuation['version_tag'] ?? '')) ?></td>
                         <td class="ui-td">
                             <span class="block text-xs text-muted">

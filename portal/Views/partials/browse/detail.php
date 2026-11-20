@@ -7,6 +7,7 @@ $isDentar = in_array($catalogCode, ['dentar-pr', 'dentar-dx'], true);
 $code = is_array($item) ? (string) ($item['code'] ?? '') : '';
 $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
 $domainLabel = is_array($item) ? (string) ($item['subtitle'] ?? $item['domain'] ?? '') : '';
+$uvrPublished = is_array($sections['uvr'] ?? null) ? $sections['uvr'] : [];
 ?>
 <div class="browse-detail" data-focus="<?= e($focus) ?>">
     <div class="browse-panel__crumb">
@@ -146,7 +147,9 @@ $domainLabel = is_array($item) ? (string) ($item['subtitle'] ?? $item['domain'] 
                     <?php if ($tabKey === 'values'): ?>
                         <div class="browse-uvr-note">
                             <p class="form-note"><?= e($t('browse.uvr_formula')) ?></p>
-                            <?php if (empty($sections['values'])): ?>
+                            <?php if ($uvrPublished !== []): ?>
+                                <?php require __DIR__ . '/detail/uvr.php'; ?>
+                            <?php elseif (empty($sections['values'])): ?>
                                 <p class="browse-empty"><?= e($t('browse.uvr_empty')) ?></p>
                             <?php endif; ?>
                             <p class="browse-scope"><strong><?= e($t('browse.uvr_scope_title')) ?></strong> <?= e($t('browse.uvr_scope_notice')) ?></p>

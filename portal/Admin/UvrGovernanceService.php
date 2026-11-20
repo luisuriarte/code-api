@@ -17,15 +17,54 @@ use OrigenSalud\Portal\Repositories\UvrRepository;
  */
 final class UvrGovernanceService
 {
-    private const CATALOG_CODE = 'dentar-pr';
+    /** Catálogo único del esquema U0–U6; no se usa cuando U7-B está aplicado. */
+    private const LEGACY_CATALOG_CODE = 'dentar-pr';
     private const COMPONENT_TYPES = ['work', 'practice_expense', 'professional_liability'];
 
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
     public function valuations(array $actor): array
     {
-        $this->require($actor, 'catalog.view', 'view');
+        $visible = $this->requireAnyCatalog($actor, 'view', 'catalog.view');
+        $rows = in_array(self::LEGACY_CATALOG_CODE, $visible, true)
+            ? UvrRepository::valuations()
+            : [];
 
-        return UvrRepository::valuations();
+        foreach (UvrRepository::prestacionValuations() as $row) {
+            $codes = UvrRepository::catalogCodesForPrestacionValuation(
+                (int) ($row['valuation_id'] ?? 0)
+            );
+
+            if (!$this->anyVisible($codes, $visible)) {
+                continue;
+            }
+
+            $rows[] = [
+                'valuation_id' => (int) ($row['valuation_id'] ?? 0),
+                'valuation_kind' => 'prestacion',
+                'service_item_id' => (string) ($row['prestacion_code'] ?? ''),
+                'prestacion_name' => (string) ($row['prestacion_name'] ?? ''),
+                'profile_code' => (string) ($row['profile_code'] ?? ''),
+                'scope' => (string) ($row['scope'] ?? ''),
+                'jurisdiction' => (string) ($row['jurisdiction'] ?? ''),
+                'methodology' => (string) ($row['methodology'] ?? ''),
+                'source_reference' => (string) ($row['source_reference'] ?? ''),
+                'version_tag' => (string) ($row['version_tag'] ?? ''),
+                'review_status' => (string) ($row['review_status'] ?? ''),
+                'published_at' => (string) ($row['published_at'] ?? ''),
+                'work_uvr' => (float) ($row['work_uvr'] ?? 0),
+                'practice_expense_uvr' => (float) ($row['practice_expense_uvr'] ?? 0),
+                'professional_liability_uvr' => (float) ($row['professional_liability_uvr'] ?? 0),
+                'total_uvr' => (float) ($row['total_uvr'] ?? 0),
+            ];
+        }
+
+        foreach ($rows as $index => $row) {
+            if (!isset($row['valuation_kind'])) {
+                $rows[$index]['valuation_kind'] = 'legacy';
+            }
+        }
+
+        return $rows;
     }
 
     /**
@@ -61,20 +100,28 @@ final class UvrGovernanceService
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
     public function proposals(array $actor): array
     {
-        $this->require($actor, 'catalog.view', 'view');
+        $visible = $this->requireAnyCatalog($actor, 'view', 'catalog.view');
+        $proposals = [];
 
-        return UvrRepository::proposals();
+        foreach (UvrRepository::proposals() as $proposal) {
+            if (in_array($this->proposalCatalog($proposal), $visible, true)) {
+                $proposals[] = $proposal;
+            }
+        }
+
+        return $proposals;
     }
 
     /** @param array<string, mixed> $actor @return array<string, mixed> */
     public function proposalDetail(int $id, array $actor): array
     {
-        $this->require($actor, 'catalog.view', 'view');
         $proposal = UvrRepository::findProposal($id);
 
         if ($proposal === null) {
             throw new UvrGovernanceException('uvr_proposal_not_found');
         }
+
+        $this->require($actor, 'catalog.view', 'view', $this->proposalCatalog($proposal));
 
         $reviews = UvrRepository::reviews($id);
         $decisions = [];
@@ -93,54 +140,121 @@ final class UvrGovernanceService
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
     public function tasks(array $actor): array
     {
-        $this->require($actor, 'catalog.review', 'review');
+        $visible = $this->requireAnyCatalog($actor, 'review', 'catalog.review');
+        $tasks = [];
 
-        return UvrRepository::tasks();
+        foreach (UvrRepository::tasks() as $task) {
+            $meta = $this->decodeMeta((string) ($task['proposed_change'] ?? ''));
+            $code = (string) ($meta['catalog_code'] ?? self::LEGACY_CATALOG_CODE);
+
+            if (in_array($code, $visible, true)) {
+                $tasks[] = $task;
+            }
+        }
+
+        return $tasks;
     }
 
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
     public function editableCatalogs(array $actor): array
     {
-        $this->require($actor, 'catalog.edit_draft', 'edit_draft');
+        $visible = $this->requireAnyCatalog($actor, 'edit_draft', 'catalog.edit_draft');
+        $catalogs = [];
 
-        return CatalogReferenceRepository::all();
+        foreach (CatalogReferenceRepository::all() as $catalog) {
+            if (in_array((string) ($catalog['code'] ?? ''), $visible, true)) {
+                $catalogs[] = $catalog;
+            }
+        }
+
+        return $catalogs;
+    }
+
+    public function transversal(): bool
+    {
+        return UvrRepository::hasTransversalSchema();
+    }
+
+    /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
+    public function prestaciones(array $actor): array
+    {
+        $this->requirePermission($actor, 'catalog.view');
+
+        return UvrRepository::prestaciones();
+    }
+
+    /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
+    public function profiles(array $actor): array
+    {
+        $this->requirePermission($actor, 'catalog.view');
+
+        return UvrRepository::profiles();
     }
 
     /**
-     * Catálogos desde los que se puede proponer UVR.
-     *
-     * Mientras la fase U7-B no esté autorizada, la elegibilidad sigue siendo la
-     * de U0–U6 (acta U7 §5): un solo catálogo, leído de la misma constante que
-     * valida `propose()`. No se consulta `os_uvr_eligible_catalog` porque
-     * `origen_admin` no tiene SELECT sobre esa tabla.
+     * @param array<string, mixed> $actor @return list<array<string, mixed>>
+     */
+    public function linkedPrestaciones(int $itemId, string $catalogCode, array $actor): array
+    {
+        $this->require($actor, 'catalog.view', 'view', $catalogCode);
+
+        return UvrRepository::linkedPrestaciones($itemId, $catalogCode);
+    }
+
+    /** @param array<string, mixed> $actor @return array<int, string> */
+    public function profileComponents(int $profileId, array $actor): array
+    {
+        $this->requirePermission($actor, 'catalog.view');
+
+        return UvrRepository::profileComponents($profileId);
+    }
+
+    /**
+     * Catálogos desde los que se puede proponer UVR. Con U7-B aplicado la
+     * elegibilidad es por prestación y se respetan los grants por catálogo;
+     * sin U7-B rige el catálogo único de U0–U6.
      *
      * @param array<string, mixed> $actor @return list<array<string, mixed>>
      */
     public function proposalCatalogs(array $actor): array
     {
-        $this->require($actor, 'catalog.view', 'view');
+        $this->requirePermission($actor, 'catalog.view');
 
-        if (!CatalogReferenceRepository::exists(self::CATALOG_CODE)) {
-            return [];
+        if (!UvrRepository::hasTransversalSchema()) {
+            if (!CatalogReferenceRepository::exists(self::LEGACY_CATALOG_CODE)) {
+                return [];
+            }
+
+            foreach (CatalogReferenceRepository::all() as $catalog) {
+                if ($catalog['code'] === self::LEGACY_CATALOG_CODE) {
+                    return [$catalog];
+                }
+            }
+
+            return [[
+                'code' => self::LEGACY_CATALOG_CODE,
+                'name' => self::LEGACY_CATALOG_CODE,
+                'short_name' => '',
+            ]];
         }
 
+        $catalogs = [];
+
         foreach (CatalogReferenceRepository::all() as $catalog) {
-            if ($catalog['code'] === self::CATALOG_CODE) {
-                return [$catalog];
+            $code = (string) ($catalog['code'] ?? '');
+
+            if ($this->canAccess($actor, $code, 'view')) {
+                $catalogs[] = $catalog;
             }
         }
 
-        return [[
-            'code' => self::CATALOG_CODE,
-            'name' => self::CATALOG_CODE,
-            'short_name' => '',
-        ]];
+        return $catalogs;
     }
 
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
     public function conversions(array $actor): array
     {
-        $this->require($actor, 'catalog.view', 'view');
+        $this->requirePermission($actor, 'catalog.view');
 
         return UvrRepository::conversions();
     }
@@ -148,7 +262,7 @@ final class UvrGovernanceService
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
     public function geoIndexes(array $actor): array
     {
-        $this->require($actor, 'catalog.view', 'view');
+        $this->requirePermission($actor, 'catalog.view');
 
         return UvrRepository::geoIndexes();
     }
@@ -156,97 +270,125 @@ final class UvrGovernanceService
     /** @param array<string, mixed> $input @param array<string, mixed> $actor */
     public function propose(array $input, array $actor): int
     {
-        $this->require($actor, 'catalog.propose', 'propose');
+        $catalogCode = $this->inputCatalog($input);
+        $this->require($actor, 'catalog.propose', 'propose', $catalogCode);
 
-        if (!CatalogReferenceRepository::exists(self::CATALOG_CODE)) {
+        if ($catalogCode === '' || !CatalogReferenceRepository::exists($catalogCode)) {
             throw new UvrGovernanceException('uvr_catalog_unavailable');
         }
 
         $serviceItemId = $this->positiveInt($input['service_item_id'] ?? null);
         $versionTag = $this->text($input['version_tag'] ?? null, 50);
-        $methodology = $this->text($input['methodology'] ?? null, 120);
         $source = $this->text($input['source_reference'] ?? null, 2000);
         $evaluatedAt = $this->date($input['evaluated_at'] ?? null);
 
-        if ($serviceItemId === null || $versionTag === '' || $methodology === '' || $source === '' || $evaluatedAt === '') {
+        if ($serviceItemId === null || $versionTag === '' || $source === '' || $evaluatedAt === '') {
             throw new UvrGovernanceException('uvr_invalid_valuation');
         }
 
-        // El código debe pertenecer al catálogo elegible. El trigger de base
-        // también lo comprueba, pero aquí el error es comprensible para quien
-        // carga la propuesta desde el panel.
-        if (CatalogGovernanceRepository::item(self::CATALOG_CODE, $serviceItemId) === null) {
+        // El código debe pertenecer al catálogo enviado. El trigger de base
+        // también lo comprueba, pero aquí el error es comprensible en el panel.
+        if (CatalogGovernanceRepository::item($catalogCode, $serviceItemId) === null) {
             throw new UvrGovernanceException('catalog_item_not_found');
         }
 
-        $components = $input['components'] ?? null;
+        $transversal = UvrRepository::hasTransversalSchema();
+        $prestacionId = $this->positiveInt($input['prestacion_id'] ?? null);
+        $profileId = $this->positiveInt($input['profile_id'] ?? null);
+        $methodology = $this->text($input['methodology'] ?? null, 120);
+        $allowedTypes = self::COMPONENT_TYPES;
+        $changeExtras = ['valuation_kind' => $transversal ? 'prestacion' : 'legacy'];
 
-        if (!is_array($components) || count($components) === 0) {
-            throw new UvrGovernanceException('uvr_components_required');
-        }
+        if ($transversal) {
+            $linked = [];
 
-        $normalized = [];
-
-        foreach ($components as $component) {
-            if (!is_array($component)) {
-                throw new UvrGovernanceException('uvr_invalid_component');
+            foreach (UvrRepository::linkedPrestaciones($serviceItemId, $catalogCode) as $row) {
+                $linked[(int) $row['id']] = $row;
             }
 
-            $type = (string) ($component['component_type'] ?? '');
-
-            if (!in_array($type, self::COMPONENT_TYPES, true)) {
-                throw new UvrGovernanceException('uvr_invalid_component');
+            if ($prestacionId === null || !isset($linked[$prestacionId])) {
+                throw new UvrGovernanceException('uvr_prestacion_link_required');
             }
 
-            $notApplicable = $this->flag($component, 'is_not_applicable');
-            $rawValue = $component['value'] ?? null;
+            $profiles = [];
 
-            if (!is_numeric($rawValue)) {
-                throw new UvrGovernanceException('uvr_invalid_component');
+            foreach (UvrRepository::profiles() as $row) {
+                $profiles[(int) $row['id']] = $row;
             }
 
-            $value = (float) $rawValue;
-            $evidence = $this->text($component['negative_adjustment_evidence'] ?? null, 2000);
-
-            if ($notApplicable && abs($value) > 0.00001) {
-                throw new UvrGovernanceException('uvr_na_requires_zero');
+            if ($profileId === null || !isset($profiles[$profileId])) {
+                throw new UvrGovernanceException('uvr_profile_not_found');
             }
 
-            if ($value < 0 && $evidence === '') {
-                throw new UvrGovernanceException('uvr_negative_requires_evidence');
+            $methodology = $this->text($profiles[$profileId]['methodology'] ?? null, 120);
+            $applicable = [];
+
+            foreach (UvrRepository::profileComponents($profileId) as $type => $state) {
+                if ($state === 'applicable') {
+                    $applicable[] = (string) $type;
+                }
             }
 
-            if ($value >= 0 && $evidence !== '') {
-                throw new UvrGovernanceException('uvr_evidence_requires_negative');
+            if ($applicable === []) {
+                throw new UvrGovernanceException('uvr_profile_components_required');
             }
 
-            $normalized[] = [
-                'component_type' => $type,
-                'value' => $value,
-                'is_not_applicable' => $notApplicable,
-                'negative_adjustment_evidence' => $evidence !== '' ? $evidence : null,
-                'calculation_note' => $this->text($component['calculation_note'] ?? null, 2000) ?: null,
+            $allowedTypes = array_values(array_intersect(self::COMPONENT_TYPES, $applicable));
+            $changeExtras += [
+                'prestacion_id' => $prestacionId,
+                'prestacion_code' => (string) ($linked[$prestacionId]['code'] ?? ''),
+                'profile_id' => $profileId,
+                'profile_code' => (string) ($profiles[$profileId]['code'] ?? ''),
+                'methodology' => $methodology,
             ];
+        } else {
+            if ($catalogCode !== self::LEGACY_CATALOG_CODE || $methodology === '') {
+                throw new UvrGovernanceException('uvr_catalog_unavailable');
+            }
         }
 
+        $normalized = $this->normalizeComponents($input['components'] ?? null, $allowedTypes);
         $actorId = $this->actorId($actor);
         $actorEmail = $this->actorEmail($actor);
-        $valuationId = UvrRepository::createValuation([
-            'service_item_id' => $serviceItemId,
-            'release_id' => $this->positiveInt($input['release_id'] ?? null),
-            'version_tag' => $versionTag,
-            'methodology' => $methodology,
-            'source_reference' => $source,
-            'evaluated_at' => $evaluatedAt,
-            'valid_from' => $this->date($input['valid_from'] ?? null) ?: null,
-            'valid_to' => $this->date($input['valid_to'] ?? null) ?: null,
-        ], $actorId, $actorEmail);
+        $validFrom = $this->date($input['valid_from'] ?? null) ?: null;
+        $validTo = $this->date($input['valid_to'] ?? null) ?: null;
 
-        foreach ($normalized as $component) {
-            UvrRepository::addComponent($valuationId, $component);
+        if ($transversal) {
+            $valuationId = UvrRepository::createPrestacionValuation([
+                'prestacion_id' => (int) $changeExtras['prestacion_id'],
+                'profile_id' => (int) $changeExtras['profile_id'],
+                'version_tag' => $versionTag,
+                'source_reference' => $source,
+                'evaluated_at' => $evaluatedAt,
+                'valid_from' => $validFrom,
+                'valid_to' => $validTo,
+            ], $actorId);
+
+            foreach ($normalized as $component) {
+                UvrRepository::addPrestacionComponent(
+                    $valuationId,
+                    $component + ['source_reference' => $source]
+                );
+            }
+        } else {
+            $valuationId = UvrRepository::createValuation([
+                'service_item_id' => $serviceItemId,
+                'release_id' => $this->positiveInt($input['release_id'] ?? null),
+                'version_tag' => $versionTag,
+                'methodology' => $methodology,
+                'source_reference' => $source,
+                'evaluated_at' => $evaluatedAt,
+                'valid_from' => $validFrom,
+                'valid_to' => $validTo,
+            ], $actorId, $actorEmail);
+
+            foreach ($normalized as $component) {
+                UvrRepository::addComponent($valuationId, $component);
+            }
         }
 
-        $proposedChange = json_encode([
+        $proposedChange = json_encode($changeExtras + [
+            'catalog_code' => $catalogCode,
             'version_tag' => $versionTag,
             'components' => $normalized,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -262,7 +404,7 @@ final class UvrGovernanceService
         $this->audit('uvr_valuation_proposed', $actor, [
             'entity_type' => 'uvr_valuation',
             'entity_id' => (string) $valuationId,
-            'catalog_code' => self::CATALOG_CODE,
+            'catalog_code' => $catalogCode,
             'after_state' => ['proposal_id' => $proposalId, 'version_tag' => $versionTag],
         ]);
 
@@ -272,13 +414,13 @@ final class UvrGovernanceService
     /** @param array<string, mixed> $input @param array<string, mixed> $actor */
     public function recordReview(int $proposalId, array $input, array $actor): int
     {
-        $this->require($actor, 'catalog.review', 'review');
         $proposal = UvrRepository::findProposal($proposalId);
 
         if ($proposal === null) {
             throw new UvrGovernanceException('uvr_proposal_not_found');
         }
 
+        $this->require($actor, 'catalog.review', 'review', $this->proposalCatalog($proposal));
         $role = (string) ($input['review_role'] ?? '');
 
         if (!in_array($role, ['clinical', 'economic'], true)) {
@@ -320,7 +462,7 @@ final class UvrGovernanceService
         $this->audit($role === 'clinical' ? 'uvr_review_clinical_recorded' : 'uvr_review_economic_recorded', $actor, [
             'entity_type' => 'uvr_governance_request',
             'entity_id' => (string) $proposalId,
-            'catalog_code' => self::CATALOG_CODE,
+            'catalog_code' => $this->proposalCatalog($proposal),
             'after_state' => ['review_id' => $reviewId, 'role' => $role, 'outcome' => $outcome],
         ]);
 
@@ -330,13 +472,13 @@ final class UvrGovernanceService
     /** @param array<string, mixed> $input @param array<string, mixed> $actor */
     public function decide(int $proposalId, array $input, array $actor): int
     {
-        $this->require($actor, 'catalog.approve', 'approve');
         $proposal = UvrRepository::findProposal($proposalId);
 
         if ($proposal === null) {
             throw new UvrGovernanceException('uvr_proposal_not_found');
         }
 
+        $this->require($actor, 'catalog.approve', 'approve', $this->proposalCatalog($proposal));
         $evidence = $this->text($input['evidence_reference'] ?? null, 2000);
 
         if ($evidence === '') {
@@ -376,7 +518,11 @@ final class UvrGovernanceService
         $valuationId = (int) ($proposal['subject_id'] ?? 0);
 
         if ($valuationId > 0) {
-            UvrRepository::linkApproval($valuationId, $actorId);
+            if ((string) ($this->proposalMeta($proposal)['valuation_kind'] ?? '') === 'prestacion') {
+                UvrRepository::linkPrestacionApproval($valuationId, $actorId);
+            } else {
+                UvrRepository::linkApproval($valuationId, $actorId);
+            }
         }
 
         UvrRepository::setProposalStatus($proposalId, 'approved');
@@ -384,7 +530,7 @@ final class UvrGovernanceService
         $this->audit('uvr_decision_recorded', $actor, [
             'entity_type' => 'uvr_governance_request',
             'entity_id' => (string) $proposalId,
-            'catalog_code' => self::CATALOG_CODE,
+            'catalog_code' => $this->proposalCatalog($proposal),
             'after_state' => ['decision_id' => $decisionId, 'evidence_reference' => $evidence],
         ]);
 
@@ -394,24 +540,49 @@ final class UvrGovernanceService
     /** @param array<string, mixed> $actor */
     public function publish(int $valuationId, array $actor): void
     {
-        $this->require($actor, 'catalog.publish', 'publish');
-        UvrRepository::publish($valuationId, $this->actorId($actor));
+        $this->requirePermission($actor, 'catalog.publish');
+        $prestacion = UvrRepository::findPrestacionValuation($valuationId);
+        $catalogCodes = $prestacion === null
+            ? [self::LEGACY_CATALOG_CODE]
+            : UvrRepository::catalogCodesForPrestacionValuation($valuationId);
+
+        if (!$this->canAccessAny($actor, $catalogCodes, 'publish')) {
+            throw new UvrGovernanceException('uvr_grant_denied');
+        }
+
+        if ($prestacion === null) {
+            UvrRepository::publish($valuationId, $this->actorId($actor));
+        } else {
+            UvrRepository::publishPrestacion($valuationId, $this->actorId($actor));
+        }
 
         $this->audit('uvr_published', $actor, [
             'entity_type' => 'uvr_valuation',
             'entity_id' => (string) $valuationId,
-            'catalog_code' => self::CATALOG_CODE,
+            'catalog_code' => (string) ($catalogCodes[0] ?? self::LEGACY_CATALOG_CODE),
         ]);
     }
 
     /** @param array<string, mixed> $actor @return array<string, mixed>|null */
     public function importe(int $valuationId, ?int $conversionId, array $actor): ?array
     {
-        $this->require($actor, 'catalog.view', 'view');
-        $valuation = UvrRepository::findValuation($valuationId);
+        $visible = $this->requireAnyCatalog($actor, 'view', 'catalog.view');
+        $legacy = UvrRepository::findValuation($valuationId);
+        $prestacion = $legacy === null
+            ? UvrRepository::findPrestacionValuation($valuationId)
+            : null;
+        $valuation = $legacy ?? $prestacion;
 
         if ($valuation === null) {
             throw new UvrGovernanceException('uvr_valuation_not_found');
+        }
+
+        $codes = $prestacion === null
+            ? [self::LEGACY_CATALOG_CODE]
+            : UvrRepository::catalogCodesForPrestacionValuation($valuationId);
+
+        if (!$this->anyVisible($codes, $visible)) {
+            throw new UvrGovernanceException('uvr_grant_denied');
         }
 
         if ($conversionId === null) {
@@ -441,17 +612,208 @@ final class UvrGovernanceService
     }
 
     /** @param array<string, mixed> $actor */
-    private function require(array $actor, string $permission, string $operation): void
+    private function require(
+        array $actor,
+        string $permission,
+        string $operation,
+        ?string $catalogCode = null
+    ): void {
+        $this->requirePermission($actor, $permission);
+
+        if (!$this->canAccess(
+            $actor,
+            $catalogCode !== null && $catalogCode !== '' ? $catalogCode : self::LEGACY_CATALOG_CODE,
+            $operation
+        )) {
+            throw new UvrGovernanceException('uvr_grant_denied');
+        }
+    }
+
+    /** @param array<string, mixed> $actor */
+    private function requirePermission(array $actor, string $permission): void
     {
         if (!Rbac::hasPermission($this->permissions($actor), $permission)) {
             throw new UvrGovernanceException('uvr_permission_denied');
         }
+    }
 
+    /** @param array<string, mixed> $actor */
+    private function canAccess(array $actor, string $catalogCode, string $operation): bool
+    {
         $grants = is_array($actor['grants'] ?? null) ? $actor['grants'] : [];
 
-        if (!Rbac::canAccessCatalog($grants, self::CATALOG_CODE, $operation, $this->permissions($actor))) {
+        return Rbac::canAccessCatalog($grants, $catalogCode, $operation, $this->permissions($actor));
+    }
+
+    /**
+     * @param list<string> $catalogCodes
+     * @param array<string, mixed> $actor
+     */
+    private function canAccessAny(array $actor, array $catalogCodes, string $operation): bool
+    {
+        if (in_array(Rbac::WILDCARD, $this->permissions($actor), true)) {
+            return true;
+        }
+
+        foreach ($catalogCodes as $catalogCode) {
+            if ($this->canAccess($actor, $catalogCode, $operation)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Catálogos visibles para la operación. Sin U7-B rige solo el legado; con
+     * U7-B se respetan los grants por catálogo sin crear permisos nuevos.
+     *
+     * @param array<string, mixed> $actor @return list<string>
+     */
+    private function visibleCatalogCodes(array $actor, string $operation): array
+    {
+        if (!UvrRepository::hasTransversalSchema()) {
+            return $this->canAccess($actor, self::LEGACY_CATALOG_CODE, $operation)
+                ? [self::LEGACY_CATALOG_CODE]
+                : [];
+        }
+
+        $codes = [];
+
+        foreach (CatalogReferenceRepository::all() as $catalog) {
+            $code = (string) ($catalog['code'] ?? '');
+
+            if ($code !== '' && $this->canAccess($actor, $code, $operation)) {
+                $codes[] = $code;
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * @param array<string, mixed> $actor @return list<string>
+     */
+    private function requireAnyCatalog(array $actor, string $operation, string $permission): array
+    {
+        $this->requirePermission($actor, $permission);
+        $codes = $this->visibleCatalogCodes($actor, $operation);
+
+        if ($codes === []) {
             throw new UvrGovernanceException('uvr_grant_denied');
         }
+
+        return $codes;
+    }
+
+    /**
+     * @param list<string> $codes
+     * @param list<string> $visible
+     */
+    private function anyVisible(array $codes, array $visible): bool
+    {
+        foreach ($codes as $code) {
+            if (in_array($code, $visible, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @param array<string, mixed> $input */
+    private function inputCatalog(array $input): string
+    {
+        $code = $input['catalog'] ?? '';
+
+        return is_string($code) && preg_match('/^[a-z0-9][a-z0-9-]{1,49}$/', $code) === 1
+            ? $code
+            : self::LEGACY_CATALOG_CODE;
+    }
+
+    /** @return array<string, mixed> */
+    private function decodeMeta(string $raw): array
+    {
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /** @param array<string, mixed> $proposal @return array<string, mixed> */
+    private function proposalMeta(array $proposal): array
+    {
+        return $this->decodeMeta((string) ($proposal['proposed_change'] ?? ''));
+    }
+
+    /** @param array<string, mixed> $proposal */
+    private function proposalCatalog(array $proposal): string
+    {
+        $code = (string) ($this->proposalMeta($proposal)['catalog_code'] ?? '');
+
+        return $code !== '' ? $code : self::LEGACY_CATALOG_CODE;
+    }
+
+    /**
+     * @param mixed $raw
+     * @param list<string> $allowedTypes
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeComponents(mixed $raw, array $allowedTypes): array
+    {
+        if (!is_array($raw)) {
+            throw new UvrGovernanceException('uvr_components_required');
+        }
+
+        $normalized = [];
+
+        foreach ($raw as $component) {
+            if (!is_array($component)) {
+                throw new UvrGovernanceException('uvr_invalid_component');
+            }
+
+            $type = (string) ($component['component_type'] ?? '');
+
+            if (!in_array($type, self::COMPONENT_TYPES, true) || !in_array($type, $allowedTypes, true)) {
+                continue;
+            }
+
+            $notApplicable = $this->flag($component, 'is_not_applicable');
+            $value = $component['value'] ?? null;
+
+            if (!is_numeric($value)) {
+                throw new UvrGovernanceException('uvr_invalid_component');
+            }
+
+            $amount = (float) $value;
+            $evidence = $this->text($component['negative_adjustment_evidence'] ?? null, 2000);
+
+            if ($notApplicable && abs($amount) > 0.00001) {
+                throw new UvrGovernanceException('uvr_na_requires_zero');
+            }
+
+            if ($amount < 0 && $evidence === '') {
+                throw new UvrGovernanceException('uvr_negative_requires_evidence');
+            }
+
+            if ($amount >= 0 && $evidence !== '') {
+                throw new UvrGovernanceException('uvr_evidence_requires_negative');
+            }
+
+            $normalized[] = [
+                'component_type' => $type,
+                'value' => $amount,
+                'is_not_applicable' => $notApplicable,
+                'negative_adjustment_evidence' => $evidence !== '' ? $evidence : null,
+                'calculation_note' => $this->text($component['calculation_note'] ?? null, 2000) ?: null,
+            ];
+        }
+
+        if ($normalized === []) {
+            throw new UvrGovernanceException('uvr_components_required');
+        }
+
+        return $normalized;
     }
 
     /** @param array<string, mixed> $actor @return list<string> */

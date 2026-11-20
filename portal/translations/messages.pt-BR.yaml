@@ -779,6 +779,17 @@ browse:
     uvr_empty: "Não há valores UVR verificados carregados para este conceito. Não são exibidos valores estimados."
     uvr_scope_title: "Não é uma tabela de honorários:"
     uvr_scope_notice: "UVR é uma valoração relativa. Valores, copagamentos e condições dependem de contratos de operadoras e são consultados em um módulo independente."
+    uvr_published_title: "Valoração UVR publicada"
+    uvr_published_note: "Apenas valorações publicadas, vinculadas ao código e com perfil aprovado são exibidas. O valor de referência é derivado somente de conversões aprovadas."
+    uvr_published_profile: "Perfil e versão"
+    uvr_published_components: "Componentes aplicáveis"
+    uvr_published_total: "Total UVR"
+    uvr_published_importe: "Valor de referência"
+    uvr_published_validity: "Vigência"
+    uvr_published_no_conversion: "Sem conversão aprovada"
+    uvr_work: "Trabalho profissional"
+    uvr_practice: "Despesas da prestação"
+    uvr_liability: "Responsabilidade profissional"
     relation_filter_all: "Todos"
     relation_filter_type: "Filtrar por tipo"
     relation_filter_system: "Filtrar por sistema"
@@ -1504,7 +1515,13 @@ admin:
         no_conversion: 'Sem conversão aprovada'
         estimated_note: 'Estimativa; não é tarifa.'
         publish: 'Publicar'
-        catalogs_note: 'As propostas UVR aplicam-se apenas a itens do catálogo elegível; nenhum catálogo novo é criado.'
+        catalogs_note: 'As propostas UVR aplicam-se a procedimentos valoráveis vinculados ao código; nenhum catálogo novo é criado.'
+        transversal_note: 'A valoração é associada a um procedimento e a um perfil validados. O perfil define quais componentes se aplicam.'
+        prestacion: 'Procedimento de referência'
+        prestacion_none: 'Não há procedimentos valoráveis vinculados a este código. Vincule um antes de propor UVR.'
+        profile: 'Perfil de valoração'
+        profile_components_note: 'Apenas os componentes aplicáveis ao perfil escolhido são exibidos.'
+        methodology_from_profile: 'A metodologia é tomada do perfil escolhido. Não é preenchida manualmente.'
         col_catalog: 'Código'
         col_name: 'Nome'
         col_short: 'Nome curto'

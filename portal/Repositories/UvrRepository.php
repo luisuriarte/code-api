@@ -18,6 +18,270 @@ final class UvrRepository
 {
     private const SUBJECT_TYPE = 'uvr_valuation';
 
+    private static ?bool $transversalSchema = null;
+
+    /**
+     * El panel funciona con el esquema U0–U6 hasta que el responsable aplica
+     * U7-B. La detección evita consultar tablas inexistentes en producción.
+     */
+    public static function hasTransversalSchema(): bool
+    {
+        if (self::$transversalSchema !== null) {
+            return self::$transversalSchema;
+        }
+
+        try {
+            $statement = AdminDatabase::connection()->prepare(
+                "SELECT to_regclass('public.os_prestacion') IS NOT NULL
+                    AND to_regclass('public.os_uvr_profile') IS NOT NULL
+                    AND to_regclass('public.os_uvr_prestacion_valuation') IS NOT NULL
+                    AND to_regclass('public.v_os_uvr_prestacion_public') IS NOT NULL"
+            );
+            $statement->execute();
+            self::$transversalSchema = (bool) $statement->fetchColumn();
+        } catch (\Throwable) {
+            self::$transversalSchema = false;
+        }
+
+        return self::$transversalSchema;
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function prestaciones(): array
+    {
+        if (!self::hasTransversalSchema()) {
+            return [];
+        }
+
+        return self::fetchAll(
+            'SELECT id, code, display_name, prestation_type, source_reference
+               FROM public.os_prestacion
+              WHERE is_valuable AND status IN (\'approved\', \'published\')
+              ORDER BY display_name, code'
+        );
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function profiles(): array
+    {
+        if (!self::hasTransversalSchema()) {
+            return [];
+        }
+
+        return self::fetchAll(
+            'SELECT id, code, name, methodology, scope, jurisdiction, version_tag, source_reference
+               FROM public.os_uvr_profile
+              WHERE status IN (\'approved\', \'published\')
+              ORDER BY name, code'
+        );
+    }
+
+    /**
+     * Prestaciones con vínculo aprobado al código seleccionado. El vínculo es
+     * navegación y trazabilidad: nunca copia ni deriva UVR (U7.6).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function linkedPrestaciones(int $itemId, string $catalogCode): array
+    {
+        if (!self::hasTransversalSchema() || $itemId <= 0 || $catalogCode === '') {
+            return [];
+        }
+
+        return self::fetchAll(
+            'SELECT p.id, p.code, p.display_name, p.prestation_type,
+                    pc.id AS link_id, pc.correspondence_type, pc.review_status
+               FROM public.os_prestacion_codigo pc
+               JOIN public.os_prestacion p ON p.id = pc.prestacion_id
+              WHERE pc.catalog_code = :catalog
+                AND pc.item_id = :item
+                AND pc.review_status IN (\'approved\', \'deprecated\')
+                AND p.is_valuable
+                AND p.status IN (\'approved\', \'published\')
+              ORDER BY p.display_name, p.code',
+            [':catalog' => $catalogCode, ':item' => $itemId]
+        );
+    }
+
+    /** @return array<int, string> */
+    public static function profileComponents(int $profileId): array
+    {
+        if (!self::hasTransversalSchema() || $profileId <= 0) {
+            return [];
+        }
+
+        $rows = self::fetchAll(
+            'SELECT component_type, applicability
+               FROM public.os_uvr_profile_component
+              WHERE profile_id = :profile
+              ORDER BY component_type',
+            [':profile' => $profileId]
+        );
+        $components = [];
+
+        foreach ($rows as $row) {
+            $components[(string) $row['component_type']] = (string) $row['applicability'];
+        }
+
+        return $components;
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function prestacionValuations(): array
+    {
+        if (!self::hasTransversalSchema()) {
+            return [];
+        }
+
+        return self::fetchAll(
+            'SELECT t.valuation_id, t.prestacion_code, t.prestacion_name,
+                    t.profile_code, t.methodology, t.scope, t.jurisdiction,
+                    v.source_reference, v.version_tag, v.review_status,
+                    v.published_at, v.valid_from, v.valid_to, v.evaluated_at,
+                    v.calculated_by_user_id, v.approved_by_user_id,
+                    t.work_uvr, t.practice_expense_uvr,
+                    t.professional_liability_uvr, t.total_uvr
+               FROM public.v_os_uvr_prestacion_total t
+               JOIN public.os_uvr_prestacion_valuation v ON v.id = t.valuation_id
+              ORDER BY t.valuation_id DESC'
+        );
+    }
+
+    /** @param array<string, mixed> $data */
+    public static function createPrestacionValuation(array $data, int $actorId): int
+    {
+        self::setActor($actorId);
+
+        return self::insertReturningId(
+            'INSERT INTO public.os_uvr_prestacion_valuation (
+                prestacion_id, profile_id, version_tag, source_reference,
+                evaluated_at, calculated_by_user_id, review_status,
+                valid_from, valid_to
+             ) VALUES (
+                :prestacion, :profile, :version, :source, :evaluated,
+                :actor, :status, :valid_from, :valid_to
+             ) RETURNING id',
+            [
+                ':prestacion' => (int) $data['prestacion_id'],
+                ':profile' => (int) $data['profile_id'],
+                ':version' => (string) $data['version_tag'],
+                ':source' => (string) $data['source_reference'],
+                ':evaluated' => (string) $data['evaluated_at'],
+                ':actor' => $actorId,
+                ':status' => 'draft',
+                ':valid_from' => $data['valid_from'] !== null ? (string) $data['valid_from'] : null,
+                ':valid_to' => $data['valid_to'] !== null ? (string) $data['valid_to'] : null,
+            ]
+        );
+    }
+
+    /** @param array<string, mixed> $data */
+    public static function addPrestacionComponent(int $valuationId, array $data): void
+    {
+        self::execute(
+            'INSERT INTO public.os_uvr_prestacion_component (
+                valuation_id, component_type, value, is_not_applicable,
+                negative_adjustment_evidence, calculation_note, source_reference
+             ) VALUES (
+                :valuation, :type, :value, :not_applicable, :evidence,
+                :note, :source
+             )
+             ON CONFLICT (valuation_id, component_type) DO NOTHING',
+            [
+                ':valuation' => $valuationId,
+                ':type' => (string) $data['component_type'],
+                ':value' => (float) $data['value'],
+                ':not_applicable' => (bool) $data['is_not_applicable'],
+                ':evidence' => $data['negative_adjustment_evidence'] !== null
+                    ? (string) $data['negative_adjustment_evidence']
+                    : null,
+                ':note' => $data['calculation_note'] !== null ? (string) $data['calculation_note'] : null,
+                ':source' => (string) $data['source_reference'],
+            ]
+        );
+    }
+
+    public static function linkPrestacionApproval(int $valuationId, int $actorId): void
+    {
+        self::execute(
+            'UPDATE public.os_uvr_prestacion_valuation
+                SET approved_by_user_id = :actor, review_status = :status
+              WHERE id = :id AND review_status NOT IN (:approved, :published)',
+            [
+                ':actor' => $actorId,
+                ':status' => 'approved',
+                ':id' => $valuationId,
+                ':approved' => 'approved',
+                ':published' => 'published',
+            ]
+        );
+    }
+
+    public static function publishPrestacion(int $valuationId, int $actorId): void
+    {
+        self::setActor($actorId);
+        self::execute(
+            'UPDATE public.os_uvr_prestacion_valuation
+                SET review_status = :status, published_at = CURRENT_TIMESTAMP
+              WHERE id = :id AND review_status = :approved',
+            [':status' => 'published', ':id' => $valuationId, ':approved' => 'approved']
+        );
+    }
+
+    /** @return array<string, mixed>|null */
+    public static function findPrestacionValuation(int $id): ?array
+    {
+        if (!self::hasTransversalSchema() || $id <= 0) {
+            return null;
+        }
+
+        return self::fetchOne(
+            'SELECT t.valuation_id, t.prestacion_id, t.prestacion_code, t.prestacion_name,
+                    t.profile_id, t.profile_code, t.methodology, t.scope, t.jurisdiction,
+                    v.version_tag, v.source_reference, v.evaluated_at, v.review_status,
+                    v.published_at, v.valid_from, v.valid_to, v.calculated_by_user_id,
+                    v.approved_by_user_id, t.work_uvr, t.practice_expense_uvr,
+                    t.professional_liability_uvr, t.total_uvr
+               FROM public.v_os_uvr_prestacion_total t
+               JOIN public.os_uvr_prestacion_valuation v ON v.id = t.valuation_id
+              WHERE t.valuation_id = :id LIMIT 1',
+            [':id' => $id]
+        );
+    }
+
+    /**
+     * Catálogos con vínculo aprobado para una valoración de prestación. Da el
+     * ámbito de autorización sin ampliar los grants ni crear permisos nuevos.
+     *
+     * @return list<string>
+     */
+    public static function catalogCodesForPrestacionValuation(int $valuationId): array
+    {
+        if (!self::hasTransversalSchema() || $valuationId <= 0) {
+            return [];
+        }
+
+        $rows = self::fetchAll(
+            'SELECT DISTINCT pc.catalog_code
+               FROM public.os_uvr_prestacion_valuation v
+               JOIN public.os_prestacion_codigo pc ON pc.prestacion_id = v.prestacion_id
+              WHERE v.id = :id
+                AND pc.review_status IN (\'approved\', \'deprecated\')
+              ORDER BY pc.catalog_code',
+            [':id' => $valuationId]
+        );
+        $codes = [];
+
+        foreach ($rows as $row) {
+            $code = (string) ($row['catalog_code'] ?? '');
+            if ($code !== '') {
+                $codes[] = $code;
+            }
+        }
+
+        return $codes;
+    }
+
     /** @return list<array<string, mixed>> */
     public static function valuations(): array
     {
@@ -93,7 +357,7 @@ final class UvrRepository
     {
         return self::fetchAll(
             'SELECT r.id AS request_id, r.subject_id, r.request_type,
-                    r.review_status, r.requested_by, r.created_at,
+                    r.proposed_change, r.review_status, r.requested_by, r.created_at,
                     (SELECT count(*) FROM public.os_governance_review rv
                       WHERE rv.request_id = r.id AND rv.outcome = :outcome) AS pending_reviews
                FROM public.os_governance_request r

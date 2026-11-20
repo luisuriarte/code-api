@@ -148,6 +148,39 @@ final class AdminUvrController
             }
         }
 
+        $service = self::service();
+        $transversal = $service->transversal();
+        $prestaciones = [];
+        $profiles = [];
+        $profileComponents = [];
+
+        try {
+            if ($transversal && $catalogCode !== '' && $itemId > 0) {
+                $prestaciones = $service->linkedPrestaciones($itemId, $catalogCode, $current);
+            }
+            if ($transversal) {
+                $profiles = $service->profiles($current);
+
+                foreach ($profiles as $profile) {
+                    $profileId = (int) ($profile['id'] ?? 0);
+                    $components = [];
+
+                    foreach ($service->profileComponents($profileId, $current) as $type => $state) {
+                        if ($state === 'applicable') {
+                            $components[] = (string) $type;
+                        }
+                    }
+
+                    $profileComponents[$profileId] = implode(',', $components);
+                }
+            }
+        } catch (RepositoryException) {
+            $prestaciones = [];
+        } catch (UvrGovernanceException $exception) {
+            self::guardDenied($current, $exception);
+            $prestaciones = [];
+        }
+
         self::render('admin/uvr/proposals', 'C', '/admin/uvr/proposals', $current, [
             'proposals' => $proposals,
             'catalogs' => $catalogs,
@@ -158,6 +191,10 @@ final class AdminUvrController
             'selectedItem' => $selectedItem,
             'itemError' => $itemError,
             'prefill' => $prefill,
+            'transversal' => $transversal,
+            'prestaciones' => $prestaciones,
+            'profiles' => $profiles,
+            'profileComponents' => $profileComponents,
         ]);
     }
 
@@ -425,8 +462,9 @@ final class AdminUvrController
     {
         $keys = [
             'catalog', 'q', 'service_item_id', 'release_id', 'version_tag', 'methodology',
-            'source_reference', 'evaluated_at', 'valid_from', 'valid_to',
-            'review_role', 'rationale', 'outcome', 'evidence_reference',
+            'prestacion_id', 'profile_id', 'source_reference', 'evaluated_at',
+            'valid_from', 'valid_to', 'review_role', 'rationale', 'outcome',
+            'evidence_reference',
         ];
         $values = [];
 

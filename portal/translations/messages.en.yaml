@@ -779,6 +779,17 @@ browse:
     uvr_empty: "No verified UVR values are loaded for this concept. No estimated values are shown."
     uvr_scope_title: "Not a fee schedule:"
     uvr_scope_notice: "UVR is a relative valuation. Amounts, copayments and conditions depend on payer contracts and are consulted in a separate module."
+    uvr_published_title: "Published UVR valuation"
+    uvr_published_note: "Only published valuations linked to this code with an approved profile are shown. The reference amount is derived solely from approved conversions."
+    uvr_published_profile: "Profile and version"
+    uvr_published_components: "Applicable components"
+    uvr_published_total: "Total UVR"
+    uvr_published_importe: "Reference amount"
+    uvr_published_validity: "Validity"
+    uvr_published_no_conversion: "No approved conversion"
+    uvr_work: "Professional work"
+    uvr_practice: "Practice expenses"
+    uvr_liability: "Professional liability"
     relation_filter_all: "All"
     relation_filter_type: "Filter by type"
     relation_filter_system: "Filter by system"
@@ -1504,7 +1515,13 @@ admin:
         no_conversion: 'No approved conversion'
         estimated_note: 'Estimate; not a fee.'
         publish: 'Publish'
-        catalogs_note: 'UVR proposals apply only to items in the eligible catalog; no new catalogs are created.'
+        catalogs_note: 'UVR proposals apply to valuable procedures linked to the code; no new catalogs are created.'
+        transversal_note: 'The valuation is linked to a validated procedure and profile. The profile defines which components apply.'
+        prestacion: 'Reference procedure'
+        prestacion_none: 'No valuable procedures are linked to this code. Link one before proposing UVR.'
+        profile: 'Valuation profile'
+        profile_components_note: 'Only components applicable to the selected profile are shown.'
+        methodology_from_profile: 'Methodology is taken from the selected profile. Do not enter it manually.'
         col_catalog: 'Code'
         col_name: 'Name'
         col_short: 'Short name'

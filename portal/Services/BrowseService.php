@@ -155,6 +155,15 @@ final class BrowseService
             $sections = $emptySections;
         }
 
+        // U7-D: la ficha pública solo puede mostrar valoraciones publicadas y
+        // vinculadas al código. La vista filtra estados; aquí no se consultan
+        // tablas base ni se calcula estimated_payment.
+        $itemId = ctype_digit((string) ($item['source_id'] ?? '')) ? (int) $item['source_id'] : 0;
+        $itemCatalog = (string) ($item['catalog_code'] ?? '');
+        $sections['uvr'] = $itemId > 0 && $itemCatalog !== ''
+            ? \OrigenSalud\Portal\Repositories\UvrPublicRepository::publishedForItem($itemId, $itemCatalog)
+            : [];
+
         $response = ['ok' => true, 'error' => null, 'item' => $item, 'sections' => $sections];
         self::$detailCache[$cacheKey] = ['time' => time(), 'value' => $response];
 
@@ -316,6 +325,7 @@ final class BrowseService
             'validity' => [],
             'clinical' => [],
             'trace' => [],
+            'uvr' => [],
         ];
     }
 

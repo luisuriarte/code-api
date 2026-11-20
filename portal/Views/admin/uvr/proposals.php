@@ -10,6 +10,10 @@ declare(strict_types=1);
 /** @var int $itemId */
 /** @var array<string, mixed>|null $selectedItem */
 /** @var bool $itemError */
+/** @var bool $transversal */
+/** @var list<array<string, mixed>> $prestaciones */
+/** @var list<array<string, mixed>> $profiles */
+/** @var array<int, string> $profileComponents */
 
 require __DIR__ . '/_nav.php';
 
@@ -27,6 +31,10 @@ $uvrComponents = [
     'practice_expense' => 'admin.uvr.practice',
     'professional_liability' => 'admin.uvr.liability',
 ];
+$uvrTransversal = (bool) ($transversal ?? false);
+$uvrPrestaciones = is_array($prestaciones ?? null) ? $prestaciones : [];
+$uvrProfiles = is_array($profiles ?? null) ? $profiles : [];
+$uvrProfileComponents = is_array($profileComponents ?? null) ? $profileComponents : [];
 $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
     $params = ['catalog' => $catalogCode, 'item' => $id];
 
@@ -120,7 +128,17 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
             </div>
 
             <?php if ($selectedItem !== null): ?>
-                <form method="post" action="/admin/uvr/proposals" class="mt-5 space-y-5 border-t border-line pt-5">
+                <form method="post" action="/admin/uvr/proposals" class="mt-5 space-y-5 border-t border-line pt-5"
+                      x-data="{
+                          selectedComponents() {
+                              const select = this.$refs.profile;
+                              if (!select || !select.value || !select.selectedOptions[0]) {
+                                  return 'work,practice_expense,professional_liability';
+                              }
+                              return (select.selectedOptions[0].dataset.components || '').split(',');
+                          },
+                          allowed(type) { return this.selectedComponents().includes(type); }
+                      }">
                     <input type="hidden" name="<?= e(\OrigenSalud\Portal\Services\Csrf::FIELD) ?>"
                            value="<?= e(\OrigenSalud\Portal\Services\Csrf::token()) ?>">
                     <input type="hidden" name="catalog" value="<?= e($catalogCode) ?>">
@@ -136,6 +154,51 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
                         <p class="text-xs text-muted"><?= e($catalogCode) ?></p>
                     </div>
 
+                    <?php if ($uvrTransversal): ?>
+                        <p class="ui-subtitle"><?= e($t('admin.uvr.transversal_note')) ?></p>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label for="uvr-prestacion" class="ui-label"><?= e($t('admin.uvr.prestacion')) ?></label>
+                                <select id="uvr-prestacion" name="prestacion_id" required class="ui-input">
+                                    <option value=""><?= e($t('admin.catalogs.select_title')) ?></option>
+                                    <?php foreach ($uvrPrestaciones as $prestacion): ?>
+                                        <?php $prestacionId = (int) ($prestacion['id'] ?? 0); ?>
+                                        <option value="<?= $prestacionId ?>"
+                                            <?= $uvrValue('prestacion_id') === (string) $prestacionId ? 'selected' : '' ?>>
+                                            <?= e((string) ($prestacion['display_name'] ?? '')) ?>
+                                            · <?= e((string) ($prestacion['code'] ?? '')) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if ($uvrPrestaciones === []): ?>
+                                    <p class="form-note"><?= e($t('admin.uvr.prestacion_none')) ?></p>
+                                <?php endif; ?>
+                            </div>
+                            <div>
+                                <label for="uvr-profile" class="ui-label"><?= e($t('admin.uvr.profile')) ?></label>
+                                <select id="uvr-profile" name="profile_id" x-ref="profile" required class="ui-input">
+                                    <option value=""><?= e($t('admin.catalogs.select_title')) ?></option>
+                                    <?php foreach ($uvrProfiles as $profile): ?>
+                                        <?php
+                                        $profileId = (int) ($profile['id'] ?? 0);
+                                        $profileComponentsValue = (string) ($uvrProfileComponents[$profileId] ?? '');
+                                        ?>
+                                        <option value="<?= $profileId ?>"
+                                                data-components="<?= e($profileComponentsValue) ?>"
+                                            <?= $uvrValue('profile_id') === (string) $profileId ? 'selected' : '' ?>>
+                                            <?= e((string) ($profile['name'] ?? '')) ?>
+                                            · <?= e((string) ($profile['version_tag'] ?? '')) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="form-note"><?= e($t('admin.uvr.profile_components_note')) ?></p>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <input type="hidden" name="prestacion_id" value="">
+                        <input type="hidden" name="profile_id" value="">
+                    <?php endif; ?>
+
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
                             <label for="uvr-release" class="ui-label"><?= e($t('admin.uvr.col_release')) ?></label>
@@ -147,11 +210,18 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
                             <input id="uvr-version" type="text" name="version_tag" required maxlength="50"
                                    value="<?= $uvrValue('version_tag') ?>" class="ui-input">
                         </div>
-                        <div>
-                            <label for="uvr-methodology" class="ui-label"><?= e($t('admin.uvr.methodology')) ?></label>
-                            <input id="uvr-methodology" type="text" name="methodology" required maxlength="120"
-                                   value="<?= $uvrValue('methodology') ?>" class="ui-input">
-                        </div>
+                        <?php if ($uvrTransversal): ?>
+                            <div class="sm:col-span-2">
+                                <p class="ui-subtitle"><?= e($t('admin.uvr.methodology_from_profile')) ?></p>
+                                <input type="hidden" name="methodology" value="">
+                            </div>
+                        <?php else: ?>
+                            <div>
+                                <label for="uvr-methodology" class="ui-label"><?= e($t('admin.uvr.methodology')) ?></label>
+                                <input id="uvr-methodology" type="text" name="methodology" required maxlength="120"
+                                       value="<?= $uvrValue('methodology') ?>" class="ui-input">
+                            </div>
+                        <?php endif; ?>
                         <div class="sm:col-span-2">
                             <label for="uvr-source" class="ui-label"><?= e($t('admin.uvr.col_source')) ?></label>
                             <textarea id="uvr-source" name="source_reference" required rows="2" maxlength="2000"
@@ -179,7 +249,8 @@ $uvrStepHref = static function (int $id) use ($catalogCode, $query): string {
                         <div class="space-y-4">
                             <?php foreach ($uvrComponents as $type => $label): ?>
                                 <?php $componentKey = e($type); ?>
-                                <div class="rounded-xl border border-line bg-white p-4">
+                                <div class="rounded-xl border border-line bg-white p-4"
+                                    <?= $uvrTransversal ? "x-show=\"allowed('" . $componentKey . "')\"" : '' ?>>
                                     <p class="mb-3 text-sm font-semibold text-ink"><?= e($t($label)) ?></p>
                                     <div class="grid gap-3 sm:grid-cols-2">
                                         <div>

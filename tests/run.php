@@ -209,8 +209,8 @@ $sqlFiles = array_values(array_filter(
         && !str_contains(basename($f), 'correcion_')
 ));
 $check(
-    count($sqlFiles) === 11,
-    'Deben existir once artefactos SQL propuestos (Fases 3, 8, 10, 11, gestión UVR y gestión de catálogos).'
+    count($sqlFiles) === 12,
+    'Deben existir doce artefactos SQL propuestos (Fases 3, 8, 10, 11, gestión UVR, gestión de catálogos y U7-B).'
 );
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
@@ -221,6 +221,64 @@ foreach ($sqlFiles as $file) {
     $check(!preg_match('/\bDROP\s+COLUMN\b/i', $sql), $name . ' no debe DROP COLUMN.');
     $check(!preg_match('/\bTRUNCATE\b/i', $sql), $name . ' no debe TRUNCATE.');
     $check(!preg_match('/\bDELETE\s+FROM\b/i', $sql), $name . ' no debe DELETE FROM.');
+}
+
+// 3a. U7-B/C/D: migración preparada, vista pública y panel sin catálogo fijo.
+$u7Sql = (string) file_get_contents($sqlDir . '/uvr_transversal_prestaciones.sql');
+foreach ([
+    'os_prestacion',
+    'os_prestacion_codigo',
+    'os_uvr_profile',
+    'os_uvr_profile_component',
+    'os_uvr_prestacion_valuation',
+    'os_uvr_prestacion_component',
+] as $u7Table) {
+    $check(
+        str_contains($u7Sql, 'CREATE TABLE IF NOT EXISTS public.' . $u7Table),
+        'U7-B debe crear ' . $u7Table . '.'
+    );
+}
+$check(
+    str_contains($u7Sql, 'CREATE OR REPLACE VIEW public.v_os_uvr_prestacion_public'),
+    'U7-B debe crear la vista pública filtrada.'
+);
+$check(str_contains($u7Sql, 'importe_referencial'), 'U7-B debe derivar el importe referencial.');
+$check(!str_contains($u7Sql, 'estimated_payment'), 'U7-B no debe exponer estimated_payment.');
+$check(str_contains($u7Sql, 'FROM PUBLIC'), 'U7-B debe revocar privilegios a PUBLIC.');
+$check(str_contains($u7Sql, "to_regrole('origen_med')"), 'U7-B debe conceder solo la vista al portal.');
+$check(!preg_match('/\bGRANT\s+ALL\b/i', $u7Sql), 'U7-B no debe usar GRANT ALL.');
+$u7Verify = (string) file_get_contents($sqlDir . '/verificacion_uvr_transversal.sql');
+$check(
+    str_contains($u7Verify, 'BEGIN READ ONLY;') && str_contains($u7Verify, 'ROLLBACK;'),
+    'U7-B debe verificarse solo con BEGIN READ ONLY / ROLLBACK.'
+);
+$u7PublicRepository = (string) file_get_contents(
+    $root . '/portal/Repositories/UvrPublicRepository.php'
+);
+$check(
+    str_contains($u7PublicRepository, 'public.v_os_uvr_prestacion_public'),
+    'U7-D solo debe leer la vista pública.'
+);
+$check(
+    str_contains($u7PublicRepository, "to_regclass('public.v_os_uvr_prestacion_public')"),
+    'U7-D debe detectar la vista antes de consultarla.'
+);
+$check(!str_contains($u7PublicRepository, 'estimated_payment'), 'U7-D no debe exponer estimated_payment.');
+$u7Service = (string) file_get_contents($root . '/portal/Admin/UvrGovernanceService.php');
+$check(!str_contains($u7Service, 'private const CATALOG_CODE'), 'U7-C no debe fijar un catálogo único.');
+$check(str_contains($u7Service, 'LEGACY_CATALOG_CODE'), 'U7-C debe conservar el legado como fallback.');
+foreach ([
+    'prestacion_id', 'profile_id', 'proposalCatalog',
+    'visibleCatalogCodes', 'requireAnyCatalog', 'anyVisible',
+] as $u7ServiceToken) {
+    $check(str_contains($u7Service, $u7ServiceToken), 'U7-C debe gestionar ' . $u7ServiceToken . '.');
+}
+$u7ProposalView = (string) file_get_contents($root . '/portal/Views/admin/uvr/proposals.php');
+foreach (['service_item_id', 'prestacion_id', 'profile_id'] as $u7FormField) {
+    $check(
+        str_contains($u7ProposalView, 'name="' . $u7FormField . '"'),
+        'U7-C debe enviar ' . $u7FormField . ' en la propuesta.'
+    );
 }
 
 $uvrSql = (string) file_get_contents($sqlDir . '/fase6_uvr.sql');

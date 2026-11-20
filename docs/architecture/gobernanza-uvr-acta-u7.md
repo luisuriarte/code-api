@@ -75,14 +75,21 @@ no en esta acta:
 5. `methodology` es texto libre, sin versión ni aprobación de perfil.
 6. La revisión por especialidad no tiene ámbito por perfil metodológico.
 
-## 5. Fases posteriores (requieren autorización nueva)
+## 5. Fases posteriores (aprobadas para implementación)
+
+El responsable aprobó U7-B/C/D el 2026-11-20. La aprobación habilita preparar
+artefactos y código, **no ejecutar SQL, publicar ni desplegar**: la migración y
+su verificación quedan a cargo del responsable de la base, con backup verificado.
 
 | Fase | Contenido | Estado |
 |---|---|---|
 | U7-A | Esta acta y la referencia documental. Sin SQL. | **Aprobada y aplicada.** |
-| U7-B | SQL aditivo: cuatro entidades del §3, REVOKE por tabla, grants puntuales a `origen_admin`, auditoría append-only. Sin `UPDATE` al legado ni `ALTER DEFAULT PRIVILEGES`. | No autorizada. |
-| U7-C | PHP del panel: quitar `CATALOG_CODE`, perfil + prestación, validación por prestación, ámbito por grants. | No autorizada. |
-| U7-D | Exposición pública o FHIR de la prestación valorada. | No autorizada. |
+| U7-B | SQL aditivo: seis entidades del §3, vista derivada, vista pública, REVOKE por tabla, grants puntuales a `origen_admin` y `origen_med`, auditoría append-only. Sin `UPDATE` al legado ni `ALTER DEFAULT PRIVILEGES`. | **Aprobada; artefacto preparado, no ejecutado.** |
+| U7-C | PHP del panel: quitar `CATALOG_CODE` fijo, perfil + prestación, validación por prestación, ámbito por grants. Conserva fallback a U0–U6 cuando U7-B no está aplicado. | **Aprobada; implementada con detección de esquema, no desplegada.** |
+| U7-D | Exposición pública/Browse de la prestación valorada, sin `/v1/uvr` ni `/fhir/*`. `estimated_payment` nunca se expone; el importe visible es `importe_referencial`. | **Aprobada; implementada con vista filtrada, no desplegada.** |
 
-Mientras U7-B/C no se autoricen, el panel sigue operando con los datos vigentes
-(`dentar-pr` como único catálogo elegible), respetando íntegramente U0–U6.
+Hasta que el responsable aplique U7-B, el panel sigue operando con los datos
+vigentes (`dentar-pr` como único catálogo elegible), respetando íntegramente
+U0–U6. La detección de esquema evita consultar tablas inexistentes; cuando U7-B
+esté aplicado, la elegibilidad pasa a ser por prestación vinculada al código y
+se respetan los grants por catálogo sin crear permisos nuevos.

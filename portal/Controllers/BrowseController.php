@@ -217,6 +217,7 @@ final class BrowseController
                 'validity' => [],
                 'clinical' => [],
                 'trace' => [],
+                'uvr' => [],
             ],
         ];
     }

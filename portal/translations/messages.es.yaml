@@ -345,6 +345,21 @@ browse:
     relation_used_in_combination_with: "Usado en combinación con"
     role_outgoing: "Relación saliente"
     role_incoming: "Relación entrante"
+    uvr_formula: "La valoración UVR, cuando la fuente la publica, se deriva como trabajo profesional + gastos de prestación + responsabilidad profesional. La conversión monetaria se presenta por separado y solo con tasas verificables."
+    uvr_empty: "No hay valores UVR verificados cargados para este concepto. No se muestran valores estimados."
+    uvr_scope_title: "No es un arancel:"
+    uvr_scope_notice: "UVR es valoración relativa. Los importes, copagos y condiciones dependen de contratos de financiadores y se consultan en un módulo independiente."
+    uvr_published_title: "Valoración UVR publicada"
+    uvr_published_note: "Solo se muestran valoraciones publicadas, vinculadas al código y con perfil aprobado. El importe referencial se deriva únicamente de conversiones aprobadas."
+    uvr_published_profile: "Perfil y versión"
+    uvr_published_components: "Componentes aplicables"
+    uvr_published_total: "Total UVR"
+    uvr_published_importe: "Importe referencial"
+    uvr_published_validity: "Vigencia"
+    uvr_published_no_conversion: "Sin conversión aprobada"
+    uvr_work: "Trabajo profesional"
+    uvr_practice: "Gastos de prestación"
+    uvr_liability: "Responsabilidad profesional"
 
 dentar:
     meta_title: "DENTAR | Catálogo Argentino de Procedimientos Odontológicos"
@@ -772,7 +787,13 @@ admin:
         no_conversion: 'Sin conversión aprobada'
         estimated_note: 'Estimación; no es arancel.'
         publish: 'Publicar'
-        catalogs_note: 'La propuesta UVR aplica solo a prestaciones del catálogo elegible; no se crean catálogos nuevos.'
+        catalogs_note: 'La propuesta UVR aplica a prestaciones valorables vinculadas al código; no se crean catálogos nuevos.'
+        transversal_note: 'La valoración se asocia a una prestación y a un perfil validados. El perfil define qué componentes aplican.'
+        prestacion: 'Prestación de referencia'
+        prestacion_none: 'No hay prestaciones valorables vinculadas a este código. Vincule una prestación antes de proponer UVR.'
+        profile: 'Perfil de valoración'
+        profile_components_note: 'Solo se muestran los componentes aplicables del perfil elegido.'
+        methodology_from_profile: 'La metodología se toma del perfil elegido. No se carga a mano.'
         col_catalog: 'Código'
         col_name: 'Nombre'
         col_short: 'Nombre corto'
