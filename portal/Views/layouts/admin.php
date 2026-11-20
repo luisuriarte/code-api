@@ -52,6 +52,7 @@ $adminNav = [
 <a class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
     href="#main"><?= e($t('a11y.skip')) ?></a>
 
+<?php if (!empty($adminUser)): ?>
 <!-- Navegación lateral -->
 <div x-show="sidebarOpen"
      x-cloak
@@ -108,15 +109,18 @@ $adminNav = [
     </div>
     <?php endif; ?>
 </aside>
+<?php endif; ?>
 
-<div class="min-h-screen lg:pl-72">
+<div class="min-h-screen <?= !empty($adminUser) ? 'lg:pl-72' : '' ?>">
     <header class="sticky top-0 z-30 border-b border-line bg-white/90 backdrop-blur">
         <div class="mx-auto flex h-16 max-w-[1400px] items-center gap-3 px-4 sm:px-6 lg:px-8">
+            <?php if (!empty($adminUser)): ?>
             <button type="button" @click="sidebarOpen = true"
                     class="rounded-xl border border-line p-2 text-ink-soft transition hover:border-teal hover:text-teal-dark lg:hidden"
                     aria-label="<?= e($t('admin.nav')) ?>">
                 <i data-lucide="menu" class="h-5 w-5"></i>
             </button>
+            <?php endif; ?>
 
             <div class="min-w-0 flex-1">
                 <p class="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"><?= e($t('admin.brand')) ?></p>
@@ -143,11 +147,12 @@ $adminNav = [
                 </form>
                 <?php endif; ?>
 
-                <form method="post" action="/admin/logout" class="hidden sm:block">
+                <form method="post" action="/admin/logout">
                     <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e(Csrf::token()) ?>">
-                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-ghost">
+                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-ghost"
+                            aria-label="<?= e($t('admin.logout')) ?>">
                         <i data-lucide="log-out" class="h-4 w-4"></i>
-                        <span><?= e($t('admin.logout')) ?></span>
+                        <span class="hidden sm:inline"><?= e($t('admin.logout')) ?></span>
                     </button>
                 </form>
             <?php endif; ?>
@@ -156,6 +161,7 @@ $adminNav = [
                 <button type="button" id="admin-language-button"
                         data-dropdown-toggle="admin-language-menu"
                         data-dropdown-placement="bottom-end"
+                        aria-label="<?= e($t('lang.label')) ?>"
                         class="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-soft transition hover:border-teal hover:text-teal-dark">
                     <i data-lucide="languages" class="h-4 w-4"></i>
                     <?= e(strtoupper($locale)) ?>
