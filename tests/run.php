@@ -208,7 +208,7 @@ $sqlFiles = array_values(array_filter(
     static fn (string $f): bool => !str_contains(basename($f), 'verificacion_')
         && !str_contains(basename($f), 'correcion_')
 ));
-$check(count($sqlFiles) === 7, 'Deben existir siete artefactos SQL propuestos (incluidas las Fases 3 y 8).');
+$check(count($sqlFiles) === 8, 'Deben existir ocho artefactos SQL propuestos (incluidas las Fases 3, 8 y 10).');
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
     $name = basename($file);
@@ -709,6 +709,73 @@ $check(
         && str_contains($architectureRaw, '0 catálogos reales'),
     'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 8.'
 );
+
+// 3i. Fase 10 del §16: catálogos generales OS-* con familia OS-PRODUCTS.
+$fase10Path = $sqlDir . '/fase10_catalogos_os.sql';
+$fase10VerifyPath = $sqlDir . '/verificacion_fase10.sql';
+$check(is_file($fase10Path), 'Debe existir la migración OS-PRODUCTS de la Fase 10.');
+$check(is_file($fase10VerifyPath), 'Debe existir la verificación OS-PRODUCTS de la Fase 10.');
+if (is_file($fase10Path)) {
+    $fase10Sql = (string) file_get_contents($fase10Path);
+    $check(
+        str_contains($fase10Sql, 'CREATE TABLE IF NOT EXISTS os_product_class')
+            && str_contains($fase10Sql, 'CREATE TABLE IF NOT EXISTS os_product_family_reservation')
+            && str_contains($fase10Sql, "('consumable'),")
+            && str_contains($fase10Sql, "('medicine'),")
+            && str_contains($fase10Sql, "('device'),")
+            && str_contains($fase10Sql, "('equipment'),")
+            && str_contains($fase10Sql, "('implant')"),
+        'Fase 10 debe crear la familia OS-PRODUCTS con las cinco clases documentadas.'
+    );
+    $check(
+        str_contains($fase10Sql, "('OS-PRODUCTS', 'family'")
+            && str_contains($fase10Sql, "('OS-INS',")
+            && str_contains($fase10Sql, "('OS-PROD',")
+            && str_contains($fase10Sql, "('OS-MED',")
+            && str_contains($fase10Sql, "('OS-DIS',")
+            && str_contains($fase10Sql, "('OS-EQP',")
+            && str_contains($fase10Sql, "('OS-IMPL',"),
+        'Fase 10 debe registrar la familia y las seis etiquetas OS-* reservadas.'
+    );
+    $check(
+        str_contains($fase10Sql, "DEFAULT 'unreviewed'")
+            && str_contains($fase10Sql, 'source_reference TEXT NOT NULL')
+            && str_contains($fase10Sql, 'catalog_id INT REFERENCES os_catalog(id) ON DELETE SET NULL')
+            && str_contains($fase10Sql, 'trg_os_product_family_reservation_publication')
+            && str_contains($fase10Sql, 'is_publication_allowed'),
+        'Fase 10 debe exigir gobernanza e impedir catálogos sin aprobación.'
+    );
+    $check(
+        !preg_match('/INSERT\s+INTO\s+os_catalog\b/i', $fase10Sql)
+            && !preg_match('/INSERT\s+INTO\s+os_catalog_item\b/i', $fase10Sql)
+            && !preg_match('/INSERT\s+INTO\s+os_catalog_release\b/i', $fase10Sql),
+        'Fase 10 no debe crear catálogos reales, ítems ni releases.'
+    );
+    $check(
+        str_contains($fase10Sql, 'REVOKE ALL PRIVILEGES ON TABLE')
+            && str_contains($fase10Sql, 'public.os_product_class')
+            && str_contains($fase10Sql, 'public.os_product_family_reservation')
+            && str_contains($fase10Sql, 'FROM PUBLIC')
+            && str_contains($fase10Sql, 'FROM origen_admin'),
+        'Fase 10 debe revocar el DEFAULT ACL sobre sus dos tablas nuevas.'
+    );
+}
+if (is_file($fase10VerifyPath)) {
+    $fase10Verify = (string) file_get_contents($fase10VerifyPath);
+    $check(
+        str_contains($fase10Verify, 'BEGIN READ ONLY;') && str_contains($fase10Verify, 'ROLLBACK;'),
+        'La verificación de Fase 10 debe ser de solo lectura.'
+    );
+    $check(
+        str_contains($fase10Verify, 'os_catalog_reservation')
+            && str_contains($fase10Verify, "c.code LIKE 'OS-%'")
+            && str_contains($fase10Verify, "grantee IN ('origen_admin', 'PUBLIC')")
+            && str_contains($fase10Verify, '(SELECT count(*) FROM os_catalog_relation)'),
+        'La verificación de Fase 10 debe comprobar no duplicados, privilegios y regresión.'
+    );
+}
+$check(str_contains($sqlReadme, 'verificacion_fase10.sql'), 'El README SQL debe documentar la verificación de Fase 10.');
+$check(str_contains($sqlReadme, 'Operación de Fase 10'), 'El README SQL debe documentar la operación de Fase 10.');
 
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.
 $relationTypes = [

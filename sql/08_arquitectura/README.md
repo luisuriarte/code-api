@@ -30,6 +30,8 @@ Los nombres de archivo conservan una numeración histórica que **no coincide**
 con la del §16 del documento de arquitectura. Al ejecutar, guíese por la columna
 "Fase §16", no por el número del nombre de archivo. Los nombres no se renombran
 para no romper referencias existentes en `tests/run.php` y en el documento.
+Desde la Fase 10 el número del archivo **sí coincide** con §16: la Fase 9 se
+ejecutó desde otra carpeta, por lo que no hay un script `fase9_*` aquí.
 
 | Archivo | Fase §16 | Objetivo |
 | --- | --- | --- |
@@ -42,6 +44,8 @@ para no romper referencias existentes en `tests/run.php` y en el documento.
 | `fase5_productos.sql` | 6 | Concepto, producto, presentación e identificadores (+ `verificacion_fase6.sql`) |
 | `fase6_uvr.sql` | 7 | Valoración UVR sin valores cargados (+ `verificacion_fase7.sql`) |
 | `fase7_catalogos_reservados.sql` | 8 | Reserva de DENTAR-IN/PD/EQ con gobernanza (+ `verificacion_fase8.sql`) |
+| — | 9 | Nomenclador Odontológico Nacional, ya ejecutado desde `sql/03_dentar/nomenclador_odontologico_nacional.sql` |
+| `fase10_catalogos_os.sql` | 10 | Familia `OS-PRODUCTS` y etiquetas OS-* reservadas (+ `verificacion_fase10.sql`) |
 
 Cada migración es independiente y está envuelta en `BEGIN`/`COMMIT`. Ejecutar
 una por fase, con verificación y backup entre ellas. Los scripts
@@ -418,6 +422,53 @@ guardián de publicación activo (`O`); 0 grantees no deseados; regresión 603/2
 y los tres catálogos publicados intactos. El `NOTICE: trigger ... does not
 exist, skipping` es esperado en la primera ejecución por el
 `DROP TRIGGER IF EXISTS`. **Fase 8 cerrada en base.**
+
+## Operación de Fase 10 (§16): catálogos generales OS-* / OS-PRODUCTS
+
+Autorizada el 2026-11-20 con la familia `OS-PRODUCTS` recomendada en §5.3 y el
+Acta M0. Artefactos: migración `fase10_catalogos_os.sql` y verificación
+`verificacion_fase10.sql` (`BEGIN READ ONLY` / `ROLLBACK`). Requiere la Fase 1 y
+la Fase 8 ejecutadas.
+
+La migración crea **dos tablas nuevas**: `os_product_class` (5 clases
+documentadas: `consumable`, `medicine`, `device`, `equipment`, `implant`) y
+`os_product_family_reservation` (la familia `OS-PRODUCTS` más las seis etiquetas
+reservadas `OS-INS`, `OS-PROD`, `OS-MED`, `OS-DIS`, `OS-EQP` y `OS-IMPL`).
+`OS-PROD` queda sin clase porque §5.3 la describe como etiqueta paraguas que
+solapa con `OS-MED`/`OS-DIS`. **No se crean catálogos reales, ítems ni
+releases**: los siete registros son reservas con `catalog_id = NULL`,
+`review_status = 'unreviewed'` y `source_reference` obligatorio. El trigger
+`trg_os_product_family_reservation_publication` impide vincular un catálogo sin
+aprobación editorial, igual que en la Fase 8. Así se evita duplicar un mismo
+artículo en `OS-INS`, `OS-DIS` y `DENTAR-IN`. API, Browse Codes, Docs y UVR no
+cambian. Se revoca `PUBLIC`/`origen_admin` sobre ambas tablas por el
+`DEFAULT ACL` de `public`.
+
+```bash
+sudo -u postgres pg_dump -Fc origen_codes > origen_codes_pre_fase10.dump
+sudo -u postgres pg_restore -l origen_codes_pre_fase10.dump
+
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/fase10_catalogos_os.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_fase10.sql
+```
+
+Criterios de aceptación: apartado 1 = 2 tablas; apartado 2 = 5 clases; apartado
+3 = 7 reservas (1 familia + 6 etiquetas), 0 con `catalog_id`, 0 sin fuente;
+apartado 4 = 0 catálogos reales y 0 ítems `OS-%`; apartado 5 = 1 constraint y
+trigger activo; apartado 6 = 0 filas; apartado 7 = 0 vinculaciones y 0 catálogos
+reales en ambos bloques; apartado 8 = 603 relaciones, 22 idiomas, 0 solicitudes
+y 0 valoraciones UVR.
+
+**Estado final (2026-11-20): ejecutada y verificada en base.** La migración
+terminó en `COMMIT`: 2 tablas, 5 clases, 7 reservas (1 familia + 6 etiquetas)
+con `review_status = 'unreviewed'`, fuente obligatoria y `catalog_id` nulo;
+`OS-PROD` sin clase, como describe §5.3; 0 catálogos reales y 0 ítems `OS-%`;
+constraint de alcance y guardián activo (`O`); 0 grantees no deseados; 0
+vinculaciones y 0 catálogos reales en ambos bloques DENTAR/OS; regresión
+603/22/0/0. El `NOTICE: trigger ... does not exist, skipping` es esperado en la
+primera ejecución por el `DROP TRIGGER IF EXISTS`. **Fase 10 cerrada en base.**
 
 ## Backup y rollback por fase
 
