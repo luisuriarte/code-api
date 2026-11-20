@@ -29,6 +29,35 @@ $adminPermissions = is_array($current['permissions'] ?? null) ? $current['permis
 $adminContexts = is_array($current['contexts'] ?? null) ? $current['contexts'] : [];
 $adminActiveOrg = $current['active_org_id'] ?? null;
 
+$adminFlags = [
+    'es-AR' => '<svg viewBox="0 0 24 16" class="h-full w-full" aria-hidden="true">'
+        . '<rect width="24" height="16" fill="#74ACDF"/>'
+        . '<rect y="5.3" width="24" height="5.4" fill="#FFFFFF"/>'
+        . '<circle cx="12" cy="8" r="2" fill="#F6B40E"/>'
+        . '</svg>',
+    'en' => '<svg viewBox="0 0 24 16" class="h-full w-full" aria-hidden="true">'
+        . '<rect width="24" height="16" fill="#FFFFFF"/>'
+        . '<rect y="0" width="24" height="1.23" fill="#B22234"/>'
+        . '<rect y="2.46" width="24" height="1.23" fill="#B22234"/>'
+        . '<rect y="4.92" width="24" height="1.23" fill="#B22234"/>'
+        . '<rect y="7.38" width="24" height="1.23" fill="#B22234"/>'
+        . '<rect y="9.84" width="24" height="1.23" fill="#B22234"/>'
+        . '<rect y="12.30" width="24" height="1.23" fill="#B22234"/>'
+        . '<rect y="14.76" width="24" height="1.23" fill="#B22234"/>'
+        . '<rect width="10" height="8.62" fill="#3C3B6E"/>'
+        . '<g fill="#FFFFFF"><circle cx="2" cy="2" r="0.55"/><circle cx="5" cy="2" r="0.55"/><circle cx="8" cy="2" r="0.55"/><circle cx="3.5" cy="4.3" r="0.55"/><circle cx="6.5" cy="4.3" r="0.55"/><circle cx="2" cy="6.6" r="0.55"/><circle cx="5" cy="6.6" r="0.55"/><circle cx="8" cy="6.6" r="0.55"/></g>'
+        . '</svg>',
+    'pt-BR' => '<svg viewBox="0 0 24 16" class="h-full w-full" aria-hidden="true">'
+        . '<rect width="24" height="16" fill="#009B3A"/>'
+        . '<polygon points="12,1.6 22.4,8 12,14.4 1.6,8" fill="#FEDF00"/>'
+        . '<circle cx="12" cy="8" r="3.1" fill="#002776"/>'
+        . '<path d="M9.3 6.6 Q12 8.5 14.7 6.6" fill="none" stroke="#FFFFFF" stroke-width="0.55"/>'
+        . '</svg>',
+];
+$adminFlag = static fn (string $code): string => '<span class="inline-flex h-4 w-6 shrink-0 overflow-hidden rounded-[3px] ring-1 ring-inset ring-black/10">'
+    . ($adminFlags[$code] ?? '')
+    . '</span>';
+
 $adminNav = [
     ['/admin', 'admin.home.title', 'layout-dashboard', null],
     ['/admin/uvr', 'admin.uvr.title', 'scale', 'catalog.view'],
@@ -163,7 +192,7 @@ $adminNav = [
                         data-dropdown-placement="bottom-end"
                         aria-label="<?= e($t('lang.label')) ?>"
                         class="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-soft transition hover:border-teal hover:text-teal-dark">
-                    <i data-lucide="languages" class="h-4 w-4"></i>
+                    <?= $adminFlag($locale) ?>
                     <?= e(strtoupper($locale)) ?>
                     <i data-lucide="chevron-down" class="h-3.5 w-3.5"></i>
                 </button>
@@ -178,10 +207,11 @@ $adminNav = [
                         ?>
                         <li>
                             <a href="<?= e($adminHref) ?>" hreflang="<?= e($adminLocale) ?>"
-                               class="flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide no-underline <?= $adminLocale === $locale ? 'bg-mint text-teal-dark' : 'text-ink-soft hover:bg-paper' ?>"
+                               class="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide no-underline <?= $adminLocale === $locale ? 'bg-mint text-teal-dark' : 'text-ink-soft hover:bg-paper' ?>"
                                <?= $adminLocale === $locale ? 'aria-current="true"' : '' ?>>
-                                <?= e(strtoupper($adminLocale)) ?>
-                                <?php if ($adminLocale === $locale): ?><i data-lucide="check" class="h-3.5 w-3.5"></i><?php endif; ?>
+                                <?= $adminFlag($adminLocale) ?>
+                                <span><?= e(strtoupper($adminLocale)) ?></span>
+                                <?php if ($adminLocale === $locale): ?><i data-lucide="check" class="ml-auto h-3.5 w-3.5"></i><?php endif; ?>
                             </a>
                         </li>
                         <?php endforeach; ?>
