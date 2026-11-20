@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrigenSalud\Portal\Controllers;
 
 use OrigenSalud\Portal\Admin\GovernanceException;
+use OrigenSalud\Portal\Admin\UvrGovernanceException;
 use OrigenSalud\Portal\Repositories\RepositoryException;
 use OrigenSalud\Portal\Services\Csrf;
 use OrigenSalud\Portal\Services\Session;
@@ -43,6 +44,12 @@ final class AdminForm
     {
         if ($exception instanceof GovernanceException) {
             self::fail($redirect, $exception->errorCode, $values);
+
+            return;
+        }
+
+        if ($exception instanceof UvrGovernanceException) {
+            self::fail($redirect, $exception->getMessage(), $values);
 
             return;
         }

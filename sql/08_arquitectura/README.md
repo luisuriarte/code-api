@@ -47,6 +47,7 @@ ejecutó desde otra carpeta, por lo que no hay un script `fase9_*` aquí.
 | — | 9 | Nomenclador Odontológico Nacional, ya ejecutado desde `sql/03_dentar/nomenclador_odontologico_nacional.sql` |
 | `fase10_catalogos_os.sql` | 10 | Familia `OS-PRODUCTS` y etiquetas OS-* reservadas (+ `verificacion_fase10.sql`) |
 | `fase11_integracion_farmacia.sql` | 11 | Integración ANMAT/UDI/GTIN: estructura vacía (+ `verificacion_fase11.sql`) |
+| `uvr_gobernanza_datos.sql` | U0–U6 | Gobernanza UVR aditiva: actores, evidencia, guardián y auditoría (+ `verificacion_uvr_gobernanza.sql`) |
 
 Cada migración es independiente y está envuelta en `BEGIN`/`COMMIT`. Ejecutar
 una por fase, con verificación y backup entre ellas. Los scripts
@@ -519,6 +520,63 @@ verificador se detuvo en el apartado 6 por un error de mi consulta
 (`ORDER BY tabla::text`, alias usado dentro de una expresión); se corrigió a
 `ORDER BY conrelid::regclass::text` y se añadió una prueba de regresión. La base
 no se vio afectada: la verificación era `BEGIN READ ONLY`. **Fase 11 cerrada en base.**
+
+## Operación U0–U6: gobernanza UVR (ejecutada y verificada en base)
+
+Autorizada por el acta `docs/architecture/gobernanza-uvr-acta-u0.md` y el plan
+U0–U6 aprobado. Artefactos: `uvr_gobernanza_datos.sql` y
+`verificacion_uvr_gobernanza.sql` (`BEGIN READ ONLY` / `ROLLBACK`). Requiere las
+fases 1, 5, 7 y 11 ejecutadas y un backup verificado. **El agente no ejecuta SQL:
+la migración la ejecuta el responsable.**
+
+La migración no crea tablas: añade `calculated_by_user_id`,
+`approved_by_user_id` y `published_at` a `os_uvr_valuation`, y
+`is_not_applicable` y `negative_adjustment_evidence` a `os_uvr_component`.
+Sustituye el CHECK antiguo de `value` por uno que exige evidencia para ajustes
+negativos, crea `v_os_uvr_valuation_governed`, el trigger de inmutabilidad, el
+guardián de publicación y la auditoría append-only de las cuatro tablas UVR.
+`total_uvr` y el importe referencial siguen siendo derivados. Los privilegios
+del panel se conceden solo a `origen_admin`, sin tocar el `DEFAULT ACL` global.
+
+```bash
+sudo -u postgres pg_dump -Fc origen_codes > origen_codes_pre_uvr_gobernanza.dump
+sudo -u postgres pg_restore -l origen_codes_pre_uvr_gobernanza.dump
+
+# 1) Verificación PREVIA (solo lectura; debe terminar en ROLLBACK)
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_uvr_gobernanza.sql
+
+# 2) Migración (solo tras backup verificado y verificación previa correcta)
+cd /var/www/html/origen.ar/code-api
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/uvr_gobernanza_datos.sql
+
+# 3) Verificación POSTERIOR (solo lectura)
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_uvr_gobernanza.sql
+```
+
+Criterios de aceptación: columnas gobernadas presentes; 0 columnas
+`total_uvr` en `os_uvr_valuation`; FK a `os_admin.app_user`; CHECK con evidencia
+negativa; triggers de inmutabilidad, publicación y auditoría activos; grants
+solo para `origen_admin` y sin grantees `PUBLIC`; tablas UVR y de gobernanza
+vacías; regresión `603 | 22 | 0 | 0` y legado farmacéutico `9 | 10 | 10 | 40`.
+Los dos valores heredados `3 | 7` (`os_pricing_values`, `os_fee_item`) se
+comprueban en `verificacion_fase7.sql` §8. El `NOTICE: trigger ... does not
+exist, skipping` es esperado por el uso de `DROP TRIGGER IF EXISTS`.
+
+**Estado: ejecutada y verificada en base el 2026-11-20.** La migración terminó
+en `COMMIT` (columnas, vista, restricciones, seis triggers y grants aplicados).
+La primera pasada del verificador se detuvo en el apartado 7 por un error de mi
+consulta: usé `relname` donde `information_schema.role_table_grants` expone
+`table_name`. Se corrigió, se añadió `\pset pager off` y la re-ejecución
+completó los diez apartados con `ROLLBACK`: 12 objetos presentes, 5 columnas,
+0 columnas `total_uvr`, 6 FK, 3 CHECK, 8 triggers, 10 filas de grants para
+`origen_admin`, 0 grantees `PUBLIC` y regresión `603 | 22 | 0 | 0 | 9 | 10 |
+10 | 40`. Detalle en `docs/architecture/gobernanza-uvr-acta-verificacion.md`.
+Las vistas muestran privilegios heredados amplios para `origen_admin`; la
+migración solo concedió `SELECT` y no introdujo `GRANT ALL` ni
+`ALTER DEFAULT PRIVILEGES`. `php tests/run.php` → `OK: 3023 comprobaciones`.
 
 ## Backup y rollback por fase
 

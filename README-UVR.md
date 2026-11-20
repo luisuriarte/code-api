@@ -128,6 +128,14 @@ La prestación tiene una valoración de 4,00 UVR.
 
 Esto significa que, de acuerdo con la metodología de valoración adoptada, requiere cuatro unidades relativas de recursos. No significa que su importe sea cuatro pesos, cuatro dólares ni una cantidad monetaria determinada.
 
+### Precisión y valores especiales (decisión gobernada)
+
+- Los componentes se almacenan con la precisión del modelo (`NUMERIC(12,4)`), la conversión con `NUMERIC(14,6)` y los índices con `NUMERIC(12,6)`.
+- La **presentación pública y administrativa redondea a dos decimales**; el redondeo se aplica al mostrar, nunca sobrescribiendo el valor almacenado.
+- `0` significa «medido cero». La ausencia del componente se representa con un marcador explícito de **no aplicable**, no con `0`.
+- Un ajuste **negativo** solo es admisible cuando existe evidencia escrita que lo justifique y queda registrado en la auditoría. Sin esa evidencia, el componente se rechaza.
+- El importe referencial (`importe_referencial`; `estimated_payment` en el contrato FHIR) se deriva del total por `uvr_value` y se rotula siempre como estimación, nunca como arancel.
+
 ## 5. Cómo se determinan los valores UVR
 
 La asignación de valores no debe realizarse arbitrariamente ni basarse únicamente en la opinión de una persona.
@@ -265,7 +273,7 @@ La valoración geográficamente ajustada se calcularía de la siguiente manera:
 
 `adjusted_practice_expense_uvr = practice_expense_uvr × uvr_geo_practice_expense_index`
 
-`adjusted_professional_liability_uvr = professioniabial_liability_uvr × uvr_geo_professional_liability_index`
+`adjusted_professional_liability_uvr = professional_liability_uvr × uvr_geo_professional_liability_index`
 
 Por lo tanto:
 
@@ -383,6 +391,23 @@ La metodología UVR de Origen Salud comparte con el modelo RBRVS de Medicare la 
 | Ámbito de aplicación | Propuesta de Origen Salud, adaptable por jurisdicción | Programa Medicare de Estados Unidos |
 
 La similitud es conceptual y estructural. Los valores UVR no son equivalentes a los RVU de Medicare y no deben obtenerse mediante una conversión directa.
+
+### Glosario de equivalencias (decisión gobernada)
+
+Los nombres legados se conservan sin renombrar. Esta tabla solo relaciona la
+terminología visible con los campos existentes; no declara equivalencia
+metodológica entre UVR y RVU.
+
+| Denominación visible | Campo UVR vigente | Campos legados intactos |
+|---|---|---|
+| Trabajo profesional | `work_uvr` | `work_rvu` (`sql/02_catalogs/origen_catalog_engine.sql`) |
+| Gastos de prestación | `practice_expense_uvr` | `practice_expense_rvu` (ídem) |
+| Responsabilidad profesional | `professional_liability_uvr` | `malpractice_rvu` (ídem) y `malpractice_uvr` (`sql/03_dentar/dentar_core_and_diagnosis.sql`) |
+| Total UVR (derivado) | `total_uvr` en `v_os_uvr_valuation_total` | `total_rvu` (ídem, legado) |
+| Importe referencial | `importe_referencial` (visible) / `estimated_payment` (interno y FHIR) | Sin campo legado; siempre derivado |
+
+Ninguno de estos campos legados se migra, renombra ni expone en la API pública.
+El importe referencial es una estimación, nunca un arancel ni un pago oficial.
 
 Los valores estadounidenses tampoco deben trasladarse automáticamente a la realidad económica, profesional o sanitaria de otros países.
 

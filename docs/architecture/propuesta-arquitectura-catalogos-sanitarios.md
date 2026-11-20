@@ -732,10 +732,17 @@ valores cargados [REPO]:
 
 | Tabla | Contenido |
 |---|---|
-| `os_uvr_valuation` | `service_item_id`, `release_id`, `methodology`, `source_reference`, `review_status`, `valid_from/to`, `version` |
+| `os_uvr_eligible_catalog` | `catalog_code` (PK), `source_reference`, `is_active` — única semilla: `dentar-pr`. |
+| `os_uvr_valuation` | `service_item_id`, `release_id`, `version_tag`, `methodology`, `source_reference`, `evaluated_at`, `calculated_by`, `review_status`, `valid_from/to` |
 | `os_uvr_component` | `valuation_id`, `component_type`, `value`, `calculation_note` |
-| `os_uvr_conversion` | `uvr_value`, `currency`, `country`, `jurisdiction`, `payer`, `contract`, `period`, `index_reference`, `source_reference` |
-| `os_uvr_geo_index` | `component_type`, `jurisdiction`, `index_value`, `methodology`, `source_reference`, `period` |
+| `os_uvr_conversion` | `uvr_value`, `currency`, `country_code`, `jurisdiction`, `payer`, `contract`, `period_start/end`, `index_reference`, `source_reference` |
+| `os_uvr_geo_index` | `component_type`, `jurisdiction`, `index_value`, `methodology`, `source_reference`, `period_start/end` |
+
+**Estado verificado [REPO]:** las cinco tablas están ejecutadas y verificadas; las cuatro
+de valoración están vacías. `total_uvr` se deriva en
+`v_os_uvr_valuation_total`, nunca se almacena. El importe referencial
+(`importe_referencial`; interno/FHIR: `estimated_payment`) también es derivado y
+se redondea a dos decimales en presentación.
 
 ### 10.3 Reglas duras
 
@@ -781,8 +788,8 @@ se reconcilia después. No existe `/v1/uvr` ni ninguna ruta UVR.
 | Término | `os_catalog_term` por versión e idioma | Existe, sin `UNIQUE` |
 | Relación | Extensión con release de ambos extremos y vigencia | [PROP] |
 | Mapeo | Extensión con versión de sistemas y vigencia | [PROP] |
-| UVR | `os_uvr_valuation` por release/metodología | [PROP], no ejecutado |
-| Conversión | `os_uvr_conversion` por jurisdicción/período | [PROP], no ejecutado |
+| UVR | `os_uvr_valuation` por release/metodología | Ejecutada, vacía (Fase 7) |
+| Conversión | `os_uvr_conversion` por jurisdicción/período | Ejecutada, vacía (Fase 7) |
 
 ### 11.2 Reglas
 

@@ -208,7 +208,10 @@ $sqlFiles = array_values(array_filter(
     static fn (string $f): bool => !str_contains(basename($f), 'verificacion_')
         && !str_contains(basename($f), 'correcion_')
 ));
-$check(count($sqlFiles) === 9, 'Deben existir nueve artefactos SQL propuestos (incluidas las Fases 3, 8, 10 y 11).');
+$check(
+    count($sqlFiles) === 10,
+    'Deben existir diez artefactos SQL propuestos (Fases 3, 8, 10, 11 y gobernanza UVR).'
+);
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
     $name = basename($file);
@@ -1624,6 +1627,131 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $m2Locale) {
     foreach ($m2I18nKeys as $m2Key) {
         $m2Relative = substr($m2Key, strlen('admin.'));
         $check(array_key_exists($m2Relative, $m2Flat), $m2Locale . ': falta la clave ' . $m2Key . '.');
+    }
+}
+
+// Gobernanza UVR (Acta U0 y plan U0–U6).
+$uvrArtifacts = [
+    '/docs/architecture/gobernanza-uvr-acta-u0.md',
+    '/docs/architecture/gobernanza-uvr-acta-verificacion.md',
+    '/docs/architecture/gobernanza-uvr-cierre.md',
+    '/sql/08_arquitectura/uvr_gobernanza_datos.sql',
+    '/sql/08_arquitectura/verificacion_uvr_gobernanza.sql',
+    '/portal/Admin/UvrGovernanceService.php',
+    '/portal/Admin/UvrGovernanceException.php',
+    '/portal/Admin/UvrImporteService.php',
+    '/portal/Repositories/UvrRepository.php',
+    '/portal/Controllers/AdminUvrController.php',
+    '/portal/Views/admin/uvr/_nav.php',
+    '/portal/Views/admin/uvr/index.php',
+    '/portal/Views/admin/uvr/catalogs.php',
+    '/portal/Views/admin/uvr/proposals.php',
+    '/portal/Views/admin/uvr/proposal.php',
+    '/portal/Views/admin/uvr/tasks.php',
+    '/portal/Views/admin/uvr/compare.php',
+    '/portal/Views/admin/uvr/methodologies.php',
+    '/portal/Views/admin/uvr/monetary.php',
+];
+foreach ($uvrArtifacts as $uvrArtifact) {
+    $check(is_file($root . $uvrArtifact), 'Falta el artefacto UVR ' . $uvrArtifact . '.');
+}
+
+$uvrActa = (string) file_get_contents($root . '/docs/architecture/gobernanza-uvr-acta-u0.md');
+for ($uvrConflict = 1; $uvrConflict <= 12; $uvrConflict++) {
+    $check(str_contains($uvrActa, 'C' . $uvrConflict), 'El acta U0 debe cerrar C' . $uvrConflict . '.');
+}
+$check(str_contains($uvrActa, 'APROBADA') && str_contains($uvrActa, 'importe_referencial'), 'El acta U0 debe aprobar el nombre del importe.');
+$uvrActaVerificacion = (string) file_get_contents($root . '/docs/architecture/gobernanza-uvr-acta-verificacion.md');
+foreach (['COMMIT', 'ROLLBACK', '603 | 22 | 0 | 0 | 9 | 10 | 10 | 40', 'U1 cerrado en base', '0 grantees `PUBLIC`'] as $uvrEvidencia) {
+    $check(str_contains($uvrActaVerificacion, $uvrEvidencia), 'El acta de verificación debe registrar ' . $uvrEvidencia . '.');
+}
+$check(
+    str_contains($uvrActaVerificacion, 'No ejecutada.') || str_contains($uvrActaVerificacion, '**No ejecutada.**'),
+    'El acta de verificación debe dejar la opción de mínimo privilegio como no ejecutada.'
+);
+$uvrReadme = (string) file_get_contents($root . '/README-UVR.md');
+$check(
+    str_contains($uvrReadme, 'Glosario de equivalencias')
+        && str_contains($uvrReadme, 'malpractice_uvr')
+        && str_contains($uvrReadme, 'Responsabilidad profesional'),
+    'README-UVR debe publicar el glosario de equivalencias sin renombrar el legado.'
+);
+
+$uvrMigration = (string) file_get_contents($root . '/sql/08_arquitectura/uvr_gobernanza_datos.sql');
+$uvrMigrationSinComentarios = (string) preg_replace('/^\s*--.*$/m', '', $uvrMigration);
+$check(str_contains($uvrMigration, 'BEGIN;') && str_contains($uvrMigration, 'COMMIT;'), 'La migración UVR debe ser transaccional.');
+foreach (['DROP TABLE', 'DROP COLUMN', 'DROP SCHEMA', 'TRUNCATE', 'DELETE FROM'] as $uvrForbidden) {
+    $check(
+        !preg_match('/\b' . str_replace(' ', '\s+', $uvrForbidden) . '\b/i', $uvrMigrationSinComentarios),
+        'La migración UVR no debe contener ' . $uvrForbidden . '.'
+    );
+}
+$check(!str_contains($uvrMigration, 'ALTER DEFAULT PRIVILEGES'), 'La migración UVR no debe modificar el DEFAULT ACL global.');
+foreach (['REVOKE ALL PRIVILEGES', 'ADD COLUMN IF NOT EXISTS', 'calculated_by_user_id', 'approved_by_user_id', 'is_not_applicable', 'negative_adjustment_evidence', 'os_uvr_assert_publication_ready', 'os_uvr_audit_trigger'] as $uvrSqlPiece) {
+    $check(str_contains($uvrMigration, $uvrSqlPiece), 'La migración UVR debe incluir ' . $uvrSqlPiece . '.');
+}
+$check(
+    !preg_match('/ADD\s+COLUMN[^\n]*total_uvr/i', $uvrMigration),
+    'total_uvr no debe almacenarse como columna.'
+);
+$check(
+    str_contains($uvrMigration, 'is_publication_allowed'),
+    'El guardián debe comprobar os_review_state.is_publication_allowed.'
+);
+$uvrVerify = (string) file_get_contents($root . '/sql/08_arquitectura/verificacion_uvr_gobernanza.sql');
+$check(str_contains($uvrVerify, 'BEGIN READ ONLY;'), 'La verificación UVR debe ser de solo lectura.');
+$check(str_contains($uvrVerify, 'ROLLBACK;'), 'La verificación UVR debe finalizar con ROLLBACK.');
+$check(
+    str_contains($uvrVerify, 'FROM information_schema.role_table_grants')
+        && str_contains($uvrVerify, 'table_name AS objeto')
+        && !str_contains($uvrVerify, 'relname AS objeto'),
+    'La verificación UVR debe usar table_name en information_schema.role_table_grants.'
+);
+$check(str_contains($uvrVerify, '\pset pager off'), 'La verificación UVR debe desactivar el paginador de psql.');
+
+$uvrServiceSource = (string) file_get_contents($root . '/portal/Admin/UvrGovernanceService.php');
+$uvrControllerSource = (string) file_get_contents($root . '/portal/Controllers/AdminUvrController.php');
+$uvrRepoSource = (string) file_get_contents($root . '/portal/Repositories/UvrRepository.php');
+$check(count(\OrigenSalud\Portal\Admin\Rbac::PERMISSIONS) === 14, 'La gobernanza UVR no debe crear permisos nuevos.');
+$check(str_contains($uvrServiceSource, 'Rbac::canApprove('), 'La decisión debe usar Rbac::canApprove() en servicio.');
+$check(str_contains($uvrServiceSource, 'UvrImporteService::calcular'), 'El importe debe derivarse en servicio.');
+$check(str_contains($uvrServiceSource, 'clinical') && str_contains($uvrServiceSource, 'economic'), 'Debe haber dos revisiones independientes.');
+$check(str_contains($uvrRepoSource, "set_config('app.actor_id'"), 'La auditoría debe tomar el actor de la sesión.');
+$check(str_contains($uvrControllerSource, 'AdminGuard::require'), 'Las vistas UVR deben pasar por AdminGuard.');
+$check(substr_count($uvrControllerSource, 'AdminForm::validCsrf()') >= 4, 'Los formularios UVR deben validar CSRF.');
+$check(
+    !str_contains($uvrControllerSource, '/v1/uvr') && !str_contains($uvrControllerSource, '/fhir/'),
+    'El panel no debe anunciar rutas de API inexistentes.'
+);
+
+$uvrImporte = \OrigenSalud\Portal\Admin\UvrImporteService::calcular(
+    ['work_uvr' => 2.5, 'practice_expense_uvr' => 1.2, 'professional_liability_uvr' => 0.3],
+    ['uvr_value' => 100, 'currency' => 'ARS', 'review_status' => 'approved']
+);
+$check(is_array($uvrImporte), 'Una conversión aprobada debe producir importe derivado.');
+$check(($uvrImporte['importe_referencial'] ?? null) === '400.00', 'El importe referencial debe redondearse a dos decimales.');
+$check(($uvrImporte['total_uvr'] ?? null) === '4.00', 'El total UVR presentado debe redondearse a dos decimales.');
+$check(($uvrImporte['estimated_payment'] ?? null) === ($uvrImporte['importe_referencial'] ?? null), 'estimated_payment es el alias interno del importe referencial.');
+$check(
+    \OrigenSalud\Portal\Admin\UvrImporteService::calcular(
+        ['work_uvr' => 1],
+        ['uvr_value' => 10, 'currency' => 'ARS', 'review_status' => 'draft']
+    ) === null,
+    'Sin conversión aprobada no debe mostrarse importe.'
+);
+$check(
+    \OrigenSalud\Portal\Admin\UvrImporteService::calcular(['work_uvr' => 1], null) === null,
+    'Sin conversión no debe inventarse importe.'
+);
+
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $uvrLocale) {
+    $uvrMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $uvrLocale . '.yaml');
+    $uvrNode = is_array($uvrMessages['admin']['uvr'] ?? null) ? $uvrMessages['admin']['uvr'] : [];
+    foreach (['title', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'derived_note', 'col_importe'] as $uvrKey) {
+        $check(is_string($uvrNode[$uvrKey] ?? null) && trim($uvrNode[$uvrKey]) !== '', $uvrLocale . ': falta admin.uvr.' . $uvrKey . '.');
+    }
+    foreach (['uvr_proposed', 'uvr_reviewed', 'uvr_decided', 'uvr_published', 'uvr_self_approval_denied'] as $uvrMessageKey) {
+        $check(is_string($uvrMessages['admin']['messages'][$uvrMessageKey] ?? null) || is_string($uvrMessages['admin']['errors'][$uvrMessageKey] ?? null), $uvrLocale . ': falta la clave UVR ' . $uvrMessageKey . '.');
     }
 }
 

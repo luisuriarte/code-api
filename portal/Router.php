@@ -12,6 +12,7 @@ use OrigenSalud\Portal\Controllers\AdminHomeController;
 use OrigenSalud\Portal\Controllers\AdminInvitationController;
 use OrigenSalud\Portal\Controllers\AdminMembershipController;
 use OrigenSalud\Portal\Controllers\AdminOrganizationController;
+use OrigenSalud\Portal\Controllers\AdminUvrController;
 use OrigenSalud\Portal\Controllers\BrowseController;
 use OrigenSalud\Portal\Controllers\ContactController;
 use OrigenSalud\Portal\Controllers\DentarController;
@@ -237,6 +238,10 @@ final class Router
         $first = $segments[0] ?? '';
         $id = isset($segments[1]) && ctype_digit($segments[1]) ? (int) $segments[1] : 0;
 
+        if ($this->uvr($segments, $method)) {
+            return true;
+        }
+
         if ($first === 'organizations' && $id > 0) {
             if ($count === 2) {
                 if ($method === 'GET') {
@@ -355,6 +360,98 @@ final class Router
 
         if ($first === 'context' && $count === 1 && $method === 'POST') {
             AdminContextController::switch();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Gobernanza UVR (vistas A–G). Todas las rutas cuelgan de /admin y pasan
+     * por AdminGuard en el controlador; no se crean rutas /v1 ni /fhir.
+     *
+     * @param list<string> $segments
+     */
+    private function uvr(array $segments, string $method): bool
+    {
+        $count = count($segments);
+
+        if (($segments[0] ?? '') !== 'uvr') {
+            return false;
+        }
+
+        $second = $segments[1] ?? '';
+        $third = $segments[2] ?? '';
+        $fourth = $segments[3] ?? '';
+        $secondId = ctype_digit($second) ? (int) $second : 0;
+        $thirdId = ctype_digit($third) ? (int) $third : 0;
+
+        if ($count === 1 && $method === 'GET') {
+            AdminUvrController::index();
+
+            return true;
+        }
+
+        $staticViews = [
+            'catalogs' => 'catalogs',
+            'tasks' => 'tasks',
+            'compare' => 'compare',
+            'methodologies' => 'methodologies',
+            'monetary' => 'monetary',
+        ];
+
+        if ($count === 2 && $method === 'GET' && isset($staticViews[$second])) {
+            $action = $staticViews[$second];
+            AdminUvrController::$action();
+
+            return true;
+        }
+
+        if ($second === 'proposals') {
+            if ($count === 2) {
+                if ($method === 'GET') {
+                    AdminUvrController::proposals();
+
+                    return true;
+                }
+
+                if ($method === 'POST') {
+                    AdminUvrController::propose();
+
+                    return true;
+                }
+
+                return false;
+            }
+
+            if ($thirdId > 0 && $count === 3 && $method === 'GET') {
+                AdminUvrController::proposal($thirdId);
+
+                return true;
+            }
+
+            if ($thirdId > 0 && $count === 4 && $method === 'POST') {
+                if ($fourth === 'review') {
+                    AdminUvrController::review($thirdId);
+
+                    return true;
+                }
+
+                if ($fourth === 'decide') {
+                    AdminUvrController::decide($thirdId);
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if ($second === 'valuations' && $thirdId > 0 && $count === 4
+            && $fourth === 'publish' && $method === 'POST'
+        ) {
+            AdminUvrController::publish($thirdId);
 
             return true;
         }
