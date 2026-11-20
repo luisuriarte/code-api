@@ -7,7 +7,7 @@ namespace OrigenSalud\Portal\Repositories;
 use PDOException;
 
 /**
- * Acceso de gobernanza a las tablas UVR y a la cadena de gobernanza pública.
+ * Acceso de gestión a las tablas UVR y a la cadena de gestión pública.
  *
  * Usa la conexión administrativa: los privilegios sobre `public.os_uvr_*` y
  * `public.os_governance_*` se conceden de forma explícita en

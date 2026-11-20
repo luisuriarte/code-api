@@ -5,7 +5,10 @@ Esta carpeta contiene DDL **aditivo** derivado de
 
 ## Estado
 
-- **No ejecutados.** No se han aplicado a `origen_codes` ni a ninguna otra base.
+- **Fases 1–10:** no ejecutadas. No se han aplicado a `origen_codes` ni a otra base.
+- **U0–U6 y gestión de catálogos:** `uvr_gobernanza_datos.sql` y
+  `catalogos_gestion_gobernada.sql` fueron aplicados y verificados en
+  `origen_codes` el 2026-11-20. Los verificadores terminaron en `ROLLBACK`.
 - **No contienen datos inventados.** Los únicos `INSERT` son:
   - registros ya existentes en el código (`DOMAINS`/`DOMAIN_CATALOG`), y
   - tipos de relación leídos de `os_catalog_relation` cuando la tabla existe.
@@ -43,11 +46,12 @@ ejecutó desde otra carpeta, por lo que no hay un script `fase9_*` aquí.
 | `fase4_gobernanza.sql` | 5 | Solicitudes, revisiones, decisiones y auditoría (+ `verificacion_fase5.sql`) |
 | `fase5_productos.sql` | 6 | Concepto, producto, presentación e identificadores (+ `verificacion_fase6.sql`) |
 | `fase6_uvr.sql` | 7 | Valoración UVR sin valores cargados (+ `verificacion_fase7.sql`) |
-| `fase7_catalogos_reservados.sql` | 8 | Reserva de DENTAR-IN/PD/EQ con gobernanza (+ `verificacion_fase8.sql`) |
+| `fase7_catalogos_reservados.sql` | 8 | Reserva de DENTAR-IN/PD/EQ con gestión (+ `verificacion_fase8.sql`) |
 | — | 9 | Nomenclador Odontológico Nacional, ya ejecutado desde `sql/03_dentar/nomenclador_odontologico_nacional.sql` |
 | `fase10_catalogos_os.sql` | 10 | Familia `OS-PRODUCTS` y etiquetas OS-* reservadas (+ `verificacion_fase10.sql`) |
 | `fase11_integracion_farmacia.sql` | 11 | Integración ANMAT/UDI/GTIN: estructura vacía (+ `verificacion_fase11.sql`) |
-| `uvr_gobernanza_datos.sql` | U0–U6 | Gobernanza UVR aditiva: actores, evidencia, guardián y auditoría (+ `verificacion_uvr_gobernanza.sql`) |
+| `uvr_gobernanza_datos.sql` | U0–U6 | Gestión UVR aditiva: actores, evidencia, guardián y auditoría (+ `verificacion_uvr_gobernanza.sql`) |
+| `catalogos_gestion_gobernada.sql` | C0–C6 | Aplicador controlado de cambios de catálogo; sin grants de escritura directa (+ `verificacion_catalogos_gestion.sql`). **Aplicado y verificado el 2026-11-20.** |
 
 Cada migración es independiente y está envuelta en `BEGIN`/`COMMIT`. Ejecutar
 una por fase, con verificación y backup entre ellas. Los scripts
@@ -232,7 +236,7 @@ terminó en `COMMIT` (13 columnas, 6 constraints, 2 índices, 2 tablas nuevas y
 en los apartados 6, 8 y 9, 0 huérfanos y **603 relaciones navegables** (decisión
 10), con `column_default = 'draft'`. **Fase 4 cerrada en base.**
 
-## Operación de Fase 5 (§16): gobernanza y auditoría unificadas
+## Operación de Fase 5 (§16): gestión y auditoría unificadas
 
 Autorizada el 2026-11-19. El nombre `fase4_gobernanza.sql` conserva la numeración
 histórica; en §16 corresponde a la **Fase 5**. Artefactos: migración
@@ -394,7 +398,7 @@ códigos ya documentados en §5.1 (`dentar-in`, `dentar-pd`, `dentar-eq`) como
 `os_catalog`, ni releases, categorías, ítems, términos, identificadores ni
 relaciones.** No se inventan códigos `DNT-IN-*`, `DNT-PD-*` ni `DNT-EQ-*`.
 
-La gobernanza propia se refuerza con el trigger
+La gestión propia se refuerza con el trigger
 `trg_os_catalog_reservation_publication`: impide vincular un catálogo real
 mientras `os_review_state.is_publication_allowed` sea falso. La API pública,
 Browse Codes, Docs y UVR no cambian; los tres códigos siguen mostrándose como
@@ -521,7 +525,7 @@ verificador se detuvo en el apartado 6 por un error de mi consulta
 `ORDER BY conrelid::regclass::text` y se añadió una prueba de regresión. La base
 no se vio afectada: la verificación era `BEGIN READ ONLY`. **Fase 11 cerrada en base.**
 
-## Operación U0–U6: gobernanza UVR (ejecutada y verificada en base)
+## Operación U0–U6: gestión UVR (ejecutada y verificada en base)
 
 Autorizada por el acta `docs/architecture/gobernanza-uvr-acta-u0.md` y el plan
 U0–U6 aprobado. Artefactos: `uvr_gobernanza_datos.sql` y
@@ -556,10 +560,10 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
   -f sql/08_arquitectura/verificacion_uvr_gobernanza.sql
 ```
 
-Criterios de aceptación: columnas gobernadas presentes; 0 columnas
+Criterios de aceptación: columnas gestionadas presentes; 0 columnas
 `total_uvr` en `os_uvr_valuation`; FK a `os_admin.app_user`; CHECK con evidencia
 negativa; triggers de inmutabilidad, publicación y auditoría activos; grants
-solo para `origen_admin` y sin grantees `PUBLIC`; tablas UVR y de gobernanza
+solo para `origen_admin` y sin grantees `PUBLIC`; tablas UVR y de gestión
 vacías; regresión `603 | 22 | 0 | 0` y legado farmacéutico `9 | 10 | 10 | 40`.
 Los dos valores heredados `3 | 7` (`os_pricing_values`, `os_fee_item`) se
 comprueban en `verificacion_fase7.sql` §8. El `NOTICE: trigger ... does not
@@ -595,7 +599,7 @@ numeración histórica de los archivos; ver la tabla de alineación más arriba:
 | 3 (§16, i18n) | `DROP TRIGGER trg_ocm_invalidate_fr` y rellenar `os_catalog_language` desde el dump previo (solo si se quiere revertir; la vía principal es restaurar el dump). No crear ni eliminar tablas. |
 | 6 | `DROP TRIGGER trg_os_uvr_valuation_eligible`, `DROP VIEW v_os_uvr_valuation_total`, `DROP FUNCTION os_uvr_assert_eligible_service()`, tablas `os_uvr_geo_index`, `os_uvr_conversion`, `os_uvr_component`, `os_uvr_valuation`, `os_uvr_eligible_catalog`. |
 | 5 | Tablas `os_regulatory_records`, `os_product_manufacturer`, `os_product_identifiers`, `os_product_presentation`, `os_product`, `os_concept`, `os_manufacturer`, más los catálogos de tipos `os_product_identifier_type` y `os_manufacturer_role`. |
-| 4 (§16 = Fase 5 gobernanza) | Triggers `trg_os_governance_*`, `trg_os_audit_log_immutable`, funciones `os_governance_audit_trigger()` y `os_governance_audit_immutable()`, tablas `os_audit_log`, `os_governance_decision`, `os_governance_review`, `os_governance_request`. La vía principal es restaurar el dump. |
+| 4 (§16 = Fase 5 gestión) | Triggers `trg_os_governance_*`, `trg_os_audit_log_immutable`, funciones `os_governance_audit_trigger()` y `os_governance_audit_immutable()`, tablas `os_audit_log`, `os_governance_decision`, `os_governance_review`, `os_governance_request`. La vía principal es restaurar el dump. |
 | 3 (§16 = Fase 4 relaciones) | `ALTER TABLE os_concept_mapping ALTER COLUMN review_status SET DEFAULT 'approved'`; tablas `os_terminology_system_alias`, `os_mapping_metadata`; quitar columnas y constraints `fk_ocr_*`/`ck_ocr_validity` de `os_catalog_relation`. La vía principal es restaurar el dump. |
 | 1 | Tablas `os_review_state`, `os_relation_type`, `os_relation_kind`, `os_domain_registry`. |
 

@@ -101,7 +101,7 @@ referencia [DOC].
    `origen_codes` con datos de prueba y con el corte Fase 13 preparado pero
    **no activo** (`OS_IMPORT_MODE=dual`) [DOC].
 4. **Capa arquitectura propuesta** (`sql/08_arquitectura/fase1..fase6`): DDL para
-   registro de dominios, relaciones/mapeos, gobernanza, productos y UVR.
+   registro de dominios, relaciones/mapeos, gestión, productos y UVR.
    **No ejecutada**; su README prohíbe ejecutarla sin aprobación [REPO].
 
 A esto se suman las páginas standalone `web/docs.php` y `web/uvr.php`, que no
@@ -181,7 +181,7 @@ pasan por `portal/Router.php`.
     `os_catalog.family_code`, `loinc_map.loinc`,
     `vademecum_comercial.anmat_certificado`, `os_translation_review.target_id`,
     `os_localized_text.entity_id` y `os_field_review.target_id`.
-13. **Gobernanza de mapeos degradada.** `os_concept_mapping.review_status` tiene
+13. **Gestión de mapeos degradada.** `os_concept_mapping.review_status` tiene
     `DEFAULT 'approved'` (`engine:130`) y el sync no asigna la columna, así que
     los mapeos entran aprobados sin revisión. El cambio a `draft` quedó incluido
     en `fase3_relaciones_mapeos.sql`, que en §16 es la Fase 4: **ejecutada y
@@ -342,7 +342,7 @@ Relaciones y mapeos tipificados           → os_catalog_relation + metadatos
 Productos, presentaciones, regulatorio    → os_concept → os_product → presentación
 Prestaciones y servicios                  → os_service + componentes/requerimientos
 Valoración relativa y conversión          → os_uvr_*, separado de aranceles
-Gobernanza y auditoría                    → requests, reviews, decisions, audit_log
+Gestión y auditoría                    → requests, reviews, decisions, audit_log
 Proyecciones                              → API REST, portal, OpenAPI, FHIR, exportadores
 ```
 
@@ -533,7 +533,7 @@ dominio.
 
 | Clase | Definición | Ejemplos | Tratamiento |
 |---|---|---|---|
-| Catálogo propio | Gobernado por Origen Salud | DENTAR-PR/DX/AN/CL | Releases, comité, códigos permanentes |
+| Catálogo propio | Gestionado por Origen Salud | DENTAR-PR/DX/AN/CL | Releases, comité, códigos permanentes |
 | Familia propia | Marca paraguas sin códigos propios | DENTAR, futura `OS-PRODUCTS` | `os_catalog` rol `family` |
 | Terminología externa | Propiedad de terceros | SNOMED CT, CIE-10, LOINC | Tablas nativas + licencia + versión oficial |
 | Nomenclador nacional/jurisdiccional | Uso regulatorio o convencional | Nomenclador Argentino, CDT 2025, NN 2025 | Procedencia y vigencia explícitas |
@@ -676,7 +676,7 @@ propuesta `os_mapping_metadata`:
 | `mapping_nature` | unívoco, múltiple, parcial, aproximado |
 | `method` / `confidence_level` | Cómo se obtuvo y cuánto se confía |
 | `source_reference` / `license_reference` | Documentación y licencia |
-| `review_status` / `reviewed_by` / `reviewed_at` | Gobernanza (D-01, D-02) |
+| `review_status` / `reviewed_by` / `reviewed_at` | Gestión (D-01, D-02) |
 | `valid_from` / `valid_to` | Vigencia |
 
 Dual-read: el texto traducido de un mapeo solo se sirve si está `approved`
@@ -1015,7 +1015,7 @@ exponer cualquier `/fhir/*`.
 | `os_pricing_values` vacío y sin FK | Valoración desconectada | Módulo UVR aditivo + FK |
 | `es`→`es-AR` automático | Falsedad idiomática | D-05, D-22, D-27, D-39 |
 | Implementar `/fhir` sin auth | Exposición | Ajustar guardia `/v1/` |
-| Decisiones organizativas §1.6 aún no tomadas | Publicación y gobernanza sobre datos ya verificados | Acta de estado antes de DDL/DML |
+| Decisiones organizativas §1.6 aún no tomadas | Publicación y gestión sobre datos ya verificados | Acta de estado antes de DDL/DML |
 | Documentar pendientes como vigentes | Desinformación | Auditoría Docs/UVR y OpenAPI |
 | Migración sin backup/rollback | Pérdida de datos | Fases aditivas, backups verificados (D-16, D-25) |
 
@@ -1077,14 +1077,14 @@ inválidos (D-34).
 | 2 | Conciliar OpenAPI, READMEs y verificadores; corregir errores de API | **Ejecutada el 2026-11-19**: 17 desvíos corregidos, README reconciliado, expectativa legacy retirada; `php tests/run.php` en verde | Sí (otorgada) |
 | 3 | Completar i18n según el acta de D-01..D-41: `os_catalog_language`, D-31 y corte `OS_IMPORT_MODE` | **Cerrada el 2026-11-19**: D-31 activo, 22 filas sembradas, desempate `es-AR` corregido, apartados 2/3/4/8 en 0 filas y modo `dual` confirmado | Sí (otorgada) |
 | 4 | Relations/mapeos generales | **Cerrada el 2026-11-19**: `fase3_relaciones_mapeos.sql` (nombre histórico) + `verificacion_fase4.sql`; 13 columnas, 6 constraints, 2 índices, 2 tablas nuevas, 603 relaciones intactas y navegables; decisión 10 formalizada sin cambio de código | Sí (otorgada) |
-| 5 | Gobernanza y auditoría unificadas | **Cerrada el 2026-11-20**: `fase4_gobernanza.sql` (nombre histórico) + `verificacion_fase5.sql`; 4 tablas vacías, 4 FK a `os_admin.app_user`, 4 triggers, auditoría append-only y `REVOKE` por DEFAULT ACL, con regresión intacta | Sí (otorgada) |
+| 5 | Gestión y auditoría unificadas | **Cerrada el 2026-11-20**: `fase4_gobernanza.sql` (nombre histórico) + `verificacion_fase5.sql`; 4 tablas vacías, 4 FK a `os_admin.app_user`, 4 triggers, auditoría append-only y `REVOKE` por DEFAULT ACL, con regresión intacta | Sí (otorgada) |
 | 6 | Modelo de productos/presentaciones/identificadores, vacío | **Cerrada el 2026-11-20**: `fase5_productos.sql` (nombre histórico) + `verificacion_fase6.sql`; 9 tablas vacías, 3 tipos de identificador y 4 roles de fabricante, 6 constraints, 4 índices, 0 grantees y regresión 603/22/0; modelo farmacéutico heredado intacto | Sí (otorgada) |
 | 7 | Módulo UVR, sin valores inventados | **Cerrada el 2026-11-20**: `fase6_uvr.sql` (nombre histórico) + `verificacion_fase7.sql`; 5 tablas, 1 elegibilidad real de `dentar-pr` y 0 para `dentar-dx`, 4 tablas de valoración vacías, 7 constraints, trigger activo, vista derivada sin `total_uvr` almacenado, 0 grantees y regresión 603/22/0 | Sí (otorgada) |
 | 8 | DENTAR-IN/PD/EQ solo si se aprueban | **Cerrada el 2026-11-20**: `fase7_catalogos_reservados.sql` (nombre histórico) + `verificacion_fase8.sql`; 3 reservas con `catalog_id` nulo, fuente obligatoria y guardián de publicación activo; 0 catálogos reales, 0 ítems y 0 releases; 0 grantees y regresión 603/22/0/0 | Sí (otorgada) |
 | 9 | Nomenclador Odontológico Nacional | **Ejecutada por el usuario el 2026-11-19**: 135 ítems, 270 relaciones, CDT intactas (§5.2) | Sí (otorgada) |
 | 10 | Catálogos generales OS-* | **Cerrada el 2026-11-20**: `fase10_catalogos_os.sql` + `verificacion_fase10.sql`; 2 tablas, 5 clases, 1 familia + 6 etiquetas con `catalog_id` nulo, guardián de publicación activo, 0 catálogos reales, 0 duplicados con DENTAR y regresión 603/22/0/0 | Sí (otorgada) |
 | 11 | Medicamentos, dispositivos y registros | **Cerrada el 2026-11-20** en modo solo integración: `fase11_integracion_farmacia.sql` + `verificacion_fase11.sql`; 3 tablas vacías, 6 FK, guardián de aprobación, vista de conciliación, legado 9/10/10/40 intacto, 0 grantees y regresión 603/22/0/0/3/7 | Sí (otorgada) |
-| 12 | FHIR R4 como proyección | **Preparada el 2026-11-20 como contrato, sin endpoints** ([`fase12-fhir-contrato.md`](fase12-fhir-contrato.md)): mapa de recursos desde el modelo interno, exclusión de reservas DENTAR/OS, reglas de gobernanza y advertencia UVR estimada. Sin DDL, rutas ni cambios en la guardia de autenticación | Sí (otorgada) |
+| 12 | FHIR R4 como proyección | **Preparada el 2026-11-20 como contrato, sin endpoints** ([`fase12-fhir-contrato.md`](fase12-fhir-contrato.md)): mapa de recursos desde el modelo interno, exclusión de reservas DENTAR/OS, reglas de gestión y advertencia UVR estimada. Sin DDL, rutas ni cambios en la guardia de autenticación | Sí (otorgada) |
 
 **Estado al 2026-11-19.** La Fase 1 fue **ejecutada por el usuario** en
 `origen_codes` con backup verificado y terminó en `COMMIT`: 4 tablas nuevas,
@@ -1174,7 +1174,7 @@ de esta tabla; la equivalencia completa está en el README de esa carpeta.
 
 5. Publicar AN/CL y relaciones CDT solo tras aprobación; corregirlos en la
    documentación y la navegación.
-6. Mantener releases por producto y gobernanza editorial; no truncar términos.
+6. Mantener releases por producto y gestión editorial; no truncar términos.
 7. No cargar IN/PD/EQ ni inventar sus códigos hasta aprobación.
 
 ### Etapa C — Infraestructura transversal
@@ -1203,7 +1203,7 @@ de esta tabla; la equivalencia completa está en el README de esa carpeta.
 | Prioridad del prompt | Fases que la cubren | Condición |
 |---|---|---|
 | 1. Consolidación de la arquitectura común | 0, 1, 2, 3 | Acta de estado y motor único |
-| 2. Preservación y fortalecimiento de DENTAR | 0, 4, Etapa B | Sin truncar términos; gobernanza propia |
+| 2. Preservación y fortalecimiento de DENTAR | 0, 4, Etapa B | Sin truncar términos; gestión propia |
 | 3. DENTAR-IN/PD/EQ | 8 | Solo si se aprueban; reservados hasta entonces |
 | 4. Catálogos generales OS-* | 10 | Familia `OS-PRODUCTS` recomendada |
 | 5. Productos, medicamentos y dispositivos | 6, 11 | Modelo vacío primero; fuentes reales después |

@@ -41,6 +41,7 @@ $adminCssHref = $adminCssVersion === false
             <a href="/admin"><?= e($t('admin.home.title')) ?></a>
             <?php if (Rbac::hasPermission($adminPermissions, 'catalog.view')): ?>
             <a href="/admin/uvr"><?= e($t('admin.uvr.title')) ?></a>
+            <a href="/admin/catalogs"><?= e($t('admin.catalogs.title')) ?></a>
             <?php endif; ?>
             <?php if (Rbac::hasPermission($adminPermissions, 'admin.orgs.manage')): ?>
             <a href="/admin/organizations"><?= e($t('admin.orgs.title')) ?></a>

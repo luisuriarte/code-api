@@ -16,7 +16,7 @@
 > como identificadores válidos.
 >
 > **Contrato formal (Fase 12 del §16):** la proyección de recursos, las reglas
-> de gobernanza y el mapa desde el modelo interno se formalizan en
+> de gestión y el mapa desde el modelo interno se formalizan en
 > [`docs/architecture/fase12-fhir-contrato.md`](docs/architecture/fase12-fhir-contrato.md).
 > Es un documento de contrato: no implementa rutas ni modifica la guardia de
 > autenticación.
@@ -526,7 +526,7 @@ Para clientes que consumen la API REST directa de Origen Salud (`api.origen.ar/v
 ## 7. Contrato de proyección sobre el modelo interno (Fase 12)
 
 La [Fase 12 del §16](docs/architecture/fase12-fhir-contrato.md) formaliza estas
-correspondencias desde el modelo gobernado, **sin implementar ninguna ruta**:
+correspondencias desde el modelo gestionado, **sin implementar ninguna ruta**:
 
 | Recurso FHIR R4 | Origen interno | Estado |
 |---|---|---|

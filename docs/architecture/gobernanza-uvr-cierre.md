@@ -1,4 +1,4 @@
-# Gobernanza UVR · cierre de la implementación U0–U6
+# Gestión UVR · cierre de la implementación U0–U6
 
 **Estado:** U0–U6 completos; migración U1 ejecutada y **verificada en base** el
 2026-11-20 (`COMMIT` + verificación de diez apartados con `ROLLBACK` final).
@@ -20,14 +20,14 @@
 | U5 | Importe referencial derivado en `UvrImporteService`; `null` sin conversión aprobada; redondeo a dos decimales solo en presentación. |
 | U6 | Este documento, actualización del README de SQL y verificación canónica. |
 
-## 2. Decisiones gobernadas vigentes
+## 2. Decisiones gestionadas vigentes
 
 - `total_uvr` e `importe_referencial` son **derivados**, nunca columnas.
 - Precisión almacenada según el modelo; presentación a **dos decimales**.
 - `0` = medido; ausencia = marcador **no aplicable**; negativo **solo con evidencia**.
 - Responsable, revisor y aprobador con **FK a `os_admin.app_user`**.
 - **Dos revisiones** clínica y económica, con actores distintos y `catalog.review`.
-- Cuatro **planos lógicos**, sin esquemas ni gobernanza paralela.
+- Cuatro **planos lógicos**, sin esquemas ni gestión paralela.
 - Valoración aprobada/publicada se corrige con **nueva fila/versión**.
 - Legado y denominación visible «Responsabilidad profesional» intactos; API
   pública, OpenAPI, API keys y scopes **sin cambios**.
@@ -40,7 +40,7 @@
 |---|---|---|
 | `/admin/uvr` | A · Valoraciones e importe derivado | `catalog.view` |
 | `/admin/uvr/catalogs` | B · Catálogos editables | `catalog.view` |
-| `/admin/uvr/proposals` | C · Propuestas y alta gobernada | `catalog.view` / `catalog.propose` |
+| `/admin/uvr/proposals` | C · Propuestas y alta gestionada | `catalog.view` / `catalog.propose` |
 | `/admin/uvr/proposals/{id}` | C · Detalle, revisiones y decisión | `catalog.view` / `catalog.review` / `catalog.approve` |
 | `/admin/uvr/tasks` | D · Cola derivada | `catalog.review` |
 | `/admin/uvr/compare` | E · Comparación de versiones | `catalog.view` |
@@ -56,9 +56,9 @@ quien propone no aprueba. Las denegaciones explícitas por grant prevalecen.
   trigger ... does not exist, skipping` son esperados en primera ejecución.
 - Verificación definitiva: diez apartados sin errores y `ROLLBACK` final.
   Registro completo en [`gobernanza-uvr-acta-verificacion.md`](gobernanza-uvr-acta-verificacion.md).
-- Modelo: 12 objetos presentes; 5 columnas gobernadas; 0 columnas `total_uvr`;
+- Modelo: 12 objetos presentes; 5 columnas gestionadas; 0 columnas `total_uvr`;
   6 FK a `os_admin.app_user`; 3 CHECK; 8 triggers; 0 grantees `PUBLIC`.
-- Datos: 8 tablas UVR/de gobernanza en 0 salvo `os_uvr_eligible_catalog = 1`.
+- Datos: 8 tablas UVR/de gestión en 0 salvo `os_uvr_eligible_catalog = 1`.
 - Regresión observada: `603 | 22 | 0 | 0 | 9 | 10 | 10 | 40`. Los valores
   heredados `3 | 7` se comprueban en `verificacion_fase7.sql` §8.
 - `php -l` sobre todos los archivos PHP nuevos y modificados → sin errores.

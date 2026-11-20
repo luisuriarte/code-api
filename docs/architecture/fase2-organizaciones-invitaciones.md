@@ -26,7 +26,7 @@
 
 ## 1. Resumen ejecutivo
 
-M2 agrega la capa de gobernanza que M1 dejó preparada: las organizaciones ya
+M2 agrega la capa de gestión que M1 dejó preparada: las organizaciones ya
 existen como tabla vacía, pero no tienen CRUD ni ciclo de vida; los memberships
 existen, pero se resuelven como una unión global de roles; y `catalog_grant`
 es global por usuario.

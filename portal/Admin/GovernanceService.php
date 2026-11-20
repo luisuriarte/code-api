@@ -18,7 +18,7 @@ use OrigenSalud\Portal\Services\Validator;
 use PDOException;
 
 /**
- * Gobernanza de organizaciones, invitaciones y memberships (M2).
+ * Gestión de organizaciones, invitaciones y memberships (M2).
  *
  * Todas las decisiones se toman en backend: permisos, techo de permisos,
  * alcance por organización, protección del último superadministrador y

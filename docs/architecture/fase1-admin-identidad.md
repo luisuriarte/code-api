@@ -8,12 +8,12 @@
 > **Cierre operativo:** la migración fue ejecutada por el responsable, el rol
 > `origen_admin` conecta contra `os_admin`, existe un superadministrador activo
 > y el login por HTTPS quedó registrado en auditoría. El detalle está en §6.
-> La Fase 2 de gobernanza se diseña en
+> La Fase 2 de gestión se diseña en
 > [`fase2-organizaciones-invitaciones.md`](fase2-organizaciones-invitaciones.md).
 
 ## 1. Alcance
 
-Esta fase crea la línea base de identidad para la gobernanza de catálogos:
+Esta fase crea la línea base de identidad para la gestión de catálogos:
 
 - Usuarios humanos con contraseña hasheada (Argon2id + pepper de aplicación).
 - Login, logout y recuperación de contraseña por vínculo de un solo uso.

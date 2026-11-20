@@ -130,6 +130,7 @@ foreach ($fields as $field) {
 
         <div class="header-actions">
             <?php require dirname(__DIR__) . '/portal/Views/partials/language-switcher.php'; ?>
+            <a class="button button-small button-management" href="/admin/login"><?= e($t('nav.management')) ?></a>
         </div>
     </div>
 </header>

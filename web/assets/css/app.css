@@ -222,6 +222,18 @@ svg {
     font-size: 0.83rem;
 }
 
+.button-management {
+    background: transparent;
+    color: var(--teal-dark);
+    border-color: var(--teal);
+    box-shadow: none;
+}
+
+.button-management:hover {
+    background: var(--teal);
+    color: var(--white);
+}
+
 .button-ghost {
     background: transparent;
     color: var(--ink);

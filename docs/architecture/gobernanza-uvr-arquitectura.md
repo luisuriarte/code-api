@@ -1,4 +1,4 @@
-# Gobernanza UVR · auditoría de reutilización y arquitectura propuesta
+# Gestión UVR · auditoría de reutilización y arquitectura propuesta
 
 **Estado:** PROPUESTA DOCUMENTAL. **No implementada.**
 **Autorización:** ninguna para ejecutar cambios. Este paquete solo audita, reutiliza y propone.
@@ -17,7 +17,7 @@ commits ni push.
 Se contrastó el documento del usuario «Arquitectura y plan de implementación del
 subsistema de Valoración UVR» con cuatro revisiones de solo lectura:
 
-1. SQL y gobernanza (`sql/08_arquitectura`, `sql/09_admin`, `sql/07_multilingue`,
+1. SQL y gestión (`sql/08_arquitectura`, `sql/09_admin`, `sql/07_multilingue`,
    `sql/02_catalogs`, `sql/03_dentar`, `sql/portal`).
 2. Backend y permisos (`api/`, `portal/Admin/`, `portal/Repositories/`,
    `portal/Controllers/`).
@@ -40,8 +40,8 @@ verificables, y todo lo que se propone queda marcado como propuesta.
 > componentes aditivos, `total_uvr` derivado, conversión separada, sin valores
 > inventados y API pública intacta.
 >
-> **No está implementada la gobernanza operativa UVR.** Existe el esqueleto SQL
-> (Fase 7, cerrada en base y deliberadamente vacía) y la gobernanza genérica
+> **No está implementada la gestión operativa UVR.** Existe el esqueleto SQL
+> (Fase 7, cerrada en base y deliberadamente vacía) y la gestión genérica
 > (Fase 5, también vacía), pero no hay propuestas UVR enlazadas, tareas,
 > responsables con identidad fuerte, revisiones independientes, aprobaciones
 > vinculadas, auditoría UVR, guardias de publicación ni vistas administrativas.
@@ -60,8 +60,8 @@ del §6 y sin aprobación expresa.
 | El trigger de elegibilidad solo permite prestaciones de catálogos elegibles activos. | `sql/08_arquitectura/fase6_uvr.sql:175-203` |
 | Las 5 tablas UVR tienen `REVOKE` a `PUBLIC` y a `origen_admin`; no hay grant posterior. | `sql/08_arquitectura/fase6_uvr.sql:235-254` |
 | No existe `/v1/uvr` ni ningún endpoint de valoración. | `sql/08_arquitectura/fase6_uvr.sql:34-35`, `sql/08_arquitectura/README.md:351-355` |
-| M1 y M2 de identidad/gobernanza administrativa están aplicados y verificados. | `sql/09_admin/README.md:3-29` |
-| La gobernanza pública Fase 5 existe: 4 tablas, 4 FKs de actor, 4 triggers, `evidence_reference NOT NULL`; 0 filas. | `sql/08_arquitectura/fase4_gobernanza.sql:58-147`, `sql/08_arquitectura/README.md:278-289` |
+| M1 y M2 de identidad/gestión administrativa están aplicados y verificados. | `sql/09_admin/README.md:3-29` |
+| La gestión pública Fase 5 existe: 4 tablas, 4 FKs de actor, 4 triggers, `evidence_reference NOT NULL`; 0 filas. | `sql/08_arquitectura/fase4_gobernanza.sql:58-147`, `sql/08_arquitectura/README.md:278-289` |
 | El panel M2 no conecta con `os_governance_request/review/decision`. | `sql/09_admin/README.md:107-116` |
 | La UI pública UVR es trilingüe, de solo lectura y advierte que no hay valores. | `web/uvr.php:5-10`, `portal/translations/messages.es-AR.yaml:946` |
 | El panel admin expone Inicio, Organizaciones, Invitaciones, Memberships, Grants, Contexto y Auditoría; no UVR. | `portal/Views/layouts/admin.php:40-51`, `portal/Router.php:145-363` |
@@ -75,14 +75,14 @@ son históricos y no coinciden con §16 (`fase4_gobernanza.sql` = Fase 5,
 
 ## 4. Reutilización posible [REPO → propuesta]
 
-| Capacidad | Activo real | Uso previsto en la gobernanza UVR |
+| Capacidad | Activo real | Uso previsto en la gestión UVR |
 |---|---|---|
 | Identidad de actores | `os_admin.app_user`, `os_admin.session`, `AuthService::current()` (`portal/Admin/AuthService.php:195-258`) | Responsable, revisor y aprobador con identidad verificable, sin contraseñas ni tokens en claro. |
 | RBAC | 8 roles, 14 permisos, `superadmin => ['*']` (`portal/Admin/Rbac.php:17-59`) | Reutilizar `catalog.*` y `audit.view`; no inventar un sistema paralelo. |
 | Grants por catálogo | `os_admin.catalog_grant` con índices parciales global/membership (`sql/09_admin/fase2_gobernanza.sql:70-106`) | Alcance por `dentar-pr` y por organización, con denegación explícita prioritaria. |
 | Contexto activo | `Plataforma` = global; `Origen Salud` = organización creada | Misma resolución de contexto para UVR; sin nuevo ámbito. |
 | Separación de funciones | `Rbac::canApprove()` (`portal/Admin/Rbac.php:119-130`) | Impedir que el proponente apruebe su propia valoración; hoy no está invocado. |
-| Gobernanza genérica | `os_governance_request/review/decision` (`sql/08_arquitectura/fase4_gobernanza.sql:58-106`) | Una sola cadena propuesta → revisión → decisión para UVR. |
+| Gestión genérica | `os_governance_request/review/decision` (`sql/08_arquitectura/fase4_gobernanza.sql:58-106`) | Una sola cadena propuesta → revisión → decisión para UVR. |
 | Evidencia obligatoria | `evidence_reference TEXT NOT NULL` (`sql/08_arquitectura/fase4_gobernanza.sql:104`) | Toda aprobación UVR debe tener fuente escrita. |
 | Auditoría append-only | `os_admin.audit_log` y `public.os_audit_log` con triggers inmutables (`fase1_identidad.sql:160-171`, `fase4_gobernanza.sql:136-147`) | Registro de propuestas, revisiones, decisiones y cambios de estado. |
 | Estados de revisión | `os_review_state` con `is_publication_allowed` (`fase1_infraestructura.sql:85-102`) | Único semáforo de publicación; solo `approved`/`published`. |
@@ -119,7 +119,7 @@ son históricos y no coinciden con §16 (`fase4_gobernanza.sql` = Fase 5,
 | C3 | Componente `0`, no aplicable o negativo. | Hoy `CHECK (value >= 0)` y `COALESCE(...,0)`. El documento advierte sobre componentes no aplicables/negativos; hace falta semántica autorizada. |
 | C4 | Responsable y aprobador UVR. | Las decisiones 7 y 11 siguen pendientes en `propuesta-arquitectura-catalogos-sanitarios.md:1028,1038`; `calculated_by` es texto libre. |
 | C5 | Revisiones clínicas y UVR/económicas independientes. | No están modeladas ni documentadas formalmente; requiere definir evidencias y roles. |
-| C6 | «Dominios separados clínico/valoración/económico/publicación» con «gobernanza única». | `os_domain_registry` es terminológico y ninguna tabla UVR lo usa; crear dominios nuevos o tablas de gobernanza propias sería un cambio arquitectónico. |
+| C6 | «Dominios separados clínico/valoración/económico/publicación» con «gestión única». | `os_domain_registry` es terminológico y ninguna tabla UVR lo usa; crear dominios nuevos o tablas de gestión propias sería un cambio arquitectónico. |
 | C7 | `importe_referencial` frente a `estimated_payment`. | El contrato FHIR y la Fase 7 usan `estimated_payment`; el documento usa `importe_referencial`. Requiere nombre canónico visible. |
 | C8 | Conexión del panel con Fase 5 y construcción de las vistas A–G. | `sql/09_admin/README.md:107-116` exige autorización nueva; hoy no hay rutas ni UI. |
 | C9 | Corrección de §10/§11 y de nombres `version`, `country`, `period`, typo `professioniabial_liability_uvr`. | Son documentos aprobados; no se editan sin acta. |
@@ -130,7 +130,7 @@ son históricos y no coinciden con §16 (`fase4_gobernanza.sql` = Fase 5,
 ## 7. Principios de la arquitectura propuesta
 
 1. **Aditividad:** no `DROP`, `TRUNCATE`, `DELETE`, renombrado ni migración de datos heredados.
-2. **Una sola gobernanza:** `os_governance_request → review → decision → os_audit_log`, sin circuitos UVR paralelos.
+2. **Una sola gestión:** `os_governance_request → review → decision → os_audit_log`, sin circuitos UVR paralelos.
 3. **Cuatro planos lógicos, una sola base:** clínico/terminológico, valoración UVR, económico/conversión y publicación. No son esquemas ni tablas nuevas por defecto.
 4. **Derivación:** `total_uvr` y el importe referencial se calculan; nunca se almacenan como columnas editables.
 5. **Sin invención:** sin fuente verificable y aprobación, no se cargan valores, índices ni metodologías.
@@ -158,7 +158,7 @@ Antes de cualquier implementación se requiere aprobación expresa para:
 - Cerrar C1–C12, en particular decisiones 7 y 11.
 - Confirmar que `total_uvr` e `importe_referencial` permanecen derivados.
 - Confirmar la política de precisión/redondeo y el tratamiento de `0`/no aplicable/negativo.
-- Autorizar la conexión del panel con la gobernanza Fase 5 y las vistas A–G.
+- Autorizar la conexión del panel con la gestión Fase 5 y las vistas A–G.
 - Autorizar cualquier corrección del documento de arquitectura aprobado.
 
 **Hasta entonces: solo análisis. No se ejecuta SQL, no se modifica código ni se despliega.**

@@ -1,4 +1,4 @@
-# Gobernanza UVR · roles y permisos
+# Gestión UVR · roles y permisos
 
 **Estado:** PROPUESTA DOCUMENTAL. **No implementada.**
 **Depende de:** [`gobernanza-uvr-arquitectura.md`](gobernanza-uvr-arquitectura.md) §6 (C4, C5, C8, C11) y
@@ -15,7 +15,7 @@
 |---|---|
 | 8 roles: `superadmin`, `catalog_admin`, `editor`, `reviewer`, `publisher`, `collaborator`, `auditor`, `viewer`. `superadmin => ['*']`. | `portal/Admin/Rbac.php:46-59`; `sql/09_admin/fase1_identidad.sql:214-223` |
 | 14 permisos: los 10 de M1 más `admin.orgs.manage`, `admin.invites.manage`, `admin.memberships.manage`, `admin.grants.manage`. | `portal/Admin/Rbac.php:17-33`; `sql/09_admin/fase2_gobernanza.sql:192-207` |
-| Los cuatro permisos nuevos de gobernanza se asignan solo a `superadmin`. | `sql/09_admin/fase2_gobernanza.sql:199-207`; `sql/09_admin/README.md:27` |
+| Los cuatro permisos nuevos de gestión se asignan solo a `superadmin`. | `sql/09_admin/fase2_gobernanza.sql:199-207`; `sql/09_admin/README.md:27` |
 | Operaciones válidas de grant por catálogo: `view`, `propose`, `edit_draft`, `review`, `approve`, `publish`. | `portal/Admin/Rbac.php:41-44` |
 | `catalog_grant` distingue alcance global (`membership_id IS NULL`) y por membership; la denegación explícita gana. | `sql/09_admin/fase2_gobernanza.sql:100-106`; `portal/Admin/Rbac.php:74-117` |
 | `RbacRepository` calcula roles/permisos según contexto (`null` = Plataforma; entero = organización), ignora organizaciones inactivas y respeta vigencias. | `portal/Repositories/RbacRepository.php:9-16,22-146` |
@@ -57,13 +57,13 @@ del RBAC aprobado.
 | `canApprove()` existe pero no está invocado por controladores ni servicios. | `portal/Admin/Rbac.php:123`; `tests/run.php:1310,1314` | Conectar `GovernanceService` al aprobar una decisión UVR, con fallo cerrado. |
 | `calculated_by` es texto libre y anulable. | `sql/08_arquitectura/fase6_uvr.sql:93` | Sustituir/complementar por actor con FK a `os_admin.app_user` (C4). |
 | No hay `assigned_to_user_id`, `reviewed_by_user_id` ni `approved_by_user_id` en UVR. | `fase6_uvr.sql:85-167` | Usar los actores de `os_governance_*` en lugar de duplicar columnas, salvo aprobación de columnas nuevas. |
-| No hay tareas ni cola de revisión. | `portal/Router.php:145-363` | Derivar worklist de estados de gobernanza antes de crear tabla de tareas. |
+| No hay tareas ni cola de revisión. | `portal/Router.php:145-363` | Derivar worklist de estados de gestión antes de crear tabla de tareas. |
 | El panel no consume `os_governance_request/review/decision`. | `sql/09_admin/README.md:107-116` | Requiere autorización nueva (C8). |
 | No hay permisos UVR específicos y las seis operaciones de grant no tienen pantalla de flujo. | `portal/Admin/Rbac.php:22-27,41-44`; `portal/Views/layouts/admin.php:40-51` | Las vistas A–G deben apoyarse en los permisos existentes. |
 | Sesión y contexto se revalidan por petición, pero el cambio de contexto no exige permiso adicional. | `AuthService.php:282-318`; `AdminContextController.php:12-27` | Mantener; la autorización UVR depende del contexto activo. |
 | API B2B sin scopes y con clave en texto plano. | `ApiKeyAuthenticator.php:16-18,47-68` | Fuera de alcance: no ampliar la API ni tocar seguridad sin decisión separada (C11). |
 
-## 4. Gobernanza de grants aplicada a UVR
+## 4. Gestión de grants aplicada a UVR
 
 1. **Un contexto, una autoridad.** En `Plataforma` rigen los grants globales; en
    `Origen Salud` rigen los grants de membership. No se crea un tercer ámbito.
@@ -87,7 +87,7 @@ del RBAC aprobado.
   aprobador debe ser `superadmin` o un rol funcional con `catalog.approve`.
 - **C5:** si la revisión económica requiere permiso propio distinto de
   `catalog.review` y cómo se garantiza la independencia de la revisión clínica.
-- **C8:** autorización para conectar el panel con la gobernanza Fase 5 y para
+- **C8:** autorización para conectar el panel con la gestión Fase 5 y para
   construir las vistas A–G.
 - **C11:** confirmar que la API pública permanece intacta y que no se modifica
   el manejo de API keys en esta iniciativa.

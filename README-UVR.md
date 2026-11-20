@@ -128,7 +128,7 @@ La prestación tiene una valoración de 4,00 UVR.
 
 Esto significa que, de acuerdo con la metodología de valoración adoptada, requiere cuatro unidades relativas de recursos. No significa que su importe sea cuatro pesos, cuatro dólares ni una cantidad monetaria determinada.
 
-### Precisión y valores especiales (decisión gobernada)
+### Precisión y valores especiales (decisión gestionada)
 
 - Los componentes se almacenan con la precisión del modelo (`NUMERIC(12,4)`), la conversión con `NUMERIC(14,6)` y los índices con `NUMERIC(12,6)`.
 - La **presentación pública y administrativa redondea a dos decimales**; el redondeo se aplica al mostrar, nunca sobrescribiendo el valor almacenado.
@@ -392,7 +392,7 @@ La metodología UVR de Origen Salud comparte con el modelo RBRVS de Medicare la 
 
 La similitud es conceptual y estructural. Los valores UVR no son equivalentes a los RVU de Medicare y no deben obtenerse mediante una conversión directa.
 
-### Glosario de equivalencias (decisión gobernada)
+### Glosario de equivalencias (decisión gestionada)
 
 Los nombres legados se conservan sin renombrar. Esta tabla solo relaciona la
 terminología visible con los campos existentes; no declara equivalencia
@@ -457,7 +457,7 @@ Una nueva valoración no deberá sobrescribir ni eliminar los registros históri
 
 Los índices geográficos y los valores monetarios también deberán contar con versiones y períodos de vigencia independientes.
 
-## 13. Gobernanza y revisión
+## 13. Gestión y revisión
 
 El Sistema de Valoración Prestacional de Origen Salud deberá evolucionar mediante un proceso documentado de revisión.
 

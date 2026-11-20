@@ -209,8 +209,8 @@ $sqlFiles = array_values(array_filter(
         && !str_contains(basename($f), 'correcion_')
 ));
 $check(
-    count($sqlFiles) === 10,
-    'Deben existir diez artefactos SQL propuestos (Fases 3, 8, 10, 11 y gobernanza UVR).'
+    count($sqlFiles) === 11,
+    'Deben existir once artefactos SQL propuestos (Fases 3, 8, 10, 11, gestión UVR y gestión de catálogos).'
 );
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
@@ -449,11 +449,11 @@ $check(
     'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 4.'
 );
 
-// 3e. Fase 5 del §16: gobernanza, actores reales y auditoría append-only.
+// 3e. Fase 5 del §16: gestión, actores reales y auditoría append-only.
 $fase5Path = $sqlDir . '/fase4_gobernanza.sql';
 $fase5VerifyPath = $sqlDir . '/verificacion_fase5.sql';
-$check(is_file($fase5Path), 'Debe existir la migración de gobernanza de la Fase 5.');
-$check(is_file($fase5VerifyPath), 'Debe existir la verificación de gobernanza de la Fase 5.');
+$check(is_file($fase5Path), 'Debe existir la migración de gestión de la Fase 5.');
+$check(is_file($fase5VerifyPath), 'Debe existir la verificación de gestión de la Fase 5.');
 if (is_file($fase5Path)) {
     $fase5Sql = (string) file_get_contents($fase5Path);
     $check(
@@ -461,7 +461,7 @@ if (is_file($fase5Path)) {
             && str_contains($fase5Sql, 'CREATE TABLE IF NOT EXISTS os_governance_review')
             && str_contains($fase5Sql, 'CREATE TABLE IF NOT EXISTS os_governance_decision')
             && str_contains($fase5Sql, 'CREATE TABLE IF NOT EXISTS os_audit_log'),
-        'Fase 5 debe crear las cuatro tablas de gobernanza sin sembrar datos.'
+        'Fase 5 debe crear las cuatro tablas de gestión sin sembrar datos.'
     );
     $check(
         substr_count($fase5Sql, 'BIGINT REFERENCES os_admin.app_user(id) ON DELETE SET NULL') === 4,
@@ -669,7 +669,7 @@ if (is_file($fase8Path)) {
         str_contains($fase8Sql, "DEFAULT 'unreviewed'")
             && str_contains($fase8Sql, 'source_reference TEXT NOT NULL')
             && str_contains($fase8Sql, 'catalog_id INT REFERENCES os_catalog(id) ON DELETE SET NULL'),
-        'Fase 8 debe exigir gobernanza y dejar catalog_id nulo hasta la aprobación.'
+        'Fase 8 debe exigir gestión y dejar catalog_id nulo hasta la aprobación.'
     );
     $check(
         !preg_match('/INSERT\s+INTO\s+os_catalog\b/i', $fase8Sql)
@@ -746,7 +746,7 @@ if (is_file($fase10Path)) {
             && str_contains($fase10Sql, 'catalog_id INT REFERENCES os_catalog(id) ON DELETE SET NULL')
             && str_contains($fase10Sql, 'trg_os_product_family_reservation_publication')
             && str_contains($fase10Sql, 'is_publication_allowed'),
-        'Fase 10 debe exigir gobernanza e impedir catálogos sin aprobación.'
+        'Fase 10 debe exigir gestión e impedir catálogos sin aprobación.'
     );
     $check(
         !preg_match('/INSERT\s+INTO\s+os_catalog\b/i', $fase10Sql)
@@ -810,7 +810,7 @@ if (is_file($fase11Path)) {
             && str_contains($fase11Sql, 'os_admin.app_user')
             && str_contains($fase11Sql, 'raw_payload JSONB NOT NULL')
             && str_contains($fase11Sql, 'target_entity VARCHAR(60) NOT NULL CHECK'),
-        'Fase 11 debe exigir fuente, gobernanza, actores reales y staging tipificado.'
+        'Fase 11 debe exigir fuente, gestión, actores reales y staging tipificado.'
     );
     $check(
         str_contains($fase11Sql, 'trg_os_pharma_import_row_review')
@@ -1422,7 +1422,7 @@ $check(
     'El saludo del panel debe interpolar %name% sin dejar los signos.'
 );
 
-// 7. Fase 2 / M2 — gobernanza: organizaciones, invitaciones y memberships.
+// 7. Fase 2 / M2 — gestión: organizaciones, invitaciones y memberships.
 $m2Files = [
     '/sql/09_admin/fase2_gobernanza.sql',
     '/sql/09_admin/verificacion_fase2.sql',
@@ -1630,7 +1630,7 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $m2Locale) {
     }
 }
 
-// Gobernanza UVR (Acta U0 y plan U0–U6).
+// Gestión UVR (Acta U0 y plan U0–U6).
 $uvrArtifacts = [
     '/docs/architecture/gobernanza-uvr-acta-u0.md',
     '/docs/architecture/gobernanza-uvr-acta-verificacion.md',
@@ -1712,7 +1712,7 @@ $check(str_contains($uvrVerify, '\pset pager off'), 'La verificación UVR debe d
 $uvrServiceSource = (string) file_get_contents($root . '/portal/Admin/UvrGovernanceService.php');
 $uvrControllerSource = (string) file_get_contents($root . '/portal/Controllers/AdminUvrController.php');
 $uvrRepoSource = (string) file_get_contents($root . '/portal/Repositories/UvrRepository.php');
-$check(count(\OrigenSalud\Portal\Admin\Rbac::PERMISSIONS) === 14, 'La gobernanza UVR no debe crear permisos nuevos.');
+$check(count(\OrigenSalud\Portal\Admin\Rbac::PERMISSIONS) === 14, 'La gestión UVR no debe crear permisos nuevos.');
 $check(str_contains($uvrServiceSource, 'Rbac::canApprove('), 'La decisión debe usar Rbac::canApprove() en servicio.');
 $check(str_contains($uvrServiceSource, 'UvrImporteService::calcular'), 'El importe debe derivarse en servicio.');
 $check(str_contains($uvrServiceSource, 'clinical') && str_contains($uvrServiceSource, 'economic'), 'Debe haber dos revisiones independientes.');
@@ -1752,6 +1752,80 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $uvrLocale) {
     }
     foreach (['uvr_proposed', 'uvr_reviewed', 'uvr_decided', 'uvr_published', 'uvr_self_approval_denied'] as $uvrMessageKey) {
         $check(is_string($uvrMessages['admin']['messages'][$uvrMessageKey] ?? null) || is_string($uvrMessages['admin']['errors'][$uvrMessageKey] ?? null), $uvrLocale . ': falta la clave UVR ' . $uvrMessageKey . '.');
+    }
+}
+
+// Gestión de catálogos y códigos (C0–C6).
+$catalogArtifacts = [
+    '/sql/08_arquitectura/catalogos_gestion_gobernada.sql',
+    '/sql/08_arquitectura/verificacion_catalogos_gestion.sql',
+    '/portal/Admin/CatalogGovernanceService.php',
+    '/portal/Repositories/CatalogGovernanceRepository.php',
+    '/portal/Controllers/AdminCatalogController.php',
+    '/portal/Views/admin/catalogs/_nav.php',
+    '/portal/Views/admin/catalogs/index.php',
+    '/portal/Views/admin/catalogs/item.php',
+    '/portal/Views/admin/catalogs/proposals.php',
+    '/portal/Views/admin/catalogs/proposal.php',
+    '/docs/architecture/gestion-catalogos-codigos.md',
+];
+foreach ($catalogArtifacts as $catalogArtifact) {
+    $check(is_file($root . $catalogArtifact), 'Falta el artefacto de gestión de catálogos ' . $catalogArtifact . '.');
+}
+
+$catalogMigration = (string) file_get_contents($root . '/sql/08_arquitectura/catalogos_gestion_gobernada.sql');
+$catalogVerify = (string) file_get_contents($root . '/sql/08_arquitectura/verificacion_catalogos_gestion.sql');
+$check(str_contains($catalogMigration, 'BEGIN;') && str_contains($catalogMigration, 'COMMIT;'), 'La migración de catálogos debe ser transaccional.');
+$check(str_contains($catalogMigration, 'SECURITY DEFINER'), 'El aplicador de cambios debe ser SECURITY DEFINER.');
+$check(str_contains($catalogMigration, 'REVOKE ALL PRIVILEGES ON FUNCTION'), 'El aplicador debe revocar PUBLIC de forma explícita.');
+$check(!str_contains($catalogMigration, 'ALTER DEFAULT PRIVILEGES'), 'La migración de catálogos no debe modificar el DEFAULT ACL global.');
+$check(
+    !preg_match('/\bGRANT\s+(SELECT\s*,\s*)?(INSERT|UPDATE|DELETE)\b/i', (string) preg_replace('/^\s*--.*$/m', '', $catalogMigration)),
+    'No se deben conceder escrituras directas sobre catálogos.'
+);
+$check(str_contains($catalogVerify, 'BEGIN READ ONLY;') && str_contains($catalogVerify, 'ROLLBACK;'), 'La verificación de catálogos debe ser de solo lectura.');
+$check(str_contains($catalogVerify, 'routine_privileges') && str_contains($catalogVerify, 'role_table_grants'), 'La verificación debe comprobar privilegios de función y tabla.');
+
+$catalogServiceSource = (string) file_get_contents($root . '/portal/Admin/CatalogGovernanceService.php');
+$catalogControllerSource = (string) file_get_contents($root . '/portal/Controllers/AdminCatalogController.php');
+$catalogRouterSource = (string) file_get_contents($root . '/portal/Router.php');
+$catalogHeaderSource = (string) file_get_contents($root . '/portal/Views/partials/header.php');
+$catalogUvrViewSource = (string) file_get_contents($root . '/portal/Views/admin/uvr/proposals.php');
+$check(str_contains($catalogServiceSource, 'Rbac::canApprove('), 'La decisión de catálogo debe usar Rbac::canApprove().');
+$check(str_contains($catalogServiceSource, 'os_catalog_apply_governed_change') === false, 'El servicio no debe nombrar SQL interno de la función.');
+$check(str_contains($catalogControllerSource, 'AdminGuard::require'), 'Las vistas de catálogos deben pasar por AdminGuard.');
+$check(substr_count($catalogControllerSource, 'AdminForm::validCsrf()') >= 4, 'Los formularios de catálogos deben validar CSRF.');
+$check(
+    !str_contains($catalogControllerSource, '/v1/') && !str_contains($catalogControllerSource, '/fhir/'),
+    'El panel de catálogos no debe anunciar rutas de API inexistentes.'
+);
+$check(str_contains($catalogRouterSource, 'private function catalogs('), 'El router debe exponer las rutas de gestión de catálogos.');
+$check(
+    str_contains($catalogRouterSource, '$itemId = ctype_digit($fourth)'),
+    'El router debe tomar el id del detalle de código desde el cuarto segmento.'
+);
+$check(str_contains($catalogHeaderSource, 'nav.management') && str_contains($catalogHeaderSource, 'href="/admin/login"'), 'El header público debe ofrecer el acceso Management.');
+foreach (['/web/docs.php', '/web/uvr.php', '/web/search.php'] as $catalogHeaderFile) {
+    $catalogStandaloneHeader = (string) file_get_contents($root . $catalogHeaderFile);
+    $check(
+        str_contains($catalogStandaloneHeader, 'nav.management') && str_contains($catalogStandaloneHeader, 'href="/admin/login"'),
+        $catalogHeaderFile . ': falta el botón Management en el header.'
+    );
+}
+$check(str_contains($catalogUvrViewSource, 'service_item_id'), 'El botón UVR debe precargar el código elegido en la propuesta UVR.');
+
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $catalogLocale) {
+    $catalogMessages = \Symfony\Component\Yaml\Yaml::parseFile($root . '/portal/translations/messages.' . $catalogLocale . '.yaml');
+    $check(is_string($catalogMessages['nav']['management'] ?? null) && trim($catalogMessages['nav']['management']) !== '', $catalogLocale . ': falta nav.management.');
+    $catalogNode = is_array($catalogMessages['admin']['catalogs'] ?? null) ? $catalogMessages['admin']['catalogs'] : [];
+    foreach (['title', 'lead', 'tab_codes', 'tab_requests', 'col_code', 'uvr_button', 'propose_submit'] as $catalogKey) {
+        $check(is_string($catalogNode[$catalogKey] ?? null) && trim($catalogNode[$catalogKey]) !== '', $catalogLocale . ': falta admin.catalogs.' . $catalogKey . '.');
+    }
+    foreach (['catalog_proposed', 'catalog_published'] as $catalogMessageKey) {
+        $check(is_string($catalogMessages['admin']['messages'][$catalogMessageKey] ?? null), $catalogLocale . ': falta el mensaje ' . $catalogMessageKey . '.');
+    }
+    foreach (['catalog_permission_denied', 'catalog_grant_denied', 'catalog_evidence_required'] as $catalogErrorKey) {
+        $check(is_string($catalogMessages['admin']['errors'][$catalogErrorKey] ?? null), $catalogLocale . ': falta el error ' . $catalogErrorKey . '.');
     }
 }
 

@@ -12,7 +12,7 @@ use OrigenSalud\Portal\View;
 use OrigenSalud\Web\I18n;
 
 /**
- * Panel gobernado de valoración relativa UVR (vistas A–G).
+ * Panel gestionado de valoración relativa UVR (vistas A–G).
  *
  * Todas las rutas cuelgan de /admin: AdminGuard exige sesión, el permiso se
  * comprueba en backend y los formularios usan CSRF. No se crean rutas de API
@@ -74,8 +74,16 @@ final class AdminUvrController
             $proposals = [];
         }
 
+        $prefill = [];
+        $requestedItem = $_GET['service_item_id'] ?? null;
+
+        if (is_string($requestedItem) && ctype_digit($requestedItem) && (int) $requestedItem > 0) {
+            $prefill['service_item_id'] = $requestedItem;
+        }
+
         self::render('admin/uvr/proposals', 'C', '/admin/uvr/proposals', $current, [
             'proposals' => $proposals,
+            'prefill' => $prefill,
         ]);
     }
 
@@ -190,7 +198,7 @@ final class AdminUvrController
         ]);
     }
 
-    /** Alta de valoración + propuesta, con componentes gobernados. */
+    /** Alta de valoración + propuesta, con componentes gestionados. */
     public static function propose(): void
     {
         AdminForm::requirePost();
@@ -316,7 +324,7 @@ final class AdminUvrController
     ): void {
         View::render($template, $extra + [
             'pageTitle' => 'UVR | Origen Salud',
-            'pageDescription' => 'Gobernanza de valoración relativa UVR.',
+            'pageDescription' => 'Gestión de valoración relativa UVR.',
             'locale' => I18n::locale(),
             'currentPath' => $path,
             'adminUser' => $current['user'],

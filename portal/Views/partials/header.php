@@ -20,6 +20,7 @@ use OrigenSalud\Web\I18n;
 
         <div class="header-actions">
             <?php require __DIR__ . '/language-switcher.php'; ?>
+            <a class="button button-small button-management" href="/admin/login"><?= e($t('nav.management')) ?></a>
             <a class="button button-small" href="<?= e($accessMailto ?? I18n::localizedPath($locale, '/contact')) ?>"><?= e($t('nav.access')) ?></a>
         </div>
     </div>

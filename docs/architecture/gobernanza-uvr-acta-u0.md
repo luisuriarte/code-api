@@ -1,4 +1,4 @@
-# Acta U0 · Gobernanza UVR — cierre de la compuerta 0
+# Acta U0 · Gestión UVR — cierre de la compuerta 0
 
 **Estado:** APROBADA.
 **Fecha:** 2026-11-20.
@@ -21,7 +21,7 @@ iniciar U1. No autoriza commits, push ni despliegue.
 | C4 | Responsable, revisor y aprobador con **FK a `os_admin.app_user`**. | Columnas de actor con FK en U1. |
 | C12 | Valoraciones publicadas se corrigen con **nueva fila**, sin `UPDATE`. | Trigger de inmutabilidad en U1. |
 | C5 | **Dos revisiones independientes** con `catalog.review`, actores distintos, sin permiso nuevo. | Servicio UVR y vistas A–G. |
-| C6 | Cuatro **planos lógicos**, sin dominios ni gobernanza paralela. | No se crean esquemas ni tablas de gobernanza UVR propias. |
+| C6 | Cuatro **planos lógicos**, sin dominios ni gestión paralela. | No se crean esquemas ni tablas de gestión UVR propias. |
 | C8 | Autorizada conexión del panel con Fase 5 y construcción de **A–G** con permisos existentes. | Rutas, controladores, vistas y grants controlados. |
 | C10 | Legado intacto; denominación visible **Responsabilidad profesional**; glosario de equivalencias. | No se renombran `malpractice_uvr`, `*_rvu` ni tablas heredadas. |
 | C11 | API pública, OpenAPI, API keys, scopes y rate limit **sin cambios**. | No se crean `/v1/uvr` ni `/fhir/*`. |
@@ -45,7 +45,7 @@ iniciar U1. No autoriza commits, push ni despliegue.
 ## 3. Alcance autorizado a partir de esta acta
 
 - U1: archivos SQL aditivos y su verificación `READ ONLY` (preparados, no ejecutados).
-- U2: servicios y repositorios de gobernanza UVR.
+- U2: servicios y repositorios de gestión UVR.
 - U3: vistas administrativas A–G y paridad trilingüe.
 - U4: guardián de publicación y auditoría UVR.
 - U5: cálculo derivado del importe referencial.

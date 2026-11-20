@@ -36,7 +36,7 @@ ejemplos ilustrativos por códigos reales. Nada de eso se hace aquí.
 
 1. **El modelo interno es la única fuente de verdad.** FHIR es una vista de
    solo lectura: nunca escribe en `os_*`, no crea conceptos y no corrige datos.
-2. **Gobernanza antes que exposición.** Solo se proyecta lo que tenga
+2. **Gestión antes que exposición.** Solo se proyecta lo que tenga
    `review_status` con `is_publication_allowed = TRUE` y `source_reference` no
    vacío.
 3. **Una reserva no es un catálogo.** Las reservas de la Fase 8

@@ -254,7 +254,7 @@ sigue siendo responsabilidad del comité editorial.
 | 2. Priorización | Ejecutada [BD] | Secuencia AN/CL → sync → relaciones CDT, reflejada en la base. |
 | 3. Revisión clínica | Parcial [BD] | AN/CL y CDT cargados; 419 aprobaciones D-19 sobre mapeos. Falta el acta formal de D-01…D-41. |
 | 4. Carga y publicación | Cargada [BD]; publicación pendiente | 805 identificadores `CDT-2025`; 333 relaciones presentes pero **no navegables** en Browse. |
-| 5. Gobernanza UVR | Pendiente | Definir responsable de aprobación y factores de conversión antes de cargar cualquier valor. |
+| 5. Gestión UVR | Pendiente | Definir responsable de aprobación y factores de conversión antes de cargar cualquier valor. |
 | 6. FHIR | Pendiente | Contrato documentado en `README-FHIR.md`, sin enrutamiento ni guardia de auth. |
 
 Las decisiones D-01…D-41 del documento de arquitectura están **pendientes de

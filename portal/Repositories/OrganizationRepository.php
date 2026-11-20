@@ -6,7 +6,7 @@ namespace OrigenSalud\Portal\Repositories;
 
 use PDOException;
 
-/** Organizaciones operativas de gobernanza (M2). Baja lógica, sin borrado. */
+/** Organizaciones operativas de gestión (M2). Baja lógica, sin borrado. */
 final class OrganizationRepository
 {
     private const COLUMNS = 'id, name, code, legal_name, type, country_code,

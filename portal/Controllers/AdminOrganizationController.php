@@ -31,7 +31,7 @@ final class AdminOrganizationController
 
         View::render('admin/organizations', [
             'pageTitle' => 'Organizaciones | Origen Salud',
-            'pageDescription' => 'Gobernanza de organizaciones colaboradoras.',
+            'pageDescription' => 'Gestión de organizaciones colaboradoras.',
             'currentPath' => '/admin/organizations',
             'adminUser' => $current['user'],
             'current' => $current,

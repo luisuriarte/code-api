@@ -8,9 +8,9 @@ use OrigenSalud\Portal\Repositories\CatalogReferenceRepository;
 use OrigenSalud\Portal\Repositories\UvrRepository;
 
 /**
- * Gobernanza operativa de valoración UVR.
+ * Gestión operativa de valoración UVR.
  *
- * Reutiliza los 14 permisos existentes y la cadena de gobernanza pública. No
+ * Reutiliza los 14 permisos existentes y la cadena de gestión pública. No
  * crea catálogos values, no carga valores y no expone rutas de API. Toda
  * aprobación pasa por Rbac::canApprove() en la capa de servicio (Acta U0).
  */

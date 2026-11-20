@@ -1,16 +1,16 @@
-# Gobernanza UVR · flujos de propuesta, revisión, aprobación y publicación
+# Gestión UVR · flujos de propuesta, revisión, aprobación y publicación
 
 **Estado:** PROPUESTA DOCUMENTAL. **No implementada.**
 **Depende de:** [`gobernanza-uvr-arquitectura.md`](gobernanza-uvr-arquitectura.md) §6 (C1, C4, C5, C6, C8),
 [`gobernanza-uvr-roles-permisos.md`](gobernanza-uvr-roles-permisos.md).
 
 > No se crean tablas, rutas ni vistas. Se describe el circuito objetivo usando
-> la gobernanza genérica que ya existe y las vistas solicitadas A–G como
+> la gestión genérica que ya existe y las vistas solicitadas A–G como
 > pantallas futuras.
 
 ---
 
-## 1. Cadena de gobernanza existente [REPO]
+## 1. Cadena de gestión existente [REPO]
 
 `sql/08_arquitectura/fase4_gobernanza.sql` (Fase 5 del §16, nombre histórico)
 implementa una sola cadena:
@@ -65,15 +65,15 @@ Secuencia objetivo:
    valoración publicada. Pending de decisión C12.
 
 Las revisiones clínica y económica son **independientes** pero no forman
-sistemas de gobernanza separados: ambas alimentan la misma solicitud y la misma
-auditoría. Esto respeta la regla de gobernanza única y la separación de planos
+sistemas de gestión separados: ambas alimentan la misma solicitud y la misma
+auditoría. Esto respeta la regla de gestión única y la separación de planos
 del §7 de la arquitectura.
 
 ## 3. Elementos ausentes y tratamiento
 
 | Necesidad | Situación actual | Tratamiento propuesto |
 |---|---|---|
-| `responsable` con identidad fuerte | `calculated_by TEXT` anulable. | Actor de gobernanza con FK a `os_admin.app_user`. |
+| `responsable` con identidad fuerte | `calculated_by TEXT` anulable. | Actor de gestión con FK a `os_admin.app_user`. |
 | `revisores` | `reviewer_role TEXT` sin CHECK ni roles UVR. | Dos filas de revisión con roles funcionales controlados y actores distintos. |
 | `aprobador` | `approved_by_user_id` existe en la decisión, pero no está enlazado a UVR. | Enlazar la decisión al `subject_id` de la valoración. |
 | `tareas/asignaciones` | No existe entidad ni cola. | Worklist derivado del estado de `os_governance_request/review` antes de crear tabla de tareas. |

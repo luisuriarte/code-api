@@ -1,4 +1,4 @@
-# Gobernanza UVR · auditoría, versionado e inmutabilidad
+# Gestión UVR · auditoría, versionado e inmutabilidad
 
 **Estado:** PROPUESTA DOCUMENTAL. **No implementada.**
 **Depende de:** [`gobernanza-uvr-arquitectura.md`](gobernanza-uvr-arquitectura.md) §6 (C2, C4, C9, C12).
@@ -35,7 +35,7 @@
 - Eventos existentes: `login_*`, `logout`, `organization_*`, `invitation_*`,
   `membership_*`, `catalog_grant_*`, `password_reset_*`, cambio de contexto.
 
-### 1.2 Gobernanza pública
+### 1.2 Gestión pública
 
 `public.os_audit_log` (`sql/08_arquitectura/fase4_gobernanza.sql:120-227`):
 
@@ -55,7 +55,7 @@
 | No hay trigger de auditoría sobre `os_uvr_valuation`, `os_uvr_component`, `os_uvr_conversion` ni `os_uvr_geo_index`. | `fase4_gobernanza.sql:217-227`; `fase6_uvr.sql:85-167` |
 | `calculated_by TEXT` no es actor gobernado. | `fase6_uvr.sql:93` |
 | No hay `reviewed_by_user_id`, `approved_by_user_id` ni `published_at` en UVR. | `fase6_uvr.sql:85-167` |
-| No hay `GRANT` posterior a ningún rol de aplicación para gobernanza/UVR. | `fase4_gobernanza.sql:232-249`; `fase6_uvr.sql:235-254` |
+| No hay `GRANT` posterior a ningún rol de aplicación para gestión/UVR. | `fase4_gobernanza.sql:232-249`; `fase6_uvr.sql:235-254` |
 
 ## 2. Propuesta de auditoría UVR (sin DDL)
 
@@ -164,7 +164,7 @@ Reglas del protocolo:
 | Auditoría del panel es append-only. | `sql/09_admin/fase1_identidad.sql:160-171` |
 | Auditoría pública es append-only. | `sql/08_arquitectura/fase4_gobernanza.sql:136-147` |
 | Decisiones exigen evidencia escrita. | `fase4_gobernanza.sql:104,108-109` |
-| Actores de gobernanza tienen FK a `app_user`. | `fase4_gobernanza.sql:67,85,101,126` |
+| Actores de gestión tienen FK a `app_user`. | `fase4_gobernanza.sql:67,85,101,126` |
 | No hay auditoría sobre tablas UVR. | `fase6_uvr.sql:85-167` |
 | `total_uvr` no se almacena. | `verificacion_fase7.sql:82-86` |
 | No hay columna UVR con actor fuerte. | `fase6_uvr.sql:93` |

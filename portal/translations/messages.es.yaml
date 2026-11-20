@@ -16,7 +16,9 @@ nav:
     docs: "Docs"
     search: "Buscador"
     contact: "Contacto"
-    access: "Solicitar acceso"
+    access: "Solicitar acceso"
+    management: 'Gestión'
+
     access_api: "Solicitud de acceso API"
 
 a11y:
@@ -486,7 +488,7 @@ admin:
     brand: "Administración de catálogos"
     nav: "Navegación del panel"
     logout: "Cerrar sesión"
-    footer: "Gobernanza de catálogos · acceso restringido"
+    footer: "Gestión de catálogos · acceso restringido"
     email: "Correo electrónico"
     password: "Contraseña"
     password_new: "Nueva contraseña (mínimo 12 caracteres)"
@@ -662,6 +664,10 @@ admin:
         existing_note: "Se usará su cuenta actual; el correo debe coincidir con el invitado."
         accept: "Aceptar invitación"
     messages:
+        catalog_proposed: 'Propuesta de catálogo registrada.'
+        catalog_reviewed: 'Revisión registrada.'
+        catalog_decided: 'Decisión registrada.'
+        catalog_published: 'Cambio de catálogo publicado.'
         org_created: "Organización creada."
         org_updated: "Organización actualizada."
         org_deactivated: "Organización dada de baja."
@@ -675,6 +681,23 @@ admin:
         grant_updated: "Permiso por catálogo actualizado."
         context_switched: "Contexto activo actualizado."
     errors:
+        catalog_permission_denied: 'No tiene permiso para esta operación de catálogo.'
+        catalog_grant_denied: 'Su alcance por catálogo no permite esta operación.'
+        catalog_item_not_found: 'El código solicitado no existe en el catálogo.'
+        catalog_proposal_not_found: 'La solicitud de catálogo no existe.'
+        catalog_unavailable: 'El catálogo elegido no está disponible.'
+        catalog_source_required: 'La fuente verificable es obligatoria.'
+        catalog_invalid_change: 'El cambio propuesto no es válido.'
+        catalog_release_required: 'Debe elegir un release válido.'
+        catalog_invalid_review_role: 'El rol de revisión no es válido.'
+        catalog_invalid_review: 'La revisión no es válida; indique fundamento y resultado.'
+        catalog_review_actor_reused: 'El mismo actor no puede revisar dos veces la solicitud.'
+        catalog_duplicate_review_role: 'Ese rol de revisión ya fue registrado.'
+        catalog_reviews_incomplete: 'Se requieren las dos revisiones aprobadas antes de decidir.'
+        catalog_evidence_required: 'La decisión requiere una referencia de evidencia.'
+        catalog_self_approval_denied: 'Quien propuso no puede aprobar su propia solicitud.'
+        catalog_publish_failed: 'No se pudo publicar el cambio; compruebe el estado de la solicitud.'
+        catalog_read_unavailable: 'El servicio de catálogos no está disponible.'
         csrf: "La sesión expiró. Intente nuevamente."
         database: "El servicio no está disponible. Intente más tarde."
         invalid: "La solicitud no es válida."
@@ -724,7 +747,7 @@ admin:
         uvr_decided: 'Decisión registrada.'
         uvr_published: 'Valoración publicada.'
     uvr:
-        title: 'Gobernanza UVR'
+        title: 'Gestión UVR'
         lead: 'Valoración relativa: fuentes, revisiones y decisiones. Los valores se derivan, nunca se inventan.'
         nav: 'Navegación UVR'
         a: 'Valoraciones'
@@ -785,7 +808,7 @@ admin:
         review_title: 'Registrar revisión'
         review_submit: 'Guardar revisión'
         col_decisions: 'Decisiones'
-        decide_title: 'Decisión gobernada'
+        decide_title: 'Decisión gestionada'
         decide_submit: 'Registrar decisión'
         evidence_reference: 'Referencia de evidencia'
         tasks_note: 'Cola derivada del estado de solicitudes y revisiones; no crea una tabla de tareas.'
@@ -803,3 +826,55 @@ admin:
         col_period: 'Período'
         col_component: 'Componente'
         col_index: 'Índice'
+
+    catalogs:
+        title: 'Gestión de catálogos'
+        lead: 'Catálogos, códigos y su valoración UVR. Los cambios se proponen, revisan y publican con evidencia; nunca se edita directamente el catálogo publicado.'
+        nav: 'Navegación de catálogos'
+        tab_codes: 'Catálogos y códigos'
+        tab_requests: 'Solicitudes'
+        select_title: 'Elegir catálogo'
+        select_submit: 'Abrir'
+        search_title: 'Buscar códigos'
+        search_label: 'Código o nombre'
+        search_placeholder: 'Ej.: 11524-6'
+        search_submit: 'Buscar'
+        col_code: 'Código'
+        col_term: 'Término preferido'
+        uvr_button: 'Ver UVR'
+        new_title: 'Nuevo código'
+        new_note: 'El alta se registra como propuesta; el código se crea solo tras aprobación y publicación.'
+        propose_submit: 'Enviar propuesta'
+        item_not_found: 'El código solicitado no existe.'
+        item_title: 'Detalle del código'
+        back_codes: 'Volver a códigos'
+        versions_title: 'Versiones del código'
+        col_release: 'Release'
+        col_language: 'Idioma'
+        relations_title: 'Relaciones'
+        col_target: 'Código relacionado'
+        col_relation: 'Tipo de relación'
+        col_source_value: 'Valor de fuente'
+        languages_title: 'Idiomas del catálogo'
+        default: 'predeterminado'
+        change_title: 'Proponer cambio'
+        change_note: 'Complete solo los campos que desea cambiar. Todo cambio queda sujeto a dos revisiones y una decisión con evidencia.'
+        group_item: 'Ítem: código y estado'
+        group_release: 'Release y vigencia'
+        group_version: 'Versión: nombre y texto'
+        group_relations: 'Relaciones'
+        group_languages: 'Idiomas'
+        col_definition: 'Definición'
+        col_criteria: 'Criterios clínicos'
+        col_source_field: 'Campo de fuente'
+        col_provenance: 'Proveniencia'
+        col_coverage: 'Cobertura'
+        apply_language: 'Aplicar cambio de idioma'
+        requests_title: 'Solicitudes de cambio'
+        requests_note: 'Propuestas de catálogo con revisión clínica y técnica, decisión y publicación gestionada.'
+        request_not_found: 'La solicitud no existe.'
+        request_title: 'Detalle de la solicitud'
+        col_change: 'Cambio propuesto'
+        role_technical: 'Revisión técnica'
+        publish_title: 'Publicar cambio aprobado'
+        publish_note: 'La publicación aplica el cambio en la base mediante una función segura y registra la auditoría.'

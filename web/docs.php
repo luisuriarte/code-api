@@ -596,6 +596,7 @@ JSON;
                        data-lang-link title="<?= $esc($alternate['label']) ?>"><?= $esc($alternate['short']) ?></a>
                 <?php endforeach; ?>
             </div>
+            <a class="button button-small button-management" href="/admin/login"><?= $esc($t('nav.management')) ?></a>
             <a class="button button-small" href="<?= $esc($accessMailto) ?>"><?= $esc($t('nav.access')) ?></a>
         </div>
     </div>

@@ -9,7 +9,7 @@ acceso) fue aprobada en el Acta M0 y ejecutada por el responsable. La
 verificación `SELECT`-only confirmó 11 tablas, el rol `origen_admin`, el trigger
 append-only y los roles/permisos base.
 
-## M2 — Gobernanza: organizaciones, invitaciones y memberships
+## M2 — Gestión: organizaciones, invitaciones y memberships
 
 **Estado: APLICADO Y VERIFICADO en `origen_codes` (2026-11-19).**
 
@@ -17,7 +17,7 @@ La migración `fase2_gobernanza.sql` fue ejecutada por el responsable como
 `postgres` con `sudo -u postgres psql -v ON_ERROR_STOP=1` y terminó en `COMMIT`.
 La verificación `SELECT`-only confirmó:
 
-- 15 columnas nuevas de gobernanza en `organization`, `membership` y
+- 15 columnas nuevas de gestión en `organization`, `membership` y
   `catalog_grant`;
 - las 2 tablas `invitation` e `invitation_grant`;
 - 12 índices, incluidos los dos índices parciales que sustituyeron la constraint

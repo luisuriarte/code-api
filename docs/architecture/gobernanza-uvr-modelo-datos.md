@@ -1,4 +1,4 @@
-# Gobernanza UVR · modelo de datos real y propuesta aditiva
+# Gestión UVR · modelo de datos real y propuesta aditiva
 
 **Estado:** PROPUESTA DOCUMENTAL. **No implementada.**
 **Depende de:** [`gobernanza-uvr-arquitectura.md`](gobernanza-uvr-arquitectura.md) §6 (conflictos C1–C3, C6, C7, C10).
@@ -67,7 +67,7 @@ que no existe columna `total_uvr` en `os_uvr_valuation`
 |---|---|---|
 | No hay catálogo de metodologías con versión, criterios ni aprobación; `methodology` es texto libre. | No se puede demostrar qué metodología se aprobó ni versionarla. | `fase6_uvr.sql:90,156` |
 | No hay registro de fuente con autoridad, versión, licencia, fecha de obtención ni estado; `license_reference` solo existe en conversión. | La procedencia no es verificable más allá de una cadena de texto. | `fase6_uvr.sql:68,91,132-133,157` |
-| `calculated_by TEXT` anulable y sin FK a `os_admin.app_user`. | Responsable no gobernado con identidad fuerte. | `fase6_uvr.sql:93` |
+| `calculated_by TEXT` anulable y sin FK a `os_admin.app_user`. | Responsable no gestionado con identidad fuerte. | `fase6_uvr.sql:93` |
 | No hay `reviewed_by_user_id`, `approved_by_user_id`, `published_at` ni `assigned_to_user_id` en UVR. | No se puede auditar quién revisó/aprobó/publicó. | `fase6_uvr.sql:85-167` |
 | Ninguna tabla UVR usa `domain_code` ni FK a `os_domain_registry`. | No hay dominio UVR declarado en el registro central de dominios. | `fase1_infraestructura.sql:12-38`; `fase6_uvr.sql:66-167` |
 | No hay vista que consuma `os_uvr_conversion` ni `os_uvr_geo_index`; no hay `adjusted_*` ni importe derivado. | No se puede demostrar separación ni calcular referencia monetaria. | `fase6_uvr.sql:208-227` |
@@ -77,13 +77,13 @@ que no existe columna `total_uvr` en `os_uvr_valuation`
 ## 4. Propuesta conceptual de cuatro planos (sin DDL)
 
 Los «dominios» del documento del usuario se interpretan como **planos lógicos de
-responsabilidad**, no como esquemas, catálogos nuevos ni tablas de gobernanza
+responsabilidad**, no como esquemas, catálogos nuevos ni tablas de gestión
 paralelas. Esta interpretación está sujeta al conflicto C6.
 
 | Plano | Datos existentes que lo representan | Tratamiento propuesto | Estado |
 |---|---|---|---|
-| Clínico / terminológico | `os_catalog`, `os_catalog_item`, `os_catalog_release`, `os_field_review`, D-19/D-31 | El ítem y su release siguen siendo la única entrada; la revisión clínica se registra en la cadena de gobernanza existente, no en una tabla nueva. | Propuesta |
-| Valoración UVR | `os_uvr_valuation`, `os_uvr_component` | Añadir metadatos de gobernanza solo si se aprueban: identificador de metodología, actor responsable con FK, marcador de aplicabilidad Por componente y fecha de aprobación. **Nombres definitivos pendientes.** | Propuesta — requiere C2/C3/C4 |
+| Clínico / terminológico | `os_catalog`, `os_catalog_item`, `os_catalog_release`, `os_field_review`, D-19/D-31 | El ítem y su release siguen siendo la única entrada; la revisión clínica se registra en la cadena de gestión existente, no en una tabla nueva. | Propuesta |
+| Valoración UVR | `os_uvr_valuation`, `os_uvr_component` | Añadir metadatos de gestión solo si se aprueban: identificador de metodología, actor responsable con FK, marcador de aplicabilidad Por componente y fecha de aprobación. **Nombres definitivos pendientes.** | Propuesta — requiere C2/C3/C4 |
 | Económico / conversión | `os_uvr_conversion`, `os_uvr_geo_index` | Permanecen físicamente separados. El importe referencial se deriva en vista/capa de presentación; nunca se guarda. | Propuesta — requiere C7 |
 | Publicación | `os_review_state`, `os_governance_decision`, `os_audit_log` | Guardián único: fuente + evidencia + `is_publication_allowed = TRUE`. Sin estado publicable, no se expone valor. | Propuesta |
 
@@ -95,7 +95,7 @@ documento del usuario.
 
 Se enumeran para decisión, **no se ejecutan ni se fijan como definitivos**:
 
-1. Extender la cadena de gobernanza para que `subject_type`/`subject_id`
+1. Extender la cadena de gestión para que `subject_type`/`subject_id`
    identifiquen una valoración UVR y sus componentes.
 2. Sustituir o complementar `calculated_by TEXT` por un actor con FK a
    `os_admin.app_user`.

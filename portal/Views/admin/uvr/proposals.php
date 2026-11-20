@@ -10,8 +10,11 @@ require __DIR__ . '/_nav.php';
 $uvrPermissions = is_array($current['permissions'] ?? null) ? $current['permissions'] : [];
 $uvrCanPropose = \OrigenSalud\Portal\Admin\Rbac::hasPermission($uvrPermissions, 'catalog.propose');
 $uvrValues = is_array($flash['values'] ?? null) ? $flash['values'] : [];
+$uvrPrefill = is_array($prefill ?? null) ? $prefill : [];
 $uvrValue = static fn (string $key, string $default = ''): string => e(
-    is_string($uvrValues[$key] ?? null) && $uvrValues[$key] !== '' ? $uvrValues[$key] : $default
+    is_string($uvrValues[$key] ?? null) && $uvrValues[$key] !== ''
+        ? $uvrValues[$key]
+        : (is_string($uvrPrefill[$key] ?? null) && $uvrPrefill[$key] !== '' ? $uvrPrefill[$key] : $default)
 );
 $uvrComponents = [
     'work' => 'admin.uvr.work',

@@ -17,6 +17,8 @@ nav:
     uvr: "UVR"
     contact: "Contato"
     access: "Solicitar acesso"
+    management: 'Gestão'
+
     search: "Buscar"
     access_api: "Solicitação de acesso à API"
 
@@ -924,7 +926,7 @@ dentar:
 uvr:
     meta:
         title: 'UVR e Unidades de Valor Relativo · Origen Salud'
-        description: 'Metodologia proposta pela Origen Salud para valorar prestações de saúde por meio de Unidades de Valor Relativo (UVR). Estado, componentes, cálculo, governança e limitações.'
+        description: 'Metodologia proposta pela Origen Salud para valorar prestações de saúde por meio de Unidades de Valor Relativo (UVR). Estado, componentes, cálculo, gestão e limitações.'
     a11y:
         skip: 'Ir para o conteúdo principal'
         search_label: 'Buscar nesta metodologia'
@@ -950,7 +952,7 @@ uvr:
         groups:
             foundation: Fundamentos
             model: 'Modelo UVR'
-            operations: 'Governança e escopo'
+            operations: 'Gestão e escopo'
         label: 'Metodologia UVR'
     breadcrumb:
         home: Início
@@ -1010,7 +1012,7 @@ uvr:
             lead: 'Como reconstruir e auditar cada valoração ao longo do tempo.'
             keywords: 'versoes historico vigencia auditoria responsavel aprovacao'
         governance:
-            title: 'Governança e revisão'
+            title: 'Gestão e revisão'
             lead: 'Processo documentado de evolução e publicação de versões.'
             keywords: 'governanca revisao especialidades publicacao mudancas pendentes'
         scope:
@@ -1041,7 +1043,7 @@ uvr:
         title: 'Estado de implementação'
         lead: 'O sistema UVR da Origen Salud existe hoje como documento metodológico de referência.'
         exists_title: 'O que existe'
-        exists_text: 'Uma proposta formal de valoração relativa com três componentes, fórmulas de ajuste geográfico e conversão monetária, critérios de evidência, rastreabilidade e governança.'
+        exists_text: 'Uma proposta formal de valoração relativa com três componentes, fórmulas de ajuste geográfico e conversão monetária, critérios de evidência, rastreabilidade e gestão.'
         pending_title: 'O que ainda não existe'
         pending_text: 'Não há valores UVR aprovados nem carregados, não há índices geográficos publicados, não há conversões monetárias vigentes e nenhum endpoint da API pública consulta essas estruturas. As tabelas SQL correspondentes estão propostas e vazias.'
         artifact_title: 'Artefato de referência'
@@ -1189,7 +1191,7 @@ uvr:
         history: 'Os valores históricos devem ser conservados para reproduzir cálculos anteriores. Uma nova valoração não deve sobrescrever nem excluir registros históricos.'
         independent: 'Os índices geográficos e os valores monetários também devem contar com versões e períodos de vigência independentes.'
     governance:
-        title: '13. Governança e revisão'
+        title: '13. Gestão e revisão'
         lead: 'O SVP deve evoluir por meio de um processo documentado de revisão.'
         items: 'Revisão técnica por especialidade; participação de profissionais e entidades; revisão de evidências; avaliação de consistência; registro de observações; publicação de versões e datas de vigência.'
         rule: 'Toda inclusão ou modificação deve ser documentada e reproduzível. Os valores pendentes de validação devem ser identificados claramente e não apresentados como definitivos.'
@@ -1215,10 +1217,10 @@ uvr:
         pt: 'Português (Brasil)'
 
 admin:
-    brand: 'Governança de catálogos'
+    brand: 'Gestão de catálogos'
     nav: 'Navegação do painel'
     logout: 'Sair'
-    footer: 'Governança de catálogos · acesso restrito'
+    footer: 'Gestão de catálogos · acesso restrito'
     email: 'E-mail'
     password: 'Senha'
     password_new: 'Nova senha (mínimo 12 caracteres)'
@@ -1394,6 +1396,10 @@ admin:
         existing_note: 'Sua conta atual será usada; o e-mail deve corresponder ao convidado.'
         accept: 'Aceitar convite'
     messages:
+        catalog_proposed: 'Proposta de catálogo registrada.'
+        catalog_reviewed: 'Revisão registrada.'
+        catalog_decided: 'Decisão registrada.'
+        catalog_published: 'Alteração de catálogo publicada.'
         org_created: 'Organização criada.'
         org_updated: 'Organização atualizada.'
         org_deactivated: 'Organização dada como baixa.'
@@ -1407,6 +1413,23 @@ admin:
         grant_updated: 'Permissão por catálogo atualizada.'
         context_switched: 'Contexto ativo atualizado.'
     errors:
+        catalog_permission_denied: 'Você não tem permissão para esta operação de catálogo.'
+        catalog_grant_denied: 'Seu escopo por catálogo não permite esta operação.'
+        catalog_item_not_found: 'O código solicitado não existe no catálogo.'
+        catalog_proposal_not_found: 'A solicitação de catálogo não existe.'
+        catalog_unavailable: 'O catálogo selecionado não está disponível.'
+        catalog_source_required: 'A fonte verificável é obrigatória.'
+        catalog_invalid_change: 'A alteração proposta não é válida.'
+        catalog_release_required: 'Selecione um release válido.'
+        catalog_invalid_review_role: 'O papel de revisão não é válido.'
+        catalog_invalid_review: 'A revisão não é válida; informe fundamento e resultado.'
+        catalog_review_actor_reused: 'O mesmo ator não pode revisar a solicitação duas vezes.'
+        catalog_duplicate_review_role: 'Esse papel de revisão já foi registrado.'
+        catalog_reviews_incomplete: 'As duas aprovações são necessárias antes de decidir.'
+        catalog_evidence_required: 'A decisão exige uma referência de evidência.'
+        catalog_self_approval_denied: 'Quem propôs não pode aprovar a própria solicitação.'
+        catalog_publish_failed: 'Não foi possível publicar a alteração; verifique o estado da solicitação.'
+        catalog_read_unavailable: 'O serviço de catálogos não está disponível.'
         csrf: 'A sessão expirou. Tente novamente.'
         database: 'O serviço não está disponível. Tente mais tarde.'
         invalid: 'A solicitação não é válida.'
@@ -1456,7 +1479,7 @@ admin:
         uvr_decided: 'Decisão registrada.'
         uvr_published: 'Avaliação publicada.'
     uvr:
-        title: 'Governança UVR'
+        title: 'Gestão UVR'
         lead: 'Valoração relativa: fontes, revisões e decisões. Os valores são derivados, nunca inventados.'
         nav: 'Navegação UVR'
         a: 'Avaliações'
@@ -1517,7 +1540,7 @@ admin:
         review_title: 'Registrar revisão'
         review_submit: 'Salvar revisão'
         col_decisions: 'Decisões'
-        decide_title: 'Decisão governada'
+        decide_title: 'Decisão gerenciada'
         decide_submit: 'Registrar decisão'
         evidence_reference: 'Referência de evidência'
         tasks_note: 'Fila derivada do estado de solicitações e revisões; nenhuma tabela de tarefas é criada.'
@@ -1535,3 +1558,55 @@ admin:
         col_period: 'Período'
         col_component: 'Componente'
         col_index: 'Índice'
+
+    catalogs:
+        title: 'Gestão de catálogos'
+        lead: 'Catálogos, códigos e sua valoração UVR. As alterações são propostas, revisadas e publicadas com evidência; o catálogo publicado nunca é editado diretamente.'
+        nav: 'Navegação de catálogos'
+        tab_codes: 'Catálogos e códigos'
+        tab_requests: 'Solicitações'
+        select_title: 'Escolher catálogo'
+        select_submit: 'Abrir'
+        search_title: 'Buscar códigos'
+        search_label: 'Código ou nome'
+        search_placeholder: 'Ex.: 11524-6'
+        search_submit: 'Buscar'
+        col_code: 'Código'
+        col_term: 'Termo preferido'
+        uvr_button: 'Ver UVR'
+        new_title: 'Novo código'
+        new_note: 'A alta é registrada como proposta; o código só é criado após aprovação e publicação.'
+        propose_submit: 'Enviar proposta'
+        item_not_found: 'O código solicitado não existe.'
+        item_title: 'Detalhe do código'
+        back_codes: 'Voltar aos códigos'
+        versions_title: 'Versões do código'
+        col_release: 'Release'
+        col_language: 'Idioma'
+        relations_title: 'Relações'
+        col_target: 'Código relacionado'
+        col_relation: 'Tipo de relação'
+        col_source_value: 'Valor de fonte'
+        languages_title: 'Idiomas do catálogo'
+        default: 'padrão'
+        change_title: 'Propor alteração'
+        change_note: 'Preencha apenas os campos que deseja alterar. Toda alteração exige duas revisões e uma decisão com evidência.'
+        group_item: 'Item: código e estado'
+        group_release: 'Release e vigência'
+        group_version: 'Versão: nome e texto'
+        group_relations: 'Relações'
+        group_languages: 'Idiomas'
+        col_definition: 'Definição'
+        col_criteria: 'Critérios clínicos'
+        col_source_field: 'Campo de fonte'
+        col_provenance: 'Proveniência'
+        col_coverage: 'Cobertura'
+        apply_language: 'Aplicar alteração de idioma'
+        requests_title: 'Solicitações de alteração'
+        requests_note: 'Propostas de catálogo com revisão clínica e técnica, decisão e publicação gerenciada.'
+        request_not_found: 'A solicitação não existe.'
+        request_title: 'Detalhe da solicitação'
+        col_change: 'Alteração proposta'
+        role_technical: 'Revisão técnica'
+        publish_title: 'Publicar alteração aprovada'
+        publish_note: 'A publicação aplica a alteração no banco por meio de uma função segura e registra a auditoria.'

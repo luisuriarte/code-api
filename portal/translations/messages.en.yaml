@@ -18,6 +18,8 @@ nav:
     search: "Search"
     contact: "Contact"
     access: "Request access"
+    management: 'Management'
+
     access_api: "API access request"
 
 a11y:
@@ -924,7 +926,7 @@ dentar:
 uvr:
     meta:
         title: 'UVR and Provider Valuation System · Origen Salud'
-        description: 'Methodology proposed by Origen Salud to value healthcare services using Relative Value Units (RVU). Status, components, calculation, governance, and limitations.'
+        description: 'Methodology proposed by Origen Salud to value healthcare services using Relative Value Units (RVU). Status, components, calculation, management, and limitations.'
     a11y:
         skip: 'Skip to main content'
         search_label: 'Search this methodology'
@@ -950,7 +952,7 @@ uvr:
         groups:
             foundation: Foundations
             model: 'UVR model'
-            operations: 'Governance and scope'
+            operations: 'Management and scope'
         label: 'UVR methodology'
     breadcrumb:
         home: Home
@@ -1010,9 +1012,9 @@ uvr:
             lead: 'How to reconstruct and audit each valuation over time.'
             keywords: 'versions history validity audit responsible approval'
         governance:
-            title: 'Governance and review'
+            title: 'Management and review'
             lead: 'Documented process for evolution and publication of versions.'
-            keywords: 'governance review specialties publication changes pending'
+            keywords: 'management review specialties publication changes pending'
         scope:
             title: 'Scope and limitations'
             lead: 'What the UVR system is not and what it does not guarantee.'
@@ -1041,7 +1043,7 @@ uvr:
         title: 'Implementation status'
         lead: 'The Origen Salud UVR system exists today as a reference methodological document.'
         exists_title: 'What exists'
-        exists_text: 'A formal proposal for relative valuation with three components, formulas for geographic adjustment and monetary conversion, evidence criteria, traceability, and governance.'
+        exists_text: 'A formal proposal for relative valuation with three components, formulas for geographic adjustment and monetary conversion, evidence criteria, traceability, and management.'
         pending_title: 'What does not exist yet'
         pending_text: 'No UVR values are approved or loaded, no geographic indices are published, no monetary conversions are in effect, and no public API endpoint queries these structures. The corresponding SQL tables are proposed and empty.'
         artifact_title: 'Reference artifact'
@@ -1189,7 +1191,7 @@ uvr:
         history: 'Historical values must be retained to reproduce earlier calculations. A new valuation must not overwrite or delete historical records.'
         independent: 'Geographic indices and monetary values must also have independent versions and periods of validity.'
     governance:
-        title: '13. Governance and review'
+        title: '13. Management and review'
         lead: 'The SVP must evolve through a documented review process.'
         items: 'Technical review by specialty; participation of professionals and entities; evidence review; consistency assessment; record of observations; publication of versions and validity dates.'
         rule: 'Every addition or modification must be documented and reproducible. Values pending validation must be clearly identified and not presented as definitive.'
@@ -1215,10 +1217,10 @@ uvr:
         pt: 'Português (Brasil)'
 
 admin:
-    brand: 'Catalog governance'
+    brand: 'Catalog management'
     nav: 'Admin navigation'
     logout: 'Sign out'
-    footer: 'Catalog governance · restricted access'
+    footer: 'Catalog management · restricted access'
     email: 'Email address'
     password: 'Password'
     password_new: 'New password (at least 12 characters)'
@@ -1394,6 +1396,10 @@ admin:
         existing_note: 'Your current account will be used; the email must match the invited one.'
         accept: 'Accept invitation'
     messages:
+        catalog_proposed: 'Catalog proposal recorded.'
+        catalog_reviewed: 'Review recorded.'
+        catalog_decided: 'Decision recorded.'
+        catalog_published: 'Catalog change published.'
         org_created: 'Organization created.'
         org_updated: 'Organization updated.'
         org_deactivated: 'Organization deactivated.'
@@ -1407,6 +1413,23 @@ admin:
         grant_updated: 'Catalog permission updated.'
         context_switched: 'Active context updated.'
     errors:
+        catalog_permission_denied: 'You do not have permission for this catalog operation.'
+        catalog_grant_denied: 'Your catalog scope does not allow this operation.'
+        catalog_item_not_found: 'The requested code does not exist in the catalog.'
+        catalog_proposal_not_found: 'The catalog request does not exist.'
+        catalog_unavailable: 'The selected catalog is not available.'
+        catalog_source_required: 'A verifiable source is required.'
+        catalog_invalid_change: 'The proposed change is not valid.'
+        catalog_release_required: 'Select a valid release.'
+        catalog_invalid_review_role: 'The review role is not valid.'
+        catalog_invalid_review: 'The review is not valid; include rationale and outcome.'
+        catalog_review_actor_reused: 'The same actor cannot review the request twice.'
+        catalog_duplicate_review_role: 'That review role was already recorded.'
+        catalog_reviews_incomplete: 'Both approvals are required before deciding.'
+        catalog_evidence_required: 'The decision requires an evidence reference.'
+        catalog_self_approval_denied: 'The proposer cannot approve their own request.'
+        catalog_publish_failed: 'The change could not be published; check the request status.'
+        catalog_read_unavailable: 'The catalog service is not available.'
         csrf: 'The session expired. Please try again.'
         database: 'The service is unavailable. Please try later.'
         invalid: 'The request is not valid.'
@@ -1456,7 +1479,7 @@ admin:
         uvr_decided: 'Decision recorded.'
         uvr_published: 'Valuation published.'
     uvr:
-        title: 'UVR governance'
+        title: 'UVR management'
         lead: 'Relative valuation: sources, reviews and decisions. Values are derived, never invented.'
         nav: 'UVR navigation'
         a: 'Valuations'
@@ -1517,7 +1540,7 @@ admin:
         review_title: 'Record review'
         review_submit: 'Save review'
         col_decisions: 'Decisions'
-        decide_title: 'Governed decision'
+        decide_title: 'Managed decision'
         decide_submit: 'Record decision'
         evidence_reference: 'Evidence reference'
         tasks_note: 'Worklist derived from request and review status; no task table is created.'
@@ -1535,3 +1558,55 @@ admin:
         col_period: 'Period'
         col_component: 'Component'
         col_index: 'Index'
+
+    catalogs:
+        title: 'Catalog management'
+        lead: 'Catalogs, codes and their UVR valuation. Changes are proposed, reviewed and published with evidence; the published catalog is never edited directly.'
+        nav: 'Catalog navigation'
+        tab_codes: 'Catalogs and codes'
+        tab_requests: 'Requests'
+        select_title: 'Choose catalog'
+        select_submit: 'Open'
+        search_title: 'Search codes'
+        search_label: 'Code or name'
+        search_placeholder: 'e.g. 11524-6'
+        search_submit: 'Search'
+        col_code: 'Code'
+        col_term: 'Preferred term'
+        uvr_button: 'View UVR'
+        new_title: 'New code'
+        new_note: 'Creation is recorded as a proposal; the code is created only after approval and publication.'
+        propose_submit: 'Submit proposal'
+        item_not_found: 'The requested code does not exist.'
+        item_title: 'Code detail'
+        back_codes: 'Back to codes'
+        versions_title: 'Code versions'
+        col_release: 'Release'
+        col_language: 'Language'
+        relations_title: 'Relations'
+        col_target: 'Related code'
+        col_relation: 'Relation type'
+        col_source_value: 'Source value'
+        languages_title: 'Catalog languages'
+        default: 'default'
+        change_title: 'Propose change'
+        change_note: 'Fill only the fields you want to change. Every change requires two reviews and an evidence-backed decision.'
+        group_item: 'Item: code and status'
+        group_release: 'Release and validity'
+        group_version: 'Version: name and text'
+        group_relations: 'Relations'
+        group_languages: 'Languages'
+        col_definition: 'Definition'
+        col_criteria: 'Clinical criteria'
+        col_source_field: 'Source field'
+        col_provenance: 'Provenance'
+        col_coverage: 'Coverage'
+        apply_language: 'Apply language change'
+        requests_title: 'Change requests'
+        requests_note: 'Catalog proposals with clinical and technical review, decision and governed publication.'
+        request_not_found: 'The request does not exist.'
+        request_title: 'Request detail'
+        col_change: 'Proposed change'
+        role_technical: 'Technical review'
+        publish_title: 'Publish approved change'
+        publish_note: 'Publication applies the change in the database through a secure function and records the audit trail.'

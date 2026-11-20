@@ -7,6 +7,7 @@ namespace OrigenSalud\Portal;
 use OrigenSalud\Portal\Admin\AdminGuard;
 use OrigenSalud\Portal\Controllers\AboutController;
 use OrigenSalud\Portal\Controllers\AdminAuthController;
+use OrigenSalud\Portal\Controllers\AdminCatalogController;
 use OrigenSalud\Portal\Controllers\AdminContextController;
 use OrigenSalud\Portal\Controllers\AdminHomeController;
 use OrigenSalud\Portal\Controllers\AdminInvitationController;
@@ -219,7 +220,7 @@ final class Router
             return;
         }
 
-        // Gobernanza (M2): rutas con identificadores y acciones.
+        // Gestión (M2): rutas con identificadores y acciones.
         $segments = $section === '' ? [] : explode('/', $section);
 
         if ($this->governance($segments, $method, $path)) {
@@ -237,6 +238,10 @@ final class Router
         $count = count($segments);
         $first = $segments[0] ?? '';
         $id = isset($segments[1]) && ctype_digit($segments[1]) ? (int) $segments[1] : 0;
+
+        if ($this->catalogs($segments, $method)) {
+            return true;
+        }
 
         if ($this->uvr($segments, $method)) {
             return true;
@@ -368,7 +373,105 @@ final class Router
     }
 
     /**
-     * Gobernanza UVR (vistas A–G). Todas las rutas cuelgan de /admin y pasan
+     * Gestión de catálogos y códigos. Las escrituras del catálogo publicado
+     * se hacen solo desde la base, previa aprobación.
+     *
+     * @param list<string> $segments
+     */
+    private function catalogs(array $segments, string $method): bool
+    {
+        if (($segments[0] ?? '') !== 'catalogs') {
+            return false;
+        }
+
+        $count = count($segments);
+        $second = $segments[1] ?? '';
+        $third = $segments[2] ?? '';
+        $fourth = $segments[3] ?? '';
+        $proposalId = ctype_digit($third) ? (int) $third : 0;
+        $itemId = ctype_digit($fourth) ? (int) $fourth : 0;
+
+        if ($count === 1) {
+            if ($method === 'GET') {
+                AdminCatalogController::index();
+
+                return true;
+            }
+
+            if ($method === 'POST') {
+                AdminCatalogController::propose();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        if ($second === 'proposals') {
+            if ($count === 2) {
+                if ($method === 'GET') {
+                    AdminCatalogController::proposals();
+
+                    return true;
+                }
+
+                if ($method === 'POST') {
+                    AdminCatalogController::propose();
+
+                    return true;
+                }
+
+                return false;
+            }
+
+            if ($proposalId > 0 && $count === 3 && $method === 'GET') {
+                AdminCatalogController::proposal($proposalId);
+
+                return true;
+            }
+
+            if ($proposalId > 0 && $count === 4 && $method === 'POST') {
+                if ($fourth === 'review') {
+                    AdminCatalogController::review($proposalId);
+
+                    return true;
+                }
+
+                if ($fourth === 'decide') {
+                    AdminCatalogController::decide($proposalId);
+
+                    return true;
+                }
+
+                if ($fourth === 'publish') {
+                    AdminCatalogController::publish($proposalId);
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if ($second !== '' && !ctype_digit($second) && $count === 2 && $method === 'GET') {
+            AdminCatalogController::show($second);
+
+            return true;
+        }
+
+        if ($second !== '' && !ctype_digit($second) && $third === 'items'
+            && $itemId > 0 && $count === 4 && $method === 'GET'
+        ) {
+            AdminCatalogController::item($second, $itemId);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Gestión UVR (vistas A–G). Todas las rutas cuelgan de /admin y pasan
      * por AdminGuard en el controlador; no se crean rutas /v1 ni /fhir.
      *
      * @param list<string> $segments

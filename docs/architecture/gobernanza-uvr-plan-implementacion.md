@@ -1,4 +1,4 @@
-# Gobernanza UVR · plan de implementación propuesto
+# Gestión UVR · plan de implementación propuesto
 
 **Estado:** PLAN DOCUMENTAL. **No autorizado para ejecutar.**
 **No incluye:** DDL/DML ejecutado, carga de valores, rutas de API, código,
@@ -14,7 +14,7 @@ commits, push ni despliegue.
 |---|---|
 | Fase 7 (§16) cerrada en base: 5 tablas UVR, 1 elegibilidad real (`dentar-pr`), 4 tablas vacías. | `sql/08_arquitectura/README.md:336-380` |
 | `total_uvr` derivado en vista; ninguna columna almacenada. | `fase6_uvr.sql:206-230`; `verificacion_fase7.sql:82-86` |
-| Gobernanza Fase 5 cerrada en base, vacía y sin conexión con el panel. | `sql/08_arquitectura/README.md:278-289`; `sql/09_admin/README.md:107-116` |
+| Gestión Fase 5 cerrada en base, vacía y sin conexión con el panel. | `sql/08_arquitectura/README.md:278-289`; `sql/09_admin/README.md:107-116` |
 | M1/M2 de identidad aplicados; 8 roles, 14 permisos, grants por catálogo y auditoría append-only. | `sql/09_admin/README.md:3-29`; `portal/Admin/Rbac.php:17-59` |
 | API pública solo `/v1/*` y `/health`; sin `/v1/uvr` ni `/fhir/*`. | `api/index.php:192-227`; `docs/architecture/fase12-fhir-contrato.md:19-33` |
 | Portal UVR: metodología trilingüe, solo lectura, sin valores. | `web/uvr.php:5-10`; `tests/run.php:1160-1184` |
@@ -33,7 +33,7 @@ cierre:
 | C3 | Semántica de `0`, no aplicable y posibles ajustes negativos. |
 | C4 | Responsable de cálculo y aprobador UVR; decisiones 7 y 11 del §15.2. |
 | C5 | Independencia entre revisión clínica y revisión económica; ¿permiso propio? |
-| C6 | Interpretación de los cuatro dominios/planos sin gobernanza paralela. |
+| C6 | Interpretación de los cuatro dominios/planos sin gestión paralela. |
 | C7 | Nombre canónico del importe: `estimated_payment` o `importe_referencial`. |
 | C8 | Autorización para conectar panel con Fase 5 y construir vistas A–G. |
 | C9 | Corrección autorizada de §10/§11 y de nombres/typo detectados. |
@@ -48,8 +48,8 @@ cierre:
 | Fase | Objetivo | Entregable del agente | Quién ejecuta | Verificación | Rollback |
 |---|---|---|---|---|---|
 | U0 · Acta y documentación | Cerrar C1–C12; corregir documentación aprobada solo si se autoriza. | Acta y propuestas de texto; sin SQL. | Responsable aprueba. | Revisión documental. | No aplica. |
-| U1 · Modelo de datos | Ajustar metadatos de gobernanza UVR sin tocar legado. | Archivos SQL preparados + verificación read-only; **no ejecutados**. | Responsable con `sudo -u postgres` y backup. | `BEGIN READ ONLY`/`ROLLBACK`; conteos y constraints. | Script de corrección aditiva; nunca `DROP` de datos. |
-| U2 · Backend de gobernanza | Repositorios/servicios para propuesta, revisión, decisión y worklist. | Código propuesto, no aplicado; sin rutas nuevas. | Responsable autoriza despliegue. | `php -l`, `php tests/run.php`, pruebas unitarias. | Revertir commit (si se autoriza commits). |
+| U1 · Modelo de datos | Ajustar metadatos de gestión UVR sin tocar legado. | Archivos SQL preparados + verificación read-only; **no ejecutados**. | Responsable con `sudo -u postgres` y backup. | `BEGIN READ ONLY`/`ROLLBACK`; conteos y constraints. | Script de corrección aditiva; nunca `DROP` de datos. |
+| U2 · Backend de gestión | Repositorios/servicios para propuesta, revisión, decisión y worklist. | Código propuesto, no aplicado; sin rutas nuevas. | Responsable autoriza despliegue. | `php -l`, `php tests/run.php`, pruebas unitarias. | Revertir commit (si se autoriza commits). |
 | U3 · Panel A–G | Vistas administrativas con permisos existentes y paridad i18n. | Vistas/controladores/plantillas preparados; conexión Fase 5 solo si C8. | Responsable autoriza. | `AdminGuard`, CSRF, Rbac, `tests/run.php`. | Retirar rutas/vistas; reforzar gobernanza. |
 | U4 · Publicación controlada | Guardián de publicación y auditoría UVR. | SQL/código preparado; sin datos cargados. | Responsable ejecuta. | Verificación read-only de triggers y grants; auditoría append-only. | Desactivar trigger y documentar; no borrar eventos. |
 | U5 · Conversión e importe derivado | Vista derivada de `uvr_value`/índices con rotulado de estimación. | Definición de vista, sin columnas nuevas. | Responsable aprueba. | Comprobar que no hay columna de importe; regresiones. | Retirar vista; no afecta tablas. |
@@ -168,4 +168,4 @@ Reglas obligatorias:
 **Este documento no autoriza ninguna de las fases U0–U6.** Es la propuesta que
 el responsable debe aprobar o ajustar. Hasta que exista aprobación expresa, el
 repositorio permanece exactamente como estaba: UVR como metodología pública y
-estructura SQL vacía; gobernanza genérica preparada; API y portal sin cambios.
+estructura SQL vacía; gestión genérica preparada; API y portal sin cambios.

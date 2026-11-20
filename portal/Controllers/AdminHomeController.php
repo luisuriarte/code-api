@@ -20,7 +20,7 @@ final class AdminHomeController
 
         View::render('admin/home', [
             'pageTitle' => 'Panel de administración | Origen Salud',
-            'pageDescription' => 'Gobernanza de catálogos: identidad y permisos.',
+            'pageDescription' => 'Gestión de catálogos: identidad y permisos.',
             'locale' => I18n::locale(),
             'currentPath' => '/admin',
             'adminUser' => $current['user'],
