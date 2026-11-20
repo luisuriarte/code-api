@@ -208,7 +208,7 @@ $sqlFiles = array_values(array_filter(
     static fn (string $f): bool => !str_contains(basename($f), 'verificacion_')
         && !str_contains(basename($f), 'correcion_')
 ));
-$check(count($sqlFiles) === 6, 'Deben existir seis artefactos SQL propuestos (incluida la Fase 3).');
+$check(count($sqlFiles) === 7, 'Deben existir siete artefactos SQL propuestos (incluidas las Fases 3 y 8).');
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
     $name = basename($file);
@@ -646,6 +646,68 @@ $check(
     str_contains($architectureRaw, 'Fase 7 cerrada en base')
         && str_contains($architectureRaw, '0 valores UVR'),
     'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 7.'
+);
+
+// 3h. Fase 8 del §16: catálogos DENTAR reservados IN/PD/EQ (nombre histórico fase7).
+$fase8Path = $sqlDir . '/fase7_catalogos_reservados.sql';
+$fase8VerifyPath = $sqlDir . '/verificacion_fase8.sql';
+$check(is_file($fase8Path), 'Debe existir la migración de catálogos reservados de la Fase 8.');
+$check(is_file($fase8VerifyPath), 'Debe existir la verificación de catálogos reservados de la Fase 8.');
+if (is_file($fase8Path)) {
+    $fase8Sql = (string) file_get_contents($fase8Path);
+    $check(
+        str_contains($fase8Sql, 'CREATE TABLE IF NOT EXISTS os_catalog_reservation')
+            && str_contains($fase8Sql, "('dentar-in',")
+            && str_contains($fase8Sql, "('dentar-pd',")
+            && str_contains($fase8Sql, "('dentar-eq',"),
+        'Fase 8 debe reservar solo los tres códigos documentados IN/PD/EQ.'
+    );
+    $check(
+        str_contains($fase8Sql, "DEFAULT 'unreviewed'")
+            && str_contains($fase8Sql, 'source_reference TEXT NOT NULL')
+            && str_contains($fase8Sql, 'catalog_id INT REFERENCES os_catalog(id) ON DELETE SET NULL'),
+        'Fase 8 debe exigir gobernanza y dejar catalog_id nulo hasta la aprobación.'
+    );
+    $check(
+        !preg_match('/INSERT\s+INTO\s+os_catalog\b/i', $fase8Sql)
+            && !preg_match('/INSERT\s+INTO\s+os_catalog_item\b/i', $fase8Sql)
+            && !preg_match('/INSERT\s+INTO\s+os_catalog_release\b/i', $fase8Sql)
+            && !str_contains($fase8Sql, 'DNT-IN-'),
+        'Fase 8 no debe crear catálogos reales, ítems ni códigos inventados.'
+    );
+    $check(
+        str_contains($fase8Sql, 'trg_os_catalog_reservation_publication')
+            && str_contains($fase8Sql, 'is_publication_allowed')
+            && str_contains($fase8Sql, 'RAISE EXCEPTION'),
+        'Fase 8 debe impedir vincular un catálogo sin aprobación editorial.'
+    );
+    $check(
+        str_contains($fase8Sql, 'REVOKE ALL PRIVILEGES ON TABLE public.os_catalog_reservation FROM PUBLIC')
+            && str_contains($fase8Sql, 'FROM origen_admin'),
+        'Fase 8 debe revocar el DEFAULT ACL sobre la tabla nueva.'
+    );
+}
+if (is_file($fase8VerifyPath)) {
+    $fase8Verify = (string) file_get_contents($fase8VerifyPath);
+    $check(
+        str_contains($fase8Verify, 'BEGIN READ ONLY;') && str_contains($fase8Verify, 'ROLLBACK;'),
+        'La verificación de Fase 8 debe ser de solo lectura.'
+    );
+    $check(
+        str_contains($fase8Verify, 'catalog_id IS NOT NULL')
+            && str_contains($fase8Verify, 'trg_os_catalog_reservation_publication')
+            && str_contains($fase8Verify, "grantee IN ('origen_admin', 'PUBLIC')")
+            && str_contains($fase8Verify, '(SELECT count(*) FROM os_catalog_relation)'),
+        'La verificación de Fase 8 debe comprobar reservas, guardián, privilegios y regresión.'
+    );
+}
+$check(str_contains($sqlReadme, 'verificacion_fase8.sql'), 'El README SQL debe documentar la verificación de Fase 8.');
+$check(str_contains($sqlReadme, 'Operación de Fase 8'), 'El README SQL debe documentar la operación de Fase 8.');
+$check(str_contains($sqlReadme, 'Fase 8 cerrada en base'), 'El README SQL debe registrar el cierre en base de la Fase 8.');
+$check(
+    str_contains($architectureRaw, 'Fase 8 cerrada en base')
+        && str_contains($architectureRaw, '0 catálogos reales'),
+    'El documento de arquitectura debe registrar la ejecución y el cierre de Fase 8.'
 );
 
 // 4. Relaciones CDT: cobertura de tipos en traducciones y en el repositorio.

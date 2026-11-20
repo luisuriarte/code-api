@@ -41,6 +41,7 @@ para no romper referencias existentes en `tests/run.php` y en el documento.
 | `fase4_gobernanza.sql` | 5 | Solicitudes, revisiones, decisiones y auditoría (+ `verificacion_fase5.sql`) |
 | `fase5_productos.sql` | 6 | Concepto, producto, presentación e identificadores (+ `verificacion_fase6.sql`) |
 | `fase6_uvr.sql` | 7 | Valoración UVR sin valores cargados (+ `verificacion_fase7.sql`) |
+| `fase7_catalogos_reservados.sql` | 8 | Reserva de DENTAR-IN/PD/EQ con gobernanza (+ `verificacion_fase8.sql`) |
 
 Cada migración es independiente y está envuelta en `BEGIN`/`COMMIT`. Ejecutar
 una por fase, con verificación y backup entre ellas. Los scripts
@@ -372,6 +373,51 @@ columnas `total_uvr` almacenadas, 0 grantees no deseados, modelos heredados
 intactos (`os_pricing_values` = 0, `os_fee_item` = 54) y regresión 603/22/0.
 El `NOTICE: trigger ... does not exist, skipping` es esperado en la primera
 ejecución: `DROP TRIGGER IF EXISTS` garantiza idempotencia. **Fase 7 cerrada en base.**
+
+## Operación de Fase 8 (§16): catálogos DENTAR reservados IN/PD/EQ
+
+Autorizada el 2026-11-20. El nombre `fase7_catalogos_reservados.sql` conserva la
+numeración histórica; en §16 corresponde a la **Fase 8**. Artefactos: migración
+`fase7_catalogos_reservados.sql` y verificación `verificacion_fase8.sql`
+(`BEGIN READ ONLY` / `ROLLBACK`). Requiere la Fase 1 ejecutada.
+
+La migración crea **una tabla nueva**, `os_catalog_reservation`, con los tres
+códigos ya documentados en §5.1 (`dentar-in`, `dentar-pd`, `dentar-eq`) como
+**reservas**: `review_status = 'unreviewed'`, `source_reference` obligatorio,
+`domain_code = 'odontologia'` y `catalog_id = NULL`. **No crea filas en
+`os_catalog`, ni releases, categorías, ítems, términos, identificadores ni
+relaciones.** No se inventan códigos `DNT-IN-*`, `DNT-PD-*` ni `DNT-EQ-*`.
+
+La gobernanza propia se refuerza con el trigger
+`trg_os_catalog_reservation_publication`: impide vincular un catálogo real
+mientras `os_review_state.is_publication_allowed` sea falso. La API pública,
+Browse Codes, Docs y UVR no cambian; los tres códigos siguen mostrándose como
+"Propuesto" desde el listado estático del portal. Se revoca
+`PUBLIC`/`origen_admin` sobre la tabla nueva por el `DEFAULT ACL` de `public`.
+
+```bash
+sudo -u postgres pg_dump -Fc origen_codes > origen_codes_pre_fase8.dump
+sudo -u postgres pg_restore -l origen_codes_pre_fase8.dump
+
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/fase7_catalogos_reservados.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_fase8.sql
+```
+
+Criterios de aceptación: apartado 1 = 1 tabla; apartado 2 = 3 reservas, 0 con
+`catalog_id`, 0 sin fuente; apartado 3 = 0 catálogos reales, 0 ítems y 0
+releases; apartado 4 = 2 constraints y trigger activo; apartado 5 = 0 filas;
+apartado 6 = 603 relaciones, 22 idiomas, 0 solicitudes y 0 valoraciones UVR.
+
+**Estado final (2026-11-20): ejecutada y verificada en base.** La migración
+terminó en `COMMIT`: 1 tabla, 3 reservas (`dentar-eq`, `dentar-in`, `dentar-pd`)
+con `review_status = 'unreviewed'`, dominio `odontologia`, fuente obligatoria y
+`catalog_id` nulo; 0 catálogos reales, 0 ítems y 0 releases; 2 constraints y el
+guardián de publicación activo (`O`); 0 grantees no deseados; regresión 603/22/0/0
+y los tres catálogos publicados intactos. El `NOTICE: trigger ... does not
+exist, skipping` es esperado en la primera ejecución por el
+`DROP TRIGGER IF EXISTS`. **Fase 8 cerrada en base.**
 
 ## Backup y rollback por fase
 

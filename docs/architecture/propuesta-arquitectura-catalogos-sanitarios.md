@@ -1070,7 +1070,7 @@ inválidos (D-34).
 | 5 | Gobernanza y auditoría unificadas | **Cerrada el 2026-11-20**: `fase4_gobernanza.sql` (nombre histórico) + `verificacion_fase5.sql`; 4 tablas vacías, 4 FK a `os_admin.app_user`, 4 triggers, auditoría append-only y `REVOKE` por DEFAULT ACL, con regresión intacta | Sí (otorgada) |
 | 6 | Modelo de productos/presentaciones/identificadores, vacío | **Cerrada el 2026-11-20**: `fase5_productos.sql` (nombre histórico) + `verificacion_fase6.sql`; 9 tablas vacías, 3 tipos de identificador y 4 roles de fabricante, 6 constraints, 4 índices, 0 grantees y regresión 603/22/0; modelo farmacéutico heredado intacto | Sí (otorgada) |
 | 7 | Módulo UVR, sin valores inventados | **Cerrada el 2026-11-20**: `fase6_uvr.sql` (nombre histórico) + `verificacion_fase7.sql`; 5 tablas, 1 elegibilidad real de `dentar-pr` y 0 para `dentar-dx`, 4 tablas de valoración vacías, 7 constraints, trigger activo, vista derivada sin `total_uvr` almacenado, 0 grantees y regresión 603/22/0 | Sí (otorgada) |
-| 8 | DENTAR-IN/PD/EQ solo si se aprueban | Catálogos reservados/creados con gobernanza propia | Sí |
+| 8 | DENTAR-IN/PD/EQ solo si se aprueban | **Cerrada el 2026-11-20**: `fase7_catalogos_reservados.sql` (nombre histórico) + `verificacion_fase8.sql`; 3 reservas con `catalog_id` nulo, fuente obligatoria y guardián de publicación activo; 0 catálogos reales, 0 ítems y 0 releases; 0 grantees y regresión 603/22/0/0 | Sí (otorgada) |
 | 9 | Nomenclador Odontológico Nacional | **Ejecutada por el usuario el 2026-11-19**: 135 ítems, 270 relaciones, CDT intactas (§5.2) | Sí (otorgada) |
 | 10 | Catálogos generales OS-* | Clasificación definida; sin duplicados | Sí |
 | 11 | Medicamentos, dispositivos y registros | Integración con ANMAT/UDI/GTIN reales | Sí |
@@ -1119,7 +1119,7 @@ elegibilidad real de `dentar-pr`, el trigger de la regla §10.3.1, la vista
 derivada sin `total_uvr` almacenado y `REVOKE` por DEFAULT ACL. El usuario la
 ejecutó con backup verificado el 2026-11-20: 5 tablas, 1 elegibilidad real
 (`dentar-pr`), 0 valores UVR, 7 constraints, trigger activo, vista derivada sin
-`total_uvr` almacenado, 0 grantees y regresión intacta. **Fase 7 cerrada en base.**
+`total_uvr` almacenado, 0 grantees y regresión intacta. **Fase 7 cerrada en base.** La **Fase 8** está autorizada y preparada: `fase7_catalogos_reservados.sql` crea `os_catalog_reservation` con las tres reservas documentadas (`dentar-in`, `dentar-pd`, `dentar-eq`), `catalog_id` nulo, fuente obligatoria y un trigger que impide vincular un catálogo sin aprobación editorial; `verificacion_fase8.sql` comprueba que no se crearon catálogos reales ni ítems. El usuario la ejecutó con backup verificado el 2026-11-20: 3 reservas sin `catalog_id`, guardián activo, 0 catálogos reales, 0 ítems y regresión intacta. **Fase 8 cerrada en base.**
 Las fases M1/M2 del panel administrativo están aplicadas y verificadas en
 `os_admin` (ver `docs/architecture/fase2-organizaciones-invitaciones.md`). Los
 nombres `fase3..fase6` de `sql/08_arquitectura/` corresponden a las Fases 4..7
