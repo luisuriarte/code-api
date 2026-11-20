@@ -47,7 +47,11 @@ foreach ($facetGroups as $group) {
     foreach ($group['options'] as $option) {
         $code = (string) ($option['code'] ?? '');
         if ($code !== '') {
-            $facetLabels[$group['key']][$code] = (string) ($option['label'] ?? $code);
+            $label = (string) ($option['label'] ?? $code);
+            if ($group['key'] === 'family' && $code === 'dentar') {
+                $label = $t('browse.family_dentar');
+            }
+            $facetLabels[$group['key']][$code] = $label;
         }
     }
 }
@@ -253,18 +257,11 @@ foreach ($filters as $key => $code) {
                                     <span class="rounded-full bg-paper px-2 py-0.5 text-[10px] font-semibold text-muted"><?= e($t($option['tag'])) ?></span>
                                 </label>
                             <?php endforeach; ?>
-                            <div class="flex flex-wrap gap-1.5 pt-1">
-                                <?php foreach (array_merge($reservedDentar, $reservedOs) as $option): ?>
-                                    <span class="rounded-full border border-dashed border-line px-2 py-0.5 text-[10px] text-muted" aria-disabled="true">
-                                        <?= e($option['code']) ?> · <?= e($t($option['tag'])) ?>
-                                    </span>
-                                <?php endforeach; ?>
-                            </div>
                             <p class="pt-1 text-[11px] leading-5 text-muted"><?= e($t('browse.reserved_note')) ?></p>
                         </fieldset>
 
                         <?php foreach ($facetGroups as $group): ?>
-                            <?php if ($group['options'] === []) { continue; } ?>
+                            <?php if (count($group['options']) < 2) { continue; } ?>
                             <fieldset class="space-y-2">
                                 <legend class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted"><?= e($t($group['label'])) ?></legend>
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm transition has-checked:border-teal has-checked:bg-mint has-checked:text-teal-dark hover:border-teal/60">

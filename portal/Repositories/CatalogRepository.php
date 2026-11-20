@@ -348,7 +348,7 @@ final class CatalogRepository
             $categories = $pdo->query(
                 'SELECT DISTINCT c.code, c.name FROM os_catalog_category c'
                 . ' JOIN os_catalog cat ON cat.id = c.catalog_id'
-                . ' WHERE cat.is_active = TRUE ORDER BY c.code ASC'
+                . ' WHERE cat.is_active = TRUE ORDER BY c.name ASC, c.code ASC'
             )->fetchAll();
             $versions = $pdo->query(
                 'SELECT DISTINCT r.version_tag FROM os_catalog_release r'
@@ -379,13 +379,25 @@ final class CatalogRepository
             }
         }
 
+        // En los nomencladores el "código" de categoría es el de la práctica
+        // (010101, 010104...) y el nombre es el capítulo. Mostrar un radio por
+        // código llenaba el facet con decenas de "01" y de
+        // "Operaciones en el sistema nervioso": se agrupa por nombre y se
+        // conserva el primer código como valor estable del parámetro.
         $categoryOptions = [];
         foreach ($categories as $row) {
             $code = (string) ($row['code'] ?? '');
-            if ($code !== '') {
-                $categoryOptions[] = [
+            $label = trim((string) ($row['name'] ?? ''));
+            if ($code === '') {
+                continue;
+            }
+            if ($label === '') {
+                $label = $code;
+            }
+            if (!isset($categoryOptions[$label])) {
+                $categoryOptions[$label] = [
                     'code' => $code,
-                    'label' => (string) ($row['name'] ?? $code),
+                    'label' => $label,
                 ];
             }
         }
@@ -409,7 +421,7 @@ final class CatalogRepository
         return [
             'families' => array_values($families),
             'types' => array_values($types),
-            'categories' => $categoryOptions,
+            'categories' => array_values($categoryOptions),
             'versions' => $versionOptions,
             'statuses' => $statusOptions,
         ];
@@ -820,7 +832,13 @@ final class CatalogRepository
             }
         }
         if (isset($filters['category'])) {
-            $extraWhere .= "   AND catcat.code = :{$p}_filter_category\n";
+            // El facet agrupa por capítulo: el código representante se resuelve
+            // a su nombre para traer todas las prácticas del mismo capítulo.
+            $extraWhere .= "   AND catcat.name = (\n"
+                . "         SELECT cc.name FROM os_catalog_category cc\n"
+                . "          WHERE cc.code = :{$p}_filter_category\n"
+                . "          ORDER BY cc.id ASC LIMIT 1\n"
+                . "       )\n";
             $params[":{$p}_filter_category"] = $filters['category'];
         }
         $params[":{$p}_filter_status"] = $filters['status'] ?? 'active';

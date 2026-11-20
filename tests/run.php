@@ -1138,6 +1138,11 @@ $check(
     'Los resultados y la ficha deben conservar los hooks del explorador AJAX.'
 );
 $check(
+    !str_contains($browseView, 'array_merge($reservedDentar, $reservedOs)')
+    && str_contains($browseView, "count(\$group['options']) < 2"),
+    'El drawer no debe mostrar etiquetas no consultables ni facetas con una sola opción.'
+);
+$check(
     str_contains($resultsSource, 'browse-results--explorer')
     && str_contains($resultsSource, 'sm:grid-cols-2')
     && str_contains($resultsSource, 'data-focus-url'),
@@ -1168,7 +1173,7 @@ $check(str_contains($packageRaw, 'build:css:public'), 'El build debe generar el 
 foreach (['es-AR', 'en', 'pt-BR', 'es'] as $locale) {
     $messages = Yaml::parseFile($root . '/portal/translations/messages.' . $locale . '.yaml');
     $browse = $messages['browse'] ?? [];
-    foreach (['active_filters', 'close_filters'] as $key) {
+    foreach (['active_filters', 'close_filters', 'family_dentar'] as $key) {
         $check(isset($browse[$key]), $locale . ': falta browse.' . $key . '.');
     }
 }
@@ -2004,6 +2009,12 @@ $check(
 $check(
     str_contains($catalogRepoSource, 'JOIN LATERAL'),
     'El término preferido debe resolverse con la versión canónica del ítem.'
+);
+$check(
+    str_contains($portalRepoSource, 'ORDER BY c.name ASC, c.code ASC')
+    && str_contains($portalRepoSource, "if (!isset(\$categoryOptions[\$label]))")
+    && str_contains($portalRepoSource, 'catcat.name = ('),
+    'Las categorías del browser deben agruparse por nombre de capítulo y filtrar por ese nombre.'
 );
 
 $catalogMigration = (string) file_get_contents($root . '/sql/08_arquitectura/catalogos_gestion_gobernada.sql');
