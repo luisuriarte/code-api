@@ -1385,6 +1385,13 @@ $check(str_contains($docsSource, "/docs?lang='"), 'Docs debe canónizar y cambia
 $check(str_contains($docsSource, 'data-lang-link'), 'Docs debe renderizar su propio selector de idioma.');
 $check(!str_contains($docsSource, 'I18n::alternateLinks'), 'Docs no debe usar alternateLinks() sobre la ruta legacy.');
 $check(!str_contains($docsSource, 'language-switcher.php'), 'Docs no debe reutilizar el selector que genera /{locale}/docs.');
+$check(
+    str_contains($docsSource, '/assets/css/public.css')
+    && str_contains($docsSource, 'sticky top-0 z-40')
+    && str_contains($docsSource, 'lg:hidden')
+    && str_contains($docsSource, 'nav-links.php'),
+    'Docs debe usar el build Tailwind y el mismo menú sticky de las páginas públicas.'
+);
 $check(str_contains($docsSource, 'docs-search-input'), 'Docs debe incluir búsqueda interna.');
 $check(str_contains($docsSource, 'docs-toc-list'), 'Docs debe incluir índice contextual por artículo.');
 $check(str_contains($docsSource, 'data-breadcrumb-article'), 'Docs debe incluir breadcrumbs dinámicos.');
@@ -1484,6 +1491,13 @@ $check(str_contains($uvrSource, "/uvr?lang='"), 'UVR debe canónizar y cambiar i
 $check(str_contains($uvrSource, 'data-lang-link'), 'UVR debe renderizar su propio selector de idioma.');
 $check(!str_contains($uvrSource, 'language-switcher.php'), 'UVR no debe reutilizar el selector legacy.');
 $check(!str_contains($uvrSource, 'I18n::alternateLinks'), 'UVR no debe usar alternateLinks() sobre la ruta legacy.');
+$check(
+    str_contains($uvrSource, '/assets/css/public.css')
+    && str_contains($uvrSource, 'sticky top-0 z-40')
+    && str_contains($uvrSource, 'lg:hidden')
+    && str_contains($uvrSource, 'nav-links.php'),
+    'UVR debe usar el build Tailwind y el mismo menú sticky de las páginas públicas.'
+);
 $check(str_contains($uvrSource, 'uvr-search-input'), 'UVR debe incluir búsqueda interna.');
 $check(str_contains($uvrSource, 'uvr-toc-list'), 'UVR debe incluir índice contextual.');
 $check(str_contains($uvrSource, 'data-breadcrumb-article'), 'UVR debe incluir breadcrumbs dinámicos.');

@@ -46,6 +46,13 @@ foreach (I18n::SUPPORTED as $supported) {
     ];
 }
 
+// Banderas inline del selector: SVG estático, sin emoji ni CDN.
+$flags = [
+    'es-AR' => '<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" fill="#74acdf"/><rect y="8" width="24" height="8" fill="#fff"/><circle cx="12" cy="12" r="2" fill="#f6b40e"/></svg>',
+    'en' => '<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" fill="#012169"/><path d="M0 0 24 24M24 0 0 24" stroke="#fff" stroke-width="4"/><path d="M0 0 24 24M24 0 0 24" stroke="#c8102e" stroke-width="2"/><path d="M12 0v24M0 12h24" stroke="#fff" stroke-width="6"/><path d="M12 0v24M0 12h24" stroke="#c8102e" stroke-width="3.5"/></svg>',
+    'pt-BR' => '<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" fill="#009c3b"/><path d="M12 3 21 12 12 21 3 12Z" fill="#ffdf00"/><circle cx="12" cy="12" r="4.2" fill="#002776"/></svg>',
+];
+
 $homePath = I18n::localizedPath($locale, '/');
 $contactPath = I18n::localizedPath($locale, '/contact');
 $accessMailto = 'mailto:contacto@origen.ar?subject=' . rawurlencode($t('nav.access_api'));
@@ -483,7 +490,7 @@ JSON;
     <?php foreach ($alternates as $alternate): ?>
         <link rel="alternate" hreflang="<?= $esc($alternate['hreflang']) ?>" href="<?= $esc($alternate['href']) ?>">
     <?php endforeach; ?>
-    <link rel="stylesheet" href="assets/css/app.css?v=docs-v2">
+    <link rel="stylesheet" href="/assets/css/public.css?v=docs-v3">
     <style>
         .docs-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr) 190px; gap: 32px; align-items: start; padding: 32px 0 72px; }
         .docs-sidebar, .docs-toc { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
@@ -512,10 +519,10 @@ JSON;
         .docs-toc ol { list-style: none; padding: 0; margin: 0; }
         .docs-toc a { display: block; padding: 4px 0; color: var(--ink-soft); text-decoration: none; }
         .docs-toc a:hover, .docs-toc a.is-active { color: var(--teal-dark); font-weight: 600; }
-        .docs-section { margin-bottom: 56px; scroll-margin-top: 24px; }
+        .docs-section { margin-bottom: 56px; scroll-margin-top: 5rem; }
         .docs-section > h2 { margin: 0 0 10px; padding-bottom: 8px; border-bottom: 2px solid var(--mint); font-size: 1.6rem; color: var(--ink); }
         .docs-section > p.lead { margin: 0 0 22px; color: var(--ink-soft); font-size: 1.02rem; }
-        .docs-section h3 { margin: 30px 0 10px; scroll-margin-top: 24px; font-size: 1.2rem; color: var(--ink); }
+        .docs-section h3 { margin: 30px 0 10px; scroll-margin-top: 5rem; font-size: 1.2rem; color: var(--ink); }
         .docs-section p { color: var(--ink-soft); }
         .table-wrap { width: 100%; overflow-x: auto; margin: 14px 0 22px; }
         .param-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: .9rem; }
@@ -555,9 +562,6 @@ JSON;
         .article-nav__link span { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
         .article-nav__link strong { color: var(--teal-dark); font-size: .9rem; }
         .article-nav__link--next { text-align: right; margin-left: auto; }
-        .docs-lang-switch { display: flex; align-items: center; gap: 5px; }
-        .docs-lang-switch a { padding: 4px 7px; border-radius: 5px; color: var(--ink-soft); font-size: .78rem; font-weight: 700; text-decoration: none; }
-        .docs-lang-switch a[aria-current="true"] { background: var(--mint); color: var(--teal-dark); }
         a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
         @media (max-width: 1180px) { .docs-shell { grid-template-columns: 232px minmax(0, 1fr); } .docs-toc { display: none; } }
         @media (max-width: 860px) {
@@ -573,31 +577,67 @@ JSON;
 <body>
 <a class="skip-link" href="#main"><?= $esc($t('docs.a11y.skip')) ?></a>
 
-<header class="site-header">
-    <div class="container header-inner">
-        <a class="brand" href="<?= $esc($homePath) ?>" aria-label="Origen Salud">
-            <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
-                <rect width="40" height="40" rx="12" fill="currentColor"/>
-                <path d="M20 11v18M11 20h18" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
-            </svg>
-            <span class="brand-name">Origen<span>Salud</span></span>
+<header class="site-header sticky top-0 z-40 border-b border-line/80 bg-white/85 backdrop-blur-xl">
+    <div class="mx-auto flex h-16 w-full max-w-[1500px] items-center gap-3 px-4 sm:px-6 lg:gap-6">
+        <a class="group flex shrink-0 items-center gap-2.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15"
+           href="<?= $esc($homePath) ?>" aria-label="Origen Salud">
+            <span class="flex size-9 items-center justify-center rounded-xl bg-teal text-white shadow-card transition group-hover:bg-teal-dark">
+                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true" focusable="false">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+            </span>
+            <span class="text-[15px] font-semibold tracking-tight text-ink">Origen<span class="text-teal">Salud</span></span>
         </a>
 
-        <nav class="site-nav" aria-label="<?= $esc($t('nav.label')) ?>">
-            <?php $activeNav = 'docs'; require dirname(__DIR__) . '/portal/Views/partials/nav-links.php'; ?>
+        <nav class="hidden flex-1 lg:flex lg:items-center lg:justify-center" aria-label="<?= $esc($t('nav.label')) ?>">
+            <div class="flex items-center gap-0.5 rounded-full border border-line bg-paper/70 p-1">
+                <?php $activeNav = 'docs'; require dirname(__DIR__) . '/portal/Views/partials/nav-links.php'; ?>
+            </div>
         </nav>
 
-        <div class="header-actions">
-            <div class="docs-lang-switch" role="group" aria-label="<?= $esc($t('docs.lang.label')) ?>">
+        <div class="ms-auto flex items-center gap-2 sm:gap-3">
+            <div class="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-line bg-paper/80 p-0.5"
+                 role="group" aria-label="<?= $esc($t('lang.label')) ?>">
                 <?php foreach ($alternates as $alternate): ?>
-                    <a href="<?= $esc($alternate['href']) ?>" hreflang="<?= $esc($alternate['hreflang']) ?>"
+                    <?php $flag = $flags[$alternate['hreflang']] ?? ''; ?>
+                    <a class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-bold tracking-wide transition focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15 <?= $alternate['active'] ? 'bg-ink text-white' : 'text-muted hover:bg-white hover:text-teal-dark' ?>"
+                       href="<?= $esc($alternate['href']) ?>"
+                       hreflang="<?= $esc($alternate['hreflang']) ?>"
                        lang="<?= $esc($alternate['hreflang']) ?>"
+                       title="<?= $esc($alternate['label']) ?>"
                        <?= $alternate['active'] ? 'aria-current="true"' : '' ?>
-                       data-lang-link title="<?= $esc($alternate['label']) ?>"><?= $esc($alternate['short']) ?></a>
+                       data-lang-link>
+                        <?php if ($flag !== ''): ?>
+                            <span class="size-4 shrink-0 overflow-hidden rounded-full ring-1 ring-black/10 [&>svg]:size-4 [&>svg]:block"><?= $flag ?></span>
+                        <?php endif; ?>
+                        <?= $esc($alternate['short']) ?>
+                    </a>
                 <?php endforeach; ?>
             </div>
-            <a class="button button-small button-management" href="/admin/login"><?= $esc($t('nav.management')) ?></a>
-            <a class="button button-small" href="<?= $esc($accessMailto) ?>"><?= $esc($t('nav.access')) ?></a>
+            <a class="hidden items-center rounded-full border border-line bg-white px-4 py-2 text-xs font-semibold text-ink-soft transition hover:border-teal/40 hover:bg-mint hover:text-teal-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15 sm:inline-flex"
+               href="/admin/login"><?= $esc($t('nav.management')) ?></a>
+            <a class="hidden items-center rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white shadow-card transition hover:bg-teal-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15 sm:inline-flex"
+               href="<?= $esc($accessMailto) ?>"><?= $esc($t('nav.access')) ?></a>
+
+            <details class="relative lg:hidden">
+                <summary class="flex size-10 cursor-pointer list-none items-center justify-center rounded-xl border border-line bg-white text-ink shadow-card transition hover:border-teal/40 hover:text-teal focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15 [&::-webkit-details-marker]:hidden">
+                    <span class="sr-only"><?= $esc($t('nav.label')) ?></span>
+                    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                        <path d="M4 7h16M4 12h16M4 17h16"/>
+                    </svg>
+                </summary>
+                <div class="absolute end-0 top-12 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-line bg-white p-2 shadow-panel">
+                    <nav class="flex flex-col" aria-label="<?= $esc($t('nav.label')) ?>">
+                        <?php require dirname(__DIR__) . '/portal/Views/partials/nav-links.php'; ?>
+                    </nav>
+                    <div class="mt-2 grid grid-cols-2 gap-2 border-t border-line pt-2">
+                        <a class="inline-flex items-center justify-center rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-soft transition hover:bg-mint hover:text-teal-dark"
+                           href="/admin/login"><?= $esc($t('nav.management')) ?></a>
+                        <a class="inline-flex items-center justify-center rounded-xl bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-dark"
+                           href="<?= $esc($accessMailto) ?>"><?= $esc($t('nav.access')) ?></a>
+                    </div>
+                </div>
+            </details>
         </div>
     </div>
 </header>
@@ -1027,14 +1067,18 @@ JSON;
     </div>
 </main>
 
-<footer class="site-footer">
-    <div class="container footer-inner">
-        <div>
-            <a href="<?= $esc($legalMailto) ?>" class="footer-link"><?= $esc($t('footer.legal')) ?></a>
-            <a href="<?= $esc($privacyMailto) ?>" class="footer-link"><?= $esc($t('footer.legal_privacy')) ?></a>
+<footer class="site-footer border-t border-line bg-paper">
+    <div class="mx-auto w-full max-w-[1500px] px-4 py-10 sm:px-6">
+        <div class="flex flex-wrap gap-x-6 gap-y-2">
+            <a class="inline-flex text-sm text-muted transition hover:text-teal-dark hover:underline underline-offset-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15"
+               href="<?= $esc($legalMailto) ?>"><?= $esc($t('footer.legal')) ?></a>
+            <a class="inline-flex text-sm text-muted transition hover:text-teal-dark hover:underline underline-offset-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15"
+               href="<?= $esc($privacyMailto) ?>"><?= $esc($t('footer.legal_privacy')) ?></a>
         </div>
-        <p><?= $esc(str_replace('%year%', (string) $year, $t('footer.rights'))) ?></p>
-        <p><small><?= $esc($t('docs.footer.disclaimer')) ?></small></p>
+        <div class="mt-6 flex flex-col gap-2 border-t border-line pt-6 text-xs leading-relaxed text-muted sm:flex-row sm:items-center sm:justify-between">
+            <p><?= $esc(str_replace('%year%', (string) $year, $t('footer.rights'))) ?></p>
+            <p class="max-w-2xl sm:text-end"><?= $esc($t('docs.footer.disclaimer')) ?></p>
+        </div>
     </div>
 </footer>
 
