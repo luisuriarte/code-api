@@ -42,6 +42,17 @@ $renderChips = static function (array $catalogs, array $selected, string $field)
                         <span><?= e($t('admin.grants.ops.' . $operation)) ?></span>
                     </label>
                 <?php endforeach; ?>
+                <?php if ($field === 'grant_allow'): ?>
+                    <button type="button"
+                            class="inline-flex cursor-pointer items-center rounded-full border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink-soft transition hover:border-teal hover:text-teal-dark"
+                            data-grant-toggle-catalog="<?= e($catalog['code']) ?>"
+                            data-label-all="<?= e($t('admin.grants.all')) ?>"
+                            data-label-none="<?= e($t('admin.grants.none')) ?>"
+                            aria-pressed="false"
+                            title="<?= e($t('admin.grants.catalog_toggle_title')) ?>">
+                        <span data-grant-toggle-label><?= e($t('admin.grants.all')) ?></span>
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
         <?php
@@ -57,6 +68,21 @@ $renderChips = static function (array $catalogs, array $selected, string $field)
         <p class="text-sm text-muted"><?= e($t('admin.grants.legend')) ?></p>
         <div class="ui-stack">
             <?php $renderChips($catalogs, $allowedSelected, 'grant_allow'); ?>
+        </div>
+
+        <div class="mt-3 flex flex-wrap gap-2 rounded-xl border border-line bg-paper/70 p-2.5"
+             data-grant-bulk>
+            <?php foreach (\OrigenSalud\Portal\Admin\Rbac::CATALOG_OPERATIONS as $operation): ?>
+                <button type="button"
+                        class="ui-btn ui-btn-sm ui-btn-ghost"
+                        data-grant-toggle-op="<?= e($operation) ?>"
+                        data-label-all="<?= e($t('admin.grants.all')) ?>"
+                        data-label-none="<?= e($t('admin.grants.none')) ?>"
+                        aria-pressed="false">
+                    <span class="font-medium"><?= e($t('admin.grants.ops.' . $operation)) ?></span>:
+                    <span data-grant-toggle-label><?= e($t('admin.grants.all')) ?></span>
+                </button>
+            <?php endforeach; ?>
         </div>
 
         <div class="overflow-hidden rounded-xl border border-line bg-white">

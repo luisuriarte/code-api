@@ -1910,7 +1910,8 @@ $m2I18nKeys = [
     'admin.errors.last_superadmin', 'admin.errors.grant_required',
     'admin.grants.title', 'admin.grants.allow', 'admin.grants.deny',
     'admin.grants.deny_title', 'admin.grants.deny_help', 'admin.grants.member_title',
-    'admin.grants.role_auto',
+    'admin.grants.role_auto', 'admin.grants.all', 'admin.grants.none',
+    'admin.grants.catalog_toggle_title',
     'admin.grants.ops.view', 'admin.grants.ops.propose', 'admin.grants.ops.edit_draft',
     'admin.grants.ops.review', 'admin.grants.ops.approve', 'admin.grants.ops.publish',
     'admin.roles.org_type.health_center',
@@ -1928,6 +1929,20 @@ $check(
 $check(
     !str_contains($grantChoicesView, 'admin-grant-grid') && !str_contains($grantChoicesView, 'aria-hidden'),
     'El selector no debe usar la grilla densa ni símbolos duplicados por casilla.'
+);
+$check(
+    str_contains($grantChoicesView, 'data-grant-toggle-op')
+        && str_contains($grantChoicesView, 'data-label-all')
+        && str_contains($grantChoicesView, 'data-label-none')
+        && str_contains($grantChoicesView, 'admin.grants.all')
+        && str_contains($grantChoicesView, 'admin.grants.none'),
+    'El selector debe ofrecer Todo/Ninguno por operación.'
+);
+$check(
+    str_contains($grantChoicesView, 'data-grant-toggle-catalog')
+        && str_contains($grantChoicesView, "field === 'grant_allow'")
+        && str_contains($grantChoicesView, 'admin.grants.catalog_toggle_title'),
+    'Cada catálogo debe tener su propio Todo/Ninguno junto a Publicar.'
 );
 foreach (['/portal/Views/admin/organization.php', '/portal/Views/admin/invitations.php'] as $m2GrantView) {
     $grantViewSource = (string) file_get_contents($root . $m2GrantView);
@@ -1948,8 +1963,13 @@ $check(
     str_contains($grantRoleDefaultsScript, 'select[data-grants-role]')
         && str_contains($grantRoleDefaultsScript, 'grant_allow[]')
         && str_contains($grantRoleDefaultsScript, 'grant_deny[]')
-        && str_contains($grantRoleDefaultsScript, 'dataset.catalogOps'),
-    'El preseleccionador de grants debe marcar allow, limpiar deny y leer las operaciones del rol.'
+        && str_contains($grantRoleDefaultsScript, 'dataset.catalogOps')
+        && str_contains($grantRoleDefaultsScript, 'data-grant-toggle-op')
+        && str_contains($grantRoleDefaultsScript, 'data-grant-toggle-catalog')
+        && str_contains($grantRoleDefaultsScript, 'function boxesForCatalog')
+        && str_contains($grantRoleDefaultsScript, 'function syncAll')
+        && str_contains($grantRoleDefaultsScript, 'dataset.labelNone'),
+    'Los controles de grants deben preseleccionar por rol y alternar Todo/Ninguno por operación y por catálogo.'
 );
 foreach (['/portal/Views/admin/organization.php', '/portal/Views/admin/invitations.php'] as $roleGrantView) {
     $roleGrantSource = (string) file_get_contents($root . $roleGrantView);
