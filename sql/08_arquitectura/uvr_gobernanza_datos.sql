@@ -335,8 +335,12 @@ CREATE TRIGGER trg_os_uvr_geo_index_audit
 -- SECURITY DEFINER y escriben con los privilegios de origen_admin.
 REVOKE ALL PRIVILEGES ON SEQUENCE
     public.os_governance_request_id_seq,
+    public.os_governance_review_id_seq,
+    public.os_governance_decision_id_seq,
     public.os_uvr_valuation_id_seq,
     public.os_uvr_component_id_seq,
+    public.os_uvr_conversion_id_seq,
+    public.os_uvr_geo_index_id_seq,
     public.os_audit_log_id_seq
 FROM PUBLIC;
 
@@ -347,8 +351,12 @@ BEGIN
     IF to_regrole('origen_admin') IS NOT NULL THEN
         EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE
             public.os_governance_request_id_seq,
+            public.os_governance_review_id_seq,
+            public.os_governance_decision_id_seq,
             public.os_uvr_valuation_id_seq,
             public.os_uvr_component_id_seq,
+            public.os_uvr_conversion_id_seq,
+            public.os_uvr_geo_index_id_seq,
             public.os_audit_log_id_seq
             TO origen_admin';
         EXECUTE 'GRANT SELECT, INSERT, UPDATE ON TABLE

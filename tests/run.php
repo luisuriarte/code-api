@@ -2050,6 +2050,10 @@ $check(
         && str_contains($uvrMigrationSinComentarios, 'public.os_governance_request_id_seq')
         && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_valuation_id_seq')
         && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_component_id_seq')
+        && str_contains($uvrMigrationSinComentarios, 'public.os_governance_review_id_seq')
+        && str_contains($uvrMigrationSinComentarios, 'public.os_governance_decision_id_seq')
+        && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_conversion_id_seq')
+        && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_geo_index_id_seq')
         && str_contains($uvrMigrationSinComentarios, 'public.os_audit_log_id_seq')
         && str_contains($uvrMigrationSinComentarios, 'GRANT SELECT, INSERT ON TABLE public.os_audit_log'),
     'La migración UVR debe conceder USAGE sobre las secuencias y INSERT en os_audit_log.'
@@ -2098,8 +2102,12 @@ $check(
 );
 foreach ([
     'os_governance_request_id_seq',
+    'os_governance_review_id_seq',
+    'os_governance_decision_id_seq',
     'os_uvr_valuation_id_seq',
     'os_uvr_component_id_seq',
+    'os_uvr_conversion_id_seq',
+    'os_uvr_geo_index_id_seq',
     'os_audit_log_id_seq',
 ] as $sequence) {
     $check(

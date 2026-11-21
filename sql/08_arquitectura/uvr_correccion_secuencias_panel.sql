@@ -27,8 +27,12 @@ BEGIN;
 -- el DEFAULT ACL global.
 REVOKE ALL PRIVILEGES ON SEQUENCE
     public.os_governance_request_id_seq,
+    public.os_governance_review_id_seq,
+    public.os_governance_decision_id_seq,
     public.os_uvr_valuation_id_seq,
     public.os_uvr_component_id_seq,
+    public.os_uvr_conversion_id_seq,
+    public.os_uvr_geo_index_id_seq,
     public.os_audit_log_id_seq
 FROM PUBLIC;
 
@@ -39,8 +43,12 @@ BEGIN
     IF to_regrole('origen_admin') IS NOT NULL THEN
         EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE
             public.os_governance_request_id_seq,
+            public.os_governance_review_id_seq,
+            public.os_governance_decision_id_seq,
             public.os_uvr_valuation_id_seq,
             public.os_uvr_component_id_seq,
+            public.os_uvr_conversion_id_seq,
+            public.os_uvr_geo_index_id_seq,
             public.os_audit_log_id_seq
             TO origen_admin';
 
@@ -58,8 +66,12 @@ COMMIT;
 --   FROM information_schema.sequences s
 --  WHERE (s.sequence_schema, s.sequence_name) IN (
 --        ('public', 'os_governance_request_id_seq'),
+--        ('public', 'os_governance_review_id_seq'),
+--        ('public', 'os_governance_decision_id_seq'),
 --        ('public', 'os_uvr_valuation_id_seq'),
 --        ('public', 'os_uvr_component_id_seq'),
+--        ('public', 'os_uvr_conversion_id_seq'),
+--        ('public', 'os_uvr_geo_index_id_seq'),
 --        ('public', 'os_audit_log_id_seq'))
 --  ORDER BY 1;
 --
