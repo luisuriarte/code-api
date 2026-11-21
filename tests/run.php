@@ -1164,9 +1164,10 @@ if (is_file($publicCssBuilt)) {
 }
 $layoutSource = (string) file_get_contents($root . '/portal/Views/layouts/main.php');
 $check(
-    str_contains($layoutSource, "'page-browse'")
-    && str_contains($layoutSource, '/assets/css/public.css'),
-    'Solo el Code Browser debe cargar el CSS público de Tailwind.'
+    str_contains($layoutSource, '/assets/css/public.css')
+    && !str_contains($layoutSource, '/assets/css/app.css')
+    && str_contains($layoutSource, 'legacy'),
+    'Todas las páginas públicas deben cargar el build Tailwind; app.css queda en la capa legacy.'
 );
 $packageRaw = (string) file_get_contents($root . '/package.json');
 $check(str_contains($packageRaw, 'build:css:public'), 'El build debe generar el CSS público.');
@@ -1230,6 +1231,51 @@ foreach (['footer.php', 'nav-links.php'] as $partial) {
 }
 $homeSource = (string) file_get_contents($root . '/portal/Views/home.php');
 $check(!str_contains($homeSource, '/cart'), 'home.php no debe conservar la ruta rota /cart.');
+
+// 6b. Rediseño Tailwind de la home y del shell público.
+foreach (['id="buscador"', 'id="plataforma"', 'id="api"', 'id="contacto"'] as $homeAnchor) {
+    $check(str_contains($homeSource, $homeAnchor), 'La home debe conservar el ancla ' . $homeAnchor . '.');
+}
+foreach (['rounded-3xl', 'lg:grid-cols-4', 'shadow-panel', 'focus-visible:ring-4'] as $homeUtility) {
+    $check(str_contains($homeSource, $homeUtility), 'La home debe usar utilidades Tailwind (' . $homeUtility . ').');
+}
+$headerSource = (string) file_get_contents($root . '/portal/Views/partials/header.php');
+$check(
+    str_contains($headerSource, 'sticky top-0')
+    && str_contains($headerSource, 'backdrop-blur-xl')
+    && str_contains($headerSource, 'lg:hidden'),
+    'El header público debe ser sticky, translúcido y con menú móvil.'
+);
+$footerSource = (string) file_get_contents($root . '/portal/Views/partials/footer.php');
+$check(
+    str_contains($footerSource, "t('footer.rights'")
+    && str_contains($footerSource, 'lg:grid-cols-[1.4fr_repeat(3,1fr)]'),
+    'El footer debe conservar los derechos y usar la grid Tailwind de cuatro columnas.'
+);
+$navSource = (string) file_get_contents($root . '/portal/Views/partials/nav-links.php');
+$check(
+    str_contains($navSource, 'lg:rounded-full')
+    && str_contains($navSource, 'aria-current="page"'),
+    'La navegación debe adaptarse al menu móvil sin perder aria-current.'
+);
+foreach (['es-AR', 'en', 'pt-BR'] as $homeLocale) {
+    $homeMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $homeLocale . '.yaml');
+    foreach ([
+        ['hero', 'badge'], ['hero', 'title'], ['hero', 'lead'], ['hero', 'primary'],
+        ['hero', 'secondary'], ['hero', 'note'], ['hero', 'card_title'],
+        ['stats', 'label'], ['stats', 'concepts_value'], ['search', 'title'],
+        ['search', 'lead'], ['search', 'query_label'], ['search', 'button'],
+        ['services', 'eyebrow'], ['services', 'title'], ['api', 'endpoint_label'],
+        ['api', 'example_query'], ['cta', 'title'], ['cta', 'button'],
+    ] as [$homeSection, $homeKey]) {
+        $check(
+            isset($homeMessages[$homeSection][$homeKey])
+            && is_string($homeMessages[$homeSection][$homeKey])
+            && trim($homeMessages[$homeSection][$homeKey]) !== '',
+            $homeLocale . ': falta la clave de home ' . $homeSection . '.' . $homeKey . '.'
+        );
+    }
+}
 
 $check(is_file($root . '/web/sitemap.php'), 'Debe existir web/sitemap.php para ^sitemap\\.xml$.');
 ob_start();

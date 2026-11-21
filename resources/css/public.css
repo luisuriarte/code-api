@@ -42,6 +42,23 @@
     --shadow-panel: 0 24px 60px rgba(11, 34, 57, 0.1);
 }
 
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    ::selection {
+        background-color: var(--color-mint);
+        color: var(--color-ink);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
+    }
+}
+
 /* El drawer se anima con display allow-discrete; sin JS y sin librerías. */
 @layer components {
     [popover].browse-filter-drawer {

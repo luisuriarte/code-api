@@ -44,11 +44,11 @@ use OrigenSalud\Web\I18n;
     };
     ?>
     <?php
-    // El Code Browser usa el build público de Tailwind. Ese archivo incorpora
-    // `app.css` en una capa legacy para conservar la ficha de detalle.
-    $publicStyles = str_contains((string) ($bodyClass ?? ''), 'page-browse');
+    // Todas las páginas públicas usan el build de Tailwind. Ese archivo
+    // incorpora `app.css` en la capa `legacy`, así que las vistas todavía no
+    // migradas conservan su estilo mientras se rediseñan sección por sección.
     ?>
-    <link rel="stylesheet" href="<?= e($assetUrl($publicStyles ? '/assets/css/public.css' : '/assets/css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= e($assetUrl('/assets/css/public.css')) ?>">
     <?php foreach ((array) ($scripts ?? []) as $script): ?>
     <script src="<?= e($assetUrl((string) $script)) ?>" defer></script>
     <?php endforeach; ?>
