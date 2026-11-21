@@ -665,6 +665,7 @@ browse:
     short_definition: "Short definition"
     lay_terms: "Lay terms"
     definition: "Definition"
+    definition_review_note: "Edited definition pending editorial validation."
     clinical_language: "Clinical language"
     clinical_provenance: "Provenance"
     clinical_review: "Review"
@@ -1525,6 +1526,7 @@ admin:
         publish: 'Publish'
         catalogs_note: 'UVR proposals apply to valuable procedures linked to the code; no new catalogs are created.'
         extracted_values: 'Values extracted from the catalog'
+        edit_definition: 'Edit code definition'
         new_values: 'New UVR values'
         select_item: 'Choose a code from the list to propose its UVR valuation.'
         transversal_note: 'The valuation is linked to a validated procedure and profile. The profile defines which components apply.'

@@ -32,6 +32,13 @@ $row = static function (string $labelKey, mixed $value) use ($t, $formatValue, $
     <?php $row('browse.dialect_determined', $item['dialect_determined'] ?? null); ?>
 </div>
 
+<?php
+$definitionStatus = (string) ($concept['definition_review_status'] ?? '');
+?>
+<?php if ($hasValue($concept['definition'] ?? null) && $definitionStatus !== '' && $definitionStatus !== 'approved'): ?>
+    <p class="form-note mt-1"><?= e($t('browse.definition_review_note')) ?></p>
+<?php endif; ?>
+
 <?php if (!empty($concept['synonyms']) && is_array($concept['synonyms'])): ?>
     <div class="browse-subsection">
         <h3><?= e($t('browse.synonyms')) ?></h3>

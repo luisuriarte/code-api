@@ -798,6 +798,7 @@ admin:
         publish: 'Publicar'
         catalogs_note: 'La propuesta UVR aplica a prestaciones valorables vinculadas al código; no se crean catálogos nuevos.'
         extracted_values: 'Valores extraídos del catálogo'
+        edit_definition: 'Editar definición del código'
         new_values: 'Nuevos valores UVR'
         select_item: 'Elegí un código del listado para proponer su valoración UVR.'
         transversal_note: 'La valoración se asocia a una prestación y a un perfil validados. El perfil define qué componentes aplican.'

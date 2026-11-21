@@ -665,6 +665,7 @@ browse:
     short_definition: "Definição curta"
     lay_terms: "Termos em linguagem corrente"
     definition: "Definição"
+    definition_review_note: "Definição editada aguardando validação editorial."
     clinical_language: "Idioma clínico"
     clinical_provenance: "Procedência"
     clinical_review: "Revisão"
@@ -1525,6 +1526,7 @@ admin:
         publish: 'Publicar'
         catalogs_note: 'As propostas UVR aplicam-se a procedimentos valoráveis vinculados ao código; nenhum catálogo novo é criado.'
         extracted_values: 'Valores extraídos do catálogo'
+        edit_definition: 'Editar definição do código'
         new_values: 'Novos valores UVR'
         select_item: 'Escolha um código da lista para propor sua valoração UVR.'
         transversal_note: 'A valoração é associada a um procedimento e a um perfil validados. O perfil define quais componentes se aplicam.'

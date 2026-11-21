@@ -2265,6 +2265,24 @@ final class CatalogRepository
             }
         }
 
+        // Un cambio gobernado publicado actualiza os_catalog_item_version pero
+        // no genera os_field_review: selectApproved() lo descarta y Browse
+        // seguía mostrando la definición anterior (o ninguna). La versión más
+        // reciente se muestra con estado pendiente de validación, nunca como
+        // aprobada.
+        $latestDefinition = self::latestDefinition($fieldCandidates, $chain);
+        if ($latestDefinition !== null) {
+            $selectedDefinition = $clinical['definition'] ?? null;
+            $sameValue = $selectedDefinition !== null
+                && ($selectedDefinition['value'] ?? null) === $latestDefinition['value'];
+
+            if ($selectedDefinition === null || !$sameValue) {
+                $clinical['definition'] = $latestDefinition;
+            } else {
+                $clinical['definition']['review_status'] = 'approved';
+            }
+        }
+
         $synonyms = [];
         $wanted = [];
         foreach ($chain as $entry) {
@@ -2399,6 +2417,8 @@ final class CatalogRepository
         return [
             'concept' => [
                 'definition' => $clinical['definition']['value'] ?? null,
+                'definition_review_status' => $clinical['definition']['review_status'] ?? null,
+                'definition_provenance' => $clinical['definition']['provenance'] ?? null,
                 'short_definition' => $clinical['short_definition']['value'] ?? null,
                 'synonyms' => $synonyms,
                 'identifiers' => $identifiers,
@@ -2415,7 +2435,7 @@ final class CatalogRepository
      * @param array<string, list<array<string, mixed>>> $reviews
      * @param list<array{code: string, reason: ?string, primary: string}> $chain
      *
-     * @return array{value: string, language: string, source_language: ?string, provenance: string, type: ?string}|null
+     * @return array{value: string, language: string, source_language: ?string, provenance: string, review_status: string, type: ?string}|null
      */
     private static function selectApproved(
         array $candidates,
@@ -2480,6 +2500,7 @@ final class CatalogRepository
                         'language' => $language,
                         'source_language' => $review['source_language_code'] ?? $candidate['source_language'],
                         'provenance' => (string) ($review['provenance'] ?? $candidate['provenance']),
+                        'review_status' => 'approved',
                         'type' => $candidate['type'],
                     ];
                 }
@@ -2487,6 +2508,69 @@ final class CatalogRepository
         }
 
         return null;
+    }
+
+    /**
+     * Última definición publicada en el motor de catálogos.
+     *
+     * Se prioriza el idioma de la cadena solicitada y, dentro de él, la
+     * versión/release más reciente. Se usa solo como respaldo cuando no hay
+     * una revisión editorial aprobada o cuando el texto difiere de ella.
+     *
+     * @param list<array<string, mixed>> $candidates
+     * @param list<array{code: string, reason: ?string, primary: string}> $chain
+     *
+     * @return array{value: string, language: string, source_language: ?string, provenance: string, review_status: string, type: ?string}|null
+     */
+    private static function latestDefinition(array $candidates, array $chain): ?array
+    {
+        $definitions = [];
+        foreach ($candidates as $candidate) {
+            if (($candidate['field'] ?? '') !== 'definition') {
+                continue;
+            }
+            $value = (string) ($candidate['value'] ?? '');
+            if ($value === '') {
+                continue;
+            }
+            $definitions[] = $candidate;
+        }
+
+        if ($definitions === []) {
+            return null;
+        }
+
+        $rank = static function (array $candidate) use ($chain): array {
+            $language = strtolower((string) ($candidate['language'] ?? ''));
+            $position = count($chain);
+            foreach ($chain as $index => $entry) {
+                if (strtolower((string) $entry['code']) === $language) {
+                    $position = $index;
+                    break;
+                }
+            }
+
+            return [
+                $position,
+                -(int) ($candidate['release_id'] ?? 0),
+                -(int) ($candidate['id'] ?? 0),
+            ];
+        };
+
+        usort($definitions, static function (array $left, array $right) use ($rank): int {
+            return $rank($left) <=> $rank($right);
+        });
+
+        $selected = $definitions[0];
+
+        return [
+            'value' => (string) $selected['value'],
+            'language' => (string) ($selected['language'] ?? ''),
+            'source_language' => $selected['source_language'] ?? null,
+            'provenance' => (string) ($selected['provenance'] ?? 'unknown'),
+            'review_status' => (string) ($selected['review_status'] ?? 'unknown'),
+            'type' => $selected['type'] ?? null,
+        ];
     }
 
     /**

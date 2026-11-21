@@ -22,6 +22,7 @@ require __DIR__ . '/_nav.php';
 
 $uvrPermissions = is_array($current['permissions'] ?? null) ? $current['permissions'] : [];
 $uvrCanPropose = \OrigenSalud\Portal\Admin\Rbac::hasPermission($uvrPermissions, 'catalog.propose');
+$uvrCanEditDefinition = \OrigenSalud\Portal\Admin\Rbac::hasPermission($uvrPermissions, 'catalog.edit_draft');
 $uvrValues = is_array($flash['values'] ?? null) ? $flash['values'] : [];
 $uvrPrefill = is_array($prefill ?? null) ? $prefill : [];
 $uvrValue = static fn (string $key, string $default = ''): string => e(
@@ -220,7 +221,22 @@ if ($uvrLanguage === '') {
                             <dd class="font-medium text-ink"><?= e($uvrLanguage) ?></dd>
                         </div>
                         <div class="sm:col-span-2">
-                            <dt class="ui-subtitle"><?= e($t('admin.catalogs.col_definition')) ?></dt>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <dt class="ui-subtitle"><?= e($t('admin.catalogs.col_definition')) ?></dt>
+                                <?php if ($uvrCanEditDefinition && $itemId > 0 && $catalogCode !== ''): ?>
+                                    <?php
+                                    $uvrDefinitionEditHref = '/admin/catalogs/' . rawurlencode($catalogCode)
+                                        . '?' . http_build_query(array_filter([
+                                            'edit' => $itemId,
+                                            'q' => $query,
+                                        ]));
+                                    ?>
+                                    <a href="<?= e($uvrDefinitionEditHref) ?>"
+                                       class="text-xs font-semibold no-underline hover:underline">
+                                        <?= e($t('admin.uvr.edit_definition')) ?>
+                                    </a>
+                                <?php endif; ?>
+                            </div>
                             <dd class="text-sm text-ink-soft"><?= e((string) ($uvrVersion['definition'] ?? '')) ?></dd>
                         </div>
                         <div class="sm:col-span-2">

@@ -350,6 +350,23 @@ $check(
     && str_contains($u7ProposalViewSource, 'onchange="this.form.submit()"'),
     'El listado UVR debe cargar los valores extraídos en el card derecho.'
 );
+$check(
+    str_contains($u7ProposalViewSource, "admin.uvr.edit_definition")
+    && str_contains($u7ProposalViewSource, "'edit' => \$itemId")
+    && str_contains($u7ProposalViewSource, "'catalog.edit_draft'"),
+    'La propuesta UVR debe ofrecer la edición gobernada de la definición.'
+);
+$catalogDetailSource = (string) file_get_contents($root . '/portal/Repositories/CatalogRepository.php');
+$check(
+    str_contains($catalogDetailSource, 'private static function latestDefinition(')
+    && str_contains($catalogDetailSource, "'definition_review_status'"),
+    'Browse debe mostrar la definición publicada más reciente y su estado de revisión.'
+);
+$check(
+    str_contains((string) file_get_contents($root . '/portal/Views/partials/browse/detail/concept.php'),
+        'browse.definition_review_note'),
+    'La ficha debe avisar cuando la definición editada aún no fue validada.'
+);
 $u7Controller = (string) file_get_contents($root . '/portal/Controllers/AdminUvrController.php');
 $check(
     str_contains($u7Controller, "'selectedVersions' => \$selectedVersions"),
