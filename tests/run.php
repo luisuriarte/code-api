@@ -1103,6 +1103,43 @@ $check(
     && str_contains($conceptSource, '$sourceAttributeLabel($attribute)'),
     'La ficha debe mostrar los campos literales del nomenclador cuando existan.'
 );
+
+// Resumen UVR visible en la ficha, sin inventar datos ni exponer estimated_payment.
+$detailSource = (string) file_get_contents($root . '/portal/Views/partials/browse/detail.php');
+$uvrTableSource = (string) file_get_contents($root . '/portal/Views/partials/browse/detail/uvr.php');
+$contextSource = (string) file_get_contents($root . '/portal/Views/partials/browse/context.php');
+$check(
+    str_contains($detailSource, 'browse.uvr_published_title')
+    && str_contains($detailSource, "['total_uvr']")
+    && str_contains($detailSource, "['work_uvr']")
+    && str_contains($detailSource, "['practice_expense_uvr']")
+    && str_contains($detailSource, "['professional_liability_uvr']"),
+    'La ficha debe mostrar componentes UVR y Total UVR en un bloque visible.'
+);
+$check(
+    !str_contains($detailSource, 'estimated_payment')
+    && !str_contains($uvrTableSource, 'estimated_payment'),
+    'La ficha pública no debe exponer estimated_payment.'
+);
+$check(
+    str_contains($contextSource, "sections['uvr']")
+    && str_contains($contextSource, "\$tabs['values']"),
+    'La pestaña Valores debe existir cuando hay UVR publicada aunque values esté vacío.'
+);
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $uvrLocale) {
+    $uvrMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $uvrLocale . '.yaml');
+    $uvrBrowse = $uvrMessages['browse'] ?? [];
+    foreach ([
+        'uvr_published_title', 'uvr_published_note', 'uvr_work',
+        'uvr_practice', 'uvr_liability', 'uvr_published_total',
+        'uvr_published_importe',
+    ] as $uvrKey) {
+        $check(
+            isset($uvrBrowse[$uvrKey]) && trim((string) $uvrBrowse[$uvrKey]) !== '',
+            $uvrLocale . ': falta la clave UVR browse.' . $uvrKey . '.'
+        );
+    }
+}
 $nomencladorKeys = [
     'identifier_system_nomenclador', 'identifier_system_dentar_dx',
     'source_attributes', 'source_attributes_note',
@@ -1225,10 +1262,10 @@ foreach (['header.php', 'footer.php', 'nav-links.php'] as $partial) {
     $source = (string) file_get_contents($root . '/portal/Views/partials/' . $partial);
     $check(!str_contains($source, "'/cart'"), $partial . ' no debe enlazar a /cart.');
 }
-foreach (['footer.php', 'nav-links.php'] as $partial) {
-    $source = (string) file_get_contents($root . '/portal/Views/partials/' . $partial);
-    $check(str_contains($source, "#plataforma"), $partial . ' debe enlazar Servicios a #plataforma.');
-}
+$footerNavSource = (string) file_get_contents($root . '/portal/Views/partials/footer.php');
+$check(str_contains($footerNavSource, '#plataforma'), 'footer.php debe enlazar Servicios a #plataforma.');
+$topNavSource = (string) file_get_contents($root . '/portal/Views/partials/nav-links.php');
+$check(!str_contains($topNavSource, 'nav.services'), 'El menú principal no debe incluir Servicios.');
 $homeSource = (string) file_get_contents($root . '/portal/Views/home.php');
 $check(!str_contains($homeSource, '/cart'), 'home.php no debe conservar la ruta rota /cart.');
 

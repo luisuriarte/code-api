@@ -8,6 +8,7 @@ $code = is_array($item) ? (string) ($item['code'] ?? '') : '';
 $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
 $domainLabel = is_array($item) ? (string) ($item['subtitle'] ?? $item['domain'] ?? '') : '';
 $uvrPublished = is_array($sections['uvr'] ?? null) ? $sections['uvr'] : [];
+$uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2, ',', '.');
 ?>
 <div class="browse-detail" data-focus="<?= e($focus) ?>">
     <div class="browse-panel__crumb">
@@ -72,6 +73,72 @@ $uvrPublished = is_array($sections['uvr'] ?? null) ? $sections['uvr'] : [];
                 </div>
             <?php endforeach; ?>
         </dl>
+
+        <?php if ($uvrPublished !== []): ?>
+            <section class="mt-4 rounded-2xl border border-teal/25 bg-mint/50 p-4"
+                     aria-label="<?= e($t('browse.uvr_published_title')) ?>">
+                <h3 class="text-xs font-semibold uppercase tracking-[0.16em] text-teal-dark">
+                    <?= e($t('browse.uvr_published_title')) ?>
+                </h3>
+                <p class="mt-1 text-xs leading-relaxed text-muted"><?= e($t('browse.uvr_published_note')) ?></p>
+
+                <?php foreach ($uvrPublished as $valuation): ?>
+                    <?php if (!is_array($valuation)) { continue; } ?>
+                    <?php
+                    $importe = $valuation['importe_referencial'] ?? null;
+                    $currency = trim((string) ($valuation['currency'] ?? ''));
+                    $version = trim((string) ($valuation['version_tag'] ?? ''));
+                    ?>
+                    <div class="mt-3 rounded-xl border border-line bg-white/80 p-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="browse-badge browse-badge--current">
+                                <?= e((string) ($valuation['profile_code'] ?? '')) ?>
+                                <?= $version !== '' ? ' · ' . e($version) : '' ?>
+                            </span>
+                            <span class="text-xs text-muted">
+                                <?= e(trim((string) ($valuation['valid_from'] ?? '') . ' — ' . (string) ($valuation['valid_to'] ?? ''))) ?>
+                            </span>
+                        </div>
+
+                        <dl class="mt-3 grid grid-cols-3 gap-2 text-center">
+                            <div class="rounded-lg bg-paper px-2 py-2">
+                                <dt class="text-[10px] font-medium uppercase tracking-wide text-muted"><?= e($t('browse.uvr_work')) ?></dt>
+                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($uvrNumber($valuation['work_uvr'] ?? 0)) ?></dd>
+                            </div>
+                            <div class="rounded-lg bg-paper px-2 py-2">
+                                <dt class="text-[10px] font-medium uppercase tracking-wide text-muted"><?= e($t('browse.uvr_practice')) ?></dt>
+                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($uvrNumber($valuation['practice_expense_uvr'] ?? 0)) ?></dd>
+                            </div>
+                            <div class="rounded-lg bg-paper px-2 py-2">
+                                <dt class="text-[10px] font-medium uppercase tracking-wide text-muted"><?= e($t('browse.uvr_liability')) ?></dt>
+                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($uvrNumber($valuation['professional_liability_uvr'] ?? 0)) ?></dd>
+                            </div>
+                        </dl>
+
+                        <div class="mt-3 flex flex-wrap items-end justify-between gap-2 border-t border-line pt-3">
+                            <div>
+                                <span class="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                                    <?= e($t('browse.uvr_published_total')) ?>
+                                </span>
+                                <strong class="font-mono text-2xl font-semibold tracking-tight text-teal-dark">
+                                    <?= e($uvrNumber($valuation['total_uvr'] ?? 0)) ?>
+                                </strong>
+                            </div>
+                            <?php if ($importe !== null && $importe !== ''): ?>
+                                <div class="text-end">
+                                    <span class="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                                        <?= e($t('browse.uvr_published_importe')) ?>
+                                    </span>
+                                    <span class="font-mono text-sm font-semibold text-ink">
+                                        <?= e($uvrNumber($importe) . ($currency !== '' ? ' ' . $currency : '')) ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </section>
+        <?php endif; ?>
 
         <?php if (!empty($item['fallback_applied']) || !empty($item['untranslated'])): ?>
             <div class="alert alert-warning" role="status">

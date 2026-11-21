@@ -202,7 +202,10 @@ $tabs = ['concept' => $tabLabels['concept']];
 if (!empty($sections['relations'])) {
     $tabs['relations'] = $tabLabels['relations'];
 }
-if (!empty($sections['values'])) {
+// La valoración UVR publicada vive en esta pestaña: aunque `values` esté
+// vacío, la pestaña debe existir para que la tabla UVR sea alcanzable.
+$uvrPublishedForTabs = is_array($sections['uvr'] ?? null) ? $sections['uvr'] : [];
+if (!empty($sections['values']) || $uvrPublishedForTabs !== []) {
     $tabs['values'] = $tabLabels['values'];
 }
 if (!empty($sections['validity'])) {

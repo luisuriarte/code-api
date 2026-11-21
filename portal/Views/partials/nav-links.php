@@ -14,7 +14,6 @@ $navItems = [
     ['key' => 'browse', 'label' => $t('nav.browse'), 'href' => I18n::localizedPath($locale, '/browse')],
     ['key' => 'docs', 'label' => $t('nav.docs'), 'href' => I18n::localizedPath($locale, '/docs')],
     ['key' => 'uvr', 'label' => $t('nav.uvr'), 'href' => '/uvr?lang=' . rawurlencode($locale)],
-    ['key' => 'services', 'label' => $t('nav.services'), 'href' => I18n::localizedPath($locale, '/') . '#plataforma'],
     ['key' => 'about', 'label' => $t('nav.about'), 'href' => I18n::localizedPath($locale, '/about')],
     ['key' => 'contact', 'label' => $t('nav.contact'), 'href' => I18n::localizedPath($locale, '/contact')],
 ];
