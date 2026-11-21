@@ -9,9 +9,9 @@ declare(strict_types=1);
  * El idioma se resuelve en este orden:
  *   1. Segmento de la URL (/es-AR/, /en/, /pt-BR/)
  *   2. Parámetro legacy ?lang=
- *   3. Cookie persistente
- *   4. Header Accept-Language
- *   5. WEB_DEFAULT_LOCALE
+ *   3. Cookie persistente (elección explícita)
+ *   4. WEB_DEFAULT_LOCALE (es-AR)
+ *   5. Header Accept-Language (solo si no hay default válido)
  *
  * Las URLs canónicas llevan prefijo de idioma; el selector ya no genera ?lang=.
  */
@@ -61,6 +61,7 @@ namespace OrigenSalud\Web {
         private const DOMAIN = 'messages';
 
         private static ?string $locale = null;
+        private static ?string $resolvedFrom = null;
 
         /** @var array<string, Translator> */
         private static array $translators = [];
@@ -78,7 +79,13 @@ namespace OrigenSalud\Web {
 
             $locale = self::resolve($requested);
             self::$locale = $locale;
-            self::remember($locale);
+
+            // Una preferencia del navegador no debe convertirse en una
+            // elección persistente: si no hay default válido, se respeta para
+            // esta petición, pero no se graba en la cookie.
+            if (self::$resolvedFrom !== 'header') {
+                self::remember($locale);
+            }
 
             return $locale;
         }
@@ -167,6 +174,8 @@ namespace OrigenSalud\Web {
             $fromRoute = self::canonical($requested);
 
             if ($fromRoute !== null) {
+                self::$resolvedFrom = 'route';
+
                 return $fromRoute;
             }
 
@@ -174,7 +183,17 @@ namespace OrigenSalud\Web {
             $fromCookie = is_string($cookie) ? self::canonical($cookie) : null;
 
             if ($fromCookie !== null) {
+                self::$resolvedFrom = 'cookie';
+
                 return $fromCookie;
+            }
+
+            $configured = self::canonical((string) env('WEB_DEFAULT_LOCALE', self::DEFAULT_LOCALE));
+
+            if ($configured !== null) {
+                self::$resolvedFrom = 'config';
+
+                return $configured;
             }
 
             $fromHeader = self::fromAcceptLanguage(
@@ -184,12 +203,14 @@ namespace OrigenSalud\Web {
             );
 
             if ($fromHeader !== null) {
+                self::$resolvedFrom = 'header';
+
                 return $fromHeader;
             }
 
-            $configured = self::canonical((string) env('WEB_DEFAULT_LOCALE', self::DEFAULT_LOCALE));
+            self::$resolvedFrom = 'fallback';
 
-            return $configured ?? self::DEFAULT_LOCALE;
+            return self::DEFAULT_LOCALE;
         }
 
         public static function translator(?string $locale = null): Translator

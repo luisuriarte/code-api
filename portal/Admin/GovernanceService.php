@@ -426,7 +426,7 @@ final class GovernanceService
             throw new RepositoryException('invitation_accept_failed');
         }
 
-        return ['ok' => true, 'user_id' => $userId];
+        return ['ok' => true, 'user_id' => $userId, 'email' => $email];
     }
 
     /** @param array<string, mixed> $input */

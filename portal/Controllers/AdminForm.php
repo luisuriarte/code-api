@@ -63,12 +63,14 @@ final class AdminForm
         self::fail($redirect, 'invalid', $values);
     }
 
-    public static function success(string $redirect, string $key): void
+    /** @param array<string, mixed> $values */
+    public static function success(string $redirect, string $key, array $values = []): void
     {
         Session::set('admin.flash', [
             'ok' => true,
             'message' => $key,
-            'values' => [],
+            'values' => $values,
+            'email' => is_string($values['email'] ?? null) ? $values['email'] : null,
         ]);
         self::redirect($redirect);
     }

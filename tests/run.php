@@ -1922,6 +1922,31 @@ $check(
         && str_contains($smtpMailerSource, "'From: ' . \$from"),
     'El sobre y la cabecera From deben usar el mismo remitente configurado.'
 );
+$i18nSource = (string) file_get_contents($root . '/portal/i18n/I18n.php');
+$check(
+    str_contains($i18nSource, 'public const DEFAULT_LOCALE = \'es-AR\'')
+        && str_contains($i18nSource, 'self::$resolvedFrom = \'config\'')
+        && str_contains($i18nSource, 'self::$resolvedFrom !== \'header\''),
+    'es-AR debe ser el default efectivo y no persistirse una preferencia del navegador.'
+);
+$adminFormSource = (string) file_get_contents($root . '/portal/Controllers/AdminForm.php');
+$inviteControllerSource = (string) file_get_contents($root . '/portal/Controllers/AdminInvitationController.php');
+$loginViewSource = (string) file_get_contents($root . '/portal/Views/admin/login.php');
+$check(
+    str_contains($adminFormSource, 'public static function success(string $redirect, string $key, array $values = [])')
+        && str_contains($adminFormSource, '\'email\' => is_string($values[\'email\'] ?? null)'),
+    'El flash de éxito debe poder transportar el correo para precargar el login.'
+);
+$check(
+    str_contains($inviteControllerSource, '\'email\' => (string) ($accepted[\'email\'] ?? \'\')')
+        && str_contains($governanceSource, 'return [\'ok\' => true, \'user_id\' => $userId, \'email\' => $email]'),
+    'Tras aceptar la invitación se debe devolver el correo al redirect de login.'
+);
+$check(
+    str_contains($loginViewSource, 'value="<?= e($email) ?>"')
+        && preg_match('/name="password"[^>]*\bvalue=/s', $loginViewSource) !== 1,
+    'El login debe precargar el correo y nunca la contraseña.'
+);
 $check(
     str_contains($governanceSource, 'Token::hash($token)'),
     'Solo el hash del token debe persistirse.'

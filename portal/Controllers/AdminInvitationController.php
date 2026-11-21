@@ -187,14 +187,16 @@ final class AdminInvitationController
         $userId = is_int($sessionUserId) ? $sessionUserId : null;
 
         try {
-            (new GovernanceService())->acceptInvitation($token, $_POST, $userId);
+            $accepted = (new GovernanceService())->acceptInvitation($token, $_POST, $userId);
         } catch (\Throwable $exception) {
             AdminForm::exception('/admin/invite?token=' . rawurlencode($token), $exception);
 
             return;
         }
 
-        AdminForm::success('/admin/login?invited=1', 'invite_accepted');
+        AdminForm::success('/admin/login?invited=1', 'invite_accepted', [
+            'email' => (string) ($accepted['email'] ?? ''),
+        ]);
     }
 
     /** @param array<string, mixed> $current @return list<string> */
