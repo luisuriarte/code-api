@@ -1541,6 +1541,7 @@ admin:
         valid_from: 'Valid from'
         valid_to: 'Valid to'
         col_value: 'Value'
+        decimal_hint: 'Use a dot or a comma for decimals: 1.5 or 1,5. Thousands are accepted too: 1,234.56.'
         not_applicable: 'Not applicable'
         negative_evidence: 'Evidence for negative adjustment'
         calculation_note: 'Calculation note'

@@ -1541,6 +1541,7 @@ admin:
         valid_from: 'Vigencia desde'
         valid_to: 'Vigencia hasta'
         col_value: 'Valor'
+        decimal_hint: 'Punto o coma para decimales: 1.5 o 1,5. También acepta miles: 1.234,56.'
         not_applicable: 'No aplicable'
         negative_evidence: 'Evidencia de ajuste negativo'
         calculation_note: 'Nota de cálculo'

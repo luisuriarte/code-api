@@ -357,8 +357,10 @@ if ($uvrLanguage === '') {
                                     <div class="grid gap-3 sm:grid-cols-2">
                                         <div>
                                             <label class="ui-label" for="uvr-<?= $componentKey ?>-value"><?= e($t('admin.uvr.col_value')) ?></label>
-                                            <input id="uvr-<?= $componentKey ?>-value" type="number" step="0.0001"
-                                                   name="components[<?= $componentKey ?>][value]" value="0" class="ui-input">
+                                            <input id="uvr-<?= $componentKey ?>-value" type="text" inputmode="decimal"
+                                                   autocomplete="off" name="components[<?= $componentKey ?>][value]"
+                                                   value="0" class="ui-input">
+                                            <p class="form-note"><?= e($t('admin.uvr.decimal_hint')) ?></p>
                                         </div>
                                         <label class="flex items-center gap-2 self-end pb-2.5 text-sm text-ink-soft">
                                             <input type="checkbox" name="components[<?= $componentKey ?>][not_applicable]" value="1"

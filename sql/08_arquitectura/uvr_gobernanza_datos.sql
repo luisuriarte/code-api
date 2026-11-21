@@ -324,9 +324,23 @@ CREATE TRIGGER trg_os_uvr_geo_index_audit
 -- ---------------------------------------------------------------------------
 -- 7. Privilegios explícitos del panel (C8), sin DEFAULT ACL global
 -- ---------------------------------------------------------------------------
+-- Las tablas con BIGSERIAL necesitan además USAGE sobre su secuencia: sin ese
+-- privilegio el primer INSERT de propose() falla y el panel responde
+-- "El servicio no está disponible" (admin.errors.database).
+REVOKE ALL PRIVILEGES ON SEQUENCE
+    public.os_governance_request_id_seq,
+    public.os_uvr_valuation_id_seq,
+    public.os_uvr_component_id_seq
+FROM PUBLIC;
+
 DO $$
 BEGIN
     IF to_regrole('origen_admin') IS NOT NULL THEN
+        EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE
+            public.os_governance_request_id_seq,
+            public.os_uvr_valuation_id_seq,
+            public.os_uvr_component_id_seq
+            TO origen_admin';
         EXECUTE 'GRANT SELECT, INSERT, UPDATE ON TABLE
             public.os_uvr_valuation,
             public.os_uvr_component,

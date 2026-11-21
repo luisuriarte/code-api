@@ -207,6 +207,7 @@ $sqlFiles = array_values(array_filter(
     glob($sqlDir . '/*.sql') ?: [],
     static fn (string $f): bool => !str_contains(basename($f), 'verificacion_')
         && !str_contains(basename($f), 'correcion_')
+        && !str_contains(basename($f), 'correccion_')
 ));
 $check(
     count($sqlFiles) === 12,
@@ -2045,6 +2046,13 @@ foreach (['REVOKE ALL PRIVILEGES', 'ADD COLUMN IF NOT EXISTS', 'calculated_by_us
     $check(str_contains($uvrMigration, $uvrSqlPiece), 'La migración UVR debe incluir ' . $uvrSqlPiece . '.');
 }
 $check(
+    str_contains($uvrMigrationSinComentarios, 'GRANT USAGE, SELECT ON SEQUENCE')
+        && str_contains($uvrMigrationSinComentarios, 'public.os_governance_request_id_seq')
+        && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_valuation_id_seq')
+        && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_component_id_seq'),
+    'La migración UVR debe conceder USAGE sobre las secuencias que usa propose().'
+);
+$check(
     !preg_match('/ADD\s+COLUMN[^\n]*total_uvr/i', $uvrMigration),
     'total_uvr no debe almacenarse como columna.'
 );
@@ -2055,6 +2063,41 @@ $check(
 $uvrVerify = (string) file_get_contents($root . '/sql/08_arquitectura/verificacion_uvr_gobernanza.sql');
 $check(str_contains($uvrVerify, 'BEGIN READ ONLY;'), 'La verificación UVR debe ser de solo lectura.');
 $check(str_contains($uvrVerify, 'ROLLBACK;'), 'La verificación UVR debe finalizar con ROLLBACK.');
+$uvrProposalVerify = (string) file_get_contents(
+    $root . '/sql/08_arquitectura/verificacion_propuesta_uvr.sql'
+);
+$check(
+    str_contains($uvrProposalVerify, 'BEGIN READ ONLY;')
+    && str_contains($uvrProposalVerify, 'ROLLBACK;')
+    && str_contains($uvrProposalVerify, "has_table_privilege('origen_admin'")
+    && str_contains($uvrProposalVerify, "has_sequence_privilege('origen_admin'")
+    && !preg_match('/^\s*(INSERT|UPDATE|DELETE|TRUNCATE)\b/im', $uvrProposalVerify),
+    'El diagnosticador de propuestas UVR debe ser solo lectura y revisar permisos de origen_admin.'
+);
+$uvrSequenceFix = (string) file_get_contents(
+    $root . '/sql/08_arquitectura/uvr_correccion_secuencias_panel.sql'
+);
+$check(
+    str_contains($uvrSequenceFix, 'BEGIN;')
+    && str_contains($uvrSequenceFix, 'COMMIT;')
+    && str_contains($uvrSequenceFix, 'REVOKE ALL PRIVILEGES ON SEQUENCE')
+    && str_contains($uvrSequenceFix, 'FROM PUBLIC;')
+    && str_contains($uvrSequenceFix, "to_regrole('origen_admin')")
+    && str_contains($uvrSequenceFix, 'GRANT USAGE, SELECT ON SEQUENCE')
+    && !str_contains($uvrSequenceFix, 'ALTER DEFAULT PRIVILEGES')
+    && !preg_match('/^\s*(INSERT|UPDATE|DELETE|TRUNCATE)\b/im', $uvrSequenceFix),
+    'El corrector de secuencias UVR debe usar REVOKE/GRANT por secuencia, sin DEFAULT ACL global ni SQL de datos.'
+);
+foreach ([
+    'os_governance_request_id_seq',
+    'os_uvr_valuation_id_seq',
+    'os_uvr_component_id_seq',
+] as $sequence) {
+    $check(
+        str_contains($uvrProposalVerify, $sequence) && str_contains($uvrSequenceFix, $sequence),
+        'La secuencia ' . $sequence . ' debe aparecer en el diagnóstico y en el corrector UVR.'
+    );
+}
 $check(
     str_contains($uvrVerify, 'FROM information_schema.role_table_grants')
         && str_contains($uvrVerify, 'table_name AS objeto')
@@ -2116,10 +2159,47 @@ $check(
     'Sin conversión no debe inventarse importe.'
 );
 
+$uvrDecimal = static fn (mixed $raw): ?float => \OrigenSalud\Portal\Admin\UvrImporteService::decimal($raw);
+foreach ([
+    ['1.5', 1.5],
+    ['1,5', 1.5],
+    ['12.75', 12.75],
+    ['12,75', 12.75],
+    ['1.234,56', 1234.56],
+    ['1,234.56', 1234.56],
+    ['1 234,56', 1234.56],
+    ["1\u{00A0}234,56", 1234.56],
+    ['1.234.567', 1234567.0],
+    ['1,234,567', 1234567.0],
+    ['-1,5', -1.5],
+    ['0', 0.0],
+    [7, 7.0],
+] as $uvrDecimalCase) {
+    $check(
+        abs(($uvrDecimal($uvrDecimalCase[0]) ?? NAN) - $uvrDecimalCase[1]) < 0.000001,
+        'UVR debe interpretar el decimal ' . var_export($uvrDecimalCase[0], true) . ' como ' . $uvrDecimalCase[1] . '.'
+    );
+}
+foreach (['', 'abc', '1,2,3x', '1.2.3,4,5', '1e999'] as $badDecimal) {
+    $check(
+        $uvrDecimal($badDecimal) === null,
+        'UVR debe rechazar el decimal inválido ' . var_export($badDecimal, true) . '.'
+    );
+}
+$check(
+    str_contains($uvrServiceSource, 'UvrImporteService::decimal('),
+    'La propuesta UVR debe normalizar los decimales con punto o coma.'
+);
+$check(
+    str_contains($uvrProposalViewSource, 'type="text" inputmode="decimal"')
+        && str_contains($uvrProposalViewSource, 'admin.uvr.decimal_hint'),
+    'El formulario UVR debe permitir escribir coma decimal y mostrar la ayuda.'
+);
+
 foreach (['es-AR', 'en', 'pt-BR', 'es'] as $uvrLocale) {
     $uvrMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $uvrLocale . '.yaml');
     $uvrNode = is_array($uvrMessages['admin']['uvr'] ?? null) ? $uvrMessages['admin']['uvr'] : [];
-    foreach (['title', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'derived_note', 'col_importe'] as $uvrKey) {
+    foreach (['title', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'derived_note', 'col_importe', 'decimal_hint'] as $uvrKey) {
         $check(is_string($uvrNode[$uvrKey] ?? null) && trim($uvrNode[$uvrKey]) !== '', $uvrLocale . ': falta admin.uvr.' . $uvrKey . '.');
     }
     foreach (['uvr_proposed', 'uvr_reviewed', 'uvr_decided', 'uvr_published', 'uvr_self_approval_denied'] as $uvrMessageKey) {

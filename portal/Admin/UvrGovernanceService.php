@@ -797,13 +797,12 @@ final class UvrGovernanceService
             }
 
             $notApplicable = $this->flag($component, 'is_not_applicable');
-            $value = $component['value'] ?? null;
+            $amount = UvrImporteService::decimal($component['value'] ?? null);
 
-            if (!is_numeric($value)) {
+            if ($amount === null) {
                 throw new UvrGovernanceException('uvr_invalid_component');
             }
 
-            $amount = (float) $value;
             $evidence = $this->text($component['negative_adjustment_evidence'] ?? null, 2000);
 
             if ($notApplicable && abs($amount) > 0.00001) {

@@ -52,6 +52,57 @@ final class UvrImporteService
         ];
     }
 
+    /**
+     * Normaliza un decimal escrito a mano en el panel.
+     *
+     * Acepta punto o coma como separador decimal, con punto o coma de miles:
+     * `1.5`, `1,5`, `1.234,56`, `1,234.56`, `1 234,56`. Si aparecen ambos
+     * separadores, el más a la derecha es el decimal. Varios separadores
+     * iguales se tratan como miles. Devuelve null si el texto no es numérico.
+     */
+    public static function decimal(mixed $raw): ?float
+    {
+        if (is_int($raw) || is_float($raw)) {
+            return is_finite((float) $raw) ? (float) $raw : null;
+        }
+
+        if (!is_string($raw)) {
+            return null;
+        }
+
+        // Espacio ordinario, NBSP y espacio fino se usan como separador de miles.
+        $text = trim(str_replace(["\u{00A0}", "\u{202F}", ' '], '', $raw));
+
+        if ($text === '') {
+            return null;
+        }
+
+        $lastDot = strrpos($text, '.');
+        $lastComma = strrpos($text, ',');
+
+        if ($lastDot !== false && $lastComma !== false) {
+            if ($lastDot > $lastComma) {
+                $text = str_replace(',', '', $text);
+            } else {
+                $text = str_replace(['.', ','], ['', '.'], $text);
+            }
+        } elseif ($lastComma !== false) {
+            $text = substr_count($text, ',') > 1
+                ? str_replace(',', '', $text)
+                : str_replace(',', '.', $text);
+        } elseif (substr_count($text, '.') > 1) {
+            $text = str_replace('.', '', $text);
+        }
+
+        if (!is_numeric($text)) {
+            return null;
+        }
+
+        $value = (float) $text;
+
+        return is_finite($value) ? $value : null;
+    }
+
     private static function format(float $value): string
     {
         return number_format($value, 2, '.', '');
