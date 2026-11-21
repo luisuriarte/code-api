@@ -2110,6 +2110,44 @@ if (is_file($adminCssBuilt)) {
     $check(str_contains($adminCssCompiled, '.ui-date::-webkit-calendar-picker-indicator'), 'El build admin debe incluir el ícono de calendario clicable.');
 }
 
+// 18. LOINC: la rama pública resuelve capas por idioma desde la tabla editable.
+require_once $root . '/portal/Repositories/CatalogRepository.php';
+$loincReflection = new ReflectionClass(OrigenSalud\Portal\Repositories\CatalogRepository::class);
+$loincChainMethod = $loincReflection->getMethod('loincLanguageChain');
+$loincChainMethod->setAccessible(true);
+$loincBranchMethod = $loincReflection->getMethod('loincBranch');
+$loincBranchMethod->setAccessible(true);
+foreach ([
+    'es-AR' => ['es-AR', 'es-MX', 'en'],
+    'es' => ['es-AR', 'es-MX', 'en'],
+    'en' => ['en', 'es-AR', 'es-MX'],
+    'pt-BR' => ['es-AR', 'es-MX', 'en'],
+] as $loincRequested => $loincExpectedChain) {
+    $check(
+        $loincChainMethod->invoke(null, $loincRequested) === $loincExpectedChain,
+        'LOINC: cadena de idiomas incorrecta para ' . $loincRequested . '.'
+    );
+}
+foreach ([['infarto', 'es-AR'], ['infarction', 'en']] as $loincCase) {
+    [$loincSql, $loincParams] = $loincBranchMethod->invoke(null, 'p0', $loincCase[0], $loincCase[1], false, null);
+    $check(str_contains($loincSql, 'loinc_localized_text'), 'LOINC: la rama debe resolver desde loinc_localized_text.');
+    $check(!str_contains($loincSql, "'es' AS language"), 'LOINC: no debe fijar el idioma a es.');
+    $check(str_contains($loincSql, 'AS language'), 'LOINC: debe devolver el idioma resuelto.');
+    $check(str_contains($loincSql, 'source_priority DESC'), 'LOINC: debe aplicar la prioridad D-33.');
+    $check(
+        !str_starts_with(ltrim($loincSql), 'WITH'),
+        'LOINC: la rama no debe empezar con WITH; al ir después de UNION ALL rompe la consulta completa.'
+    );
+    $loincUnion = "SELECT 1 AS domain UNION ALL\n" . $loincSql;
+    $check(
+        !preg_match('/UNION ALL\s+WITH\b/i', $loincUnion),
+        'LOINC: ninguna WITH puede quedar como operando de UNION ALL.'
+    );
+    foreach (['_l1', '_l2', '_l3'] as $loincSuffix) {
+        $check(isset($loincParams[':p0' . $loincSuffix]), 'LOINC: falta el parámetro :p0' . $loincSuffix . '.');
+    }
+}
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

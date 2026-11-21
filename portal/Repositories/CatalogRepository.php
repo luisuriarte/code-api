@@ -684,6 +684,7 @@ final class CatalogRepository
                     $domain,
                     $term,
                     $language,
+                    $requestedLanguage,
                     $byKey,
                     $key
                 );
@@ -721,6 +722,7 @@ final class CatalogRepository
         string $domain,
         string $term,
         string $language,
+        string $requestedLanguage,
         bool $byKey,
         ?string $key
     ): array {
@@ -737,7 +739,7 @@ final class CatalogRepository
         }
 
         if ($domain === 'loinc') {
-            return self::loincBranch($p, $term, $byKey, $key);
+            return self::loincBranch($p, $term, $requestedLanguage, $byKey, $key);
         }
 
         return self::catalogBranch($p, $domain, $term, $language, $byKey, $key);
@@ -1095,60 +1097,153 @@ final class CatalogRepository
         return [$sql, $params];
     }
 
-    /** @return array{0: string, 1: array<string, string|int>} */
+    /**
+     * Cadena de idiomas LOINC para la resolución pública (D-39):
+     * es -> es-AR -> es-MX -> en; en -> en -> es-AR -> es-MX.
+     * pt-BR usa la rama española porque no hay capa portuguesa acreditada.
+     *
+     * @return list<string>
+     */
+    private static function loincLanguageChain(string $requested): array
+    {
+        return match (self::canonicalLanguageCode($requested)) {
+            'en' => ['en', 'es-AR', 'es-MX'],
+            default => ['es-AR', 'es-MX', 'en'],
+        };
+    }
+
+    /**
+     * La capa publicable se resuelve desde loinc_localized_text, nunca desde
+     * public.loinc (esa tabla fue sobrescrita por el importador con es-MX y
+     * después es-AR, así que ya no conserva todas las capas).
+     *
+     * @return array{0: string, 1: array<string, string|int>}
+     */
     private static function loincBranch(
         string $p,
         string $term,
+        string $requestedLanguage,
         bool $byKey,
         ?string $key
     ): array {
-        $termSql = "coalesce(nullif(t.long_common_name, ''), nullif(t.display_name, ''), nullif(t.consumer_name, ''), t.component)";
+        [$l1, $l2, $l3] = self::loincLanguageChain($requestedLanguage);
+        $searchFields = "'long_common_name','display_name','shortname','component',"
+            . "'consumer_name','relatednames2'";
+        $allFields = $searchFields
+            . ",'class_type','system_type','scale_type','method_type'";
+
+        // Conjunto conductor: solo los códigos con alguna capa de la cadena que
+        // coincide (índice GIN trigram de value) o por código exacto. Se
+        // expresa como tabla derivada del FROM, NO como WITH: un WITH después
+        // de UNION ALL rompe la consulta completa porque loinc es el último
+        // dominio de self::DOMAINS.
+        $matched = $byKey
+            ? "SELECT CAST(:{$p}_key AS VARCHAR(20)) AS loinc_code"
+            : "SELECT DISTINCT l.loinc_code\n"
+                . " FROM loinc_localized_text l\n"
+                . " WHERE l.language_code IN (:{$p}_l1, :{$p}_l2, :{$p}_l3)\n"
+                . "   AND l.source_release = '2.83'\n"
+                . "   AND l.field_name IN ({$searchFields})\n"
+                . "   AND l.value ILIKE :{$p}_contains\n"
+                . " UNION\n"
+                . " SELECT t.loinc FROM loinc t WHERE t.loinc ILIKE :{$p}_contains";
+
+        // Un DISTINCT ON por campo: gana el primer idioma de la cadena y,
+        // dentro de él, la prioridad D-33 de v_loinc_resolved. LATERAL lo
+        // calcula una sola vez por código candidato.
+        $localized = "SELECT\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'long_common_name') AS loc_long_common_name,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'display_name') AS loc_display_name,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'shortname') AS loc_shortname,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'component') AS loc_component,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'consumer_name') AS loc_consumer_name,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'relatednames2') AS loc_relatednames2,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'class_type') AS loc_class_type,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'system_type') AS loc_system_type,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'scale_type') AS loc_scale_type,\n"
+            . " max(x.value) FILTER (WHERE x.field_name = 'method_type') AS loc_method_type,\n"
+            . " max(x.language_code) FILTER (WHERE x.field_name = 'long_common_name') AS loc_lang_long,\n"
+            . " max(x.language_code) FILTER (WHERE x.field_name = 'display_name') AS loc_lang_display,\n"
+            . " max(x.language_code) FILTER (WHERE x.field_name = 'shortname') AS loc_lang_short,\n"
+            . " max(x.language_code) FILTER (WHERE x.field_name = 'component') AS loc_lang_component\n"
+            . " FROM (\n"
+            . "  SELECT DISTINCT ON (field_name) field_name, value, language_code\n"
+            . "  FROM loinc_localized_text\n"
+            . "  WHERE loinc_code = t.loinc\n"
+            . "    AND language_code IN (:{$p}_l1, :{$p}_l2, :{$p}_l3)\n"
+            . "    AND field_name IN ({$allFields})\n"
+            . "    AND source_release = '2.83'\n"
+            . "    AND NULLIF(btrim(value), '') IS NOT NULL\n"
+            . "  ORDER BY field_name,\n"
+            . "    CASE language_code WHEN :{$p}_l1 THEN 1 WHEN :{$p}_l2 THEN 2 ELSE 3 END,\n"
+            . "    source_priority DESC, source_file ASC,\n"
+            . "    version_last_changed DESC NULLS LAST\n"
+            . " ) x";
+
+        $termSql = "coalesce(nullif(l.loc_long_common_name, ''), nullif(l.loc_display_name, ''),"
+            . " nullif(l.loc_consumer_name, ''), nullif(l.loc_shortname, ''),"
+            . " nullif(l.loc_component, ''), nullif(t.long_common_name, ''), t.component)";
+        $languageSql = "coalesce(l.loc_lang_long, l.loc_lang_display, l.loc_lang_short,"
+            . " l.loc_lang_component, 'es-AR')";
+        $subtitleSql = "coalesce(nullif(l.loc_component, ''), nullif(t.component, ''),"
+            . " nullif(l.loc_shortname, ''), nullif(t.shortname, ''))";
+        $altSql = "coalesce(nullif(l.loc_display_name, ''), nullif(l.loc_shortname, ''),"
+            . " nullif(l.loc_component, ''))";
+        $consumerSql = "coalesce(nullif(l.loc_consumer_name, ''), nullif(l.loc_relatednames2, ''))";
+
         $metadata = "CAST(json_build_object("
             . "'loinc_code', t.loinc, "
-            . "'class_type', t.class_type, "
-            . "'system_type', t.system_type, "
-            . "'scale_type', t.scale_type, "
-            . "'method_type', t.method_type, "
+            . "'class_type', coalesce(nullif(l.loc_class_type, ''), t.class_type), "
+            . "'system_type', coalesce(nullif(l.loc_system_type, ''), t.system_type), "
+            . "'scale_type', coalesce(nullif(l.loc_scale_type, ''), t.scale_type), "
+            . "'method_type', coalesce(nullif(l.loc_method_type, ''), t.method_type), "
             . "'status', t.status, "
-            . "'consumer_name', t.consumer_name, "
+            . "'consumer_name', coalesce(nullif(l.loc_consumer_name, ''), t.consumer_name), "
             . "'example_ucum_units', t.example_ucum_units"
             . ") AS text) AS metadata";
+
         $score = $byKey
             ? 'CAST(1.0 AS float8)'
             : self::scoreSql([
                 "lower(t.loinc) = lower(:{$p}_exact)" => '1.0',
                 "t.loinc ILIKE :{$p}_prefix" => '0.96',
-                "lower(t.long_common_name) = lower(:{$p}_exact)" => '0.94',
-                "t.long_common_name ILIKE :{$p}_prefix" => '0.90',
-                "t.display_name ILIKE :{$p}_prefix" => '0.88',
-                "t.component ILIKE :{$p}_prefix" => '0.86',
-                "t.consumer_name ILIKE :{$p}_prefix" => '0.84',
-                "t.long_common_name ILIKE :{$p}_contains" => '0.78',
-                "t.display_name ILIKE :{$p}_contains" => '0.76',
-                "t.consumer_name ILIKE :{$p}_contains" => '0.75',
-                "t.component ILIKE :{$p}_contains" => '0.74',
+                "lower({$termSql}) = lower(:{$p}_exact)" => '0.94',
+                "{$termSql} ILIKE :{$p}_prefix" => '0.90',
+                "{$altSql} ILIKE :{$p}_prefix" => '0.88',
+                "l.loc_component ILIKE :{$p}_prefix" => '0.86',
+                "l.loc_consumer_name ILIKE :{$p}_prefix" => '0.84',
+                "{$termSql} ILIKE :{$p}_contains" => '0.78',
+                "{$altSql} ILIKE :{$p}_contains" => '0.76',
+                "{$consumerSql} ILIKE :{$p}_contains" => '0.75',
+                "l.loc_component ILIKE :{$p}_contains" => '0.74',
                 "similarity({$termSql}, :{$p}_sim)" => null,
             ], $p);
 
+        // El filtro final se aplica sobre el término YA RESUELTO, para no
+        // devolver aciertos de una capa que no es la que se va a mostrar.
         $where = $byKey
-            ? 't.loinc = :' . $p . '_key'
-            : "(t.loinc ILIKE :{$p}_prefix"
-                . " OR t.long_common_name ILIKE :{$p}_contains"
-                . " OR t.display_name ILIKE :{$p}_contains"
-                . " OR t.component ILIKE :{$p}_contains"
-                . " OR t.shortname ILIKE :{$p}_contains"
-                . " OR t.consumer_name ILIKE :{$p}_contains)";
+            ? 'true'
+            : "({$termSql} ILIKE :{$p}_contains"
+                . " OR t.loinc ILIKE :{$p}_contains"
+                . " OR {$altSql} ILIKE :{$p}_contains"
+                . " OR {$consumerSql} ILIKE :{$p}_contains)";
 
         $sql = "SELECT 'loinc' AS domain, 'loinc' AS source,\n"
             . " 'loinc:' || t.loinc AS result_key,\n"
             . " t.loinc AS source_id, t.loinc AS code,\n"
-            . " {$termSql} AS term, t.component AS subtitle,\n"
-            . " 'es' AS language, 'loinc_observation' AS kind,\n"
+            . " {$termSql} AS term, {$subtitleSql} AS subtitle,\n"
+            . " {$languageSql} AS language, 'loinc_observation' AS kind,\n"
             . " {$score} AS score, {$metadata}\n"
-            . " FROM loinc t\n"
+            . " FROM ({$matched}) m\n"
+            . " JOIN loinc t ON t.loinc = m.loinc_code\n"
+            . " CROSS JOIN LATERAL ({$localized}) l\n"
             . " WHERE {$where}";
 
-        $params = [];
+        $params = [
+            ":{$p}_l1" => $l1,
+            ":{$p}_l2" => $l2,
+            ":{$p}_l3" => $l3,
+        ];
         if ($byKey) {
             $params[":{$p}_key"] = (string) $key;
         } else {

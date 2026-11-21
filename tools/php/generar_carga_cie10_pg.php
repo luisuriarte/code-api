@@ -130,7 +130,7 @@ $rows = [];
 foreach ($sources as $key => $path) {
     [$tipo, $idioma] = explode('-', $key);
     $dbTipo = $tipo === 'diag' ? 'diagnostico' : 'procedimiento';
-    $parsed = parseSource($path, $tipo, $idioma);
+    $parsed = parseSource($path, $tipo, $idioma, $options['quiet']);
     foreach ($parsed as $row) {
         $rows[] = [$dbTipo, $idioma, $row[0], $row[1]];
     }
@@ -248,9 +248,19 @@ function discoverSources(string $folder, bool $quiet): array
         }
         $name = normalizeName($file->getBasename());
 
-        if (str_contains($name, 'diag') || str_contains($name, 'diagnost')) {
+        if (
+            str_contains($name, 'diag')
+            || str_contains($name, 'diagnost')
+            || str_contains($name, 'icd 10 cm')
+            || str_contains($name, 'code descriptions')
+            || str_contains($name, 'descriptions in tabular')
+        ) {
             $tipo = 'diag';
-        } elseif (str_contains($name, 'proced') || str_contains($name, 'pcs')) {
+        } elseif (
+            str_contains($name, 'proced')
+            || str_contains($name, 'pcs')
+            || str_contains($name, 'icd 10 pcs')
+        ) {
             $tipo = 'proced';
         } else {
             continue;
@@ -296,9 +306,9 @@ function normalizeName(string $value): string
 /**
  * @return list<array{0: string, 1: string}>
  */
-function parseSource(string $path, string $tipo, string $idioma): array
+function parseSource(string $path, string $tipo, string $idioma, bool $quiet = false): array
 {
-    $contents = readSource($path);
+    $contents = readSource($path, $tipo);
     $contents = preg_replace('/^\xEF\xBB\xBF/', '', $contents) ?? $contents;
     $lines = preg_split('/\r\n|\n|\r/', $contents) ?: [];
     if ($lines === []) {
@@ -323,8 +333,16 @@ function parseSource(string $path, string $tipo, string $idioma): array
     ], 'desc');
 
     if ($codeIndex === null || $descIndex === null) {
-        fwrite(STDERR, "No se encontraron columnas de código/descripción en {$path}. Cabecera: {$header}\n");
-        exit(1);
+        $rows = parseFixedWidth(array_merge([$header], $lines), $tipo);
+        if ($rows !== [] && !$quiet) {
+            fwrite(STDOUT, "[ancho fijo] {$path}\n");
+        }
+        if ($rows === []) {
+            fwrite(STDERR, "No se encontraron columnas de código/descripción en {$path}. Cabecera: {$header}\n");
+            exit(1);
+        }
+
+        return $rows;
     }
 
     $rows = [];
@@ -344,7 +362,7 @@ function parseSource(string $path, string $tipo, string $idioma): array
     return $rows;
 }
 
-function readSource(string $path): string
+function readSource(string $path, string $tipo = ''): string
 {
     $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
     if ($extension !== 'zip') {
@@ -368,20 +386,39 @@ function readSource(string $path): string
         exit(1);
     }
 
-    $entry = null;
+    $preferred = $tipo === 'diag'
+        ? ['icd10cm codes', 'icd10cm code', 'code descriptions codes', 'codes']
+        : ['icd10pcs codes', 'icd10pcs code', 'pcs codes', 'codes'];
+
+    $candidates = [];
     for ($i = 0; $i < $zip->numFiles; $i++) {
         $name = $zip->getNameIndex($i);
-        if (is_string($name) && preg_match('~\.(csv|txt)$~i', $name) === 1) {
-            $entry = $name;
-            break;
+        if (!is_string($name) || preg_match('~\.(csv|txt)$~i', $name) !== 1) {
+            continue;
         }
+        $stat = $zip->statIndex($i);
+        $size = is_array($stat) ? (int) ($stat['size'] ?? 0) : 0;
+        $candidates[] = [
+            'name' => $name,
+            'size' => $size,
+            'score' => entryScore($name, $preferred),
+        ];
     }
-    if ($entry === null) {
+    if ($candidates === []) {
         $zip->close();
         fwrite(STDERR, "El ZIP no contiene CSV/TXT: {$path}\n");
         exit(1);
     }
 
+    usort($candidates, static function (array $a, array $b): int {
+        if ($a['score'] !== $b['score']) {
+            return $b['score'] <=> $a['score'];
+        }
+
+        return $b['size'] <=> $a['size'];
+    });
+
+    $entry = $candidates[0]['name'];
     $stream = $zip->getStream($entry);
     if ($stream === false) {
         $zip->close();
@@ -398,6 +435,77 @@ function readSource(string $path): string
     }
 
     return $contents;
+}
+
+/**
+ * @param list<string> $preferred
+ */
+function entryScore(string $name, array $preferred): int
+{
+    $base = normalizeName(basename(str_replace('\\', '/', $name)));
+    $score = 0;
+    foreach ($preferred as $index => $needle) {
+        if (str_contains($base, $needle)) {
+            $score = max($score, 100 - ($index * 10));
+        }
+    }
+    if (str_contains($base, ' order ')) {
+        $score -= 5;
+    }
+    if (preg_match('~(^| )(add|change|changes|readme|note|notes)( |$)~', $base) === 1) {
+        $score -= 10;
+    }
+
+    return $score;
+}
+
+/**
+ * @param list<string> $lines
+ * @return list<array{0: string, 1: string}>
+ */
+function parseFixedWidth(array $lines, string $tipo): array
+{
+    $rows = [];
+    foreach ($lines as $line) {
+        if (!is_string($line)) {
+            continue;
+        }
+        $line = trim($line, "\r\n");
+        if (trim($line) === '') {
+            continue;
+        }
+
+        $line = preg_replace(
+            '/^\s*(?:Add|Delete|Revised|Revision|Updated|New|No\s+Change)\s*:\s*/i',
+            '',
+            $line
+        ) ?? $line;
+        $line = ltrim($line);
+
+        $code = '';
+        $description = '';
+        if (preg_match('/^([A-Z0-9][A-Z0-9.]{1,9})\s{2,}(.+)$/', $line, $m) === 1) {
+            $code = trim($m[1]);
+            $description = trim($m[2]);
+        } elseif (preg_match('/^([A-Z0-9]{7})\s+(.+)$/', $line, $m) === 1) {
+            $code = $m[1];
+            $description = trim($m[2]);
+        }
+
+        if ($code === '' || $description === '') {
+            continue;
+        }
+
+        // Los CSV españoles ya traen el punto (A00.0); los TXT de EE.UU. no
+        // (A000). Se normaliza para no duplicar códigos en cie10_codes.
+        if ($tipo === 'diag' && strpos($code, '.') === false && strlen($code) > 3) {
+            $code = substr($code, 0, 3) . '.' . substr($code, 3);
+        }
+
+        $rows[] = [$code, $description];
+    }
+
+    return $rows;
 }
 
 function detectDelimiter(string $header): string

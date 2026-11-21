@@ -47,6 +47,15 @@ php tools/php/generar_carga_cie10_pg.php \
 
 El generador detecta tabulador, coma o punto y coma, quita BOM y acepta
 cabeceras en español o inglés (`Código`/`Code`, `Descripción`/`Description`).
+También maneja los TXT de ancho fijo de CMS:
+
+- `icd10pcs_codes_2027.txt` → `0016070 Bypass Cerebral...`
+- `icd10cm_codes_2027.txt` → `A000    Cholera...`
+
+Dentro del ZIP de diagnósticos prefiere `icd10cm_codes_*.txt` y descarta
+`icd10cm_order_*.txt` (esa última trae un número de orden delante). Los códigos
+de diagnóstico sin punto (`A000`) se normalizan a `A00.0` para no duplicarlos
+frente a los CSV españoles.
 
 ## 2. Ejecutar en ambas bases
 

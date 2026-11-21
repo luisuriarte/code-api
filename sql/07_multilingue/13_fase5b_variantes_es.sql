@@ -14,9 +14,10 @@
 --
 -- CAMBIO RESPECTO A LA VERSIÓN ANTERIOR: el INSERT único de ~400.000 filas era
 -- demasiado largo y no mostraba progreso (el trigger de auditoría escribe una
--- fila por registro). Ahora se inserta CAMPO POR CAMPO, cada uno en su propia
--- transacción: psql imprime "INSERT 0 N" después de cada uno. Si se interrumpe,
--- los campos ya cargados quedan y una nueva ejecución no los duplica.
+-- fila por registro). Ahora se inserta CAMPO POR CAMPO dentro de UNA SOLA
+-- transacción: psql imprime "INSERT 0 N" después de cada campo. Un reintento
+-- no duplica nada porque el staging es temporal y todos los INSERT usan
+-- ON CONFLICT DO NOTHING. Si falla, ROLLBACK completo.
 --
 -- El trigger trg_llt_load calcula prioridad, evidencia, versión normalizada
 -- ('(sin_version)': estos CSV no traen VersionLastChanged) y content_hash.
@@ -71,13 +72,11 @@ UNION ALL
 SELECT 'es-AR', count(*), count(l.loinc), count(*) - count(l.loinc)
 FROM _loinc_ar_variant s LEFT JOIN loinc l ON l.loinc = s.loinc_num;
 
-COMMIT;
 
 -- ---------------------------------------------------------------------------
 -- Etapa 2 · es-MX: un campo por transacción (12 bloques)
 -- ---------------------------------------------------------------------------
 SELECT 'es-MX · component' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -86,10 +85,8 @@ SELECT s.loinc_num, 'es-MX', 'component', s.component,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.component, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · property' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -98,10 +95,8 @@ SELECT s.loinc_num, 'es-MX', 'property', s.property,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.property, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · time_aspct' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -110,10 +105,8 @@ SELECT s.loinc_num, 'es-MX', 'time_aspct', s.time_aspct,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.time_aspct, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · system_type' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -122,10 +115,8 @@ SELECT s.loinc_num, 'es-MX', 'system_type', s.system,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.system, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · scale_type' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -134,10 +125,8 @@ SELECT s.loinc_num, 'es-MX', 'scale_type', s.scale_typ,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.scale_typ, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · method_type' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -146,10 +135,8 @@ SELECT s.loinc_num, 'es-MX', 'method_type', s.method_typ,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.method_typ, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · class_type' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -158,10 +145,8 @@ SELECT s.loinc_num, 'es-MX', 'class_type', s.class,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.class, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · shortname' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -170,10 +155,8 @@ SELECT s.loinc_num, 'es-MX', 'shortname', s.shortname,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.shortname, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · long_common_name' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -182,10 +165,8 @@ SELECT s.loinc_num, 'es-MX', 'long_common_name', s.long_common_name,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.long_common_name, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · relatednames2' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -194,10 +175,8 @@ SELECT s.loinc_num, 'es-MX', 'relatednames2', s.relatednames2,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.relatednames2, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · display_name' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -206,10 +185,8 @@ SELECT s.loinc_num, 'es-MX', 'display_name', s.linguistic_variant_display_name,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.linguistic_variant_display_name, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-MX · consumer_name' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -218,13 +195,11 @@ SELECT s.loinc_num, 'es-MX', 'consumer_name', s.consumer_name,
 FROM _loinc_mx_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.consumer_name, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 -- ---------------------------------------------------------------------------
 -- Etapa 3 · es-AR: un campo por transacción (12 bloques)
 -- ---------------------------------------------------------------------------
 SELECT 'es-AR · component' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -233,10 +208,8 @@ SELECT s.loinc_num, 'es-AR', 'component', s.component,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.component, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · property' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -245,10 +218,8 @@ SELECT s.loinc_num, 'es-AR', 'property', s.property,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.property, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · time_aspct' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -257,10 +228,8 @@ SELECT s.loinc_num, 'es-AR', 'time_aspct', s.time_aspct,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.time_aspct, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · system_type' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -269,10 +238,8 @@ SELECT s.loinc_num, 'es-AR', 'system_type', s.system,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.system, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · scale_type' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -281,10 +248,8 @@ SELECT s.loinc_num, 'es-AR', 'scale_type', s.scale_typ,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.scale_typ, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · method_type' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -293,10 +258,8 @@ SELECT s.loinc_num, 'es-AR', 'method_type', s.method_typ,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.method_typ, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · class_type' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -305,10 +268,8 @@ SELECT s.loinc_num, 'es-AR', 'class_type', s.class,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.class, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · shortname' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -317,10 +278,8 @@ SELECT s.loinc_num, 'es-AR', 'shortname', s.shortname,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.shortname, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · long_common_name' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -329,10 +288,8 @@ SELECT s.loinc_num, 'es-AR', 'long_common_name', s.long_common_name,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.long_common_name, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · relatednames2' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -341,10 +298,8 @@ SELECT s.loinc_num, 'es-AR', 'relatednames2', s.relatednames2,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.relatednames2, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · display_name' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -353,10 +308,8 @@ SELECT s.loinc_num, 'es-AR', 'display_name', s.linguistic_variant_display_name,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.linguistic_variant_display_name, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
-COMMIT;
 
 SELECT 'es-AR · consumer_name' AS progreso;
-BEGIN;
 INSERT INTO loinc_localized_text
     (loinc_code, language_code, field_name, value, source_file, source_release,
      version_last_changed, provenance, review_status, source_reference)
@@ -365,6 +318,7 @@ SELECT s.loinc_num, 'es-AR', 'consumer_name', s.consumer_name,
 FROM _loinc_ar_variant s JOIN loinc l ON l.loinc = s.loinc_num
 WHERE NULLIF(btrim(COALESCE(s.consumer_name, '')), '') IS NOT NULL
 ON CONFLICT DO NOTHING;
+
 COMMIT;
 
 -- ---------------------------------------------------------------------------

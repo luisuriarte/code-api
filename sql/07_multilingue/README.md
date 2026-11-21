@@ -24,7 +24,7 @@ de Fase 13 queda preparado pero **no activo** (`OS_IMPORT_MODE=dual`).
 | 6 | `06_fase4_backfill_seguro.sql` | 4 — backfill sin inventar procedencia | `BEGIN/COMMIT` |
 | 7 | `07_fase5_loinc_tabla.sql` | 5 — tabla LOINC y regla central de prioridad | `BEGIN/COMMIT` |
 | 8 | `08_fase5_loinc_indices.sql` | 5 — índices LOINC | **FUERA de transacción** (`CONCURRENTLY`) |
-| 9 | `09_fase5_loinc_backfill.sql` | 5 — backfill EN y vista de resolución | `BEGIN/COMMIT` |
+| 9 | `09_fase5_loinc_backfill.sql` | 5 — backfill EN desde CSV y vista de resolución | `BEGIN/COMMIT` |
 | 10 | `10_fase6_dentar.sql` | 6 — campos clínicos DENTAR (solo SQL) | `BEGIN/COMMIT` |
 | 11 | `11_fase7_snomed_cie10.sql` | 7 — tag RF2 real de SNOMED | `BEGIN/COMMIT` |
 | 12 | `12_fase12_validacion.sql` | 12 — reporte de validación | solo `SELECT` (sin transacción) |
@@ -106,9 +106,12 @@ PGPASSWORD=... psql -h localhost -U postgres -d origen_codes -v ON_ERROR_STOP=1 
   (matriz D-29 de 7 a 8 tablas).
 - `source_release='2.83'` está confirmado en `tools/sources/loinc/Loinc.csv`
   (`VersionLastChanged="2.83"`) y en `importar_loinc.sql:2-5`.
-- La capa EN se recuperó desde la BD en `09_fase5_loinc_backfill.sql`; las
-  capas es-MX/es-AR se recuperaron desde los CSV en `13_fase5b_variantes_es.sql`
-  (sin modificar el importador). Ninguna capa se derivó de otra.
+- La capa EN se recupera directamente de `Loinc.csv` y `ConsumerName.csv` en
+  `09_fase5_loinc_backfill.sql`. La versión anterior la tomaba desde `loinc`,
+  pero `importar_loinc.sql` ya sobrescribió esos campos con es-MX/es-AR, así que
+  guardaba texto español etiquetado como `en`. Corregido sin modificar el
+  importador: las tres capas se leen de sus fuentes acreditadas (D-40). Ninguna
+  capa se deriva de otra.
 - La vista `v_loinc_resolved` aplica la prioridad D-33 y marca conflictos;
   lo que queda `unknown`/`undetermined`/en conflicto NO es publicable.
 - La Fase 6 cubre solo la parte SQL: publicar los tres campos clínicos. Queda
