@@ -64,7 +64,7 @@ final class UvrGovernanceService
             }
         }
 
-        return $rows;
+        return $this->withSubjectCodes($rows, 'valuation_id');
     }
 
     /**
@@ -109,7 +109,7 @@ final class UvrGovernanceService
             }
         }
 
-        return $proposals;
+        return $this->withSubjectCodes($proposals);
     }
 
     /** @param array<string, mixed> $actor @return array<string, mixed> */
@@ -120,6 +120,8 @@ final class UvrGovernanceService
         if ($proposal === null) {
             throw new UvrGovernanceException('uvr_proposal_not_found');
         }
+
+        $proposal = $this->withSubjectCodes([$proposal])[0] ?? $proposal;
 
         $this->require($actor, 'catalog.view', 'view', $this->proposalCatalog($proposal));
 
@@ -152,7 +154,7 @@ final class UvrGovernanceService
             }
         }
 
-        return $tasks;
+        return $this->withSubjectCodes($tasks);
     }
 
     /** @param array<string, mixed> $actor @return list<array<string, mixed>> */
@@ -765,6 +767,72 @@ final class UvrGovernanceService
         $decoded = json_decode($raw, true);
 
         return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * Expone el código visible del asunto (DNT-PR-000001) además del id interno.
+     * Reutiliza la vista gobernada para resolver el ítem y la conexión pública
+     * para leer su permanent_code: sin nuevos privilegios sobre os_catalog_*.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    private function withSubjectCodes(array $rows, string $idField = 'subject_id'): array
+    {
+        $subjectIds = [];
+
+        foreach ($rows as $row) {
+            $id = (int) ($row[$idField] ?? 0);
+
+            if ($id > 0) {
+                $subjectIds[$id] = $id;
+            }
+        }
+
+        if ($subjectIds === []) {
+            return $rows;
+        }
+
+        $itemsByValuation = [];
+        $itemIds = [];
+
+        foreach (UvrRepository::valuations() as $valuation) {
+            $id = (int) ($valuation['valuation_id'] ?? 0);
+
+            if (!isset($subjectIds[$id])) {
+                continue;
+            }
+
+            $itemId = (int) ($valuation['service_item_id'] ?? 0);
+            $itemsByValuation[$id] = $itemId;
+
+            if ($itemId > 0) {
+                $itemIds[$itemId] = $itemId;
+            }
+        }
+
+        $codes = CatalogGovernanceRepository::permanentCodes(array_values($itemIds));
+
+        foreach ($rows as $index => $row) {
+            $id = (int) ($row[$idField] ?? 0);
+            $itemId = $itemsByValuation[$id] ?? 0;
+            $code = $itemId > 0 ? (string) ($codes[$itemId] ?? '') : '';
+
+            if ($code === '' && (string) ($row['valuation_kind'] ?? '') === 'prestacion') {
+                $code = (string) ($row['service_item_id'] ?? '');
+            }
+
+            if ($code === '') {
+                $meta = $this->decodeMeta((string) ($row['proposed_change'] ?? ''));
+                $code = (string) ($meta['prestacion_code'] ?? '');
+            }
+
+            if ($code !== '') {
+                $rows[$index]['subject_code'] = $code;
+            }
+        }
+
+        return $rows;
     }
 
     /** @param array<string, mixed> $proposal @return array<string, mixed> */

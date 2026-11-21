@@ -27,11 +27,20 @@ $uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2
                 $currency = trim((string) ($valuation['currency'] ?? ''));
                 $validFrom = trim((string) ($valuation['valid_from'] ?? ''));
                 $validTo = trim((string) ($valuation['valid_to'] ?? ''));
+                // El modelo transversal muestra el código de prestación y el
+                // legacy el permanente del ítem (DNT-PR-000001).
+                $uvrCode = trim((string) ($valuation['prestacion_code'] ?? ''));
+                if ($uvrCode === '') {
+                    $uvrCode = trim((string) ($valuation['external_code'] ?? ''));
+                }
+                if ($uvrCode === '') {
+                    $uvrCode = trim((string) ($valuation['profile_code'] ?? ''));
+                }
                 ?>
                 <tr>
                     <td>
                         <span class="browse-badge browse-badge--current">
-                            <?= e((string) ($valuation['profile_code'] ?? '')) ?>
+                            <?= e($uvrCode) ?>
                             <?= (string) ($valuation['version_tag'] ?? '') !== ''
                                 ? ' · ' . e((string) $valuation['version_tag'])
                                 : '' ?>

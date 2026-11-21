@@ -210,8 +210,8 @@ $sqlFiles = array_values(array_filter(
         && !str_contains(basename($f), 'correccion_')
 ));
 $check(
-    count($sqlFiles) === 12,
-    'Deben existir doce artefactos SQL propuestos (Fases 3, 8, 10, 11, gestión UVR, gestión de catálogos y U7-B).'
+    count($sqlFiles) === 13,
+    'Deben existir trece artefactos SQL propuestos (Fases 3, 8, 10, 11, gestión UVR, gestión de catálogos, U7-B y publicación legacy).'
 );
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
@@ -277,8 +277,9 @@ $check(
     'U7-D solo debe leer la vista pública.'
 );
 $check(
-    str_contains($u7PublicRepository, "to_regclass('public.v_os_uvr_prestacion_public')"),
-    'U7-D debe detectar la vista antes de consultarla.'
+    str_contains($u7PublicRepository, 'to_regclass(:name)')
+        && str_contains($u7PublicRepository, 'private static function hasView(string $view): bool'),
+    'U7-D debe detectar cada vista antes de consultarla.'
 );
 $check(!str_contains($u7PublicRepository, 'estimated_payment'), 'U7-D no debe exponer estimated_payment.');
 $check(
@@ -2538,6 +2539,53 @@ foreach ([['infarto', 'es-AR'], ['infarction', 'en']] as $loincCase) {
 $check(
     str_contains($loincCodeSql, 'SELECT t.loinc FROM loinc t'),
     'LOINC: una búsqueda con dígitos sí debe incluir la rama por código.'
+);
+
+// UVR publicado sobre códigos de catálogo también debe llegar a Browse Codes.
+$legacyPublicSqlPath = $root . '/sql/08_arquitectura/uvr_publicacion_legacy_browse.sql';
+$check(is_file($legacyPublicSqlPath), 'Debe existir el SQL que publica UVR legacy hacia Browse Codes.');
+$legacyPublicSql = is_file($legacyPublicSqlPath) ? (string) file_get_contents($legacyPublicSqlPath) : '';
+$check(
+    str_contains($legacyPublicSql, 'CREATE OR REPLACE VIEW public.v_os_uvr_valuation_public')
+        && str_contains($legacyPublicSql, "g.review_status = 'published'")
+        && str_contains($legacyPublicSql, 'i.permanent_code AS external_code')
+        && str_contains($legacyPublicSql, 'money.importe_referencial')
+        && !str_contains($legacyPublicSql, 'estimated_payment')
+        && !str_contains($legacyPublicSql, 'ALTER DEFAULT PRIVILEGES')
+        && str_contains($legacyPublicSql, "c.code <> 'dentar-dx'"),
+    'La vista legacy debe exponer solo publicadas, código e importe referencial, sin estimated_payment.'
+);
+$check(
+    str_contains($legacyPublicSql, 'GRANT SELECT ON TABLE public.v_os_uvr_valuation_public TO origen_med')
+        && str_contains($legacyPublicSql, 'REVOKE ALL PRIVILEGES ON TABLE public.v_os_uvr_valuation_public FROM PUBLIC'),
+    'La vista legacy debe revocar a PUBLIC y conceder solo SELECT a origen_med.'
+);
+$uvrPublicSource = (string) file_get_contents($root . '/portal/Repositories/UvrPublicRepository.php');
+$check(
+    str_contains($uvrPublicSource, "private const VIEW_PRESTACION = 'public.v_os_uvr_prestacion_public'")
+        && str_contains($uvrPublicSource, "private const VIEW_LEGACY = 'public.v_os_uvr_valuation_public'")
+        && str_contains($uvrPublicSource, 'foreach ([self::VIEW_PRESTACION, self::VIEW_LEGACY] as $view)'),
+    'Browse debe consultar tanto la vista transversal como la legacy.'
+);
+$uvrServiceSource = (string) file_get_contents($root . '/portal/Admin/UvrGovernanceService.php');
+$check(
+    str_contains($uvrServiceSource, 'private function withSubjectCodes(array $rows, string $idField = \'subject_id\')')
+        && str_contains($uvrServiceSource, 'CatalogGovernanceRepository::permanentCodes(')
+        && str_contains($uvrServiceSource, "return \$this->withSubjectCodes(\$rows, 'valuation_id')"),
+    'Los listados y detalles UVR deben resolver el código permanente del asunto.'
+);
+foreach (['proposals.php', 'proposal.php', 'tasks.php', 'index.php', 'compare.php'] as $uvrView) {
+    $check(
+        str_contains((string) file_get_contents($root . '/portal/Views/admin/uvr/' . $uvrView), 'subject_code'),
+        'La vista del panel ' . $uvrView . ' debe mostrar el código visible.'
+    );
+}
+$check(
+    str_contains(
+        (string) file_get_contents($root . '/portal/Views/partials/browse/detail/uvr.php'),
+        "trim((string) (\$valuation['external_code'] ?? ''))"
+    ),
+    'La ficha pública debe mostrar el código permanente cuando no hay perfil.'
 );
 
 // Resultado.

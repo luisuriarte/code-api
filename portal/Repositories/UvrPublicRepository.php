@@ -7,20 +7,28 @@ namespace OrigenSalud\Portal\Repositories;
 /**
  * Lectura pública de valoraciones UVR publicadas (U7-D).
  *
- * Solo consulta `v_os_uvr_prestacion_public`: la vista ya filtra valoraciones,
- * prestaciones, perfiles y vínculos publicados. El rol del portal no recibe
- * privilegios sobre las tablas base ni sobre conversiones. Si U7-B no está
- * aplicado, el repositorio devuelve una lista vacía sin exponer errores SQL.
+ * Solo consulta vistas públicas ya filtradas: `v_os_uvr_prestacion_public`
+ * (modelo transversal U7-B) y `v_os_uvr_valuation_public` (valoraciones legacy
+ * sobre os_catalog). El rol del portal no recibe privilegios sobre las tablas
+ * base ni sobre conversiones. Si alguna vista no está aplicada, se omite sin
+ * exponer errores SQL.
  *
  * Los vínculos `os_prestacion_codigo` pueden grabarse por `item_id` (ítems de
  * os_catalog) o por `external_code` (SNOMED procedures, CIE-10, códigos
- * institucionales). La vista pública expone ambos, así que la resolución
+ * institucionales). Las vistas públicas exponen ambos, así que la resolución
  * pública también debe admitir los dos; si no, los procedimientos quedan
  * invisibles aunque tengan valoración publicada.
  */
 final class UvrPublicRepository
 {
-    private static ?bool $viewAvailable = null;
+    /** Modelo transversal: prestación + perfil + vínculo de catálogo. */
+    private const VIEW_PRESTACION = 'public.v_os_uvr_prestacion_public';
+
+    /** Modelo legacy: valoración sobre un código de os_catalog (DNT-PR, etc.). */
+    private const VIEW_LEGACY = 'public.v_os_uvr_valuation_public';
+
+    /** @var array<string, bool> */
+    private static array $viewAvailable = [];
 
     /**
      * @return list<array<string, mixed>>
@@ -40,7 +48,7 @@ final class UvrPublicRepository
             return [];
         }
 
-        if (!PortalDatabase::available() || !self::hasView()) {
+        if (!PortalDatabase::available()) {
             return [];
         }
 
@@ -70,43 +78,68 @@ final class UvrPublicRepository
         }
         $conditions[] = '(' . implode(' OR ', $references) . ')';
 
-        try {
-            $statement = PortalDatabase::connection()->prepare(
-                'SELECT catalog_code, item_id, external_code, prestacion_code, prestacion_name,
-                        profile_code, methodology, scope, jurisdiction, version_tag,
-                        published_at, valid_from, valid_to, work_uvr,
-                        practice_expense_uvr, professional_liability_uvr, total_uvr,
-                        currency, importe_referencial
-                   FROM public.v_os_uvr_prestacion_public
-                  WHERE ' . implode(' AND ', $conditions) . '
-                  ORDER BY published_at DESC, valuation_id DESC
-                  LIMIT 5'
-            );
-            $statement->execute($params);
-            $rows = $statement->fetchAll();
+        $where = ' WHERE ' . implode(' AND ', $conditions);
+        $rows = [];
 
-            return is_array($rows) ? $rows : [];
-        } catch (\Throwable) {
-            return [];
+        // Ambos nombres son constantes de clase: nunca datos del usuario.
+        foreach ([self::VIEW_PRESTACION, self::VIEW_LEGACY] as $view) {
+            if (!self::hasView($view)) {
+                continue;
+            }
+
+            try {
+                $statement = PortalDatabase::connection()->prepare(
+                    'SELECT valuation_id, catalog_code, item_id, external_code, prestacion_code, prestacion_name,
+                            profile_code, methodology, scope, jurisdiction, version_tag,
+                            published_at, valid_from, valid_to, work_uvr,
+                            practice_expense_uvr, professional_liability_uvr, total_uvr,
+                            currency, importe_referencial
+                       FROM ' . $view . $where . '
+                      ORDER BY published_at DESC, valuation_id DESC
+                      LIMIT 5'
+                );
+                $statement->execute($params);
+                $found = $statement->fetchAll();
+
+                if (is_array($found)) {
+                    $rows = array_merge($rows, $found);
+                }
+            } catch (\Throwable) {
+                // Una vista ausente o sin permisos no invalida la otra rama.
+                continue;
+            }
         }
+
+        usort($rows, static function (array $a, array $b): int {
+            $byDate = strcmp(
+                (string) ($b['published_at'] ?? ''),
+                (string) ($a['published_at'] ?? '')
+            );
+
+            return $byDate !== 0
+                ? $byDate
+                : ((int) ($b['valuation_id'] ?? 0)) <=> ((int) ($a['valuation_id'] ?? 0));
+        });
+
+        return array_slice($rows, 0, 5);
     }
 
-    private static function hasView(): bool
+    private static function hasView(string $view): bool
     {
-        if (self::$viewAvailable !== null) {
-            return self::$viewAvailable;
+        if (array_key_exists($view, self::$viewAvailable)) {
+            return self::$viewAvailable[$view];
         }
 
         try {
             $statement = PortalDatabase::connection()->prepare(
-                "SELECT to_regclass('public.v_os_uvr_prestacion_public') IS NOT NULL"
+                'SELECT to_regclass(:name) IS NOT NULL'
             );
-            $statement->execute();
-            self::$viewAvailable = (bool) $statement->fetchColumn();
+            $statement->execute([':name' => $view]);
+            self::$viewAvailable[$view] = (bool) $statement->fetchColumn();
         } catch (\Throwable) {
-            self::$viewAvailable = false;
+            self::$viewAvailable[$view] = false;
         }
 
-        return self::$viewAvailable;
+        return self::$viewAvailable[$view];
     }
 }

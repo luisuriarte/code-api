@@ -46,7 +46,8 @@ $uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2
                     ?>
                     <tr class="transition hover:bg-paper/60">
                         <td class="ui-td">
-                            <code class="ui-code"><?= e((string) ($valuation['service_item_id'] ?? '')) ?></code>
+                            <code class="ui-code"><?= e((string) ($valuation['subject_code'] ?? $valuation['service_item_id'] ?? '')) ?></code>
+                            <span class="block text-xs text-ink-soft">#<?= e((string) ($valuation['valuation_id'] ?? '')) ?></span>
                             <?php if (($valuation['valuation_kind'] ?? '') === 'prestacion'): ?>
                                 <span class="mt-0.5 block text-xs text-muted">
                                     <?= e($t('admin.uvr.prestacion')) ?>:

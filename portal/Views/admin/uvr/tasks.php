@@ -40,7 +40,12 @@ require __DIR__ . '/_nav.php';
                                 <?= (int) $task['request_id'] ?>
                             </a>
                         </td>
-                        <td class="ui-td"><code class="ui-code"><?= e((string) ($task['subject_id'] ?? '')) ?></code></td>
+                        <td class="ui-td">
+                            <code class="ui-code"><?= e((string) ($task['subject_code'] ?? $task['subject_id'] ?? '')) ?></code>
+                            <?php if ((string) ($task['subject_code'] ?? '') !== ''): ?>
+                                <span class="block text-xs text-ink-soft">#<?= e((string) ($task['subject_id'] ?? '')) ?></span>
+                            <?php endif; ?>
+                        </td>
                         <td class="ui-td"><?= e((string) ($task['request_type'] ?? '')) ?></td>
                         <td class="ui-td"><span class="ui-badge"><?= (int) $task['pending_reviews'] ?></span></td>
                         <td class="ui-td"><?= e((string) ($task['requested_by'] ?? '')) ?></td>

@@ -427,7 +427,12 @@ if ($uvrLanguage === '') {
                                 <?= (int) $proposal['id'] ?>
                             </a>
                         </td>
-                        <td class="ui-td"><code class="ui-code"><?= e((string) ($proposal['subject_id'] ?? '')) ?></code></td>
+                        <td class="ui-td">
+                            <code class="ui-code"><?= e((string) ($proposal['subject_code'] ?? $proposal['subject_id'] ?? '')) ?></code>
+                            <?php if ((string) ($proposal['subject_code'] ?? '') !== ''): ?>
+                                <span class="block text-xs text-ink-soft">#<?= e((string) ($proposal['subject_id'] ?? '')) ?></span>
+                            <?php endif; ?>
+                        </td>
                         <td class="ui-td"><?= e((string) ($proposal['source_reference'] ?? '')) ?></td>
                         <td class="ui-td"><?= e((string) ($proposal['requested_by'] ?? '')) ?></td>
                         <td class="ui-td"><code class="ui-code"><?= e((string) ($proposal['review_status'] ?? '')) ?></code></td>

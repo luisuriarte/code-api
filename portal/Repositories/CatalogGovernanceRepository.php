@@ -299,6 +299,52 @@ final class CatalogGovernanceRepository
         return $row === null ? null : (string) ($row['code'] ?? '');
     }
 
+    /**
+     * Códigos permanentes visibles (DNT-PR-000001, etc.) para una lista de ítems.
+     *
+     * @param list<int> $itemIds
+     * @return array<int, string>
+     */
+    public static function permanentCodes(array $itemIds): array
+    {
+        $ids = [];
+
+        foreach ($itemIds as $itemId) {
+            $id = (int) $itemId;
+
+            if ($id > 0) {
+                $ids[$id] = $id;
+            }
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $ids = array_values($ids);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+        try {
+            $statement = PortalDatabase::connection()->prepare(
+                "SELECT id, permanent_code
+                   FROM public.os_catalog_item
+                  WHERE id IN ({$placeholders})"
+            );
+            $statement->execute($ids);
+            $rows = $statement->fetchAll();
+        } catch (PDOException) {
+            return [];
+        }
+
+        $codes = [];
+
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            $codes[(int) ($row['id'] ?? 0)] = (string) ($row['permanent_code'] ?? '');
+        }
+
+        return $codes;
+    }
+
     /** @return list<array<string, mixed>> */
     private static function publicRows(string $sql, array $params): array
     {
