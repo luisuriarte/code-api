@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-$catalogCode = is_array($item) && isset($item['catalog_code']) ? (string) $item['catalog_code'] : '';
-$isDentar = in_array($catalogCode, ['dentar-pr', 'dentar-dx'], true);
 $code = is_array($item) ? (string) ($item['code'] ?? '') : '';
 $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
 $domainLabel = is_array($item) ? (string) ($item['subtitle'] ?? $item['domain'] ?? '') : '';
@@ -35,14 +33,6 @@ $uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2
             <?php endif; ?>
         </div>
     <?php else: ?>
-        <?php if ($isDentar): ?>
-            <div class="browse-dentar-banner">
-                <strong><?= e($t('browse.dentar_badge')) ?> · <?= e(strtoupper($catalogCode)) ?></strong>
-                <p><?= e($t('browse.dentar_detail_note')) ?></p>
-                <a class="dentar-text-link" href="<?= e($dentarUrl) ?>"><?= e($t('browse.dentar_back')) ?> →</a>
-            </div>
-        <?php endif; ?>
-
         <div class="browse-panel__head">
             <span class="eyebrow"><?= e($t('browse.detail_title')) ?></span>
             <h2 class="browse-detail__title" data-detail-title><?= e($term !== '' ? $term : ($code !== '' ? $code : $focus)) ?></h2>

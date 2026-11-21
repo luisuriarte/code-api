@@ -280,6 +280,37 @@ $check(
     'U7-D debe detectar la vista antes de consultarla.'
 );
 $check(!str_contains($u7PublicRepository, 'estimated_payment'), 'U7-D no debe exponer estimated_payment.');
+$check(
+    str_contains($u7PublicRepository, '?string $externalCode = null')
+    && str_contains($u7PublicRepository, 'btrim(external_code) = :external')
+    && str_contains($u7PublicRepository, 'external_code, prestacion_code'),
+    'U7-D debe resolver UVR también por external_code para procedimientos.'
+);
+$check(
+    str_contains($u7PublicRepository, "preg_match('/^[a-z0-9][a-z0-9-]{1,49}$/', \$catalog) !== 1"),
+    'U7-D debe validar el catálogo con la comparación correcta.'
+);
+$check(
+    str_contains($u7PublicRepository, "implode(' AND ', \$conditions)")
+    && !str_contains($u7PublicRepository, "WHERE catalog_code = '"),
+    'U7-D debe armar las condiciones con parámetros ligados, nunca con literales.'
+);
+$browseServiceSource = (string) file_get_contents($root . '/portal/Services/BrowseService.php');
+$check(
+    str_contains($browseServiceSource, "\$item['official_code'] ?? \$item['code']")
+    && str_contains($browseServiceSource, 'publishedForItem(')
+    && str_contains($browseServiceSource, '$externalCode'),
+    'El browser debe pasar el código externo al resolver UVR en procedimientos.'
+);
+$uvrProcedureVerifier = (string) file_get_contents(
+    $root . '/sql/08_arquitectura/verificacion_uvr_procedimientos.sql'
+);
+$check(
+    str_contains($uvrProcedureVerifier, 'BEGIN READ ONLY;')
+    && str_contains($uvrProcedureVerifier, 'ROLLBACK;')
+    && str_contains($uvrProcedureVerifier, 'btrim(external_code)'),
+    'El verificador de UVR en procedimientos debe ser solo lectura y cubrir external_code.'
+);
 $u7Service = (string) file_get_contents($root . '/portal/Admin/UvrGovernanceService.php');
 $check(!str_contains($u7Service, 'private const CATALOG_CODE'), 'U7-C no debe fijar un catálogo único.');
 $check(str_contains($u7Service, 'LEGACY_CATALOG_CODE'), 'U7-C debe conservar el legado como fallback.');
@@ -1107,6 +1138,12 @@ $check(
 // Resumen UVR visible en la ficha, sin inventar datos ni exponer estimated_payment.
 $detailSource = (string) file_get_contents($root . '/portal/Views/partials/browse/detail.php');
 $uvrTableSource = (string) file_get_contents($root . '/portal/Views/partials/browse/detail/uvr.php');
+$check(
+    !str_contains($detailSource, 'browse-dentar-banner')
+    && !str_contains($detailSource, 'browse.dentar_detail_note')
+    && !str_contains($detailSource, 'browse.dentar_back'),
+    'Las fichas de códigos no deben mostrar el banner informativo de DENTAR.'
+);
 $contextSource = (string) file_get_contents($root . '/portal/Views/partials/browse/context.php');
 $check(
     str_contains($detailSource, 'browse.uvr_published_title')
@@ -1276,6 +1313,16 @@ foreach (['id="buscador"', 'id="plataforma"', 'id="api"', 'id="contacto"'] as $h
 foreach (['rounded-3xl', 'lg:grid-cols-4', 'shadow-panel', 'focus-visible:ring-4'] as $homeUtility) {
     $check(str_contains($homeSource, $homeUtility), 'La home debe usar utilidades Tailwind (' . $homeUtility . ').');
 }
+$check(
+    str_contains($homeSource, 'max-h-[24rem]')
+    && str_contains($homeSource, 'code-scroll')
+    && str_contains($homeSource, 'min-h-0 flex-1 overflow-auto'),
+    'El card de la respuesta API debe tener altura limitada y scroll interno.'
+);
+$check(
+    str_contains((string) file_get_contents($root . '/resources/css/public.css'), '.code-scroll'),
+    'El CSS público debe definir el scroll fino del card de la API.'
+);
 $headerSource = (string) file_get_contents($root . '/portal/Views/partials/header.php');
 $check(
     str_contains($headerSource, 'sticky top-0')

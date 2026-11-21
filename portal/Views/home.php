@@ -35,9 +35,9 @@ $buttonGhost = 'inline-flex items-center justify-center rounded-full border bord
             <p class="mt-5 text-xs leading-relaxed text-muted"><?= e($t('hero.note')) ?></p>
         </div>
 
-        <aside class="overflow-hidden rounded-3xl border border-white/10 bg-[#08182a] shadow-panel"
+        <aside class="flex max-h-[24rem] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#08182a] shadow-panel lg:max-h-[28rem]"
                aria-label="<?= e($t('hero.card_title')) ?>">
-            <div class="flex items-center gap-3 border-b border-white/10 px-5 py-4">
+            <div class="flex shrink-0 items-center gap-3 border-b border-white/10 px-5 py-4">
                 <span class="relative flex size-2.5" aria-hidden="true">
                     <span class="absolute inline-flex size-full animate-ping rounded-full bg-mint/40"></span>
                     <span class="relative inline-flex size-2.5 rounded-full bg-mint"></span>
@@ -48,8 +48,8 @@ $buttonGhost = 'inline-flex items-center justify-center rounded-full border bord
                 </div>
                 <span class="ms-auto rounded-full bg-white/10 px-2.5 py-1 font-mono text-[10px] font-bold tracking-wide text-mint">GET</span>
             </div>
-            <pre class="overflow-x-auto px-5 py-6 font-mono text-xs leading-relaxed text-white/80 sm:text-sm"><code><?= e($exampleJson) ?></code></pre>
-            <div class="border-t border-white/10 bg-white/5 px-5 py-3 text-xs text-white/60">
+            <pre class="code-scroll min-h-0 flex-1 overflow-auto px-5 py-6 font-mono text-xs leading-relaxed text-white/80 sm:text-sm"><code><?= e($exampleJson) ?></code></pre>
+            <div class="shrink-0 border-t border-white/10 bg-white/5 px-5 py-3 text-xs text-white/60">
                 <?= e($t('hero.card_footer')) ?>
             </div>
         </aside>

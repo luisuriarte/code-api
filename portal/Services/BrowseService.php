@@ -160,8 +160,16 @@ final class BrowseService
         // tablas base ni se calcula estimated_payment.
         $itemId = ctype_digit((string) ($item['source_id'] ?? '')) ? (int) $item['source_id'] : 0;
         $itemCatalog = (string) ($item['catalog_code'] ?? '');
-        $sections['uvr'] = $itemId > 0 && $itemCatalog !== ''
-            ? \OrigenSalud\Portal\Repositories\UvrPublicRepository::publishedForItem($itemId, $itemCatalog)
+        // Las ramas nativas (prestaciones, odontología, CIE-10, SNOMED) no
+        // tienen catalog_code ni source_id numérico: sus vínculos UVR se
+        // graban por código externo. La vista pública expone ese campo.
+        $externalCode = (string) ($item['official_code'] ?? $item['code'] ?? '');
+        $sections['uvr'] = $itemId > 0 || $externalCode !== ''
+            ? \OrigenSalud\Portal\Repositories\UvrPublicRepository::publishedForItem(
+                $itemId,
+                $itemCatalog,
+                $externalCode
+            )
             : [];
 
         $response = ['ok' => true, 'error' => null, 'item' => $item, 'sections' => $sections];
