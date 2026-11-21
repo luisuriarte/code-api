@@ -187,4 +187,19 @@ SELECT 'os_governance_request' AS tabla, id, created_at, review_status, subject_
 SELECT 'public.os_audit_log' AS tabla, id, occurred_at, entity_type, action, actor
   FROM public.os_audit_log ORDER BY id DESC LIMIT 8;
 
+-- 8) Los triggers que leen catálogos deben ser SECURITY DEFINER: origen_admin
+--    no tiene SELECT sobre os_catalog_* (y eso es intencional).
+SELECT '=== 12. Triggers que leen catálogos ===' AS seccion;
+SELECT p.proname,
+       p.prosecdef AS security_definer,
+       has_table_privilege('origen_admin', 'public.os_catalog_item', 'SELECT') AS admin_catalog_select
+  FROM pg_proc p
+ WHERE p.proname IN ('os_uvr_assert_eligible_service', 'os_uvr_assert_publication_ready')
+ ORDER BY p.proname;
+
+SELECT '=== 13. Catálogos elegibles para UVR ===' AS seccion;
+SELECT catalog_code, is_active, source_reference
+  FROM public.os_uvr_eligible_catalog
+ ORDER BY catalog_code;
+
 ROLLBACK;

@@ -2076,6 +2076,7 @@ $check(
     && str_contains($uvrProposalVerify, 'public.os_audit_log')
     && str_contains($uvrProposalVerify, 'public.os_audit_log_id_seq')
     && str_contains($uvrProposalVerify, 'prosecdef')
+    && str_contains($uvrProposalVerify, 'os_uvr_assert_eligible_service')
     && !preg_match('/^\s*(INSERT|UPDATE|DELETE|TRUNCATE)\b/im', $uvrProposalVerify),
     'El diagnosticador de propuestas UVR debe ser solo lectura y revisar permisos de origen_admin.'
 );
@@ -2104,6 +2105,30 @@ foreach ([
     $check(
         str_contains($uvrProposalVerify, $sequence) && str_contains($uvrSequenceFix, $sequence),
         'La secuencia ' . $sequence . ' debe aparecer en el diagnóstico y en el corrector UVR.'
+    );
+}
+$uvrTriggerFix = (string) file_get_contents(
+    $root . '/sql/08_arquitectura/uvr_correccion_trigger_elegibilidad.sql'
+);
+$check(
+    str_contains($uvrTriggerFix, 'SECURITY DEFINER')
+    && str_contains($uvrTriggerFix, 'SET search_path = public, pg_temp')
+    && str_contains($uvrTriggerFix, 'public.os_catalog_item')
+    && str_contains($uvrTriggerFix, 'REVOKE ALL PRIVILEGES ON FUNCTION')
+    && str_contains($uvrTriggerFix, 'GRANT EXECUTE ON FUNCTION')
+    && !preg_match('/GRANT\s+(SELECT|ALL)[^;]*os_catalog/i', $uvrTriggerFix)
+    && !preg_match('/^\s*(INSERT|UPDATE|DELETE|TRUNCATE)\b/im', $uvrTriggerFix),
+    'El corrector de triggers UVR debe usar SECURITY DEFINER sin conceder privilegios sobre catálogos.'
+);
+foreach ([
+    'fase6_uvr.sql' => 'os_uvr_assert_eligible_service',
+    'uvr_gobernanza_datos.sql' => 'os_uvr_assert_publication_ready',
+] as $uvrMigrationName => $uvrFunction) {
+    $uvrMigrationSource = (string) file_get_contents($root . '/sql/08_arquitectura/' . $uvrMigrationName);
+    $check(
+        str_contains($uvrMigrationSource, 'SECURITY DEFINER')
+            && str_contains($uvrMigrationSource, $uvrFunction),
+        $uvrMigrationName . ' debe definir ' . $uvrFunction . ' como SECURITY DEFINER.'
     );
 }
 $check(

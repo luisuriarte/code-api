@@ -207,9 +207,13 @@ CREATE TRIGGER trg_os_uvr_valuation_immutable
 -- ---------------------------------------------------------------------------
 -- 5. Guardián de publicación (C4/C5/C8)
 -- ---------------------------------------------------------------------------
+-- SECURITY DEFINER: la validación lee os_catalog_*, sobre los que origen_admin
+-- no tiene privilegios. El propietario de la función sí puede hacerlo.
 CREATE OR REPLACE FUNCTION public.os_uvr_assert_publication_ready()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_source_ok BOOLEAN;

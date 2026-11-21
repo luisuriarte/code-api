@@ -172,18 +172,22 @@ COMMENT ON TABLE os_uvr_geo_index IS
 -- ---------------------------------------------------------------------------
 -- 5. Trigger de elegibilidad (§10.3 regla 1)
 -- ---------------------------------------------------------------------------
+-- SECURITY DEFINER: origen_admin no tiene privilegios sobre os_catalog_* y esta
+-- función debe poder leer los catálogos al validar la elegibilidad del ítem.
 CREATE OR REPLACE FUNCTION os_uvr_assert_eligible_service()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_allowed BOOLEAN;
 BEGIN
     SELECT EXISTS (
         SELECT 1
-          FROM os_catalog_item i
-          JOIN os_catalog c ON c.id = i.catalog_id
-          JOIN os_uvr_eligible_catalog e ON e.catalog_code = c.code AND e.is_active
+          FROM public.os_catalog_item i
+          JOIN public.os_catalog c ON c.id = i.catalog_id
+          JOIN public.os_uvr_eligible_catalog e ON e.catalog_code = c.code AND e.is_active
          WHERE i.id = NEW.service_item_id
     ) INTO v_allowed;
 
