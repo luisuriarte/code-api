@@ -2147,6 +2147,21 @@ $check(str_contains($uvrServiceSource, 'Rbac::canApprove('), 'La decisión debe 
 $check(str_contains($uvrServiceSource, 'UvrImporteService::calcular'), 'El importe debe derivarse en servicio.');
 $check(str_contains($uvrServiceSource, 'clinical') && str_contains($uvrServiceSource, 'economic'), 'Debe haber dos revisiones independientes.');
 $check(str_contains($uvrRepoSource, "set_config('app.actor_id'"), 'La auditoría debe tomar el actor de la sesión.');
+$check(
+    str_contains($uvrRepoSource, 'function beginWrite()')
+        && str_contains($uvrRepoSource, 'function commitWrite()')
+        && str_contains($uvrRepoSource, 'function rollBackWrite()')
+        && str_contains($uvrServiceSource, 'UvrRepository::beginWrite()')
+        && str_contains($uvrServiceSource, 'UvrRepository::commitWrite()')
+        && str_contains($uvrServiceSource, 'UvrRepository::rollBackWrite()')
+        && str_contains($uvrServiceSource, 'catch (\Throwable $exception)'),
+    'La propuesta UVR debe ser atómica: todas las escrituras en una transacción con rollback.'
+);
+$check(
+    substr_count($uvrRepoSource, "'t' : 'f'") === 2
+        && !str_contains($uvrRepoSource, "':not_applicable' => (bool)"),
+    'Los componentes UVR deben enlazar is_not_applicable como t/f para evitar boolean vacío.'
+);
 $check(str_contains($uvrControllerSource, 'AdminGuard::require'), 'Las vistas UVR deben pasar por AdminGuard.');
 $check(substr_count($uvrControllerSource, 'AdminForm::validCsrf()') >= 4, 'Los formularios UVR deben validar CSRF.');
 $check(

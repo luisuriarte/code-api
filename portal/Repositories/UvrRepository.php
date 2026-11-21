@@ -21,6 +21,42 @@ final class UvrRepository
     private static ?bool $transversalSchema = null;
 
     /**
+     * Las propuestas escriben varias tablas; un fallo a mitad de camino deja
+     * filas huérfanas y el reintento choca con la UNIQUE de os_uvr_valuation.
+     * Estos métodos mantienen todas las escrituras en una sola transacción.
+     */
+    public static function beginWrite(): void
+    {
+        try {
+            AdminDatabase::connection()->beginTransaction();
+        } catch (\Throwable) {
+            throw new RepositoryException('admin_database_unavailable');
+        }
+    }
+
+    public static function commitWrite(): void
+    {
+        try {
+            AdminDatabase::connection()->commit();
+        } catch (\Throwable) {
+            throw new RepositoryException('admin_database_unavailable');
+        }
+    }
+
+    public static function rollBackWrite(): void
+    {
+        try {
+            $connection = AdminDatabase::connection();
+
+            if ($connection->inTransaction()) {
+                $connection->rollBack();
+            }
+        } catch (\Throwable) {
+            // No enmascarar la excepción original que originó el rollback.
+        }
+    }
+
+    /**
      * El panel funciona con el esquema U0–U6 hasta que el responsable aplica
      * U7-B. La detección evita consultar tablas inexistentes en producción.
      */
@@ -191,7 +227,8 @@ final class UvrRepository
                 ':valuation' => $valuationId,
                 ':type' => (string) $data['component_type'],
                 ':value' => (float) $data['value'],
-                ':not_applicable' => (bool) $data['is_not_applicable'],
+                // PDO_PGSQL enlaza false como '' y PostgreSQL no lo casa a boolean.
+                ':not_applicable' => $data['is_not_applicable'] ? 't' : 'f',
                 ':evidence' => $data['negative_adjustment_evidence'] !== null
                     ? (string) $data['negative_adjustment_evidence']
                     : null,
@@ -473,7 +510,8 @@ final class UvrRepository
                 ':component_type' => (string) $data['component_type'],
                 ':value' => (float) $data['value'],
                 ':calculation_note' => $data['calculation_note'] !== null ? (string) $data['calculation_note'] : null,
-                ':not_applicable' => (bool) $data['is_not_applicable'],
+                // PDO_PGSQL enlaza false como '' y PostgreSQL no lo casa a boolean.
+                ':not_applicable' => $data['is_not_applicable'] ? 't' : 'f',
                 ':evidence' => $data['negative_adjustment_evidence'] !== null
                     ? (string) $data['negative_adjustment_evidence']
                     : null,

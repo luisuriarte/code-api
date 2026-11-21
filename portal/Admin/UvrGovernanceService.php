@@ -371,60 +371,70 @@ final class UvrGovernanceService
         $validFrom = $this->date($input['valid_from'] ?? null) ?: null;
         $validTo = $this->date($input['valid_to'] ?? null) ?: null;
 
-        if ($transversal) {
-            $valuationId = UvrRepository::createPrestacionValuation([
-                'prestacion_id' => (int) $changeExtras['prestacion_id'],
-                'profile_id' => (int) $changeExtras['profile_id'],
-                'version_tag' => $versionTag,
-                'source_reference' => $source,
-                'evaluated_at' => $evaluatedAt,
-                'valid_from' => $validFrom,
-                'valid_to' => $validTo,
-            ], $actorId);
+        UvrRepository::beginWrite();
 
-            foreach ($normalized as $component) {
-                UvrRepository::addPrestacionComponent(
-                    $valuationId,
-                    $component + ['source_reference' => $source]
-                );
-            }
-        } else {
-            $valuationId = UvrRepository::createValuation([
-                'service_item_id' => $serviceItemId,
-                'release_id' => $this->positiveInt($input['release_id'] ?? null),
-                'version_tag' => $versionTag,
-                'methodology' => $methodology,
-                'source_reference' => $source,
-                'evaluated_at' => $evaluatedAt,
-                'valid_from' => $validFrom,
-                'valid_to' => $validTo,
-            ], $actorId, $actorEmail);
+        try {
+            if ($transversal) {
+                $valuationId = UvrRepository::createPrestacionValuation([
+                    'prestacion_id' => (int) $changeExtras['prestacion_id'],
+                    'profile_id' => (int) $changeExtras['profile_id'],
+                    'version_tag' => $versionTag,
+                    'source_reference' => $source,
+                    'evaluated_at' => $evaluatedAt,
+                    'valid_from' => $validFrom,
+                    'valid_to' => $validTo,
+                ], $actorId);
 
-            foreach ($normalized as $component) {
-                UvrRepository::addComponent($valuationId, $component);
+                foreach ($normalized as $component) {
+                    UvrRepository::addPrestacionComponent(
+                        $valuationId,
+                        $component + ['source_reference' => $source]
+                    );
+                }
+            } else {
+                $valuationId = UvrRepository::createValuation([
+                    'service_item_id' => $serviceItemId,
+                    'release_id' => $this->positiveInt($input['release_id'] ?? null),
+                    'version_tag' => $versionTag,
+                    'methodology' => $methodology,
+                    'source_reference' => $source,
+                    'evaluated_at' => $evaluatedAt,
+                    'valid_from' => $validFrom,
+                    'valid_to' => $validTo,
+                ], $actorId, $actorEmail);
+
+                foreach ($normalized as $component) {
+                    UvrRepository::addComponent($valuationId, $component);
+                }
             }
+
+            $proposedChange = json_encode($changeExtras + [
+                'catalog_code' => $catalogCode,
+                'version_tag' => $versionTag,
+                'components' => $normalized,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+            $proposalId = UvrRepository::createProposal(
+                is_string($proposedChange) ? $proposedChange : '{}',
+                $source,
+                $actorId,
+                $actorEmail,
+                $valuationId
+            );
+
+            $this->audit('uvr_valuation_proposed', $actor, [
+                'entity_type' => 'uvr_valuation',
+                'entity_id' => (string) $valuationId,
+                'catalog_code' => $catalogCode,
+                'after_state' => ['proposal_id' => $proposalId, 'version_tag' => $versionTag],
+            ]);
+
+            UvrRepository::commitWrite();
+        } catch (\Throwable $exception) {
+            UvrRepository::rollBackWrite();
+
+            throw $exception;
         }
-
-        $proposedChange = json_encode($changeExtras + [
-            'catalog_code' => $catalogCode,
-            'version_tag' => $versionTag,
-            'components' => $normalized,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        $proposalId = UvrRepository::createProposal(
-            is_string($proposedChange) ? $proposedChange : '{}',
-            $source,
-            $actorId,
-            $actorEmail,
-            $valuationId
-        );
-
-        $this->audit('uvr_valuation_proposed', $actor, [
-            'entity_type' => 'uvr_valuation',
-            'entity_id' => (string) $valuationId,
-            'catalog_code' => $catalogCode,
-            'after_state' => ['proposal_id' => $proposalId, 'version_tag' => $versionTag],
-        ]);
 
         return $proposalId;
     }
