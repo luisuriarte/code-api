@@ -135,6 +135,35 @@ final class Rbac
         return self::ROLE_PERMISSIONS[$roleCode] ?? [];
     }
 
+    /**
+     * Operaciones de catálogo que corresponden a un rol.
+     *
+     * Se deriva de ROLE_PERMISSIONS para no duplicar la matriz: `superadmin`
+     * recibe todas las operaciones y los demás roles solo las `catalog.*`
+     * que efectivamente tienen. El panel usa este listado para preseleccionar
+     * las casillas de grants al invitar o asignar un colaborador.
+     *
+     * @return list<string>
+     */
+    public static function catalogOperationsForRole(string $roleCode): array
+    {
+        $permissions = self::permissionsForRole($roleCode);
+
+        if (in_array(self::WILDCARD, $permissions, true)) {
+            return self::CATALOG_OPERATIONS;
+        }
+
+        $operations = [];
+
+        foreach (self::CATALOG_OPERATIONS as $operation) {
+            if (in_array('catalog.' . $operation, $permissions, true)) {
+                $operations[] = $operation;
+            }
+        }
+
+        return $operations;
+    }
+
     public static function isValidOrganizationType(string $type): bool
     {
         return in_array($type, self::ORGANIZATION_TYPES, true);

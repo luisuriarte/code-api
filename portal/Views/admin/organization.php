@@ -8,6 +8,12 @@ declare(strict_types=1);
 /** @var list<string> $roles */
 /** @var list<array{code: string, name: string, short_name: string}> $catalogs */
 ?>
+<?php
+$roleCatalogOps = static fn (string $role): string => implode(
+    ' ',
+    \OrigenSalud\Portal\Admin\Rbac::catalogOperationsForRole($role)
+);
+?>
 <section class="space-y-6">
     <div class="ui-card ui-card-pad">
         <a href="/admin/organizations" class="inline-flex items-center gap-1.5 text-sm font-medium no-underline hover:underline">
@@ -112,12 +118,17 @@ declare(strict_types=1);
                 </div>
                 <div>
                     <label for="member-role" class="ui-label"><?= e($t('admin.members.role')) ?></label>
-                    <select id="member-role" name="role_code" class="ui-input">
+                    <select id="member-role" name="role_code" class="ui-input"
+                            data-grants-role data-apply-on-load="1">
                         <?php foreach ($roles as $role): ?>
-                            <option value="<?= e($role) ?>"><?= e($t('admin.roles.' . $role)) ?></option>
+                            <option value="<?= e($role) ?>" data-catalog-ops="<?= e($roleCatalogOps($role)) ?>"
+                                <?= $role === 'reviewer' ? 'selected' : '' ?>>
+                                <?= e($t('admin.roles.' . $role)) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <p class="text-sm text-muted"><?= e($t('admin.grants.role_auto')) ?></p>
                 <?php
                 $allowedSelected = [];
                 $deniedSelected = [];
@@ -246,3 +257,4 @@ declare(strict_types=1);
         <?php endif; ?>
     </article>
 </section>
+<?php require __DIR__ . '/_grant_role_defaults.php'; ?>

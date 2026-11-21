@@ -1910,6 +1910,7 @@ $m2I18nKeys = [
     'admin.errors.last_superadmin', 'admin.errors.grant_required',
     'admin.grants.title', 'admin.grants.allow', 'admin.grants.deny',
     'admin.grants.deny_title', 'admin.grants.deny_help', 'admin.grants.member_title',
+    'admin.grants.role_auto',
     'admin.grants.ops.view', 'admin.grants.ops.propose', 'admin.grants.ops.edit_draft',
     'admin.grants.ops.review', 'admin.grants.ops.approve', 'admin.grants.ops.publish',
     'admin.roles.org_type.health_center',
@@ -1933,6 +1934,32 @@ foreach (['/portal/Views/admin/organization.php', '/portal/Views/admin/invitatio
     $check(
         str_contains($grantViewSource, "_grant_choices.php") && !str_contains($grantViewSource, 'name="grants"'),
         $m2GrantView . ' debe usar el selector de casillas en lugar del campo de texto de grants.'
+    );
+}
+$rbacSource = (string) file_get_contents($root . '/portal/Admin/Rbac.php');
+$check(
+    str_contains($rbacSource, 'function catalogOperationsForRole')
+        && str_contains($rbacSource, "in_array('catalog.' . \$operation, \$permissions, true)")
+        && str_contains($rbacSource, 'return self::CATALOG_OPERATIONS'),
+    'Las operaciones de catálogo por rol deben derivarse de ROLE_PERMISSIONS, con superadmin completas.'
+);
+$grantRoleDefaultsScript = (string) file_get_contents($root . '/portal/Views/admin/_grant_role_defaults.php');
+$check(
+    str_contains($grantRoleDefaultsScript, 'select[data-grants-role]')
+        && str_contains($grantRoleDefaultsScript, 'grant_allow[]')
+        && str_contains($grantRoleDefaultsScript, 'grant_deny[]')
+        && str_contains($grantRoleDefaultsScript, 'dataset.catalogOps'),
+    'El preseleccionador de grants debe marcar allow, limpiar deny y leer las operaciones del rol.'
+);
+foreach (['/portal/Views/admin/organization.php', '/portal/Views/admin/invitations.php'] as $roleGrantView) {
+    $roleGrantSource = (string) file_get_contents($root . $roleGrantView);
+    $check(
+        str_contains($roleGrantSource, 'data-grants-role')
+            && str_contains($roleGrantSource, 'data-catalog-ops')
+            && str_contains($roleGrantSource, 'Rbac::catalogOperationsForRole')
+            && str_contains($roleGrantSource, "_grant_role_defaults.php")
+            && str_contains($roleGrantSource, "admin.grants.role_auto"),
+        $roleGrantView . ' debe preseleccionar los grants según el rol elegido.'
     );
 }
 $catalogRepoSource = (string) file_get_contents($root . '/portal/Repositories/CatalogReferenceRepository.php');

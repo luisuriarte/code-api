@@ -1357,6 +1357,7 @@ admin:
         hint: 'Grants por catálogo (uno por línea: codigo:operacion:allow o deny)'
         title: 'Permisos por catálogo'
         legend: 'Seleccione las operaciones permitidas para cada catálogo.'
+        role_auto: 'Al elegir un rol se marcan sus permisos de catálogo; podés ajustarlos manualmente.'
         empty: 'No hay catálogos activos disponibles.'
         deny_title: 'Denegaciones explícitas'
         deny_help: 'Solo si necesita bloquear una operación. Una denegación prevalece sobre un permiso.'

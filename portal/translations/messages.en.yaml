@@ -1357,6 +1357,7 @@ admin:
         hint: 'Catalog grants (one per line: code:operation:allow or deny)'
         title: 'Catalog permissions'
         legend: 'Select the allowed operations for each catalog.'
+        role_auto: 'Choosing a role preselects its catalog permissions; you can adjust them manually.'
         empty: 'No active catalogs available.'
         deny_title: 'Explicit denials'
         deny_help: 'Only if you need to block an operation. A denial takes precedence over an allowance.'

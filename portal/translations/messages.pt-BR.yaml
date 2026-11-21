@@ -1357,6 +1357,7 @@ admin:
         hint: 'Permissões por catálogo (uma por linha: codigo:operacao:allow ou deny)'
         title: 'Permissões por catálogo'
         legend: 'Selecione as operações permitidas para cada catálogo.'
+        role_auto: 'Ao escolher uma função, as permissões de catálogo são marcadas automaticamente; você pode ajustá-las manualmente.'
         empty: 'Não há catálogos ativos disponíveis.'
         deny_title: 'Negações explícitas'
         deny_help: 'Apenas se precisar bloquear uma operação. Uma negação prevalece sobre uma permissão.'

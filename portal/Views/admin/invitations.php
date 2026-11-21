@@ -31,6 +31,13 @@ declare(strict_types=1);
             $value = static fn (string $key, string $default = ''): string => e(
                 is_string($values[$key] ?? null) && $values[$key] !== '' ? $values[$key] : $default
             );
+            $roleCatalogOps = static fn (string $role): string => implode(
+                ' ',
+                \OrigenSalud\Portal\Admin\Rbac::catalogOperationsForRole($role)
+            );
+            $applyGrantDefaultsOnLoad = !array_key_exists('grant_allow', $values)
+                && !array_key_exists('grant_deny', $values)
+                && !array_key_exists('grants', $values);
             ?>
             <form method="post" action="/admin/invitations" class="ui-stack">
                 <input type="hidden" name="<?= e(\OrigenSalud\Portal\Services\Csrf::FIELD) ?>"
@@ -53,9 +60,12 @@ declare(strict_types=1);
                 </div>
                 <div>
                     <label for="invite-role" class="ui-label"><?= e($t('admin.members.role')) ?></label>
-                    <select id="invite-role" name="role_code" required class="ui-input">
+                    <select id="invite-role" name="role_code" required class="ui-input"
+                            data-grants-role
+                            data-apply-on-load="<?= $applyGrantDefaultsOnLoad ? '1' : '0' ?>">
                         <?php foreach ($roles as $role): ?>
                             <option value="<?= e($role) ?>"
+                                    data-catalog-ops="<?= e($roleCatalogOps($role)) ?>"
                                 <?= ($values['role_code'] ?? 'reviewer') === $role ? 'selected' : '' ?>>
                                 <?= e($t('admin.roles.' . $role)) ?>
                             </option>
@@ -66,6 +76,7 @@ declare(strict_types=1);
                     <label for="invite-ttl" class="ui-label"><?= e($t('admin.invites.ttl')) ?></label>
                     <input id="invite-ttl" type="number" name="ttl" min="60" max="2592000" step="60" value="604800" class="ui-input">
                 </div>
+                <p class="text-sm text-muted"><?= e($t('admin.grants.role_auto')) ?></p>
                 <?php
                 $allowedSelected = [];
                 $deniedSelected = [];
@@ -159,3 +170,4 @@ declare(strict_types=1);
         </article>
     </div>
 </section>
+<?php require __DIR__ . '/_grant_role_defaults.php'; ?>
