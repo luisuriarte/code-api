@@ -1864,6 +1864,12 @@ $envSource = (string) file_get_contents($root . '/.env.example');
 foreach (['ADMIN_BASE_URL=', 'ADMIN_INVITE_TTL=', 'ADMIN_INVITE_MAX_TTL=', 'ADMIN_INVITE_RESEND_MIN='] as $envKey) {
     $check(str_contains($envSource, $envKey), '.env.example debe documentar ' . $envKey . '.');
 }
+$check(
+    str_contains($envSource, 'WEB_BASE_URL=https://med.origen.ar')
+        && str_contains($envSource, 'ADMIN_BASE_URL=https://med.origen.ar'),
+    '.env.example debe apuntar el panel al host web, no al host de la API.'
+);
+$check(str_contains($envSource, 'SMTP_FROM='), '.env.example debe documentar SMTP_FROM.');
 
 $routerSource = (string) file_get_contents($root . '/portal/Router.php');
 foreach (['organizations', 'invitations', 'invite', 'memberships', 'context'] as $m2Route) {
@@ -1890,6 +1896,31 @@ foreach ([
 $check(
     !str_contains($governanceSource, 'AuditLogger::record($token'),
     'El token de invitación nunca debe enviarse a la auditoría.'
+);
+$smtpMailerSource = (string) file_get_contents($root . '/portal/Services/SmtpMailer.php');
+$check(
+    str_contains($smtpMailerSource, "return self::fail('smtp_rcpt_failed', \$rcpt);")
+        && str_contains($smtpMailerSource, "private static function fail(string \$error, string \$detail = '')")
+        && str_contains($smtpMailerSource, 'mb_substr($detail, 0, 300)'),
+    'El cliente SMTP debe capturar y acotar la respuesta del servidor en cada fallo.'
+);
+$check(
+    str_contains($governanceSource, "isset(\$mail['detail'])")
+        && str_contains($governanceSource, "\$reason .= ' | ' . \$detail;")
+        && str_contains($governanceSource, "'reason' => mb_substr(\$reason, 0, 500)"),
+    'El fallo de mail debe auditar el motivo detallado del servidor SMTP.'
+);
+$portalConfigSource = (string) file_get_contents($root . '/portal/Config.php');
+$check(
+    str_contains($portalConfigSource, "env('SMTP_FROM'")
+        && str_contains($portalConfigSource, "env('SMTP_USER'")
+        && str_contains($portalConfigSource, "'from' => \$from"),
+    'El remitente SMTP debe alinearse con el usuario autenticado, con SMTP_FROM como override.'
+);
+$check(
+    str_contains($smtpMailerSource, "'MAIL FROM:<' . \$config['from'] . '>'")
+        && str_contains($smtpMailerSource, "'From: ' . \$from"),
+    'El sobre y la cabecera From deben usar el mismo remitente configurado.'
 );
 $check(
     str_contains($governanceSource, 'Token::hash($token)'),

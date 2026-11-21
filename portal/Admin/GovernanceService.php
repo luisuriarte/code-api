@@ -909,10 +909,17 @@ final class GovernanceService
         $mail = SmtpMailer::send($email, 'Origen Salud - invitación de colaborador', $text, nl2br(e($text), false));
 
         if (!$mail['ok']) {
+            $reason = (string) ($mail['error'] ?? 'mail_failed');
+            $detail = isset($mail['detail']) && is_string($mail['detail']) ? trim($mail['detail']) : '';
+
+            if ($detail !== '') {
+                $reason .= ' | ' . $detail;
+            }
+
             AuditLogger::record('invitation_mail_failed', $this->actorContext($actor) + [
                 'entity_type' => 'invitation',
                 'entity_id' => (string) $invitationId,
-                'reason' => (string) ($mail['error'] ?? 'mail_failed'),
+                'reason' => mb_substr($reason, 0, 500),
             ]);
         }
     }

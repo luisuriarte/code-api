@@ -16,28 +16,28 @@ final class SmtpMailer
 {
     private const TIMEOUT = 10;
 
-    /** @return array{ok: bool, error: ?string} */
+    /** @return array{ok: bool, error: ?string, detail?: ?string} */
     public static function send(string $to, string $subject, string $textBody, string $htmlBody = ''): array
     {
         $config = Config::smtp();
 
         if ($config['host'] === '' || $config['from'] === '' || $config['user'] === '') {
-            return ['ok' => false, 'error' => 'smtp_not_configured'];
+            return self::fail('smtp_not_configured');
         }
 
         if (!self::validEmail($to)) {
-            return ['ok' => false, 'error' => 'invalid_recipient'];
+            return self::fail('invalid_recipient');
         }
 
         $socket = self::connect($config['host'], $config['port']);
         if ($socket === null) {
-            return ['ok' => false, 'error' => 'smtp_connect_failed'];
+            return self::fail('smtp_connect_failed');
         }
 
         try {
             $greeting = self::read($socket);
             if (!self::hasCode($greeting, 220)) {
-                return ['ok' => false, 'error' => 'smtp_greeting_failed'];
+                return self::fail('smtp_greeting_failed', $greeting);
             }
 
             $helloDomain = self::helloDomain($config['host']);
@@ -50,7 +50,7 @@ final class SmtpMailer
 
             if ($usesImplicitTls) {
                 if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
-                    return ['ok' => false, 'error' => 'smtp_tls_failed'];
+                    return self::fail('smtp_tls_failed');
                 }
 
                 self::write($socket, 'EHLO ' . $helloDomain);
@@ -58,54 +58,77 @@ final class SmtpMailer
                 $supportsUtf8 = stripos($ehlo, 'SMTPUTF8') !== false;
             } elseif ($supportsStarttls) {
                 self::write($socket, 'STARTTLS');
-                if (!self::hasCode(self::read($socket), 220)) {
-                    return ['ok' => false, 'error' => 'smtp_starttls_failed'];
+                $starttls = self::read($socket);
+                if (!self::hasCode($starttls, 220)) {
+                    return self::fail('smtp_starttls_failed', $starttls);
                 }
 
                 if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
-                    return ['ok' => false, 'error' => 'smtp_tls_failed'];
+                    return self::fail('smtp_tls_failed');
                 }
 
                 self::write($socket, 'EHLO ' . $helloDomain);
                 $ehlo = self::readMultiline($socket);
                 $supportsUtf8 = stripos($ehlo, 'SMTPUTF8') !== false;
             } elseif (strtolower((string) env('SMTP_ALLOW_INSECURE', 'false')) !== 'true') {
-                return ['ok' => false, 'error' => 'smtp_requires_tls'];
+                return self::fail('smtp_requires_tls');
             }
 
             if (!self::authenticate($socket, $config['user'], $config['pass'], $ehlo)) {
-                return ['ok' => false, 'error' => 'smtp_auth_failed'];
+                return self::fail('smtp_auth_failed');
             }
 
             self::write($socket, 'MAIL FROM:<' . $config['from'] . '>' . ($supportsUtf8 ? ' SMTPUTF8' : ''));
-            if (!self::hasCode(self::read($socket), 250)) {
-                return ['ok' => false, 'error' => 'smtp_mail_from_failed'];
+            $mailFrom = self::read($socket);
+            if (!self::hasCode($mailFrom, 250)) {
+                return self::fail('smtp_mail_from_failed', $mailFrom);
             }
 
             self::write($socket, 'RCPT TO:<' . $to . '>');
-            if (!self::hasCode(self::read($socket), [250, 251])) {
-                return ['ok' => false, 'error' => 'smtp_rcpt_failed'];
+            $rcpt = self::read($socket);
+            if (!self::hasCode($rcpt, [250, 251])) {
+                return self::fail('smtp_rcpt_failed', $rcpt);
             }
 
             self::write($socket, 'DATA');
-            if (!self::hasCode(self::read($socket), 354)) {
-                return ['ok' => false, 'error' => 'smtp_data_failed'];
+            $data = self::read($socket);
+            if (!self::hasCode($data, 354)) {
+                return self::fail('smtp_data_failed', $data);
             }
 
             $message = self::buildMessage($config, $to, $subject, $textBody, $htmlBody);
             self::writeData($socket, $message);
 
-            if (!self::hasCode(self::read($socket), 250)) {
-                return ['ok' => false, 'error' => 'smtp_send_failed'];
+            $sent = self::read($socket);
+            if (!self::hasCode($sent, 250)) {
+                return self::fail('smtp_send_failed', $sent);
             }
 
             self::write($socket, 'QUIT');
             self::read($socket);
 
-            return ['ok' => true, 'error' => null];
+            return ['ok' => true, 'error' => null, 'detail' => null];
         } finally {
             fclose($socket);
         }
+    }
+
+    /**
+     * Error uniforme. `detail` es la respuesta cruda del servidor SMTP, ya
+     * aplanada y truncada: nunca incluye credenciales, solo el código y el
+     * mensaje (por ejemplo `550 5.1.1 ... User unknown`).
+     *
+     * @return array{ok: false, error: string, detail: ?string}
+     */
+    private static function fail(string $error, string $detail = ''): array
+    {
+        $detail = trim(preg_replace('/[\r\n]+/', ' ', $detail) ?? '');
+
+        return [
+            'ok' => false,
+            'error' => $error,
+            'detail' => $detail === '' ? null : mb_substr($detail, 0, 300),
+        ];
     }
 
     private static function connect(string $host, int $port)

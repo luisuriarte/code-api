@@ -65,12 +65,25 @@ final class Config
     /** @return array{host: string, port: int, user: string, pass: string, from: string, from_name: string} */
     public static function smtp(): array
     {
+        // Postfix (y otros MTA) rechazan el sobre si MAIL FROM no coincide con
+        // el usuario autenticado (reject_sender_login_mismatch). Por defecto
+        // se usa SMTP_USER; SMTP_FROM permite override explícito.
+        $from = trim((string) env('SMTP_FROM', ''));
+
+        if ($from === '') {
+            $from = (string) env('SMTP_USER', '');
+        }
+
+        if ($from === '') {
+            $from = (string) env('CONTACT_EMAIL', 'contacto@origen.ar');
+        }
+
         return [
             'host' => (string) env('SMTP_HOST', ''),
             'port' => (int) env('SMTP_PORT', '587'),
             'user' => (string) env('SMTP_USER', ''),
             'pass' => (string) env('SMTP_PASS', ''),
-            'from' => (string) env('CONTACT_EMAIL', 'contacto@origen.ar'),
+            'from' => $from,
             'from_name' => (string) env('CONTACT_NAME', 'Origen Salud'),
         ];
     }
