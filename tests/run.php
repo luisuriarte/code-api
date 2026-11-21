@@ -2049,8 +2049,10 @@ $check(
     str_contains($uvrMigrationSinComentarios, 'GRANT USAGE, SELECT ON SEQUENCE')
         && str_contains($uvrMigrationSinComentarios, 'public.os_governance_request_id_seq')
         && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_valuation_id_seq')
-        && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_component_id_seq'),
-    'La migración UVR debe conceder USAGE sobre las secuencias que usa propose().'
+        && str_contains($uvrMigrationSinComentarios, 'public.os_uvr_component_id_seq')
+        && str_contains($uvrMigrationSinComentarios, 'public.os_audit_log_id_seq')
+        && str_contains($uvrMigrationSinComentarios, 'GRANT SELECT, INSERT ON TABLE public.os_audit_log'),
+    'La migración UVR debe conceder USAGE sobre las secuencias y INSERT en os_audit_log.'
 );
 $check(
     !preg_match('/ADD\s+COLUMN[^\n]*total_uvr/i', $uvrMigration),
@@ -2071,6 +2073,9 @@ $check(
     && str_contains($uvrProposalVerify, 'ROLLBACK;')
     && str_contains($uvrProposalVerify, "has_table_privilege('origen_admin'")
     && str_contains($uvrProposalVerify, "has_sequence_privilege('origen_admin'")
+    && str_contains($uvrProposalVerify, 'public.os_audit_log')
+    && str_contains($uvrProposalVerify, 'public.os_audit_log_id_seq')
+    && str_contains($uvrProposalVerify, 'prosecdef')
     && !preg_match('/^\s*(INSERT|UPDATE|DELETE|TRUNCATE)\b/im', $uvrProposalVerify),
     'El diagnosticador de propuestas UVR debe ser solo lectura y revisar permisos de origen_admin.'
 );
@@ -2084,6 +2089,8 @@ $check(
     && str_contains($uvrSequenceFix, 'FROM PUBLIC;')
     && str_contains($uvrSequenceFix, "to_regrole('origen_admin')")
     && str_contains($uvrSequenceFix, 'GRANT USAGE, SELECT ON SEQUENCE')
+    && str_contains($uvrSequenceFix, 'GRANT SELECT, INSERT ON TABLE public.os_audit_log')
+    && str_contains($uvrSequenceFix, 'public.os_audit_log_id_seq')
     && !str_contains($uvrSequenceFix, 'ALTER DEFAULT PRIVILEGES')
     && !preg_match('/^\s*(INSERT|UPDATE|DELETE|TRUNCATE)\b/im', $uvrSequenceFix),
     'El corrector de secuencias UVR debe usar REVOKE/GRANT por secuencia, sin DEFAULT ACL global ni SQL de datos.'
@@ -2092,6 +2099,7 @@ foreach ([
     'os_governance_request_id_seq',
     'os_uvr_valuation_id_seq',
     'os_uvr_component_id_seq',
+    'os_audit_log_id_seq',
 ] as $sequence) {
     $check(
         str_contains($uvrProposalVerify, $sequence) && str_contains($uvrSequenceFix, $sequence),

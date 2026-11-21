@@ -82,6 +82,7 @@ WITH objetos(tabla) AS (
         ('public.os_uvr_profile_component'),
         ('public.os_uvr_prestacion_valuation'),
         ('public.os_uvr_prestacion_component'),
+        ('public.os_audit_log'),
         ('os_admin.audit_log')
 )
 SELECT o.tabla,
@@ -106,6 +107,7 @@ SELECT s.sequence_schema || '.' || s.sequence_name AS secuencia,
        ('public', 'os_governance_request_id_seq'),
        ('public', 'os_uvr_prestacion_valuation_id_seq'),
        ('public', 'os_uvr_prestacion_component_id_seq'),
+       ('public', 'os_audit_log_id_seq'),
        ('os_admin', 'audit_log_id_seq'))
  ORDER BY 1;
 
@@ -162,5 +164,27 @@ SELECT 'os_uvr_prestacion_valuation', count(*)
 UNION ALL
 SELECT 'os_governance_request', count(*)
   FROM public.os_governance_request WHERE btrim(coalesce(source_reference, '')) = '';
+
+-- 6) Los triggers UVR insertan en public.os_audit_log con los privilegios del
+--    usuario que ejecuta el INSERT (no son SECURITY DEFINER). Sin INSERT o sin
+--    USAGE de su secuencia, la propuesta falla ya con el esquema correcto.
+SELECT '=== 10. Auditoría de los triggers UVR ===' AS seccion;
+SELECT p.proname,
+       p.prosecdef AS security_definer,
+       has_table_privilege('origen_admin', 'public.os_audit_log', 'INSERT') AS audit_insert_ok,
+       has_sequence_privilege('origen_admin', 'public.os_audit_log_id_seq', 'USAGE') AS audit_seq_usage_ok
+  FROM pg_proc p
+ WHERE p.proname IN ('os_uvr_audit_trigger', 'os_governance_audit_trigger')
+ ORDER BY p.proname;
+
+-- 7) Intentos parciales: si el INSERT principal entró pero falló la auditoría,
+--    un reintento con los mismos datos choca con la UNIQUE de governance_request.
+SELECT '=== 11. Escrituras recientes (intentos parciales) ===' AS seccion;
+SELECT 'os_uvr_valuation' AS tabla, id, created_at, review_status, source_reference
+  FROM public.os_uvr_valuation ORDER BY id DESC LIMIT 5;
+SELECT 'os_governance_request' AS tabla, id, created_at, review_status, subject_id
+  FROM public.os_governance_request ORDER BY id DESC LIMIT 5;
+SELECT 'public.os_audit_log' AS tabla, id, occurred_at, entity_type, action, actor
+  FROM public.os_audit_log ORDER BY id DESC LIMIT 8;
 
 ROLLBACK;

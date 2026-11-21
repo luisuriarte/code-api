@@ -327,11 +327,16 @@ CREATE TRIGGER trg_os_uvr_geo_index_audit
 -- Las tablas con BIGSERIAL necesitan además USAGE sobre su secuencia: sin ese
 -- privilegio el primer INSERT de propose() falla y el panel responde
 -- "El servicio no está disponible" (admin.errors.database).
+-- public.os_audit_log también necesita INSERT: los triggers de auditoría no son
+-- SECURITY DEFINER y escriben con los privilegios de origen_admin.
 REVOKE ALL PRIVILEGES ON SEQUENCE
     public.os_governance_request_id_seq,
     public.os_uvr_valuation_id_seq,
-    public.os_uvr_component_id_seq
+    public.os_uvr_component_id_seq,
+    public.os_audit_log_id_seq
 FROM PUBLIC;
+
+REVOKE ALL PRIVILEGES ON TABLE public.os_audit_log FROM PUBLIC;
 
 DO $$
 BEGIN
@@ -339,7 +344,8 @@ BEGIN
         EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE
             public.os_governance_request_id_seq,
             public.os_uvr_valuation_id_seq,
-            public.os_uvr_component_id_seq
+            public.os_uvr_component_id_seq,
+            public.os_audit_log_id_seq
             TO origen_admin';
         EXECUTE 'GRANT SELECT, INSERT, UPDATE ON TABLE
             public.os_uvr_valuation,
@@ -359,7 +365,7 @@ BEGIN
             public.os_governance_decision
             TO origen_admin';
 
-        EXECUTE 'GRANT SELECT ON TABLE public.os_audit_log TO origen_admin';
+        EXECUTE 'GRANT SELECT, INSERT ON TABLE public.os_audit_log TO origen_admin';
     END IF;
 END $$;
 
