@@ -6,7 +6,6 @@
 -- Si sigue siendo lento, repetir la primera consulta con:
 --   EXPLAIN (ANALYZE, BUFFERS) <consulta>;
 -- =============================================================================
-
 \timing on
 SET statement_timeout = '15s';
 
@@ -22,9 +21,7 @@ SELECT 'loinc' AS domain, 'loinc' AS source,
  WHERE l.language_code IN ('en', 'es-AR', 'es-MX')
    AND l.source_release = '2.83'
    AND l.field_name IN ('long_common_name','display_name','shortname','component','consumer_name','relatednames2')
-   AND l.value ILIKE '%infarction%'
- UNION
- SELECT t.loinc FROM loinc t WHERE t.loinc ILIKE '%infarction%') m
+   AND l.value ILIKE '%infarction%') m
  JOIN loinc t ON t.loinc = m.loinc_code
  CROSS JOIN LATERAL (SELECT
  max(x.value) FILTER (WHERE x.field_name = 'long_common_name') AS loc_long_common_name,
@@ -54,7 +51,7 @@ SELECT 'loinc' AS domain, 'loinc' AS source,
     source_priority DESC, source_file ASC,
     version_last_changed DESC NULLS LAST
  ) x) l
- WHERE (coalesce(nullif(l.loc_long_common_name, ''), nullif(l.loc_display_name, ''), nullif(l.loc_consumer_name, ''), nullif(l.loc_shortname, ''), nullif(l.loc_component, ''), nullif(t.long_common_name, ''), t.component) ILIKE '%infarction%' OR t.loinc ILIKE '%infarction%' OR coalesce(nullif(l.loc_display_name, ''), nullif(l.loc_shortname, ''), nullif(l.loc_component, '')) ILIKE '%infarction%' OR coalesce(nullif(l.loc_consumer_name, ''), nullif(l.loc_relatednames2, '')) ILIKE '%infarction%');
+ WHERE (coalesce(nullif(l.loc_long_common_name, ''), nullif(l.loc_display_name, ''), nullif(l.loc_consumer_name, ''), nullif(l.loc_shortname, ''), nullif(l.loc_component, ''), nullif(t.long_common_name, ''), t.component) ILIKE '%infarction%' OR coalesce(nullif(l.loc_display_name, ''), nullif(l.loc_shortname, ''), nullif(l.loc_component, '')) ILIKE '%infarction%' OR coalesce(nullif(l.loc_consumer_name, ''), nullif(l.loc_relatednames2, '')) ILIKE '%infarction%');
 
 -- es-AR / infarto
 SELECT 'loinc' AS domain, 'loinc' AS source,
@@ -68,9 +65,7 @@ SELECT 'loinc' AS domain, 'loinc' AS source,
  WHERE l.language_code IN ('es-AR', 'es-MX', 'en')
    AND l.source_release = '2.83'
    AND l.field_name IN ('long_common_name','display_name','shortname','component','consumer_name','relatednames2')
-   AND l.value ILIKE '%infarto%'
- UNION
- SELECT t.loinc FROM loinc t WHERE t.loinc ILIKE '%infarto%') m
+   AND l.value ILIKE '%infarto%') m
  JOIN loinc t ON t.loinc = m.loinc_code
  CROSS JOIN LATERAL (SELECT
  max(x.value) FILTER (WHERE x.field_name = 'long_common_name') AS loc_long_common_name,
@@ -100,7 +95,7 @@ SELECT 'loinc' AS domain, 'loinc' AS source,
     source_priority DESC, source_file ASC,
     version_last_changed DESC NULLS LAST
  ) x) l
- WHERE (coalesce(nullif(l.loc_long_common_name, ''), nullif(l.loc_display_name, ''), nullif(l.loc_consumer_name, ''), nullif(l.loc_shortname, ''), nullif(l.loc_component, ''), nullif(t.long_common_name, ''), t.component) ILIKE '%infarto%' OR t.loinc ILIKE '%infarto%' OR coalesce(nullif(l.loc_display_name, ''), nullif(l.loc_shortname, ''), nullif(l.loc_component, '')) ILIKE '%infarto%' OR coalesce(nullif(l.loc_consumer_name, ''), nullif(l.loc_relatednames2, '')) ILIKE '%infarto%');
+ WHERE (coalesce(nullif(l.loc_long_common_name, ''), nullif(l.loc_display_name, ''), nullif(l.loc_consumer_name, ''), nullif(l.loc_shortname, ''), nullif(l.loc_component, ''), nullif(t.long_common_name, ''), t.component) ILIKE '%infarto%' OR coalesce(nullif(l.loc_display_name, ''), nullif(l.loc_shortname, ''), nullif(l.loc_component, '')) ILIKE '%infarto%' OR coalesce(nullif(l.loc_consumer_name, ''), nullif(l.loc_relatednames2, '')) ILIKE '%infarto%');
 
 -- es-AR / 58258-5
 SELECT 'loinc' AS domain, 'loinc' AS source,

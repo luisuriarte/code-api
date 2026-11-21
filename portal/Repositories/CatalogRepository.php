@@ -1137,6 +1137,11 @@ final class CatalogRepository
         // expresa como tabla derivada del FROM, NO como WITH: un WITH después
         // de UNION ALL rompe la consulta completa porque loinc es el último
         // dominio de self::DOMAINS.
+        // Los códigos LOINC siempre llevan dígitos (58258-5). Para términos de
+        // texto se omite la rama por código: loinc no tiene índice trigram y
+        // ILIKE '%texto%' obligaría a recorrer 1,1 M filas dos veces por
+        // búsqueda (count + página).
+        $codeLike = $byKey || preg_match('/[0-9]/', $term) === 1;
         $matched = $byKey
             ? "SELECT CAST(:{$p}_key AS VARCHAR(20)) AS loinc_code"
             : "SELECT DISTINCT l.loinc_code\n"
@@ -1144,9 +1149,11 @@ final class CatalogRepository
                 . " WHERE l.language_code IN (:{$p}_l1, :{$p}_l2, :{$p}_l3)\n"
                 . "   AND l.source_release = '2.83'\n"
                 . "   AND l.field_name IN ({$searchFields})\n"
-                . "   AND l.value ILIKE :{$p}_contains\n"
-                . " UNION\n"
+                . "   AND l.value ILIKE :{$p}_contains";
+        if ($codeLike && !$byKey) {
+            $matched .= "\n UNION\n"
                 . " SELECT t.loinc FROM loinc t WHERE t.loinc ILIKE :{$p}_contains";
+        }
 
         // Un DISTINCT ON por campo: gana el primer idioma de la cadena y,
         // dentro de él, la prioridad D-33 de v_loinc_resolved. LATERAL lo
@@ -1224,7 +1231,7 @@ final class CatalogRepository
         $where = $byKey
             ? 'true'
             : "({$termSql} ILIKE :{$p}_contains"
-                . " OR t.loinc ILIKE :{$p}_contains"
+                . ($codeLike ? " OR t.loinc ILIKE :{$p}_contains" : '')
                 . " OR {$altSql} ILIKE :{$p}_contains"
                 . " OR {$consumerSql} ILIKE :{$p}_contains)";
 

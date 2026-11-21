@@ -2146,7 +2146,16 @@ foreach ([['infarto', 'es-AR'], ['infarction', 'en']] as $loincCase) {
     foreach (['_l1', '_l2', '_l3'] as $loincSuffix) {
         $check(isset($loincParams[':p0' . $loincSuffix]), 'LOINC: falta el parámetro :p0' . $loincSuffix . '.');
     }
+    $check(
+        !str_contains($loincSql, 'SELECT t.loinc FROM loinc t'),
+        'LOINC: un término de texto no debe recorrer loinc buscando códigos.'
+    );
 }
+[$loincCodeSql] = $loincBranchMethod->invoke(null, 'p0', '58258-5', 'es-AR', false, null);
+$check(
+    str_contains($loincCodeSql, 'SELECT t.loinc FROM loinc t'),
+    'LOINC: una búsqueda con dígitos sí debe incluir la rama por código.'
+);
 
 // Resultado.
 if ($failures !== []) {
