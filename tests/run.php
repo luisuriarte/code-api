@@ -2913,6 +2913,17 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $oftarLocale) {
         );
     }
 }
+$oftarPreflightPath = $root . '/sql/03_oftar/preflight_oftar_pr.sql';
+$oftarPreflight = is_file($oftarPreflightPath) ? (string) file_get_contents($oftarPreflightPath) : '';
+$check(
+    str_contains($oftarPreflight, 'BEGIN READ ONLY;')
+        && str_contains($oftarPreflight, 'ROLLBACK;')
+        && str_contains($oftarPreflight, 'oftar_nomenclador_source')
+        && str_contains($oftarPreflight, 'oftar_category_version')
+        && !str_contains($oftarPreflight, 'SELECT code, name FROM public.oftar_category'),
+    'El preflight debe ser solo lectura, conocer la fuente acotada y no consultar columnas inexistentes.'
+);
+
 $oftarDomainSqlPath = $root . '/sql/03_oftar/oftar_domain_search.sql';
 $check(is_file($oftarDomainSqlPath), 'Debe existir el SQL de registro del dominio OFTAR.');
 $oftarDomainSql = is_file($oftarDomainSqlPath) ? (string) file_get_contents($oftarDomainSqlPath) : '';
@@ -2929,11 +2940,36 @@ $check(
 );
 
 // Carga de NOMENCLADOR-AR en oftar-pr y ejemplo UVR (archivos completos para VPS).
+$oftarPrSourcePath = $root . '/sql/03_oftar/fuente_nomenclador_oftar_pr.sql';
+$oftarPrSource = is_file($oftarPrSourcePath) ? (string) file_get_contents($oftarPrSourcePath) : '';
+$check(is_file($oftarPrSourcePath), 'Debe existir la fuente acotada de NOMENCLADOR para oftar-pr.');
+$check(
+    substr_count($oftarPrSource, ", 'OFTALMOLOGIA'),") + substr_count($oftarPrSource, ", 'OFTALMOLOGIA')\n") >= 150
+        && str_contains($oftarPrSource, "('305111', 'Oct(tomografía de coherencia optica)'")
+        && str_contains($oftarPrSource, 'CREATE TABLE IF NOT EXISTS public.oftar_nomenclador_source')
+        && str_contains($oftarPrSource, 'ON CONFLICT (codigo) DO UPDATE'),
+    'La fuente acotada debe contener la sección oftalmológica completa e idempotente.'
+);
+$oftarPrSourceCode = implode("\n", array_values(array_filter(
+    explode("\n", $oftarPrSource),
+    static fn (string $line): bool => !str_starts_with(ltrim($line), '--')
+)));
+$check(
+    !preg_match('/DROP\s+TABLE/i', $oftarPrSourceCode)
+        && !str_contains($oftarPrSourceCode, 'CASCADE')
+        && str_contains($oftarPrSourceCode, 'REVOKE ALL PRIVILEGES ON TABLE public.oftar_nomenclador_source FROM PUBLIC')
+        && preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $oftarPrSource) !== 1
+        && !str_contains($oftarPrSource, '/v1/uvr')
+        && !str_contains($oftarPrSource, '/fhir'),
+    'La fuente acotada no debe hacer DROP CASCADE, alterar ACL global ni crear rutas nuevas.'
+);
+
 $oftarPrImportPath = $root . '/sql/03_oftar/importar_nomenclador_oftar_pr.sql';
 $oftarPrImport = is_file($oftarPrImportPath) ? (string) file_get_contents($oftarPrImportPath) : '';
 $check(is_file($oftarPrImportPath), 'Debe existir el importador completo de oftar-pr.');
 $check(
-    str_contains($oftarPrImport, "WHERE categoria = 'OFTALMOLOGIA'")
+    str_contains($oftarPrImport, 'public.oftar_nomenclador_source')
+        && str_contains($oftarPrImport, "WHERE categoria = 'OFTALMOLOGIA'")
         && str_contains($oftarPrImport, "'OFTAR-PR-' || lpad(row_number()")
         && str_contains($oftarPrImport, "'NOMENCLADOR-AR'")
         && str_contains($oftarPrImport, "'ATTR-LATERALITY'")

@@ -4,7 +4,7 @@
 -- =============================================================================
 --
 -- QUÉ HACE
---   Importa TODAS las filas de `nomenclador_2025` cuya categoría literal es
+--   Importa TODAS las filas de `oftar_nomenclador_source` cuya categoría literal es
 --   'OFTALMOLOGIA' al catálogo `oftar-pr` (procedimientos). No toca oftar-dx.
 --
 --   · Un concepto editorial por código NOMENCLADOR-AR.
@@ -25,8 +25,9 @@
 --     persistentes nuevos (solo tablas TEMP), por lo que no hay ACL nueva.
 --   · No ejecuta ALTER DEFAULT PRIVILEGES.
 --
--- REQUIERE: oftar_family.sql, oftar_core.sql y la fuente
---           tools/sources/nn/Nomenclador_Nacional_2025.sql ya aplicada.
+-- REQUIERE: oftar_family.sql, oftar_core.sql y
+--           sql/03_oftar/fuente_nomenclador_oftar_pr.sql ya aplicada.
+--           No depende de que exista `nomenclador_2025` en la base.
 -- IDEMPOTENTE: una segunda ejecución no duplica conceptos, textos ni atributos.
 -- =============================================================================
 
@@ -41,9 +42,9 @@ SET LOCAL app.actor_type = 'user';
 
 DO $$
 BEGIN
-    IF to_regclass('public.nomenclador_2025') IS NULL THEN
-        RAISE EXCEPTION 'Falta public.nomenclador_2025.'
-            USING HINT = 'Aplicar tools/sources/nn/Nomenclador_Nacional_2025.sql.';
+    IF to_regclass('public.oftar_nomenclador_source') IS NULL THEN
+        RAISE EXCEPTION 'Falta public.oftar_nomenclador_source.'
+            USING HINT = 'Aplicar sql/03_oftar/fuente_nomenclador_oftar_pr.sql.';
     END IF;
     IF to_regclass('public.oftar_concept') IS NULL
        OR to_regclass('public.oftar_concept_version') IS NULL
@@ -64,7 +65,7 @@ CREATE TEMP TABLE _oftar_pr_source ON COMMIT DROP AS
 SELECT DISTINCT ON (codigo)
        codigo,
        btrim(descripcion) AS descripcion
-  FROM public.nomenclador_2025
+  FROM public.oftar_nomenclador_source
  WHERE categoria = 'OFTALMOLOGIA'
    AND codigo ~ '^[0-9]{6}$'
    AND NULLIF(btrim(descripcion), '') IS NOT NULL
