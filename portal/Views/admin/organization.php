@@ -93,7 +93,12 @@ $roleCatalogOps = static fn (string $role): string => implode(
                     <label for="org-edit-notes" class="ui-label"><?= e($t('admin.orgs.notes')) ?></label>
                     <textarea id="org-edit-notes" name="notes" rows="3" maxlength="1000" class="ui-input"><?= e((string) ($organization['notes'] ?? '')) ?></textarea>
                 </div>
-                <button type="submit" class="ui-btn sm:col-span-2"><?= e($t('admin.orgs.save')) ?></button>
+                <div class="flex flex-col gap-2 sm:col-span-2 sm:flex-row">
+                    <button type="submit" class="ui-btn w-full"><?= e($t('admin.orgs.save')) ?></button>
+                    <a href="/admin/organizations" class="ui-btn ui-btn-ghost w-full no-underline">
+                        <?= e($t('admin.cancel')) ?>
+                    </a>
+                </div>
             </form>
 
             <form method="post"

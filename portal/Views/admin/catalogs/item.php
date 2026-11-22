@@ -311,7 +311,12 @@ $catalogCoverage = ['original', 'complete', 'partial', 'planned', 'undetermined'
                               class="ui-input"><?= $catalogValue('source_reference') ?></textarea>
                 </div>
 
-                <button type="submit" class="ui-btn w-full"><?= e($t('admin.catalogs.propose_submit')) ?></button>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <button type="submit" class="ui-btn w-full"><?= e($t('admin.catalogs.propose_submit')) ?></button>
+                    <a href="<?= e($catalogBack) ?>" class="ui-btn ui-btn-ghost w-full no-underline">
+                        <?= e($t('admin.cancel')) ?>
+                    </a>
+                </div>
             </form>
         </article>
     <?php endif; ?>

@@ -400,7 +400,12 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                                   class="ui-input"><?= $editValue('source_reference') ?></textarea>
                     </div>
 
-                    <button type="submit" class="ui-btn w-full"><?= e($t('admin.catalogs.propose_submit')) ?></button>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <button type="submit" class="ui-btn w-full"><?= e($t('admin.catalogs.propose_submit')) ?></button>
+                        <a href="<?= e($catalogHref($catalogCode)) ?>" class="ui-btn ui-btn-ghost w-full no-underline">
+                            <?= e($t('admin.cancel')) ?>
+                        </a>
+                    </div>
                 </form>
             </article>
         <?php else: ?>
@@ -471,7 +476,12 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                                       class="ui-input"><?= $catalogValue('source_reference') ?></textarea>
                         </div>
                     </div>
-                    <button type="submit" class="ui-btn w-full"><?= e($t('admin.catalogs.propose_submit')) ?></button>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <button type="submit" class="ui-btn w-full"><?= e($t('admin.catalogs.propose_submit')) ?></button>
+                        <a href="<?= e($catalogHref($catalogCode)) ?>" class="ui-btn ui-btn-ghost w-full no-underline">
+                            <?= e($t('admin.cancel')) ?>
+                        </a>
+                    </div>
                 </form>
             </article>
         <?php endif; ?>

@@ -399,10 +399,15 @@ if ($uvrLanguage === '') {
                         </div>
                     </fieldset>
 
-                    <button type="submit" class="ui-btn w-full">
-                        <i data-lucide="plus" class="h-4 w-4"></i>
-                        <?= e($t('admin.uvr.propose_submit')) ?>
-                    </button>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <button type="submit" class="ui-btn w-full">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            <?= e($t('admin.uvr.propose_submit')) ?>
+                        </button>
+                        <a href="/admin/uvr/proposals" class="ui-btn ui-btn-ghost w-full no-underline">
+                            <?= e($t('admin.cancel')) ?>
+                        </a>
+                    </div>
                 </form>
             <?php endif; ?>
         </article>

@@ -77,10 +77,15 @@ declare(strict_types=1);
                     <label for="org-notes" class="ui-label"><?= e($t('admin.orgs.notes')) ?></label>
                     <textarea id="org-notes" name="notes" rows="3" maxlength="1000" class="ui-input"><?= $value('notes') ?></textarea>
                 </div>
-                <button type="submit" class="ui-btn sm:col-span-2">
-                    <i data-lucide="plus" class="h-4 w-4"></i>
-                    <?= e($t('admin.orgs.create')) ?>
-                </button>
+                <div class="flex flex-col gap-2 sm:col-span-2 sm:flex-row">
+                    <button type="submit" class="ui-btn w-full">
+                        <i data-lucide="plus" class="h-4 w-4"></i>
+                        <?= e($t('admin.orgs.create')) ?>
+                    </button>
+                    <a href="/admin/organizations" class="ui-btn ui-btn-ghost w-full no-underline">
+                        <?= e($t('admin.cancel')) ?>
+                    </a>
+                </div>
             </form>
         </article>
 

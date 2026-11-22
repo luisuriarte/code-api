@@ -325,6 +325,16 @@ $check(
     && str_contains($uvrProcedureVerifier, 'btrim(external_code)'),
     'El verificador de UVR en procedimientos debe ser solo lectura y cubrir external_code.'
 );
+$uvrBrowseVerifier = (string) file_get_contents(
+    $root . '/sql/08_arquitectura/verificacion_uvr_browse.sql'
+);
+$check(
+    str_contains($uvrBrowseVerifier, 'BEGIN READ ONLY;')
+    && str_contains($uvrBrowseVerifier, 'ROLLBACK;')
+    && str_contains($uvrBrowseVerifier, 'v_os_uvr_valuation_public')
+    && str_contains($uvrBrowseVerifier, 'DNT-PR-000001'),
+    'El diagnóstico de UVR en Browse debe ser solo lectura y cubrir la vista legacy y el código DENTAR.'
+);
 $u7Service = (string) file_get_contents($root . '/portal/Admin/UvrGovernanceService.php');
 $check(!str_contains($u7Service, 'private const CATALOG_CODE'), 'U7-C no debe fijar un catálogo único.');
 $check(str_contains($u7Service, 'LEGACY_CATALOG_CODE'), 'U7-C debe conservar el legado como fallback.');
@@ -402,6 +412,27 @@ foreach ([
         && !str_contains($uvrCodeViewSource, 'ID interno:')
         && !str_contains($uvrCodeViewSource, 'text-ink-soft">#<?='),
         $uvrCodeView . ': la columna de código debe mostrar solo el código.'
+    );
+}
+foreach (['es-AR', 'en', 'es', 'pt-BR'] as $cancelLocale) {
+    $cancelMessages = (string) file_get_contents(
+        $root . '/portal/translations/messages.' . $cancelLocale . '.yaml'
+    );
+    $check(
+        preg_match('/^    cancel: /m', $cancelMessages) === 1,
+        'La traducción ' . $cancelLocale . ' debe incluir la etiqueta admin.cancel.'
+    );
+}
+foreach ([
+    'catalogs/index.php', 'catalogs/item.php', 'catalogs/proposal.php',
+    'uvr/proposals.php', 'uvr/proposal.php',
+    'organizations.php', 'organization.php',
+] as $cancelView) {
+    $cancelViewSource = (string) file_get_contents($root . '/portal/Views/admin/' . $cancelView);
+    $check(
+        str_contains($cancelViewSource, "t('admin.cancel')")
+        && str_contains($cancelViewSource, 'ui-btn-ghost'),
+        $cancelView . ': todo formulario de alta o edición debe tener un botón Cancelar.'
     );
 }
 $u7Controller = (string) file_get_contents($root . '/portal/Controllers/AdminUvrController.php');

@@ -100,10 +100,15 @@ $catalogProposalId = $catalogProposal === null ? 0 : (int) ($catalogProposal['id
                                           class="ui-input"></textarea>
                             </div>
                         </div>
-                        <button type="submit" class="ui-btn">
-                            <i data-lucide="check-check" class="h-4 w-4"></i>
-                            <?= e($t('admin.uvr.review_submit')) ?>
-                        </button>
+                        <div class="flex flex-col gap-2 sm:flex-row">
+                            <button type="submit" class="ui-btn">
+                                <i data-lucide="check-check" class="h-4 w-4"></i>
+                                <?= e($t('admin.uvr.review_submit')) ?>
+                            </button>
+                            <a href="/admin/catalogs/proposals" class="ui-btn ui-btn-ghost no-underline">
+                                <?= e($t('admin.cancel')) ?>
+                            </a>
+                        </div>
                     </form>
                 <?php endif; ?>
             </section>
@@ -134,10 +139,15 @@ $catalogProposalId = $catalogProposal === null ? 0 : (int) ($catalogProposal['id
                         <textarea id="catalog-evidence" name="evidence_reference" required rows="2" maxlength="2000"
                                   class="ui-input"></textarea>
                     </div>
-                    <button type="submit" class="ui-btn">
-                        <i data-lucide="gavel" class="h-4 w-4"></i>
-                        <?= e($t('admin.uvr.decide_submit')) ?>
-                    </button>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <button type="submit" class="ui-btn">
+                            <i data-lucide="gavel" class="h-4 w-4"></i>
+                            <?= e($t('admin.uvr.decide_submit')) ?>
+                        </button>
+                        <a href="/admin/catalogs/proposals" class="ui-btn ui-btn-ghost no-underline">
+                            <?= e($t('admin.cancel')) ?>
+                        </a>
+                    </div>
                 </form>
             <?php endif; ?>
 
@@ -147,10 +157,15 @@ $catalogProposalId = $catalogProposal === null ? 0 : (int) ($catalogProposal['id
                     <input type="hidden" name="<?= e(\OrigenSalud\Portal\Services\Csrf::FIELD) ?>"
                            value="<?= e(\OrigenSalud\Portal\Services\Csrf::token()) ?>">
                     <p class="text-sm text-ink-soft"><?= e($t('admin.catalogs.publish_note')) ?></p>
-                    <button type="submit" class="ui-btn">
-                        <i data-lucide="send" class="h-4 w-4"></i>
-                        <?= e($t('admin.uvr.publish')) ?>
-                    </button>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <button type="submit" class="ui-btn">
+                            <i data-lucide="send" class="h-4 w-4"></i>
+                            <?= e($t('admin.uvr.publish')) ?>
+                        </button>
+                        <a href="/admin/catalogs/proposals" class="ui-btn ui-btn-ghost no-underline">
+                            <?= e($t('admin.cancel')) ?>
+                        </a>
+                    </div>
                 </form>
             <?php endif; ?>
         </div>

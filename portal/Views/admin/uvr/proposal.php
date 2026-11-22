@@ -99,10 +99,15 @@ $uvrId = $uvrProposal === null ? 0 : (int) ($uvrProposal['id'] ?? 0);
                                           class="ui-input"></textarea>
                             </div>
                         </div>
-                        <button type="submit" class="ui-btn">
-                            <i data-lucide="check-check" class="h-4 w-4"></i>
-                            <?= e($t('admin.uvr.review_submit')) ?>
-                        </button>
+                        <div class="flex flex-col gap-2 sm:flex-row">
+                            <button type="submit" class="ui-btn">
+                                <i data-lucide="check-check" class="h-4 w-4"></i>
+                                <?= e($t('admin.uvr.review_submit')) ?>
+                            </button>
+                            <a href="/admin/uvr/proposals" class="ui-btn ui-btn-ghost no-underline">
+                                <?= e($t('admin.cancel')) ?>
+                            </a>
+                        </div>
                     </form>
                 <?php endif; ?>
             </section>
@@ -133,10 +138,15 @@ $uvrId = $uvrProposal === null ? 0 : (int) ($uvrProposal['id'] ?? 0);
                         <textarea id="uvr-evidence" name="evidence_reference" required rows="2" maxlength="2000"
                                   class="ui-input"></textarea>
                     </div>
-                    <button type="submit" class="ui-btn">
-                        <i data-lucide="gavel" class="h-4 w-4"></i>
-                        <?= e($t('admin.uvr.decide_submit')) ?>
-                    </button>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <button type="submit" class="ui-btn">
+                            <i data-lucide="gavel" class="h-4 w-4"></i>
+                            <?= e($t('admin.uvr.decide_submit')) ?>
+                        </button>
+                        <a href="/admin/uvr/proposals" class="ui-btn ui-btn-ghost no-underline">
+                            <?= e($t('admin.cancel')) ?>
+                        </a>
+                    </div>
                 </form>
             <?php endif; ?>
         </div>

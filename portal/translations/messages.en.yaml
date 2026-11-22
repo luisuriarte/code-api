@@ -1240,6 +1240,7 @@ admin:
     password: 'Password'
     password_new: 'New password (at least 12 characters)'
     back_login: 'Back to sign in'
+    cancel: 'Cancel'
     error:
         csrf: 'Your session expired. Please try again.'
         database: 'The authentication service is unavailable. Please try again later.'

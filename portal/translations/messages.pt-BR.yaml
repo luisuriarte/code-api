@@ -1240,6 +1240,7 @@ admin:
     password: 'Senha'
     password_new: 'Nova senha (mínimo 12 caracteres)'
     back_login: 'Voltar ao acesso'
+    cancel: 'Cancelar'
     error:
         csrf: 'Sua sessão expirou. Tente novamente.'
         database: 'O serviço de autenticação não está disponível. Tente novamente mais tarde.'
