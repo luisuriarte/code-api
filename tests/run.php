@@ -2803,6 +2803,51 @@ $check(
     'La verificación de la sincronización debe ser solo lectura y comprobar aprobación, pendientes e invalidez.'
 );
 
+$oftarApprovalPath = $root . '/sql/03_oftar/aprobar_preferred_term_oftar_dx.sql';
+$oftarApprovalVerifyPath = $root . '/sql/03_oftar/verificacion_aprobacion_oftar_dx.sql';
+$check(
+    is_file($oftarApprovalPath) && is_file($oftarApprovalVerifyPath),
+    'Deben existir la aprobación gobernada de preferred_term y su verificación.'
+);
+$oftarApprovalSql = is_file($oftarApprovalPath) ? (string) file_get_contents($oftarApprovalPath) : '';
+$check(
+    str_contains($oftarApprovalSql, 'BEGIN;') && str_contains($oftarApprovalSql, 'COMMIT;')
+        && str_contains($oftarApprovalSql, "SET LOCAL app.actor_id")
+        && str_contains($oftarApprovalSql, "SET LOCAL app.actor_type")
+        && !str_contains($oftarApprovalSql, 'INSERT INTO public.os_translation_review'),
+    'La aprobación debe fijar el actor en sesión y dejar la auditoría al trigger, sin inserts manuales.'
+);
+$check(
+    str_contains($oftarApprovalSql, "f.field_name = 'preferred_term'")
+        && str_contains($oftarApprovalSql, "f.review_status = 'unknown'")
+        && str_contains($oftarApprovalSql, "f.provenance = 'imported_cie10'")
+        && str_contains($oftarApprovalSql, "AND c.code = 'oftar-dx'"),
+    'La aprobación debe alcanzar solo preferred_term de oftar-dx pendiente e importado.'
+);
+$check(
+    str_contains($oftarApprovalSql, 'v_hash_desactualizado')
+        && str_contains($oftarApprovalSql, 'IS DISTINCT FROM hash_esperado')
+        && str_contains($oftarApprovalSql, "UPDATE public.os_field_review f\n   SET review_status = 'approved'")
+        && str_contains($oftarApprovalSql, 'f.scope_release_id IS NOT DISTINCT FROM a.scope_release_id')
+        && !str_contains($oftarApprovalSql, 'f.id'),
+    'La aprobación debe verificar el hash y usar la clave natural de os_field_review, que no tiene id.'
+);
+$check(
+    str_contains($oftarApprovalSql, "f.review_status = 'approved'")
+        && str_contains($oftarApprovalSql, "iv.review_status = 'approved'")
+        && str_contains($oftarApprovalSql, "f.field_name = 'definition'"),
+    'La aprobación debe marcar la revisión y la versión como aprobadas, manteniendo el control de definition.'
+);
+$oftarApprovalVerifySql = is_file($oftarApprovalVerifyPath) ? (string) file_get_contents($oftarApprovalVerifyPath) : '';
+$check(
+    str_contains($oftarApprovalVerifySql, 'BEGIN READ ONLY;')
+        && str_contains($oftarApprovalVerifySql, 'ROLLBACK;')
+        && str_contains($oftarApprovalVerifySql, 'v_hashes_invalidos')
+        && str_contains($oftarApprovalVerifySql, 'v_no_debian_aprobarse')
+        && str_contains($oftarApprovalVerifySql, "target_table = 'os_field_review'"),
+    'La verificación de aprobación debe ser solo lectura, validar hashes y contar solo la auditoría de campo.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");
