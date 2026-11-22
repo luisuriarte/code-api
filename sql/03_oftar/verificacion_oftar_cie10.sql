@@ -44,7 +44,7 @@ SELECT count(*) AS conceptos_con_cie10
 
 \echo '=== 6. Códigos permanentes y rango H00-H59 ==='
 SELECT count(*) AS diagnosticos,
-       count(*) FILTER (WHERE code ~ '^OFTAR-DX-[0-9]{6}$') AS codigos_validos,
+       count(*) FILTER (WHERE code ~ '^OFT-DX-[0-9]{6}$') AS codigos_validos,
        count(*) FILTER (
            WHERE EXISTS (
                SELECT 1 FROM public.oftar_diagnosis_mapping m

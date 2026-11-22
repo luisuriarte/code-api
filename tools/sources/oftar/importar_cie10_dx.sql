@@ -100,16 +100,16 @@ SELECT i.*
    );
 
 -- =============================================================================
--- 3. ASIGNACIÓN DE CÓDIGOS PERMANENTES OFTAR-DX-NNNNNN
+-- 3. ASIGNACIÓN DE CÓDIGOS PERMANENTES OFT-DX-NNNNNN
 -- =============================================================================
 CREATE TEMP TABLE _oftar_cie10_offset ON COMMIT DROP AS
-SELECT coalesce(max(regexp_replace(code, '^OFTAR-DX-', '')::int), 0) AS next_value
+SELECT coalesce(max(regexp_replace(code, '^OFT-DX-', '')::int), 0) AS next_value
   FROM public.oftar_diagnosis
- WHERE code ~ '^OFTAR-DX-[0-9]{6}$';
+ WHERE code ~ '^OFT-DX-[0-9]{6}$';
 
 CREATE TEMP TABLE _oftar_cie10_dx_asignado ON COMMIT DROP AS
 SELECT n.*,
-       'OFTAR-DX-' || lpad(
+       'OFT-DX-' || lpad(
            (o.next_value + row_number() OVER (ORDER BY n.code_normalized))::text,
            6, '0'
        ) AS new_code

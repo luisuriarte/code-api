@@ -3055,13 +3055,25 @@ $renameCode = implode("\n", array_values(array_filter(
     static fn (string $line): bool => !str_starts_with(ltrim($line), '--')
 )));
 $check(
-    str_contains($renameCode, "permanent_code LIKE 'OFTAR-PR-[0-9][0-9][0-9][0-9][0-9][0-9]'")
-        && str_contains($renameCode, "code LIKE 'OFTAR-DX-[0-9][0-9][0-9][0-9][0-9][0-9]'")
+    str_contains($renameCode, "permanent_code ~ '^OFTAR-PR-[0-9]{6}\$'")
+        && str_contains($renameCode, "code ~ '^OFTAR-DX-[0-9]{6}\$'")
         && str_contains($renameCode, 'SET LOCAL app.actor_id')
         && !str_contains($renameCode, 'NOMENCLADOR-AR')
+        && !str_contains($renameCode, "LIKE 'OFTAR-PR-[0-9]")
+        && !str_contains($renameCode, "LIKE 'OFTAR-DX-[0-9]")
         && !preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $renameCode),
     'El renombrado debe ser acotado a 6 dígitos, auditable y no tocar identificadores externos.'
 );
+$dxImportSql = (string) file_get_contents($root . '/tools/sources/oftar/importar_cie10_dx.sql');
+$dxVerifySql = (string) file_get_contents($root . '/sql/03_oftar/verificacion_oftar_cie10.sql');
+$check(
+    str_contains($dxImportSql, "'OFT-DX-' || lpad(")
+        && str_contains($dxImportSql, "'^OFT-DX-[0-9]{6}\$'")
+        && !str_contains($dxImportSql, 'OFTAR-DX-')
+        && str_contains($dxVerifySql, "'^OFT-DX-[0-9]{6}\$'"),
+    'El importador y la verificación de OFTAR-DX deben usar el prefijo OFT-DX para no duplicar códigos.'
+);
+
 $grantApiPath = $root . '/sql/03_oftar/grant_oftar_search_api.sql';
 $grantApi = is_file($grantApiPath) ? (string) file_get_contents($grantApiPath) : '';
 $check(

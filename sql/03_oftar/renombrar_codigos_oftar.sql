@@ -16,6 +16,10 @@
 --   Actualiza también `oftar_catalog.code_prefix` ANTES que los códigos, para
 --   que el trigger `oftar_assert_catalog_code` acepte el nuevo prefijo.
 --
+--   Los patrones usan el operador regex `~`, NO LIKE: en SQL estándar LIKE
+--   trata `[0-9]` como caracteres literales, por lo que un patrón con corchetes
+--   no coincide nunca con `OFTAR-PR-000001`.
+--
 -- QUÉ NO HACE
 --   · No toca identificadores externos (NOMENCLADOR-AR, CIE-10): esos códigos
 --     son la fuente y no deben cambiar.
@@ -40,6 +44,8 @@ DO $$
 DECLARE
     v_pr_viejos INT;
     v_dx_viejos INT;
+    v_pr_regex INT;
+    v_dx_regex INT;
     v_pr_nuevos INT;
     v_dx_nuevos INT;
 BEGIN
@@ -52,8 +58,16 @@ BEGIN
 
     SELECT count(*) INTO v_pr_viejos FROM public.os_catalog_item WHERE permanent_code LIKE 'OFTAR-PR-%';
     SELECT count(*) INTO v_dx_viejos FROM public.os_catalog_item WHERE permanent_code LIKE 'OFTAR-DX-%';
+    SELECT count(*) INTO v_pr_regex FROM public.os_catalog_item WHERE permanent_code ~ '^OFTAR-PR-[0-9]{6}$';
+    SELECT count(*) INTO v_dx_regex FROM public.os_catalog_item WHERE permanent_code ~ '^OFTAR-DX-[0-9]{6}$';
     SELECT count(*) INTO v_pr_nuevos FROM public.os_catalog_item WHERE permanent_code LIKE 'OFT-PR-%';
     SELECT count(*) INTO v_dx_nuevos FROM public.os_catalog_item WHERE permanent_code LIKE 'OFT-DX-%';
+
+    IF v_pr_regex <> v_pr_viejos OR v_dx_regex <> v_dx_viejos THEN
+        RAISE EXCEPTION
+            'Formato inesperado: PR LIKE=%, regex=%; DX LIKE=%, regex=%. Revisá antes de continuar.',
+            v_pr_viejos, v_pr_regex, v_dx_viejos, v_dx_regex;
+    END IF;
 
     IF (v_pr_viejos > 0 AND v_pr_nuevos > 0)
        OR (v_dx_viejos > 0 AND v_dx_nuevos > 0) THEN
@@ -86,22 +100,22 @@ UPDATE public.oftar_catalog
 -- -----------------------------------------------------------------------------
 UPDATE public.os_catalog_item
    SET permanent_code = 'OFT-PR-' || substring(permanent_code FROM 10)
- WHERE permanent_code LIKE 'OFTAR-PR-[0-9][0-9][0-9][0-9][0-9][0-9]';
+ WHERE permanent_code ~ '^OFTAR-PR-[0-9]{6}$';
 
 UPDATE public.os_catalog_item
    SET permanent_code = 'OFT-DX-' || substring(permanent_code FROM 10)
- WHERE permanent_code LIKE 'OFTAR-DX-[0-9][0-9][0-9][0-9][0-9][0-9]';
+ WHERE permanent_code ~ '^OFTAR-DX-[0-9]{6}$';
 
 -- -----------------------------------------------------------------------------
 -- 3. Códigos editoriales OFTAR (mismo valor, validado por el trigger)
 -- -----------------------------------------------------------------------------
 UPDATE public.oftar_concept
    SET code = 'OFT-PR-' || substring(code FROM 10)
- WHERE code LIKE 'OFTAR-PR-[0-9][0-9][0-9][0-9][0-9][0-9]';
+ WHERE code ~ '^OFTAR-PR-[0-9]{6}$';
 
 UPDATE public.oftar_diagnosis
    SET code = 'OFT-DX-' || substring(code FROM 10)
- WHERE code LIKE 'OFTAR-DX-[0-9][0-9][0-9][0-9][0-9][0-9]';
+ WHERE code ~ '^OFTAR-DX-[0-9]{6}$';
 
 -- -----------------------------------------------------------------------------
 -- 4. Verificación dentro de la transacción
