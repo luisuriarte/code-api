@@ -26,7 +26,7 @@ $uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2
             <table class="ui-table">
                 <thead>
                 <tr>
-                    <th class="ui-th"><?= e($t('admin.uvr.col_item')) ?></th>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_code')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.col_version')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.work')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.practice')) ?></th>
@@ -40,7 +40,6 @@ $uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2
                     <tr class="transition hover:bg-paper/60">
                         <td class="ui-td">
                             <code class="ui-code"><?= e((string) ($valuation['subject_code'] ?? $valuation['service_item_id'] ?? '')) ?></code>
-                            <span class="block text-xs text-ink-soft">#<?= e((string) ($valuation['valuation_id'] ?? '')) ?></span>
                         </td>
                         <td class="ui-td"><?= e((string) ($valuation['version_tag'] ?? '')) ?></td>
                         <td class="ui-td"><?= $uvrFormat($valuation['work_uvr'] ?? 0) ?></td>

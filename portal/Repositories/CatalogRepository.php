@@ -2267,19 +2267,22 @@ final class CatalogRepository
 
         // Un cambio gobernado publicado actualiza os_catalog_item_version pero
         // no genera os_field_review: selectApproved() lo descarta y Browse
-        // seguía mostrando la definición anterior (o ninguna). La versión más
+        // seguía mostrando el texto anterior (o ninguno). La versión más
         // reciente se muestra con estado pendiente de validación, nunca como
-        // aprobada.
-        $latestDefinition = self::latestDefinition($fieldCandidates, $chain);
-        if ($latestDefinition !== null) {
-            $selectedDefinition = $clinical['definition'] ?? null;
-            $sameValue = $selectedDefinition !== null
-                && ($selectedDefinition['value'] ?? null) === $latestDefinition['value'];
+        // aprobada. Aplica a definición y a criterios clínicos.
+        foreach (['definition', 'clinical_criteria'] as $fallbackField) {
+            $latest = self::latestClinicalField($fieldCandidates, $chain, $fallbackField);
+            if ($latest === null) {
+                continue;
+            }
+            $selected = $clinical[$fallbackField] ?? null;
+            $sameValue = $selected !== null
+                && ($selected['value'] ?? null) === $latest['value'];
 
-            if ($selectedDefinition === null || !$sameValue) {
-                $clinical['definition'] = $latestDefinition;
+            if ($selected === null || !$sameValue) {
+                $clinical[$fallbackField] = $latest;
             } else {
-                $clinical['definition']['review_status'] = 'approved';
+                $clinical[$fallbackField]['review_status'] = 'approved';
             }
         }
 
@@ -2306,6 +2309,7 @@ final class CatalogRepository
         }
 
         $identifiers = [];
+        $identifierPositions = [];
         try {
             $statement = $pdo->prepare(
                 'SELECT system_name, value, is_primary FROM os_catalog_identifier'
@@ -2313,10 +2317,26 @@ final class CatalogRepository
             );
             $statement->execute([$itemId]);
             foreach ($statement->fetchAll() as $row) {
+                $system = (string) $row['system_name'];
+                $value = (string) $row['value'];
+                $primary = (bool) $row['is_primary'];
+                $key = strtolower($system) . '|' . $value;
+
+                // El importador puede repetir el mismo identificador con y sin
+                // marca de principal. Se conserva una sola entrada y se
+                // preserva la marca cuando alguna de las filas la tiene.
+                if (isset($identifierPositions[$key])) {
+                    if ($primary) {
+                        $identifiers[$identifierPositions[$key]]['primary'] = true;
+                    }
+                    continue;
+                }
+
+                $identifierPositions[$key] = count($identifiers);
                 $identifiers[] = [
-                    'system' => (string) $row['system_name'],
-                    'value' => (string) $row['value'],
-                    'primary' => (bool) $row['is_primary'],
+                    'system' => $system,
+                    'value' => $value,
+                    'primary' => $primary,
                 ];
             }
         } catch (PDOException) {
@@ -2511,7 +2531,7 @@ final class CatalogRepository
     }
 
     /**
-     * Última definición publicada en el motor de catálogos.
+     * Último texto clínico publicado en el motor de catálogos.
      *
      * Se prioriza el idioma de la cadena solicitada y, dentro de él, la
      * versión/release más reciente. Se usa solo como respaldo cuando no hay
@@ -2522,11 +2542,11 @@ final class CatalogRepository
      *
      * @return array{value: string, language: string, source_language: ?string, provenance: string, review_status: string, type: ?string}|null
      */
-    private static function latestDefinition(array $candidates, array $chain): ?array
+    private static function latestClinicalField(array $candidates, array $chain, string $field): ?array
     {
         $definitions = [];
         foreach ($candidates as $candidate) {
-            if (($candidate['field'] ?? '') !== 'definition') {
+            if (($candidate['field'] ?? '') !== $field) {
                 continue;
             }
             $value = (string) ($candidate['value'] ?? '');
@@ -2568,7 +2588,7 @@ final class CatalogRepository
             'language' => (string) ($selected['language'] ?? ''),
             'source_language' => $selected['source_language'] ?? null,
             'provenance' => (string) ($selected['provenance'] ?? 'unknown'),
-            'review_status' => (string) ($selected['review_status'] ?? 'unknown'),
+            'review_status' => 'draft',
             'type' => $selected['type'] ?? null,
         ];
     }
@@ -2709,7 +2729,72 @@ final class CatalogRepository
             }
         }
 
-        return $relations;
+        return self::dedupeRelations($relations);
+    }
+
+    /**
+     * Elimina relaciones espejo del mismo sistema/código/tipo.
+     *
+     * El importador del Nomenclador registra la referencia en ambos extremos:
+     * entra como "Relación entrante" y sale como "Relación saliente". La ficha
+     * debe mostrar una sola fila; se conserva la versión saliente (pertenece
+     * al ítem abierto), o la que tenga mejor revisión/enlace.
+     *
+     * @param list<array<string, mixed>> $relations
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function dedupeRelations(array $relations): array
+    {
+        $unique = [];
+        $positions = [];
+
+        foreach ($relations as $relation) {
+            if (!is_array($relation)) {
+                $unique[] = $relation;
+                continue;
+            }
+
+            $key = strtolower(trim((string) ($relation['system'] ?? '')))
+                . '|' . strtolower(trim((string) ($relation['code'] ?? '')))
+                . '|' . strtolower(trim((string) ($relation['type'] ?? '')));
+
+            if (!isset($positions[$key])) {
+                $positions[$key] = count($unique);
+                $unique[] = $relation;
+                continue;
+            }
+
+            $position = $positions[$key];
+            if (self::relationRank($relation) > self::relationRank($unique[$position])) {
+                $unique[$position] = $relation;
+            }
+        }
+
+        return $unique;
+    }
+
+    /** @param array<string, mixed> $relation */
+    private static function relationRank(array $relation): int
+    {
+        $rank = 0;
+        if (in_array((string) ($relation['role'] ?? ''), ['outgoing', 'saliente'], true)) {
+            $rank += 8;
+        }
+        if (in_array((string) ($relation['direction'] ?? ''), ['outgoing', 'saliente'], true)) {
+            $rank += 8;
+        }
+        if ((string) ($relation['review_status'] ?? '') === 'approved') {
+            $rank += 4;
+        }
+        if ((string) ($relation['result_key'] ?? '') !== '') {
+            $rank += 2;
+        }
+        if (!empty($relation['display'])) {
+            $rank++;
+        }
+
+        return $rank;
     }
 
     /**

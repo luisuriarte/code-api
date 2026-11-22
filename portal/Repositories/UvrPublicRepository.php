@@ -60,7 +60,17 @@ final class UvrPublicRepository
         $params = [];
 
         if ($catalog !== '') {
-            $conditions[] = 'catalog_code = :catalog';
+            // El mismo código permanente puede estar publicado en más de un
+            // catálogo (p. ej. DENTAR-PR y Nomenclador). Si Browse abrió un
+            // ítem de otro catálogo con el mismo external_code, la UVR de la
+            // prestación debe seguir siendo visible. dentar-dx queda excluido.
+            if ($external !== '') {
+                $conditions[] = '(catalog_code = :catalog'
+                    . ' OR (btrim(external_code) = :external AND catalog_code <> :excluded))';
+                $params[':excluded'] = 'dentar-dx';
+            } else {
+                $conditions[] = 'catalog_code = :catalog';
+            }
             $params[':catalog'] = $catalog;
         }
 

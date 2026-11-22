@@ -297,6 +297,11 @@ $check(
     && !str_contains($u7PublicRepository, "WHERE catalog_code = '"),
     'U7-D debe armar las condiciones con parámetros ligados, nunca con literales.'
 );
+$check(
+    str_contains($u7PublicRepository, "catalog_code <> :excluded")
+    && str_contains($u7PublicRepository, "'dentar-dx'"),
+    'U7-D debe permitir el mismo external_code en otro catálogo sin incluir dentar-dx.'
+);
 $browseServiceSource = (string) file_get_contents($root . '/portal/Services/BrowseService.php');
 $check(
     str_contains($browseServiceSource, "\$item['official_code'] ?? \$item['code']")
@@ -358,15 +363,32 @@ $check(
 );
 $catalogDetailSource = (string) file_get_contents($root . '/portal/Repositories/CatalogRepository.php');
 $check(
-    str_contains($catalogDetailSource, 'private static function latestDefinition(')
+    str_contains($catalogDetailSource, 'private static function latestClinicalField(')
+    && str_contains($catalogDetailSource, "'clinical_criteria'")
     && str_contains($catalogDetailSource, "'definition_review_status'"),
-    'Browse debe mostrar la definición publicada más reciente y su estado de revisión.'
+    'Browse debe mostrar definición y criterios clínicos publicados con su estado de revisión.'
+);
+$check(
+    str_contains($catalogDetailSource, '$identifierPositions[$key]')
+    && str_contains($catalogDetailSource, 'private static function dedupeRelations('),
+    'Browse debe deduplicar identificadores y relaciones espejo del Nomenclador.'
 );
 $check(
     str_contains((string) file_get_contents($root . '/portal/Views/partials/browse/detail/concept.php'),
         'browse.definition_review_note'),
     'La ficha debe avisar cuando la definición editada aún no fue validada.'
 );
+foreach ([
+    'index.php', 'compare.php', 'proposals.php', 'tasks.php', 'proposal.php',
+] as $uvrCodeView) {
+    $uvrCodeViewSource = (string) file_get_contents($root . '/portal/Views/admin/uvr/' . $uvrCodeView);
+    $check(
+        str_contains($uvrCodeViewSource, 'admin.uvr.col_code')
+        && !str_contains($uvrCodeViewSource, 'ID interno:')
+        && !str_contains($uvrCodeViewSource, 'text-ink-soft">#<?='),
+        $uvrCodeView . ': la columna de código debe mostrar solo el código.'
+    );
+}
 $u7Controller = (string) file_get_contents($root . '/portal/Controllers/AdminUvrController.php');
 $check(
     str_contains($u7Controller, "'selectedVersions' => \$selectedVersions"),

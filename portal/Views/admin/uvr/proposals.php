@@ -182,8 +182,8 @@ if ($uvrLanguage === '') {
                         <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.uvr.extracted_values')) ?></h2>
                         <p class="ui-subtitle"><?= e($t('admin.uvr.catalogs_note')) ?></p>
                         <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <span class="ui-subtitle"><?= e($t('admin.catalogs.col_code')) ?>:</span>
                             <code class="ui-code"><?= e((string) ($selectedItem['permanent_code'] ?? '')) ?></code>
-                            <span class="ui-badge">#<?= (int) ($selectedItem['id'] ?? 0) ?></span>
                         </div>
                     </div>
                     <a href="<?= e('/admin/uvr/proposals?' . http_build_query(array_filter(['catalog' => $catalogCode, 'q' => $query]))) ?>"
@@ -428,7 +428,7 @@ if ($uvrLanguage === '') {
                 <thead>
                 <tr>
                     <th class="ui-th"><?= e($t('admin.uvr.col_id')) ?></th>
-                    <th class="ui-th"><?= e($t('admin.uvr.col_subject')) ?></th>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_code')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.col_source')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.col_actor')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.col_status')) ?></th>
@@ -445,9 +445,6 @@ if ($uvrLanguage === '') {
                         </td>
                         <td class="ui-td">
                             <code class="ui-code"><?= e((string) ($proposal['subject_code'] ?? $proposal['subject_id'] ?? '')) ?></code>
-                            <?php if ((string) ($proposal['subject_code'] ?? '') !== ''): ?>
-                                <span class="block text-xs text-ink-soft">#<?= e((string) ($proposal['subject_id'] ?? '')) ?></span>
-                            <?php endif; ?>
                         </td>
                         <td class="ui-td"><?= e((string) ($proposal['source_reference'] ?? '')) ?></td>
                         <td class="ui-td"><?= e((string) ($proposal['requested_by'] ?? '')) ?></td>

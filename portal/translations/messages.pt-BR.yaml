@@ -1512,6 +1512,7 @@ admin:
         derived_note: 'total_uvr e o valor de referência são derivados; não são armazenados nem publicados como tarifa.'
         empty: 'Ainda não há registros disponíveis.'
         col_item: 'Item'
+        col_code: 'Código'
         col_version: 'Versão'
         col_components: 'Componentes'
         col_total: 'Total UVR'

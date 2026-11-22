@@ -31,12 +31,9 @@ $uvrId = $uvrProposal === null ? 0 : (int) ($uvrProposal['id'] ?? 0);
     <?php else: ?>
         <div class="space-y-8">
             <dl class="ui-dl rounded-xl border border-line bg-paper/70 p-4">
-                <dt class="ui-dt"><?= e($t('admin.uvr.col_subject')) ?></dt>
+                <dt class="ui-dt"><?= e($t('admin.uvr.col_code')) ?></dt>
                 <dd class="ui-dd">
                     <code class="ui-code"><?= e((string) ($uvrProposal['subject_code'] ?? $uvrProposal['subject_id'] ?? '')) ?></code>
-                    <?php if ((string) ($uvrProposal['subject_code'] ?? '') !== ''): ?>
-                        <span class="block text-xs text-ink-soft">ID interno: <?= e((string) ($uvrProposal['subject_id'] ?? '')) ?></span>
-                    <?php endif; ?>
                 </dd>
                 <dt class="ui-dt"><?= e($t('admin.uvr.col_source')) ?></dt>
                 <dd class="ui-dd"><?= e((string) ($uvrProposal['source_reference'] ?? '')) ?></dd>

@@ -784,6 +784,7 @@ admin:
         derived_note: 'total_uvr y el importe referencial son derivados; no se almacenan ni se publican como arancel.'
         empty: 'No hay registros disponibles todavía.'
         col_item: 'Ítem'
+        col_code: 'Código'
         col_version: 'Versión'
         col_components: 'Componentes'
         col_total: 'Total UVR'

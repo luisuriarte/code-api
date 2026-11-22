@@ -25,7 +25,7 @@ require __DIR__ . '/_nav.php';
                 <thead>
                 <tr>
                     <th class="ui-th"><?= e($t('admin.uvr.col_id')) ?></th>
-                    <th class="ui-th"><?= e($t('admin.uvr.col_subject')) ?></th>
+                    <th class="ui-th"><?= e($t('admin.uvr.col_code')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.col_request_type')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.col_pending')) ?></th>
                     <th class="ui-th"><?= e($t('admin.uvr.col_actor')) ?></th>
@@ -42,9 +42,6 @@ require __DIR__ . '/_nav.php';
                         </td>
                         <td class="ui-td">
                             <code class="ui-code"><?= e((string) ($task['subject_code'] ?? $task['subject_id'] ?? '')) ?></code>
-                            <?php if ((string) ($task['subject_code'] ?? '') !== ''): ?>
-                                <span class="block text-xs text-ink-soft">#<?= e((string) ($task['subject_id'] ?? '')) ?></span>
-                            <?php endif; ?>
                         </td>
                         <td class="ui-td"><?= e((string) ($task['request_type'] ?? '')) ?></td>
                         <td class="ui-td"><span class="ui-badge"><?= (int) $task['pending_reviews'] ?></span></td>
