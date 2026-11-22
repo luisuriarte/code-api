@@ -27,6 +27,15 @@ final class UvrPublicRepository
     /** Modelo legacy: valoración sobre un código de os_catalog (DNT-PR, etc.). */
     private const VIEW_LEGACY = 'public.v_os_uvr_valuation_public';
 
+    /**
+     * Catálogos de diagnóstico: no reciben UVR por existir (acta U7.7).
+     * Se bloquea también en lectura para que un código CIE-10 no active la
+     * valoración publicada de una prestación de otro catálogo.
+     *
+     * @var list<string>
+     */
+    private const DIAGNOSIS_CATALOGS = ['dentar-dx', 'oftar-dx'];
+
     /** @var array<string, bool> */
     private static array $viewAvailable = [];
 
@@ -40,6 +49,10 @@ final class UvrPublicRepository
         array $alternateCodes = []
     ): array {
         $catalog = trim($catalogCode);
+
+        if (in_array($catalog, self::DIAGNOSIS_CATALOGS, true)) {
+            return [];
+        }
 
         // Un código puede estar publicado en otro catálogo: el ítem del
         // Nomenclador tiene 01.01 pero su identificador DENTAR-PR apunta a
@@ -80,15 +93,18 @@ final class UvrPublicRepository
             // El mismo código permanente puede estar publicado en más de un
             // catálogo. Si Browse abrió un ítem de otro catálogo con un
             // identificador equivalente, la UVR debe seguir siendo visible.
-            // dentar-dx queda excluido por diseño.
+            // dentar-dx y oftar-dx quedan excluidos por diseño: son
+            // diagnósticos y no deben tomar UVR de otra prestación.
             if ($codeParams !== []) {
                 $catalogParts = ['catalog_code = :catalog'];
                 foreach ($codeParams as $placeholder) {
                     $catalogParts[] = '(btrim(external_code) = ' . $placeholder
-                        . ' AND catalog_code <> :excluded)';
+                        . ' AND catalog_code <> :excluded'
+                        . ' AND catalog_code <> :excluded_oftar)';
                 }
                 $conditions[] = '(' . implode(' OR ', $catalogParts) . ')';
                 $params[':excluded'] = 'dentar-dx';
+                $params[':excluded_oftar'] = 'oftar-dx';
             } else {
                 $conditions[] = 'catalog_code = :catalog';
             }

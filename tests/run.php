@@ -304,6 +304,13 @@ $check(
     'U7-D debe permitir el mismo external_code en otro catálogo sin incluir dentar-dx.'
 );
 $check(
+    str_contains($u7PublicRepository, "private const DIAGNOSIS_CATALOGS = ['dentar-dx', 'oftar-dx']")
+        && str_contains($u7PublicRepository, 'in_array($catalog, self::DIAGNOSIS_CATALOGS, true)')
+        && str_contains($u7PublicRepository, "'oftar-dx'")
+        && str_contains($u7PublicRepository, 'catalog_code <> :excluded_oftar'),
+    'U7-D debe bloquear UVR también en oftar-dx, no solo en dentar-dx.'
+);
+$check(
     str_contains($u7PublicRepository, 'array $alternateCodes = []')
     && str_contains($u7PublicRepository, "':alternate' . \$index"),
     'U7-D debe resolver UVR por los identificadores del Ítem, no solo por su código principal.'
@@ -359,6 +366,10 @@ $check(
 $check(
     str_contains($u7CatalogRepo, "'dentar-dx'") && str_contains($u7CatalogRepo, 'product_role ='),
     'El selector UVR debe excluir diagnósticos y catálogos no prestacionales.'
+);
+$check(
+    str_contains($u7CatalogRepo, "'oftar-dx'"),
+    'El selector UVR debe excluir también oftar-dx por ser un catálogo de diagnósticos.'
 );
 $u7ProposalViewSource = (string) file_get_contents($root . '/portal/Views/admin/uvr/proposals.php');
 foreach (['extracted_values', 'new_values', 'select_item'] as $u7Key) {
@@ -2671,6 +2682,125 @@ $check(
         "trim((string) (\$valuation['external_code'] ?? ''))"
     ),
     'La ficha pública debe mostrar el código permanente cuando no hay perfil.'
+);
+
+// OFTAR: identidad externa, importación CIE-10 de diagnósticos y verificación.
+$oftarIdentityPath = $root . '/sql/03_oftar/oftar_external_identity.sql';
+$oftarImportPath = $root . '/tools/sources/oftar/importar_cie10_dx.sql';
+$oftarCie10VerifyPath = $root . '/sql/03_oftar/verificacion_oftar_cie10.sql';
+$check(
+    is_file($oftarIdentityPath) && is_file($oftarImportPath) && is_file($oftarCie10VerifyPath),
+    'Deben existir la identidad externa OFTAR, el importador CIE-10 y su verificación.'
+);
+$oftarIdentitySql = is_file($oftarIdentityPath) ? (string) file_get_contents($oftarIdentityPath) : '';
+$check(
+    str_contains($oftarIdentitySql, 'BEGIN;') && str_contains($oftarIdentitySql, 'COMMIT;')
+        && !str_contains($oftarIdentitySql, 'DROP TABLE')
+        && !preg_match('/\bDELETE\s+FROM\b/i', $oftarIdentitySql)
+        && !str_contains($oftarIdentitySql, 'ALTER DEFAULT PRIVILEGES'),
+    'La identidad externa OFTAR debe ser aditiva, transaccional y sin cambios de ACL por defecto.'
+);
+$check(
+    str_contains($oftarIdentitySql, 'CONSTRAINT uq_oftar_external_identity UNIQUE (system_code, code_normalized)')
+        && str_contains($oftarIdentitySql, "regexp_replace(btrim(p_code), '[\\s.\\-]+', '', 'g')")
+        && str_contains($oftarIdentitySql, 'code_normalized VARCHAR(200)')
+        && str_contains($oftarIdentitySql, 'GENERATED ALWAYS AS (public.oftar_normalize_external_code(code_raw)) STORED'),
+    'La identidad OFTAR debe normalizar el código y hacer único (sistema, código normalizado).'
+);
+$check(
+    str_contains($oftarIdentitySql, "NEW.system_code = 'CIE-10'")
+        && str_contains($oftarIdentitySql, "v_parent_owner <> 'oftar-dx'")
+        && str_contains($oftarIdentitySql, "v_owner := 'oftar-dx'")
+        && str_contains($oftarIdentitySql, "'NOMENCLADOR-AR', 'ICD-10-PCS', 'CPT', 'LOINC'")
+        && str_contains($oftarIdentitySql, "'SNOMED-CT'")
+        && str_contains($oftarIdentitySql, 'trg_oftar_concept_mapping_identity')
+        && str_contains($oftarIdentitySql, 'trg_oftar_diagnosis_mapping_identity'),
+    'Los mapeos OFTAR deben fijar un dueño por sistema y compartir SNOMED-CT.'
+);
+$check(
+    str_contains($oftarIdentitySql, 'REVOKE ALL PRIVILEGES ON TABLE public.oftar_external_identity FROM PUBLIC')
+        && str_contains($oftarIdentitySql, 'GRANT SELECT ON TABLE public.oftar_external_identity TO origen_med')
+        && str_contains($oftarIdentitySql, 'uq_oftar_diagnosis_term_preferred'),
+    'La identidad OFTAR debe revocar a PUBLIC, conceder solo SELECT y prohibir términos preferidos duplicados.'
+);
+$oftarImportSql = is_file($oftarImportPath) ? (string) file_get_contents($oftarImportPath) : '';
+$check(
+    str_contains($oftarImportSql, 'BEGIN;') && str_contains($oftarImportSql, 'COMMIT;')
+        && str_contains($oftarImportSql, 'DISTINCT ON (')
+        && str_contains($oftarImportSql, "'^H(0[0-9]|[1-5][0-9])'")
+        && str_contains($oftarImportSql, "c.tipo = 'diagnostico'"),
+    'El importador CIE-10 debe deduplicar con DISTINCT ON y traer solo diagnósticos H00-H59.'
+);
+$check(
+    !str_contains($oftarImportSql, 'INSERT INTO public.oftar_concept')
+        && !str_contains($oftarImportSql, "'ICD-10-PCS'")
+        && str_contains($oftarImportSql, "e.system_code = 'CIE-10'")
+        && str_contains($oftarImportSql, "'draft'")
+        && !str_contains($oftarImportSql, 'os_uvr_')
+        && !str_contains($oftarImportSql, 'total_uvr')
+        && !str_contains($oftarImportSql, 'work_uvr'),
+    'El importador no debe crear procedimientos ni UVR: solo diagnósticos en estado borrador.'
+);
+$oftarCie10VerifySql = is_file($oftarCie10VerifyPath) ? (string) file_get_contents($oftarCie10VerifyPath) : '';
+$check(
+    str_contains($oftarCie10VerifySql, 'BEGIN READ ONLY;')
+        && str_contains($oftarCie10VerifySql, 'ROLLBACK;')
+        && str_contains($oftarCie10VerifySql, 'v_cie10_en_pr')
+        && str_contains($oftarCie10VerifySql, 'v_sin_identidad')
+        && str_contains($oftarCie10VerifySql, 'v_duplicados'),
+    'La verificación CIE-10 de OFTAR debe ser solo lectura y comprobar dueño, identidad y duplicados.'
+);
+$check(
+    str_contains($oftarCie10VerifySql, 'huecos_no_documentados')
+        && str_contains($oftarCie10VerifySql, "'H01.8', 'H01.81'")
+        && str_contains($oftarCie10VerifySql, 'H40.849'),
+    'Los 18 huecos idiomáticos documentados deben formar parte de la aserción de cobertura.'
+);
+
+$oftarSyncPath = $root . '/sql/03_oftar/sync_oftar_dx_to_os.sql';
+$oftarSyncVerifyPath = $root . '/sql/03_oftar/verificacion_sync_oftar_dx.sql';
+$check(
+    is_file($oftarSyncPath) && is_file($oftarSyncVerifyPath),
+    'Deben existir la sincronización OFTAR-DX a os_* y su verificación.'
+);
+$oftarSyncSql = is_file($oftarSyncPath) ? (string) file_get_contents($oftarSyncPath) : '';
+$check(
+    str_contains($oftarSyncSql, 'BEGIN;') && str_contains($oftarSyncSql, 'COMMIT;')
+        && !str_contains($oftarSyncSql, 'DROP TABLE')
+        && !preg_match('/\bDELETE\s+FROM\b/i', $oftarSyncSql)
+        && str_contains($oftarSyncSql, "r.version_tag = '2026-v1'"),
+    'La sincronización OFTAR-DX debe ser aditiva y usar el release 2026-v1.'
+);
+$check(
+    str_contains($oftarSyncSql, 'INSERT INTO public.os_catalog_item')
+        && str_contains($oftarSyncSql, 'INSERT INTO public.os_catalog_item_version')
+        && str_contains($oftarSyncSql, 'INSERT INTO public.os_catalog_identifier')
+        && str_contains($oftarSyncSql, 'INSERT INTO public.os_concept_mapping')
+        && str_contains($oftarSyncSql, 'INSERT INTO public.os_field_review'),
+    'La sincronización debe poblar ítems, versiones, identificadores, mapeos y revisiones.'
+);
+$check(
+    str_contains($oftarSyncSql, "'unknown'")
+        && str_contains($oftarSyncSql, "'draft'")
+        && !str_contains($oftarSyncSql, "'approved'")
+        && str_contains($oftarSyncSql, "review_status = 'unknown'"),
+    'La sincronización no debe aprobar contenido: todo queda en unknown/draft.'
+);
+$check(
+    !str_contains($oftarSyncSql, 'os_uvr_')
+        && !str_contains($oftarSyncSql, 'total_uvr')
+        && !str_contains($oftarSyncSql, 'work_uvr'),
+    'La sincronización de diagnósticos no debe crear ni tocar UVR.'
+);
+$oftarSyncVerifySql = is_file($oftarSyncVerifyPath) ? (string) file_get_contents($oftarSyncVerifyPath) : '';
+$check(
+    str_contains($oftarSyncVerifySql, 'BEGIN READ ONLY;')
+        && str_contains($oftarSyncVerifySql, 'ROLLBACK;')
+        && str_contains($oftarSyncVerifySql, 'v_aprobadas')
+        && str_contains($oftarSyncVerifySql, 'v_pendientes')
+        && str_contains($oftarSyncVerifySql, 'v_invalidos')
+        && str_contains($oftarSyncVerifySql, 'v_versiones_esperadas'),
+    'La verificación de la sincronización debe ser solo lectura y comprobar aprobación, pendientes e invalidez.'
 );
 
 // Resultado.

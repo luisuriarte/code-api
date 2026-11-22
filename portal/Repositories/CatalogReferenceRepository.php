@@ -65,14 +65,14 @@ final class CatalogReferenceRepository
      *
      * La decisión U7.7 excluye diagnósticos, medicamentos, insumos y
      * terminologías: no reciben UVR por el solo hecho de existir. Se conserva
-     * `dentar-dx` fuera del selector y se excluyen los códigos de terminología
-     * y de insumos. La familia DENTAR queda fuera por `product_role`.
+     * `dentar-dx` y `oftar-dx` fuera del selector y se excluyen los códigos de
+     * terminología y de insumos. Las familias quedan fuera por `product_role`.
      *
      * @return list<array{code: string, name: string, short_name: string}>
      */
     public static function uvrCatalogs(): array
     {
-        $excluded = ['dentar-dx', 'cie10', 'anmat', 'snomed', 'loinc', 'insumos'];
+        $excluded = ['dentar-dx', 'oftar-dx', 'cie10', 'anmat', 'snomed', 'loinc', 'insumos'];
         $params = [];
         $placeholders = [];
 
