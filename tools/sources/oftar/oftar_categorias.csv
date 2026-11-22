@@ -1,0 +1,14 @@
+catalogo,codigo,padre,orden,nombre_es,nombre_en,descripcion_es,descripcion_en
+oftar-pr,GRP-EVAL,,10,Evaluación y consulta,Evaluation and consultation,Agrupa consultas y exámenes clínicos iniciales.,Groups consultations and initial clinical examinations.
+oftar-pr,GRP-DIAG,,20,Diagnóstico y estudios,Diagnosis and studies,Agrupa estudios funcionales y diagnóstico por imágenes.,Groups functional studies and diagnostic imaging.
+oftar-pr,GRP-TER,,30,Tratamiento y cirugía,Treatment and surgery,"Agrupa procedimientos terapéuticos, láser, inyecciones y cirugía.","Groups therapeutic procedures, laser, injections and surgery."
+oftar-pr,GRP-OCUL,,40,Oculoplastia y aparato lagrimal,Oculoplasty and lacrimal system,Agrupa párpados órbita y vías lagrimales.,Groups eyelids orbit and lacrimal system.
+oftar-pr,CONSULT,GRP-EVAL,11,Consultas y evaluaciones,Consultations and evaluations,"Consulta oftalmológica general, especializada y controles.",General and specialized ophthalmic consultations and follow-up visits.
+oftar-pr,EXAM,GRP-EVAL,12,Exámenes oftalmológicos,Ophthalmic examinations,"Biomicroscopía con lámpara de hendidura, tonometría y gonioscopía.","Slit-lamp biomicroscopy, tonometry and gonioscopy."
+oftar-pr,DIAG,GRP-DIAG,21,Estudios diagnósticos,Diagnostic studies,Campimetría y pruebas funcionales visuales.,Perimetry and visual function tests.
+oftar-pr,IMG,GRP-DIAG,22,Diagnóstico por imágenes,Diagnostic imaging,"Tomografía de coherencia óptica (OCT), retinografía y paquimetría.","Optical coherence tomography (OCT), fundus photography and pachymetry."
+oftar-pr,TER,GRP-TER,31,Procedimientos terapéuticos,Therapeutic procedures,Fotocoagulación láser e inyecciones intravítreas.,Laser photocoagulation and intravitreal injections.
+oftar-pr,CIR,GRP-TER,32,Cirugía oftalmológica,Ophthalmic surgery,"Catarata, retina, glaucoma, córnea y cirugía refractiva.","Cataract, retina, glaucoma, cornea and refractive surgery."
+oftar-pr,OCUL,GRP-OCUL,41,Oculoplastia,Oculoplasty,Procedimientos de párpados y órbita.,Eyelid and orbital procedures.
+oftar-pr,LAGR,GRP-OCUL,42,Vías lagrimales,Lacrimal system,Sondaje lagrimal y procedimientos del aparato lagrimal.,Lacrimal probing and lacrimal system procedures.
+oftar-dx,CAT-DX,,90,Diagnósticos oftalmológicos (CIE-10 H00-H59),Ophthalmic diagnoses (ICD-10 H00-H59),Enfermedades y condiciones del ojo y sus anexos. Sin UVR propia.,Diseases and conditions of the eye and adnexa. No UVR of their own.
