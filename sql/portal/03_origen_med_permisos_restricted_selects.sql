@@ -33,7 +33,12 @@ BEGIN
         'os_terminology_system',
         'os_fee_item',
         'os_fee_schedule',
-        'os_pricing_unit'
+        'os_pricing_unit',
+        -- Fuente editorial DENTAR: Browse la lee en solo lectura como respaldo
+        -- cuando el espejo os_catalog_item_version no tiene textos clínicos.
+        'dentar_catalog',
+        'dentar_concept',
+        'dentar_concept_version'
     ]
     LOOP
         IF to_regclass('public.' || t) IS NOT NULL THEN

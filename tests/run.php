@@ -284,7 +284,8 @@ $check(
 $check(!str_contains($u7PublicRepository, 'estimated_payment'), 'U7-D no debe exponer estimated_payment.');
 $check(
     str_contains($u7PublicRepository, '?string $externalCode = null')
-    && str_contains($u7PublicRepository, 'btrim(external_code) = :external')
+    && str_contains($u7PublicRepository, "'btrim(external_code) = ' . \$placeholder")
+    && str_contains($u7PublicRepository, "':external' : ':alternate'")
     && str_contains($u7PublicRepository, 'external_code, prestacion_code'),
     'U7-D debe resolver UVR también por external_code para procedimientos.'
 );
@@ -302,12 +303,18 @@ $check(
     && str_contains($u7PublicRepository, "'dentar-dx'"),
     'U7-D debe permitir el mismo external_code en otro catálogo sin incluir dentar-dx.'
 );
+$check(
+    str_contains($u7PublicRepository, 'array $alternateCodes = []')
+    && str_contains($u7PublicRepository, "':alternate' . \$index"),
+    'U7-D debe resolver UVR por los identificadores del Ítem, no solo por su código principal.'
+);
 $browseServiceSource = (string) file_get_contents($root . '/portal/Services/BrowseService.php');
 $check(
     str_contains($browseServiceSource, "\$item['official_code'] ?? \$item['code']")
     && str_contains($browseServiceSource, 'publishedForItem(')
-    && str_contains($browseServiceSource, '$externalCode'),
-    'El browser debe pasar el código externo al resolver UVR en procedimientos.'
+    && str_contains($browseServiceSource, '$externalCode')
+    && str_contains($browseServiceSource, '$alternateCodes'),
+    'El browser debe pasar el código externo y los identificadores al resolver UVR.'
 );
 $uvrProcedureVerifier = (string) file_get_contents(
     $root . '/sql/08_arquitectura/verificacion_uvr_procedimientos.sql'
@@ -370,8 +377,16 @@ $check(
 );
 $check(
     str_contains($catalogDetailSource, '$identifierPositions[$key]')
-    && str_contains($catalogDetailSource, 'private static function dedupeRelations('),
-    'Browse debe deduplicar identificadores y relaciones espejo del Nomenclador.'
+    && str_contains($catalogDetailSource, 'private static function dedupeRelations(')
+    && str_contains($catalogDetailSource, 'private static function canonicalIdentifierSystem(')
+    && str_contains($catalogDetailSource, "str_contains(\$slug, 'nomenclador')"),
+    'Browse debe deduplicar identificadores y relaciones espejo del Nomenclador, unificando alias.'
+);
+$check(
+    str_contains($catalogDetailSource, 'private static function dentarClinicalFields(')
+    && str_contains($catalogDetailSource, 'dentar_concept_version')
+    && str_contains($catalogDetailSource, "'review_status' => 'draft'"),
+    'Browse debe mostrar criterios clínicos de la fuente DENTAR sin marcarlos como aprobados.'
 );
 $check(
     str_contains((string) file_get_contents($root . '/portal/Views/partials/browse/detail/concept.php'),

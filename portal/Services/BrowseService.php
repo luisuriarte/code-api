@@ -164,11 +164,22 @@ final class BrowseService
         // tienen catalog_code ni source_id numérico: sus vínculos UVR se
         // graban por código externo. La vista pública expone ese campo.
         $externalCode = (string) ($item['official_code'] ?? $item['code'] ?? '');
-        $sections['uvr'] = $itemId > 0 || $externalCode !== ''
+        $alternateCodes = [];
+        foreach ($sections['concept']['identifiers'] ?? [] as $identifier) {
+            if (!is_array($identifier)) {
+                continue;
+            }
+            $value = trim((string) ($identifier['value'] ?? ''));
+            if ($value !== '') {
+                $alternateCodes[] = $value;
+            }
+        }
+        $sections['uvr'] = $itemId > 0 || $externalCode !== '' || $alternateCodes !== []
             ? \OrigenSalud\Portal\Repositories\UvrPublicRepository::publishedForItem(
                 $itemId,
                 $itemCatalog,
-                $externalCode
+                $externalCode,
+                $alternateCodes
             )
             : [];
 

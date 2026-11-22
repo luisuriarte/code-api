@@ -2320,7 +2320,7 @@ final class CatalogRepository
                 $system = (string) $row['system_name'];
                 $value = (string) $row['value'];
                 $primary = (bool) $row['is_primary'];
-                $key = strtolower($system) . '|' . $value;
+                $key = self::canonicalIdentifierSystem($system) . '|' . $value;
 
                 // El importador puede repetir el mismo identificador con y sin
                 // marca de principal. Se conserva una sola entrada y se
@@ -2341,6 +2341,15 @@ final class CatalogRepository
             }
         } catch (PDOException) {
             $identifiers = [];
+        }
+
+        // El espejo os_catalog_item_version puede no tener los textos clínicos
+        // del DENTAR editorial. Se leen de la fuente original en solo lectura
+        // y se marcan como pendientes de validación; nunca como aprobados.
+        foreach (self::dentarClinicalFields($itemId, $item, $identifiers, $chain) as $field => $entry) {
+            if (!array_key_exists($field, $clinical)) {
+                $clinical[$field] = $entry;
+            }
         }
 
         // Campos literales del Nomenclador Odontológico Nacional. La tabla es
@@ -2591,6 +2600,112 @@ final class CatalogRepository
             'review_status' => 'draft',
             'type' => $selected['type'] ?? null,
         ];
+    }
+
+    /**
+     * Normaliza el sistema de un identificador para agrupar alias que la ficha
+     * muestra con la misma etiqueta (NOMENCLADOR_AR, NOMENCLADOR-AR y
+     * nomenclador-odontologico-ar son el mismo sistema público).
+     */
+    private static function canonicalIdentifierSystem(string $system): string
+    {
+        $slug = strtolower((string) preg_replace('/[^a-z0-9]/i', '', trim($system)));
+
+        if (str_contains($slug, 'nomenclador')) {
+            return 'nomenclador';
+        }
+        if (str_contains($slug, 'dentarpr')) {
+            return 'dentarpr';
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Respaldo de solo lectura sobre la fuente editorial DENTAR.
+     *
+     * Si el espejo os_catalog_item_version no contiene los textos clínicos,
+     * Browse los toma de dentar_concept_version y los marca como pendientes de
+     * validación editorial. No escribe en la fuente ni los presenta como
+     * aprobados.
+     *
+     * @param list<array<string, mixed>> $identifiers
+     *
+     * @return array<string, array{value: string, language: string, source_language: ?string, provenance: string, review_status: string, type: ?string}>
+     */
+    private static function dentarClinicalFields(
+        int $itemId,
+        array $item,
+        array $identifiers,
+        array $chain
+    ): array {
+        if ($itemId <= 0) {
+            return [];
+        }
+
+        $code = trim((string) ($item['code'] ?? ''));
+        if ((string) ($item['catalog_code'] ?? '') !== 'dentar-pr') {
+            foreach ($identifiers as $identifier) {
+                if (self::canonicalIdentifierSystem((string) ($identifier['system'] ?? '')) !== 'dentarpr') {
+                    continue;
+                }
+                $candidate = trim((string) ($identifier['value'] ?? ''));
+                if ($candidate !== '') {
+                    $code = $candidate;
+                    break;
+                }
+            }
+        }
+        if ($code === '') {
+            return [];
+        }
+
+        $pdo = PortalDatabase::connection();
+        if (!self::tableExists($pdo, 'dentar_concept')
+            || !self::tableExists($pdo, 'dentar_catalog')
+            || !self::tableExists($pdo, 'dentar_concept_version')) {
+            return [];
+        }
+
+        try {
+            $statement = $pdo->prepare(
+                'SELECT v.definition, v.clinical_criteria, v.short_definition, v.lay_terms,'
+                . ' v.clinical_scope, v.version_number, v.approval_status'
+                . ' FROM dentar_concept dc'
+                . ' JOIN dentar_catalog cat ON cat.id = dc.catalog_id AND cat.code = \'dentar-pr\''
+                . ' JOIN dentar_concept_version v ON v.concept_id = dc.id'
+                . ' WHERE dc.code = ?'
+                . ' ORDER BY (v.approval_status = \'approved\') DESC, v.version_number DESC, v.id DESC'
+                . ' LIMIT 1'
+            );
+            $statement->execute([$code]);
+            $row = $statement->fetch();
+        } catch (PDOException) {
+            return [];
+        }
+        if (!is_array($row)) {
+            return [];
+        }
+
+        $language = (string) ($chain[0]['code'] ?? 'es-AR');
+        $provenance = 'dentar_concept_version · v' . (string) ($row['version_number'] ?? '');
+        $fields = [];
+        foreach (['definition', 'clinical_criteria', 'short_definition', 'lay_terms', 'clinical_scope'] as $field) {
+            $value = trim((string) ($row[$field] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+            $fields[$field] = [
+                'value' => $value,
+                'language' => $language,
+                'source_language' => null,
+                'provenance' => $provenance,
+                'review_status' => 'draft',
+                'type' => null,
+            ];
+        }
+
+        return $fields;
     }
 
     /**

@@ -36,12 +36,23 @@ final class UvrPublicRepository
     public static function publishedForItem(
         int $itemId,
         string $catalogCode,
-        ?string $externalCode = null
+        ?string $externalCode = null,
+        array $alternateCodes = []
     ): array {
-        $external = trim((string) ($externalCode ?? ''));
         $catalog = trim($catalogCode);
 
-        if ($itemId <= 0 && $external === '') {
+        // Un código puede estar publicado en otro catálogo: el ítem del
+        // Nomenclador tiene 01.01 pero su identificador DENTAR-PR apunta a
+        // DNT-PR-000001, que es el código con valoración publicada.
+        $codes = [];
+        foreach (array_merge([$externalCode], $alternateCodes) as $candidate) {
+            $code = trim((string) ($candidate ?? ''));
+            if ($code !== '' && !in_array($code, $codes, true)) {
+                $codes[] = $code;
+            }
+        }
+
+        if ($itemId <= 0 && $codes === []) {
             return [];
         }
         if ($catalog !== '' && preg_match('/^[a-z0-9][a-z0-9-]{1,49}$/', $catalog) !== 1) {
@@ -58,15 +69,25 @@ final class UvrPublicRepository
         // catalog_code en la ficha del browser.
         $conditions = [];
         $params = [];
+        $codeParams = [];
+        foreach ($codes as $index => $code) {
+            $placeholder = $index === 0 ? ':external' : ':alternate' . $index;
+            $codeParams[$code] = $placeholder;
+            $params[$placeholder] = $code;
+        }
 
         if ($catalog !== '') {
             // El mismo código permanente puede estar publicado en más de un
-            // catálogo (p. ej. DENTAR-PR y Nomenclador). Si Browse abrió un
-            // ítem de otro catálogo con el mismo external_code, la UVR de la
-            // prestación debe seguir siendo visible. dentar-dx queda excluido.
-            if ($external !== '') {
-                $conditions[] = '(catalog_code = :catalog'
-                    . ' OR (btrim(external_code) = :external AND catalog_code <> :excluded))';
+            // catálogo. Si Browse abrió un ítem de otro catálogo con un
+            // identificador equivalente, la UVR debe seguir siendo visible.
+            // dentar-dx queda excluido por diseño.
+            if ($codeParams !== []) {
+                $catalogParts = ['catalog_code = :catalog'];
+                foreach ($codeParams as $placeholder) {
+                    $catalogParts[] = '(btrim(external_code) = ' . $placeholder
+                        . ' AND catalog_code <> :excluded)';
+                }
+                $conditions[] = '(' . implode(' OR ', $catalogParts) . ')';
                 $params[':excluded'] = 'dentar-dx';
             } else {
                 $conditions[] = 'catalog_code = :catalog';
@@ -79,9 +100,8 @@ final class UvrPublicRepository
             $references[] = 'item_id = :item';
             $params[':item'] = $itemId;
         }
-        if ($external !== '') {
-            $references[] = 'btrim(external_code) = :external';
-            $params[':external'] = $external;
+        foreach ($codeParams as $placeholder) {
+            $references[] = 'btrim(external_code) = ' . $placeholder;
         }
         if ($references === []) {
             return [];
