@@ -215,6 +215,7 @@ final class CatalogEngineService
                        ver.provenance AS version_provenance,
                        ver.content_hash AS version_content_hash,
                        ver.language_evidence AS version_language_evidence,
+                        ver.source_reference AS version_source_reference,
                        ver.preferred_term,
                        ver.definition,
                        ver.clinical_criteria,
@@ -277,7 +278,8 @@ final class CatalogEngineService
 
         $termStatement = $this->db->prepare(
             'SELECT id, item_version_id, term, term_type, language_code, review_status,
-                    source_language_code, provenance, language_evidence, content_hash
+                    source_language_code, provenance, language_evidence, content_hash,
+                    source_reference
                FROM os_catalog_term
               WHERE item_version_id IN (' . implode(', ', array_fill(0, count($versionIds), '?')) . ')
               ORDER BY id'
@@ -296,7 +298,7 @@ final class CatalogEngineService
         $categoryIds = array_map('intval', array_keys($categoryIds));
         $localizedSql = 'SELECT id, entity_type, entity_id, field_name, language_code, value,
                                 source_language_code, language_evidence, provenance, review_status,
-                                content_hash, scope_release_id
+                                content_hash, scope_release_id, source_reference
                            FROM os_localized_text
                           WHERE (entity_type = ? AND entity_id = ?)';
         $localizedParams = ['catalog', $catalogId];
@@ -347,6 +349,9 @@ final class CatalogEngineService
                 'provenance' => (string) $row['version_provenance'],
                 'language_evidence' => (string) $row['version_language_evidence'],
                 'content_hash' => (string) $row['version_content_hash'],
+                'source_reference' => $row['version_source_reference'] !== null
+                    ? (string) $row['version_source_reference']
+                    : null,
                 'target_id' => (int) $row['version_id'],
             ];
 
@@ -370,6 +375,9 @@ final class CatalogEngineService
                 'provenance' => (string) $term['provenance'],
                 'language_evidence' => (string) $term['language_evidence'],
                 'content_hash' => (string) $term['content_hash'],
+                'source_reference' => $term['source_reference'] !== null
+                    ? (string) $term['source_reference']
+                    : null,
                 'target_id' => (int) $term['id'],
                 'value' => (string) $term['term'],
                 'term_type' => (string) $term['term_type'],
@@ -410,6 +418,9 @@ final class CatalogEngineService
                 'provenance' => (string) $row['provenance'],
                 'language_evidence' => (string) $row['language_evidence'],
                 'content_hash' => (string) $row['content_hash'],
+                'source_reference' => $row['source_reference'] !== null
+                    ? (string) $row['source_reference']
+                    : null,
                 'target_id' => (int) $row['id'],
                 'value' => (string) $row['value'],
             ];

@@ -271,7 +271,18 @@ final class EditorialEvaluator
                 continue;
             }
 
-            $hash = isset($variant['content_hash']) ? (string) $variant['content_hash'] : '';
+            // D-41: en os_catalog_item_version el content_hash es agregado
+            // (row_shared), no el hash del campo. La revisión individual se
+            // valida contra valor + idioma + source_reference, igual que en
+            // MappingReviewReader y en trg_field_review_hash().
+            $sourceReference = $variant['source_reference'] ?? null;
+            $hash = array_key_exists('value', $variant) && is_scalar($variant['value'])
+                ? $this->reviews->contentHash(
+                    (string) $variant['value'],
+                    $code,
+                    $sourceReference === null ? null : (string) $sourceReference
+                )
+                : (isset($variant['content_hash']) ? (string) $variant['content_hash'] : '');
             $variantTargetId = isset($variant['target_id']) && $variant['target_id'] !== null
                 ? (int) $variant['target_id']
                 : $targetId;
