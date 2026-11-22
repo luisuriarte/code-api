@@ -99,7 +99,7 @@ END $$;
 CREATE TEMP TABLE _oftar_pr_items ON COMMIT DROP AS
 SELECT s.codigo,
        s.descripcion,
-       'OFTAR-PR-' || lpad(row_number() OVER (ORDER BY s.codigo)::text, 6, '0') AS permanent_code,
+       'OFT-PR-' || lpad(row_number() OVER (ORDER BY s.codigo)::text, 6, '0') AS permanent_code,
        CASE
            WHEN s.descripcion ~* '(oct|tomograf[ií]a|ecograf|retinograf|videonistagmograf|fotograf)' THEN 'IMG'
            WHEN s.descripcion ~* '(cirug|operac|implante|extracc|vitrectom|queratoplast|trasplante|enucleac)' THEN 'CIR'
@@ -351,7 +351,7 @@ UPDATE public.os_catalog_item_version iv
 -- 6. RESULTADO
 -- =============================================================================
 SELECT count(*) AS conceptos_importados FROM public.oftar_concept
- WHERE code LIKE 'OFTAR-PR-%';
+ WHERE code LIKE 'OFT-PR-%';
 
 SELECT count(*) AS terms_aprobados
   FROM public.os_field_review f

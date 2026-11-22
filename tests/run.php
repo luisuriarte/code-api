@@ -2932,6 +2932,7 @@ $check(
         && str_contains($oftarDomainSql, 'CREATE OR REPLACE VIEW public.v_oftar_search_catalog')
         && str_contains($oftarDomainSql, "cat.family_code = 'oftar'")
         && str_contains($oftarDomainSql, "ver.review_status = 'approved'")
+        && str_contains($oftarDomainSql, "GRANT SELECT ON TABLE public.v_oftar_search_catalog TO origen_api")
         && str_contains($oftarDomainSql, 'REVOKE ALL PRIVILEGES ON TABLE public.v_oftar_search_catalog FROM PUBLIC')
         && preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $oftarDomainSql) !== 1
         && !str_contains($oftarDomainSql, '/v1/uvr')
@@ -2970,7 +2971,7 @@ $check(is_file($oftarPrImportPath), 'Debe existir el importador completo de ofta
 $check(
     str_contains($oftarPrImport, 'public.oftar_nomenclador_source')
         && str_contains($oftarPrImport, "WHERE categoria = 'OFTALMOLOGIA'")
-        && str_contains($oftarPrImport, "'OFTAR-PR-' || lpad(row_number()")
+        && str_contains($oftarPrImport, "'OFT-PR-' || lpad(row_number()")
         && str_contains($oftarPrImport, "'NOMENCLADOR-AR'")
         && str_contains($oftarPrImport, "'ATTR-LATERALITY'")
         && str_contains($oftarPrImport, "'OD'")
@@ -3029,6 +3030,55 @@ $check(
         && str_contains($oftarPrVerify, 'v_os_uvr_prestacion_public')
         && str_contains($oftarPrVerify, "WHERE catalog_code = 'oftar-dx'"),
     'La verificación de carga debe ser solo lectura y comprobar cobertura, definiciones y exclusión UVR de oftar-dx.'
+);
+
+// Prefijos de código alineados con DENTAR (DNT-PR / DNT-DX => OFT-PR / OFT-DX).
+$oftarFamilySql = (string) file_get_contents($root . '/sql/03_oftar/oftar_family.sql');
+$check(
+    str_contains($oftarFamilySql, "     'OFT-PR', 'procedure',")
+        && str_contains($oftarFamilySql, "     'OFT-DX', 'diagnosis',")
+        && str_contains($oftarFamilySql, 'USING HINT = \'OFTAR-PR usa OFT-PR-NNNNNN; OFTAR-DX usa OFT-DX-NNNNNN.\';'),
+    'Los prefijos canónicos de oftar_catalog deben ser OFT-PR y OFT-DX.'
+);
+$renameSqlPath = $root . '/sql/03_oftar/renombrar_codigos_oftar.sql';
+$renameSql = is_file($renameSqlPath) ? (string) file_get_contents($renameSqlPath) : '';
+$check(is_file($renameSqlPath), 'Debe existir el SQL de renombrado de códigos OFTAR.');
+$check(
+    str_contains($renameSql, "'OFT-PR-' || substring(permanent_code FROM 10)")
+        && str_contains($renameSql, "'OFT-DX-' || substring(permanent_code FROM 10)")
+        && str_contains($renameSql, 'UPDATE public.oftar_catalog')
+        && str_starts_with(ltrim($renameSql), '--'),
+    'El renombrado debe cubrir PR y DX y actualizar los prefijos antes que los códigos.'
+);
+$renameCode = implode("\n", array_values(array_filter(
+    explode("\n", $renameSql),
+    static fn (string $line): bool => !str_starts_with(ltrim($line), '--')
+)));
+$check(
+    str_contains($renameCode, "permanent_code LIKE 'OFTAR-PR-[0-9][0-9][0-9][0-9][0-9][0-9]'")
+        && str_contains($renameCode, "code LIKE 'OFTAR-DX-[0-9][0-9][0-9][0-9][0-9][0-9]'")
+        && str_contains($renameCode, 'SET LOCAL app.actor_id')
+        && !str_contains($renameCode, 'NOMENCLADOR-AR')
+        && !preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $renameCode),
+    'El renombrado debe ser acotado a 6 dígitos, auditable y no tocar identificadores externos.'
+);
+$grantApiPath = $root . '/sql/03_oftar/grant_oftar_search_api.sql';
+$grantApi = is_file($grantApiPath) ? (string) file_get_contents($grantApiPath) : '';
+$check(
+    str_contains($grantApi, 'REVOKE ALL PRIVILEGES ON TABLE public.v_oftar_search_catalog FROM PUBLIC')
+        && str_contains($grantApi, 'GRANT SELECT ON TABLE public.v_oftar_search_catalog TO origen_api')
+        && str_contains($grantApi, 'has_table_privilege')
+        && preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $grantApi) !== 1,
+    'El grant de la vista OFTAR a la API debe ser por objeto y verificable.'
+);
+$diagApiPath = $root . '/sql/03_oftar/diagnostico_api_oftar.sql';
+$diagApi = is_file($diagApiPath) ? (string) file_get_contents($diagApiPath) : '';
+$check(
+    str_contains($diagApi, 'BEGIN READ ONLY;')
+        && str_contains($diagApi, 'ROLLBACK;')
+        && str_contains($diagApi, 'has_table_privilege')
+        && str_contains($diagApi, 'information_schema.columns'),
+    'El diagnóstico del 500 debe ser solo lectura y revisar privilegios y columnas.'
 );
 
 // Resultado.

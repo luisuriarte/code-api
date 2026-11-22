@@ -98,6 +98,13 @@ BEGIN
         EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public.v_oftar_search_catalog FROM origen_med';
         EXECUTE 'GRANT SELECT ON TABLE public.v_oftar_search_catalog TO origen_med';
     END IF;
+
+    -- La API se conecta con origen_api (api/config/database.php). Sin este
+    -- GRANT, /v1/search?domains=oftar responde 500 permission denied.
+    IF to_regrole('origen_api') IS NOT NULL THEN
+        EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public.v_oftar_search_catalog FROM origen_api';
+        EXECUTE 'GRANT SELECT ON TABLE public.v_oftar_search_catalog TO origen_api';
+    END IF;
 END $$;
 
 COMMIT;

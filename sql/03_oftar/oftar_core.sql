@@ -144,10 +144,10 @@ VALUES
      'OFTAR', 'Marca paraguas de la familia OFTAR. Los únicos productos son OFTAR-PR (procedimientos) y OFTAR-DX (diagnósticos). Las imágenes, cirugías y tratamientos son categorías de OFTAR-PR.'),
     ('oftar-pr', 'OFTAR-PR · Catálogo de Procedimientos Oftalmológicos',
      'Origen Salud / Comité de Oftalmología', 'AR', 'medical', 'oftar', 'catalog',
-     'OFTAR-PR', 'Prestaciones oftalmológicas con códigos permanentes OFTAR-PR-NNNNNN. Clasificación interna por CONSULT, EXAM, DIAG, IMG, TER, CIR, OCUL y LAGR. Único catálogo OFTAR con UVR.'),
+     'OFTAR-PR', 'Prestaciones oftalmológicas con códigos permanentes OFT-PR-NNNNNN. Clasificación interna por CONSULT, EXAM, DIAG, IMG, TER, CIR, OCUL y LAGR. Único catálogo OFTAR con UVR.'),
     ('oftar-dx', 'OFTAR-DX · Catálogo de Diagnósticos Oftalmológicos',
      'Origen Salud / Comité de Oftalmología', 'AR', 'medical', 'oftar', 'catalog',
-     'OFTAR-DX', 'Diagnósticos oftalmológicos con códigos permanentes OFTAR-DX-NNNNNN, armonizados con CIE-10 H00-H59. No reciben UVR: evita duplicar la valoración de las prestaciones.')
+     'OFTAR-DX', 'Diagnósticos oftalmológicos con códigos permanentes OFT-DX-NNNNNN, armonizados con CIE-10 H00-H59. No reciben UVR: evita duplicar la valoración de las prestaciones.')
 ON CONFLICT (code) DO UPDATE
    SET name         = EXCLUDED.name,
        family_code  = EXCLUDED.family_code,
@@ -469,7 +469,7 @@ BEGIN
         RAISE EXCEPTION
             'El código % no corresponde al catálogo seleccionado (prefijo esperado: %-NNNNNN).',
             NEW.code, v_prefix
-            USING HINT = 'OFTAR-PR usa OFTAR-PR-NNNNNN; OFTAR-DX usa OFTAR-DX-NNNNNN.';
+            USING HINT = 'OFTAR-PR usa OFT-PR-NNNNNN; OFTAR-DX usa OFT-DX-NNNNNN.';
     END IF;
 
     RETURN NEW;

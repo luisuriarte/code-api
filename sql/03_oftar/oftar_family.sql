@@ -6,8 +6,8 @@
 -- QUÉ HACE
 --   1. Crea `oftar_catalog`: identidad permanente de la familia OFTAR.
 --   2. Declara los dos únicos productos editoriales de la familia:
---        · OFTAR-PR → procedimientos y prestaciones → prefijo OFTAR-PR
---        · OFTAR-DX → diagnósticos oftalmológicos    → prefijo OFTAR-DX
+--        · OFTAR-PR → procedimientos y prestaciones → prefijo OFT-PR
+--        · OFTAR-DX → diagnósticos oftalmológicos    → prefijo OFT-DX
 --      No se crean OFTAR-CIR, OFTAR-IMG, OFTAR-TER ni OFTAR-MED: las cirugías,
 --      imágenes y tratamientos son categorías internas de OFTAR-PR, y los
 --      medicamentos e insumos pertenecen a catálogos transversales.
@@ -55,11 +55,11 @@ INSERT INTO public.oftar_catalog
     (family_code, code, short_name, name, code_prefix, concept_kind, description, status, sort_order)
 VALUES
     ('oftar', 'oftar-pr', 'OFTAR-PR', 'OFTAR-PR · Catálogo de Procedimientos Oftalmológicos',
-     'OFTAR-PR', 'procedure',
+     'OFT-PR', 'procedure',
      'Prestaciones realizadas sobre el paciente: consultas, exámenes, estudios diagnósticos, tratamientos, láser, inyecciones intravítreas y cirugías. Único catálogo OFTAR con valoración UVR.',
      'active', 10),
     ('oftar', 'oftar-dx', 'OFTAR-DX', 'OFTAR-DX · Catálogo de Diagnósticos Oftalmológicos',
-     'OFTAR-DX', 'diagnosis',
+     'OFT-DX', 'diagnosis',
      'Enfermedades, trastornos y condiciones clínicas oftalmológicas (CIE-10 H00-H59). No recibe UVR: la valoración corresponde a la prestación, no al diagnóstico.',
      'active', 20)
 ON CONFLICT (code) DO UPDATE
@@ -121,7 +121,7 @@ BEGIN
         RAISE EXCEPTION
             'El código % no corresponde al catálogo seleccionado (prefijo esperado: %-NNNNNN).',
             NEW.code, v_prefix
-            USING HINT = 'OFTAR-PR usa OFTAR-PR-NNNNNN; OFTAR-DX usa OFTAR-DX-NNNNNN.';
+            USING HINT = 'OFTAR-PR usa OFT-PR-NNNNNN; OFTAR-DX usa OFT-DX-NNNNNN.';
     END IF;
 
     RETURN NEW;
