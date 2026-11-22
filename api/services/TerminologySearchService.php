@@ -44,6 +44,7 @@ final class TerminologySearchService
     public const DOMAIN_NOMENCLADOR = 'nomenclador';
     public const DOMAIN_VADEMECUM = 'vademecum';
     public const DOMAIN_LOINC = 'loinc';
+    public const DOMAIN_OFTAR = 'oftar';
 
     /** @var list<string> */
     public const DOMAINS = [
@@ -59,6 +60,7 @@ final class TerminologySearchService
         self::DOMAIN_NOMENCLADOR,
         self::DOMAIN_VADEMECUM,
         self::DOMAIN_LOINC,
+        self::DOMAIN_OFTAR,
     ];
 
     /**
@@ -210,6 +212,15 @@ final class TerminologySearchService
             'source' => 'loinc',
             'mode' => 'catalog',
         ],
+        self::DOMAIN_OFTAR => [
+            'label' => ['es' => 'OFTAR (Oftalmología)', 'en' => 'OFTAR (Ophthalmology)'],
+            'description' => [
+                'es' => 'Familia oftalmológica: OFTAR-PR (procedimientos con UVR) y OFTAR-DX (diagnósticos CIE-10 H00-H59, sin UVR).',
+                'en' => 'Ophthalmic family: OFTAR-PR (procedures with UVR) and OFTAR-DX (CIE-10 H00-H59 diagnoses, no UVR).',
+            ],
+            'source' => 'oftar',
+            'mode' => 'catalog',
+        ],
     ];
 
     /**
@@ -355,6 +366,22 @@ final class TerminologySearchService
                 'pharmacological_action' => 't.accion_farmacologica',
                 'sale_type' => 't.tipo_venta',
                 'anmat_certificate' => 't.anmat_certificado',
+            ],
+        ],
+        self::DOMAIN_OFTAR => [
+            'table' => 'v_oftar_search_catalog',
+            'code' => 't.codigo',
+            'term' => 't.termino',
+            'subtitle' => 't.subtitulo',
+            'kind' => 'oftar_concept',
+            'filters' => ['t.termino', 't.codigo', 't.codigo_permanente', 't.subtitulo'],
+            'metadata' => [
+                'catalog_code' => 't.catalogo',
+                'permanent_code' => 't.codigo_permanente',
+                'family_code' => 't.familia',
+                'category' => 't.categoria',
+                'language_code' => 't.idioma',
+                'review_status' => 't.estado_revision',
             ],
         ],
     ];

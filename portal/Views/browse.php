@@ -6,11 +6,13 @@ require __DIR__ . '/partials/browse/context.php';
 
 $mobileView = $focus !== '' ? 'detail' : 'results';
 
-// Catálogos DENTAR publicados: único filtro de producto admitido por el backend.
+// Catálogos publicados admitidos por el backend: DENTAR y OFTAR.
 $publishedCatalogs = [
     ['code' => 'dentar-pr', 'label' => $t('dentar.pr_badge'), 'tag' => 'browse.tag_own'],
     ['code' => 'dentar-dx', 'label' => $t('dentar.dx_badge'), 'tag' => 'browse.tag_own'],
     ['code' => 'nomenclador-odontologico-ar', 'label' => $t('dentar.nomenclador_badge'), 'tag' => 'browse.tag_source'],
+    ['code' => 'oftar-pr', 'label' => $t('oftar.pr_badge'), 'tag' => 'browse.tag_own'],
+    ['code' => 'oftar-dx', 'label' => $t('oftar.dx_badge'), 'tag' => 'browse.tag_own'],
 ];
 
 // Catálogos en artefactos o propuestos. Ninguno se enlaza como consultable.
@@ -50,6 +52,9 @@ foreach ($facetGroups as $group) {
             $label = (string) ($option['label'] ?? $code);
             if ($group['key'] === 'family' && $code === 'dentar') {
                 $label = $t('browse.family_dentar');
+            }
+            if ($group['key'] === 'family' && $code === 'oftar') {
+                $label = $t('browse.family_oftar');
             }
             $facetLabels[$group['key']][$code] = $label;
         }

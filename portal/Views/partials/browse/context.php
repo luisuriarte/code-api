@@ -167,8 +167,8 @@ $stableCurrentUrl = $focus !== ''
 // El selector de dominios es navegable sin JS y conserva el resto del contexto.
 $domainUrl = static function (string $code) use ($stateParams, $paramsUrl, $baseBrowsePath): string {
     $overrides = ['domain' => $code !== '' ? $code : null, 'page' => null, 'focus' => null];
-    if ($code !== '' && $code !== 'odontologia') {
-        // El backend solo admite el filtro DENTAR dentro de odontología.
+    if ($code !== '' && !in_array($code, ['odontologia', 'oftar'], true)) {
+        // El backend solo admite filtro de catálogo en odontología y OFTAR.
         $overrides['catalog'] = null;
     }
 
@@ -284,6 +284,10 @@ $identifierSystemLabels = [
     'dentar-pr' => 'browse.identifier_system_dentar_pr',
     'dentar-dx' => 'browse.identifier_system_dentar_dx',
     'nomenclador-odontologico-ar' => 'browse.identifier_system_nomenclador',
+    'OFTAR-PR' => 'browse.identifier_system_oftar_pr',
+    'oftar-pr' => 'browse.identifier_system_oftar_pr',
+    'OFTAR-DX' => 'browse.identifier_system_oftar_dx',
+    'oftar-dx' => 'browse.identifier_system_oftar_dx',
 ];
 $identifierSystemLabel = static function (string $system) use ($t, $identifierSystemLabels): string {
     return isset($identifierSystemLabels[$system]) ? $t($identifierSystemLabels[$system]) : $system;

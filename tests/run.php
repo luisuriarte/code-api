@@ -2848,6 +2848,153 @@ $check(
     'La verificación de aprobación debe ser solo lectura, validar hashes y contar solo la auditoría de campo.'
 );
 
+// Dominio OFTAR: un solo dominio para los dos catálogos de la familia.
+$check(
+    str_contains($terminologySource, "public const DOMAIN_OFTAR = 'oftar';")
+        && preg_match('/self::DOMAIN_LOINC,\s*self::DOMAIN_OFTAR,/', $terminologySource) === 1
+        && str_contains($terminologySource, 'self::DOMAIN_OFTAR => [')
+        && str_contains($terminologySource, "'table' => 'v_oftar_search_catalog'"),
+    'La API debe exponer oftar en constantes, DOMAINS, DOMAIN_CATALOG y CATALOG_SOURCES.'
+);
+$check(
+    preg_match(
+        '/public const DEFAULT_DOMAINS = \[\s*self::DOMAIN_SNOMED,\s*self::DOMAIN_CIE10,\s*self::DOMAIN_ANMAT,\s*\];/',
+        $terminologySource
+    ) === 1,
+    'DEFAULT_DOMAINS de la API debe seguir acotado a snomed, cie10 y anmat.'
+);
+$check(in_array('oftar', $portalDomains, true), 'El browser debe publicar el dominio oftar.');
+$check(
+    str_contains($portalRepoSource, "public const OFTAR_CATALOGS = ['oftar-pr', 'oftar-dx'];")
+        && str_contains($portalRepoSource, 'count(self::PUBLISHED_CATALOGS)')
+        && str_contains($portalRepoSource, "cat.family_code = 'oftar'")
+        && str_contains($portalRepoSource, "in_array(\$domain, ['odontologia', 'oftar'], true)")
+        && str_contains($portalRepoSource, 'in_array($catalogCode, self::OFTAR_CATALOGS, true)'),
+    'El browser debe mapear oftar a os_catalog por familia y resolver su clave sin mezclar prestaciones.'
+);
+$browseContextSource = (string) file_get_contents($root . '/portal/Views/partials/browse/context.php');
+$browseJsSource = (string) file_get_contents($root . '/web/assets/js/browse-explorer.js');
+$webSearchSource = (string) file_get_contents($root . '/web/search.php');
+$check(
+    str_contains($browseView, "'code' => 'oftar-pr'")
+        && str_contains($browseView, "'code' => 'oftar-dx'")
+        && str_contains($browseView, "t('browse.family_oftar')"),
+    'El Browser debe ofrecer los dos catálogos OFTAR y la etiqueta de familia.'
+);
+$check(
+    str_contains($browseContextSource, "'OFTAR-DX' => 'browse.identifier_system_oftar_dx'")
+        && str_contains($browseContextSource, "['odontologia', 'oftar'], true"),
+    'El contexto del Browser debe conservar el catálogo al cambiar a oftar y etiquetar sus identificadores.'
+);
+$check(
+    str_contains($browseJsSource, "code !== 'oftar'")
+        && str_contains($browseJsSource, 'oftar-pr,oftar-dx'),
+    'Los hooks JS y el fallback de catálogos deben incluir oftar.'
+);
+$check(
+    str_contains($webSearchSource, "'loinc', 'oftar',"),
+    'La página de búsqueda debe aceptar oftar sin cambiar su default propio.'
+);
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $oftarLocale) {
+    $oftarMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $oftarLocale . '.yaml');
+    $oftarBrowse = $oftarMessages['browse'] ?? [];
+    $oftarNamespace = $oftarMessages['oftar'] ?? [];
+    $check(
+        isset($oftarBrowse['family_oftar'], $oftarBrowse['identifier_system_oftar_pr'],
+              $oftarBrowse['identifier_system_oftar_dx'])
+            && isset($oftarNamespace['pr_badge'], $oftarNamespace['dx_badge'])
+            && trim((string) $oftarNamespace['pr_badge']) !== '',
+        $oftarLocale . ': faltan las claves i18n del dominio oftar.'
+    );
+    if ($oftarLocale !== 'es') {
+        $check(
+            str_contains((string) ($oftarMessages['docs']['search']['domains_text'] ?? ''), 'oftar'),
+            $oftarLocale . ': docs.domains_text debe mencionar oftar.'
+        );
+    }
+}
+$oftarDomainSqlPath = $root . '/sql/03_oftar/oftar_domain_search.sql';
+$check(is_file($oftarDomainSqlPath), 'Debe existir el SQL de registro del dominio OFTAR.');
+$oftarDomainSql = is_file($oftarDomainSqlPath) ? (string) file_get_contents($oftarDomainSqlPath) : '';
+$check(
+    str_contains($oftarDomainSql, "('oftar', 'OFTAR (Oftalmología)'")
+        && str_contains($oftarDomainSql, 'CREATE OR REPLACE VIEW public.v_oftar_search_catalog')
+        && str_contains($oftarDomainSql, "cat.family_code = 'oftar'")
+        && str_contains($oftarDomainSql, "ver.review_status = 'approved'")
+        && str_contains($oftarDomainSql, 'REVOKE ALL PRIVILEGES ON TABLE public.v_oftar_search_catalog FROM PUBLIC')
+        && preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $oftarDomainSql) !== 1
+        && !str_contains($oftarDomainSql, '/v1/uvr')
+        && !str_contains($oftarDomainSql, '/fhir'),
+    'El SQL de OFTAR debe registrar el dominio, publicar solo contenido aprobado y revocar por objeto.'
+);
+
+// Carga de NOMENCLADOR-AR en oftar-pr y ejemplo UVR (archivos completos para VPS).
+$oftarPrImportPath = $root . '/sql/03_oftar/importar_nomenclador_oftar_pr.sql';
+$oftarPrImport = is_file($oftarPrImportPath) ? (string) file_get_contents($oftarPrImportPath) : '';
+$check(is_file($oftarPrImportPath), 'Debe existir el importador completo de oftar-pr.');
+$check(
+    str_contains($oftarPrImport, "WHERE categoria = 'OFTALMOLOGIA'")
+        && str_contains($oftarPrImport, "'OFTAR-PR-' || lpad(row_number()")
+        && str_contains($oftarPrImport, "'NOMENCLADOR-AR'")
+        && str_contains($oftarPrImport, "'ATTR-LATERALITY'")
+        && str_contains($oftarPrImport, "'OD'")
+        && str_contains($oftarPrImport, "'OI'")
+        && str_contains($oftarPrImport, "'AO'")
+        && str_contains($oftarPrImport, "'NA'"),
+    'El importador debe cubrir toda OFTALMOLOGIA con códigos permanentes, mapeo y lateralidad.'
+);
+$check(
+    str_contains($oftarPrImport, "       definition           = NULL,\n")
+        && str_contains($oftarPrImport, "'SIN DEFINICIÓN EDITORIAL APROBADA · PENDIENTE'")
+        && str_contains($oftarPrImport, "f.field_name = 'preferred_term'")
+        && str_contains($oftarPrImport, 'hash_esperado'),
+    'El importador debe aprobar solo preferred_term con guarda de hash y dejar definition pendiente.'
+);
+$check(
+    !str_contains($oftarPrImport, '/v1/uvr')
+        && !str_contains($oftarPrImport, '/fhir')
+        && preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $oftarPrImport) !== 1
+        && !str_contains($oftarPrImport, 'tools/sources/nn/Nomenclador_Nacional_2025.sql\';')
+        && !str_contains($oftarPrImport, 'INSERT INTO public.nomenclador_2025'),
+    'El importador no debe crear rutas, alterar ACL global ni modificar la fuente original.'
+);
+
+$octUvrPath = $root . '/sql/03_oftar/uvr_ejemplo_oct_oftar_pr_u7b.sql';
+$octUvr = is_file($octUvrPath) ? (string) file_get_contents($octUvrPath) : '';
+$check(is_file($octUvrPath), 'Debe existir el SQL completo del ejemplo OCT con UVR.');
+$check(
+    str_contains($octUvr, "'OCT-305111'")
+        && str_contains($octUvr, '33.000000::numeric')
+        && str_contains($octUvr, "'oftar-pr'")
+        && str_contains($octUvr, 'v_os_uvr_prestacion_public')
+        && str_contains($octUvr, 'ON CONFLICT (prestacion_id, profile_id, version_tag) DO NOTHING'),
+    'El ejemplo debe cargar 33,00 UVR para OCT 305111 con el modelo U7-B e inmutabilidad.'
+);
+$octUvrCode = implode("\n", array_values(array_filter(
+    explode("\n", $octUvr),
+    static fn (string $line): bool => !str_starts_with(ltrim($line), '--')
+)));
+$check(
+    !str_contains($octUvrCode, 'estimated_payment')
+        && !str_contains($octUvrCode, 'total_uvr NUMERIC')
+        && !preg_match('/INSERT[^\n]*total_uvr/i', $octUvrCode)
+        && !str_contains($octUvrCode, '/v1/uvr')
+        && !str_contains($octUvrCode, '/fhir')
+        && preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $octUvrCode) !== 1,
+    'El ejemplo no debe almacenar total_uvr, exponer estimated_payment ni crear rutas/ACL globales.'
+);
+
+$oftarPrVerifyPath = $root . '/sql/03_oftar/verificacion_oftar_pr_carga.sql';
+$oftarPrVerify = is_file($oftarPrVerifyPath) ? (string) file_get_contents($oftarPrVerifyPath) : '';
+$check(
+    str_contains($oftarPrVerify, 'BEGIN READ ONLY;')
+        && str_contains($oftarPrVerify, 'ROLLBACK;')
+        && str_contains($oftarPrVerify, 'textos_con_definicion')
+        && str_contains($oftarPrVerify, 'v_os_uvr_prestacion_public')
+        && str_contains($oftarPrVerify, "WHERE catalog_code = 'oftar-dx'"),
+    'La verificación de carga debe ser solo lectura y comprobar cobertura, definiciones y exclusión UVR de oftar-dx.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

@@ -275,7 +275,7 @@ docs:
         endpoints_title: 'Rotas disponíveis'
         endpoints_text: 'GET /v1/search busca nos domínios indicados. GET /v1/search/{domain} força um domínio. GET /v1/concepts/search força SNOMED CT e retorna uma projeção de descrições.'
         domains_title: Domínios
-        domains_text: 'Domínios válidos: snomed, cie10, anmat, laboratorio, vacunas, odontologia, prestaciones, programas, imagenes, nomenclador, vademecum e loinc. domains=all ou domains=* inclui todos. Sem domains, são usados snomed, cie10 e anmat.'
+        domains_text: 'Domínios válidos: snomed, cie10, anmat, laboratorio, vacunas, odontologia, prestaciones, programas, imagenes, nomenclador, vademecum, loinc e oftar. domains=all ou domains=* inclui todos. Sem domains, são usados snomed, cie10 e anmat.'
         params_title: Parâmetros
         param_q: 'Termo de 2 a 80 caracteres. Obrigatório.'
         param_domains: 'Lista separada por vírgulas ou parâmetros repetidos. Alias: domain.'
@@ -689,6 +689,8 @@ browse:
     identifier_system_snomed: "SNOMED-CT"
     identifier_system_dentar_pr: "DENTAR-PR"
     identifier_system_dentar_dx: "DENTAR-DX"
+    identifier_system_oftar_pr: "OFTAR-PR"
+    identifier_system_oftar_dx: "OFTAR-DX"
     source_attributes: "Campos da fonte"
     source_attributes_note: "Valores literais do Nomenclador Odontológico Nacional. Não são critérios clínicos inferidos."
     source_attribute_factura: "Faturável"
@@ -741,6 +743,7 @@ browse:
     catalogs: "Catálogos publicados"
     family: "Família"
     family_dentar: "DENTAR (odontologia)"
+    family_oftar: "OFTAR (oftalmologia)"
     type: "Tipo"
     category: "Categoria"
     status: "Situação"
@@ -755,7 +758,7 @@ browse:
     load_more: "Carregar mais resultados"
     head_eyebrow: "Terminologia clínica · Interoperabilidade"
     head_lead: "Explore códigos clínicos, procedimentos, diagnósticos, produtos e terminologias de saúde de múltiplos sistemas de codificação. Compare e navegue relações sem perder o contexto da busca."
-    stat_published: "DENTAR publicados"
+    stat_published: "Catálogos publicados"
     stat_reserved: "Reservados / não publicados"
     explore_title: "Explorar catálogos"
     explore_hint: "Escolha uma fonte, ajuste os filtros e selecione um conceito."
@@ -773,7 +776,7 @@ browse:
     tag_national: "Nacional"
     tag_unpublished: "Não publicado"
     tag_proposed: "Proposto"
-    reserved_note: "Somente os catálogos acima podem ser consultados. Os rótulos DENTAR-*/OS-* estão em preparação e não retornam resultados."
+    reserved_note: "Somente os catálogos acima podem ser consultados. Os rótulos DENTAR-*/OS-* estão em preparação e não retornam resultados. OFTAR-DX não tem UVR: a valoração pertence a OFTAR-PR."
     reset_filters: "Limpar filtros"
     scope_title: "Limite de alcance:"
     scope_notice: "Este registro descreve o conceito clínico. Não inclui requisitos de operadoras, autorizações, honorários, copagamentos nem limites de frequência."
@@ -937,6 +940,10 @@ dentar:
     cta_primary: "Consultar DENTAR"
     cta_secondary: "Ver documentação da API"
     cta_contact: "Contatar a Origen Salud"
+
+oftar:
+    pr_badge: "OFTAR-PR"
+    dx_badge: "OFTAR-DX"
 
 uvr:
     meta:

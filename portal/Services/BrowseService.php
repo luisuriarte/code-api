@@ -53,7 +53,8 @@ final class BrowseService
             return self::empty('invalid_catalog', $page);
         }
 
-        if ($catalogs !== [] && $domain !== '' && $domain !== 'odontologia') {
+        if ($catalogs !== [] && $domain !== ''
+            && !in_array($domain, ['odontologia', 'oftar'], true)) {
             return self::empty('invalid_catalog', $page);
         }
 

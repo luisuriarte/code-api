@@ -20,6 +20,7 @@ final class CatalogRepository
     public const DOMAINS = [
         'snomed', 'cie10', 'anmat', 'laboratorio', 'vacunas', 'odontologia',
         'prestaciones', 'programas', 'imagenes', 'nomenclador', 'vademecum', 'loinc',
+        'oftar',
     ];
 
     public const DEFAULT_DOMAINS = ['snomed', 'cie10', 'anmat'];
@@ -31,6 +32,18 @@ final class CatalogRepository
      * literal, no por equivalencia clínica asumida.
      */
     public const DENTAR_CATALOGS = ['dentar-pr', 'dentar-dx', 'nomenclador-odontologico-ar'];
+
+    /**
+     * Familia OFTAR: un único dominio (`oftar`) para los dos productos.
+     * `oftar-dx` sigue excluido de UVR; `oftar-pr` es el único valorable.
+     */
+    public const OFTAR_CATALOGS = ['oftar-pr', 'oftar-dx'];
+
+    /** Whitelist completa de catálogos publicados que acepta el explorador. */
+    public const PUBLISHED_CATALOGS = [
+        'dentar-pr', 'dentar-dx', 'nomenclador-odontologico-ar',
+        'oftar-pr', 'oftar-dx',
+    ];
 
     private const SNOMED_FSN = '900000000000003001';
     private const SNOMED_SYNONYM = '900000000000013009';
@@ -58,6 +71,9 @@ final class CatalogRepository
         'prestaciones' => ['medical', 'mental_health'],
         'programas' => ['rehabilitation'],
         'vademecum' => ['pharma'],
+        // Los catálogos OFTAR también son `medical`; el ámbito se restringe
+        // además por family_code = 'oftar' en osCatalogBranch().
+        'oftar' => ['medical'],
     ];
 
     /** @var array<string, array{table: string, field: string}> */
@@ -210,6 +226,7 @@ final class CatalogRepository
         'nomenclador' => ['es' => 'Nomencladores', 'en' => 'Nomenclators', 'pt' => 'Nomencladores'],
         'vademecum' => ['es' => 'Vademécum', 'en' => 'Drug catalog', 'pt' => 'Catálogo de medicamentos'],
         'loinc' => ['es' => 'LOINC', 'en' => 'LOINC', 'pt' => 'LOINC'],
+        'oftar' => ['es' => 'OFTAR', 'en' => 'OFTAR', 'pt' => 'OFTAR'],
     ];
 
     /** @var array<string, bool> */
@@ -230,10 +247,10 @@ final class CatalogRepository
 
     public static function isValidCatalog(string $catalog): bool
     {
-        return in_array($catalog, self::DENTAR_CATALOGS, true);
+        return in_array($catalog, self::PUBLISHED_CATALOGS, true);
     }
 
-    /** Normaliza el parámetro opcional de catálogo DENTAR. */
+    /** Normaliza el parámetro opcional de catálogo publicado. */
     public static function normalizeCatalog(?string $catalog): ?string
     {
         return self::normalizeCatalogs($catalog)[0] ?? null;
@@ -263,7 +280,7 @@ final class CatalogRepository
         $values = array_keys($values);
         sort($values, SORT_STRING);
 
-        return array_slice($values, 0, count(self::DENTAR_CATALOGS));
+        return array_slice($values, 0, count(self::PUBLISHED_CATALOGS));
     }
 
     /**
@@ -516,9 +533,15 @@ final class CatalogRepository
         $catalogs = self::normalizeCatalogs($catalog);
         $filters = self::normalizeFilters($filters);
         if ($catalogs !== []) {
-            // El filtro DENTAR implica el dominio odontología aunque el usuario
-            // no haya elegido explícitamente ese dominio en el formulario.
-            $domains = ['odontologia'];
+            // El filtro de catálogo implica su dominio aunque el usuario no
+            // haya marcado explícitamente ese dominio en el formulario.
+            $catalogDomains = [];
+            foreach ($catalogs as $catalogCode) {
+                $catalogDomains[] = in_array($catalogCode, self::OFTAR_CATALOGS, true)
+                    ? 'oftar'
+                    : 'odontologia';
+            }
+            $domains = array_values(array_unique($catalogDomains));
         } elseif ($filters !== []) {
             // Los filtros estructurados solo existen en el motor os_catalog.
             $domains = array_values(array_intersect(
@@ -658,18 +681,20 @@ final class CatalogRepository
                 continue;
             }
 
-            // Los catálogos DENTAR viven en os_catalog con domain_type 'dental'.
-            // Con filtro de producto solo se consulta esa rama y se excluyen las
-            // tablas nativas de odontología para no mezclar fuentes.
-            if ($catalogs !== [] && $domain !== 'odontologia') {
+            // Los catálogos DENTAR y OFTAR viven en os_catalog. Con filtro de
+            // producto solo se consulta su rama y se excluyen las fuentes
+            // nativas para no mezclar resultados.
+            if ($catalogs !== [] && !in_array($domain, ['odontologia', 'oftar'], true)) {
                 continue;
             }
             if ($filters !== [] && !isset(self::OS_CATALOG_DOMAIN_TYPES[$domain])) {
                 continue;
             }
 
-            $source = self::SOURCE_TABLE[$domain];
-            $nativeExists = self::tableExists($pdo, $source['table']);
+            // OFTAR no tiene tabla nativa: su búsqueda pasa siempre por
+            // osCatalogBranch() con family_code = 'oftar'.
+            $source = self::SOURCE_TABLE[$domain] ?? ['table' => '', 'field' => ''];
+            $nativeExists = $source['table'] !== '' && self::tableExists($pdo, $source['table']);
             $osTypes = self::OS_CATALOG_DOMAIN_TYPES[$domain] ?? [];
             $osExists = $osTypes !== [] && self::osCatalogTablesExist($pdo);
 
@@ -820,6 +845,13 @@ final class CatalogRepository
         }
 
         $extraWhere = '';
+        // Un mismo producto no debe aparecer dos veces bajo "Todos": OFTAR
+        // también tiene domain_type 'medical', igual que 'prestaciones'.
+        if ($domain === 'oftar') {
+            $extraWhere .= "   AND cat.family_code = 'oftar'\n";
+        } else {
+            $extraWhere .= "   AND (cat.family_code IS NULL OR cat.family_code <> 'oftar')\n";
+        }
         if ($catalogNames !== []) {
             $extraWhere .= '   AND cat.code IN (' . implode(', ', $catalogNames) . ")\n";
         }
@@ -2921,11 +2953,17 @@ final class CatalogRepository
             return '';
         }
 
+        // OFTAR comparte `domain_type = medical` con prestaciones: el prefijo
+        // del catálogo resuelve la ambigüedad antes de mirar el tipo.
         $domain = '';
-        foreach (self::OS_CATALOG_DOMAIN_TYPES as $portalDomain => $types) {
-            if (in_array($domainType, $types, true)) {
-                $domain = (string) $portalDomain;
-                break;
+        if (in_array($catalogCode, self::OFTAR_CATALOGS, true)) {
+            $domain = 'oftar';
+        } else {
+            foreach (self::OS_CATALOG_DOMAIN_TYPES as $portalDomain => $types) {
+                if (in_array($domainType, $types, true)) {
+                    $domain = (string) $portalDomain;
+                    break;
+                }
             }
         }
         if ($domain === '' || !self::isValidDomain($domain)) {

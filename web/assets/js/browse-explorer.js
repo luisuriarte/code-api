@@ -820,7 +820,7 @@
 
         // La whitelist viene del servidor (mismo conjunto que el backend).
         // Evita que un catálogo publicado sea descartado por una lista fija.
-        var allowed = (form.getAttribute('data-catalogs') || 'dentar-pr,dentar-dx,nomenclador-odontologico-ar')
+        var allowed = (form.getAttribute('data-catalogs') || 'dentar-pr,dentar-dx,nomenclador-odontologico-ar,oftar-pr,oftar-dx')
             .split(',').map(function (code) { return code.trim(); }).filter(Boolean);
         var catalogs = dedupe(catalogValues).filter(function (code) {
             return allowed.indexOf(code) !== -1;
@@ -856,7 +856,7 @@
     }
 
     function syncDomainForm(form, code) {
-        if (code !== 'odontologia') {
+        if (code !== 'odontologia' && code !== 'oftar') {
             Array.prototype.forEach.call(form.querySelectorAll('input[name="catalog[]"]'), function (input) {
                 input.checked = false;
             });

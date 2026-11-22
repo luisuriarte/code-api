@@ -297,6 +297,8 @@ browse:
     identifier_system_snomed: "SNOMED-CT"
     identifier_system_dentar_pr: "DENTAR-PR"
     identifier_system_dentar_dx: "DENTAR-DX"
+    identifier_system_oftar_pr: "OFTAR-PR"
+    identifier_system_oftar_dx: "OFTAR-DX"
     source_attributes: "Campos de la fuente"
     source_attributes_note: "Valores literales del Nomenclador Odontológico Nacional. No constituyen criterios clínicos derivados."
     source_attribute_factura: "Facturable"
@@ -319,7 +321,8 @@ browse:
     catalogs: "Catálogos publicados"
     family: "Familia"
     family_dentar: "DENTAR (odontología)"
-    reserved_note: "Solo estos catálogos se pueden consultar. Las etiquetas DENTAR-*/OS-* están en preparación y no devuelven resultados."
+    family_oftar: "OFTAR (oftalmología)"
+    reserved_note: "Solo estos catálogos se pueden consultar. Las etiquetas DENTAR-*/OS-* están en preparación y no devuelven resultados. OFTAR-DX no tiene UVR: la valoración corresponde a OFTAR-PR."
     type: "Tipo"
     category: "Categoría"
     status: "Estado"
@@ -502,6 +505,10 @@ dentar:
     cta_primary: "Consultar DENTAR"
     cta_secondary: "Ver documentación de la API"
     cta_contact: "Contactar a Origen Salud"
+
+oftar:
+    pr_badge: "OFTAR-PR"
+    dx_badge: "OFTAR-DX"
 
 admin:
     brand: "Administración de catálogos"
