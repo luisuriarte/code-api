@@ -166,20 +166,6 @@ foreach ($filters as $key => $code) {
                                class="peer h-13 w-full rounded-2xl border border-line bg-paper/80 pr-20 pl-12 text-base text-ink shadow-sm outline-none transition placeholder:text-muted focus:border-teal focus:bg-white focus:ring-4 focus:ring-teal/15 sm:text-lg">
                         <kbd class="pointer-events-none absolute top-1/2 right-4 hidden -translate-y-1/2 rounded-md border border-line bg-white px-2 py-0.5 font-mono text-[11px] text-muted peer-focus:hidden sm:block">/</kbd>
                     </div>
-                    <button type="button"
-                            popovertarget="browse-filters"
-                            aria-label="<?= e($t('browse.filters')) ?>"
-                            class="relative inline-flex h-13 shrink-0 items-center gap-2 rounded-2xl border border-line bg-white px-3 text-sm font-semibold text-ink shadow-sm transition hover:border-teal hover:text-teal-dark focus:outline-none focus:ring-4 focus:ring-teal/15 sm:px-4">
-                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path d="M4 6h16M7 12h10m-7 6h4"></path>
-                        </svg>
-                        <span class="hidden sm:inline"><?= e($t('browse.filters')) ?></span>
-                        <?php if ($activeFilterCount > 0): ?>
-                            <span class="grid size-5 place-items-center rounded-full bg-teal text-[11px] font-bold text-white">
-                                <?= $activeFilterCount ?>
-                            </span>
-                        <?php endif; ?>
-                    </button>
                     <button type="submit"
                             class="inline-flex h-13 shrink-0 items-center rounded-2xl bg-teal px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-4 focus:ring-teal/25 sm:px-6">
                         <span class="hidden sm:inline"><?= e($t('browse.button')) ?></span>
@@ -188,16 +174,83 @@ foreach ($filters as $key => $code) {
                         </svg>
                     </button>
                 </div>
+                <div class="browse-filter-bar mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <label class="block min-w-0">
+                        <span class="block text-[11px] font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.family')) ?></span>
+                        <select name="family"
+                                class="mt-1 h-10 w-full rounded-xl border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-teal focus:ring-4 focus:ring-teal/15">
+                            <option value=""><?= e($t('browse.filter_all')) ?></option>
+                            <?php foreach ($facets['families'] as $option): ?>
+                                <?php $code = (string) ($option['code'] ?? ''); ?>
+                                <?php if ($code === '') { continue; } ?>
+                                <option value="<?= e($code) ?>" <?= ($filters['family'] ?? '') === $code ? 'selected' : '' ?>>
+                                    <?= e($facetLabels['family'][$code] ?? ($option['label'] ?? $code)) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label class="block min-w-0">
+                        <span class="block text-[11px] font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.code')) ?></span>
+                        <select name="catalog"
+                                class="mt-1 h-10 w-full rounded-xl border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-teal focus:ring-4 focus:ring-teal/15">
+                            <option value=""><?= e($t('browse.filter_all')) ?></option>
+                            <?php foreach ($publishedCatalogs as $option): ?>
+                                <option value="<?= e($option['code']) ?>" <?= in_array($option['code'], $catalogs, true) ? 'selected' : '' ?>>
+                                    <?= e($option['label']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label class="block min-w-0">
+                        <span class="block text-[11px] font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.type')) ?></span>
+                        <select name="type"
+                                class="mt-1 h-10 w-full rounded-xl border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-teal focus:ring-4 focus:ring-teal/15">
+                            <option value=""><?= e($t('browse.filter_all')) ?></option>
+                            <?php foreach ($facets['types'] as $option): ?>
+                                <?php $code = (string) ($option['code'] ?? ''); ?>
+                                <?php if ($code === '') { continue; } ?>
+                                <option value="<?= e($code) ?>" <?= ($filters['type'] ?? '') === $code ? 'selected' : '' ?>>
+                                    <?= e($facetLabels['type'][$code] ?? ($option['label'] ?? $code)) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label class="block min-w-0">
+                        <span class="block text-[11px] font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.category')) ?></span>
+                        <select name="category"
+                                class="mt-1 h-10 w-full rounded-xl border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-teal focus:ring-4 focus:ring-teal/15">
+                            <option value=""><?= e($t('browse.filter_all')) ?></option>
+                            <?php foreach ($facets['categories'] as $option): ?>
+                                <?php $code = (string) ($option['code'] ?? ''); ?>
+                                <?php if ($code === '') { continue; } ?>
+                                <option value="<?= e($code) ?>" <?= ($filters['category'] ?? '') === $code ? 'selected' : '' ?>>
+                                    <?= e($facetLabels['category'][$code] ?? ($option['label'] ?? $code)) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </div>
+
+                <input type="hidden" name="domain" value="<?= e($domain) ?>">
+                <?php foreach (['status', 'version', 'validity'] as $hiddenFilter): ?>
+                    <?php if (($filters[$hiddenFilter] ?? '') !== ''): ?>
+                        <input type="hidden" name="<?= e($hiddenFilter) ?>" value="<?= e($filters[$hiddenFilter]) ?>">
+                    <?php endif; ?>
+                <?php endforeach; ?>
+
                 <?php if ($chips !== []): ?>
                     <div class="mt-3 flex flex-wrap items-center gap-2">
                         <span class="text-[11px] font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.active_filters')) ?></span>
                         <?php foreach ($chips as $chip): ?>
                             <a href="<?= e($chip['url']) ?>"
                                class="inline-flex items-center gap-1.5 rounded-full border border-teal/25 bg-mint px-3 py-1 text-xs font-medium text-teal-dark transition hover:border-teal hover:bg-white">
-                                <?= e($chip['label']) ?>
-                                <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                                    <path d="M18 6 6 18M6 6l12 12"></path>
-                                </svg>
+                                 <?= e($chip['label']) ?>
+                                 <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                     <path d="M18 6 6 18M6 6l12 12"></path>
+                                 </svg>
                             </a>
                         <?php endforeach; ?>
                         <a href="<?= e($clearFiltersUrl()) ?>"
@@ -206,118 +259,13 @@ foreach ($filters as $key => $code) {
                         </a>
                     </div>
                 <?php endif; ?>
-            </div>
 
-            <div id="browse-filters"
-                 popover="auto"
-                 aria-label="<?= e($t('browse.filters')) ?>"
-                 class="browse-filter-drawer m-0 inset-y-0 start-auto end-0 h-dvh w-[min(30rem,100vw)] max-w-full translate-x-full rounded-none border-l border-line bg-white p-0 text-ink opacity-0 shadow-panel open:translate-x-0 open:opacity-100 backdrop:bg-ink/40 backdrop:backdrop-blur-sm">
-                <div class="flex h-full flex-col">
-                    <div class="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
-                        <div>
-                            <h2 class="text-lg font-semibold tracking-tight"><?= e($t('browse.filters')) ?></h2>
-                            <p class="mt-0.5 text-xs text-muted"><?= e($t('browse.explore_hint')) ?></p>
-                        </div>
-                        <button type="button"
-                                popovertarget="browse-filters"
-                                popovertargetaction="hide"
-                                aria-label="<?= e($t('browse.close_filters')) ?>"
-                                class="grid size-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-teal hover:text-teal-dark focus:outline-none focus:ring-4 focus:ring-teal/15">
-                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M18 6 6 18M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <div class="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
-                        <fieldset class="space-y-2">
-                            <legend class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.domain_label')) ?></legend>
-                            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm transition has-checked:border-teal has-checked:bg-mint has-checked:text-teal-dark hover:border-teal/60">
-                                <input class="peer sr-only" type="radio" name="domain" value="" <?= $domain === '' ? 'checked' : '' ?>>
-                                <span class="grid size-4 shrink-0 place-items-center rounded-full border border-line peer-checked:border-teal peer-checked:bg-teal"></span>
-                                <span class="font-medium"><?= e($t('browse.domain_all')) ?></span>
-                            </label>
-                            <?php foreach ($domains as $option): ?>
-                                <?php $code = (string) ($option['code'] ?? ''); ?>
-                                <?php if ($code === '') { continue; } ?>
-                                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm transition has-checked:border-teal has-checked:bg-mint has-checked:text-teal-dark hover:border-teal/60">
-                                    <input class="peer sr-only" type="radio" name="domain" value="<?= e($code) ?>" <?= $domain === $code ? 'checked' : '' ?>>
-                                    <span class="grid size-4 shrink-0 place-items-center rounded-full border border-line peer-checked:border-teal peer-checked:bg-teal"></span>
-                                    <span class="min-w-0 flex-1 truncate font-medium"><?= e((string) ($option['label'] ?? $code)) ?></span>
-                                    <code class="text-[11px] text-muted"><?= e($code) ?></code>
-                                </label>
-                            <?php endforeach; ?>
-                        </fieldset>
-
-                        <fieldset class="space-y-2">
-                            <legend class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.catalogs')) ?></legend>
-                            <?php foreach ($publishedCatalogs as $option): ?>
-                                <?php $isChecked = in_array($option['code'], $catalogs, true); ?>
-                                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm transition has-checked:border-teal has-checked:bg-mint has-checked:text-teal-dark hover:border-teal/60">
-                                    <input class="peer sr-only" type="checkbox" name="catalog[]" value="<?= e($option['code']) ?>" <?= $isChecked ? 'checked' : '' ?>>
-                                    <span class="grid size-4 shrink-0 place-items-center rounded-md border border-line text-white peer-checked:border-teal peer-checked:bg-teal">
-                                        <svg class="size-3 opacity-0 peer-checked:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
-                                            <path d="m5 13 4 4L19 7"></path>
-                                        </svg>
-                                    </span>
-                                    <span class="min-w-0 flex-1 truncate font-medium"><?= e($option['label']) ?></span>
-                                    <span class="rounded-full bg-paper px-2 py-0.5 text-[10px] font-semibold text-muted"><?= e($t($option['tag'])) ?></span>
-                                </label>
-                            <?php endforeach; ?>
-                            <p class="pt-1 text-[11px] leading-5 text-muted"><?= e($t('browse.reserved_note')) ?></p>
-                        </fieldset>
-
-                        <?php foreach ($facetGroups as $group): ?>
-                            <?php if (count($group['options']) < 2) { continue; } ?>
-                            <fieldset class="space-y-2">
-                                <legend class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted"><?= e($t($group['label'])) ?></legend>
-                                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm transition has-checked:border-teal has-checked:bg-mint has-checked:text-teal-dark hover:border-teal/60">
-                                    <input class="peer sr-only" type="radio" name="<?= e($group['key']) ?>" value="" <?= ($filters[$group['key']] ?? '') === '' ? 'checked' : '' ?>>
-                                    <span class="grid size-4 shrink-0 place-items-center rounded-full border border-line peer-checked:border-teal peer-checked:bg-teal"></span>
-                                    <span class="font-medium"><?= e($t('browse.filter_all')) ?></span>
-                                </label>
-                                <?php foreach ($group['options'] as $option): ?>
-                                    <?php
-                                    $code = (string) ($option['code'] ?? '');
-                                    if ($code === '') { continue; }
-                                    ?>
-                                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm transition has-checked:border-teal has-checked:bg-mint has-checked:text-teal-dark hover:border-teal/60">
-                                        <input class="peer sr-only" type="radio" name="<?= e($group['key']) ?>" value="<?= e($code) ?>" <?= ($filters[$group['key']] ?? '') === $code ? 'checked' : '' ?>>
-                                        <span class="grid size-4 shrink-0 place-items-center rounded-full border border-line peer-checked:border-teal peer-checked:bg-teal"></span>
-                                        <span class="min-w-0 flex-1 truncate"><?= e((string) ($option['label'] ?? $code)) ?></span>
-                                    </label>
-                                <?php endforeach; ?>
-                            </fieldset>
-                        <?php endforeach; ?>
-
-                        <fieldset class="space-y-2">
-                            <legend class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.validity')) ?></legend>
-                            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm transition has-checked:border-teal has-checked:bg-mint has-checked:text-teal-dark hover:border-teal/60">
-                                <input class="peer sr-only" type="radio" name="validity" value="" <?= ($filters['validity'] ?? '') === '' ? 'checked' : '' ?>>
-                                <span class="grid size-4 shrink-0 place-items-center rounded-full border border-line peer-checked:border-teal peer-checked:bg-teal"></span>
-                                <span class="font-medium"><?= e($t('browse.validity_all')) ?></span>
-                            </label>
-                            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm transition has-checked:border-teal has-checked:bg-mint has-checked:text-teal-dark hover:border-teal/60">
-                                <input class="peer sr-only" type="radio" name="validity" value="current" <?= ($filters['validity'] ?? '') === 'current' ? 'checked' : '' ?>>
-                                <span class="grid size-4 shrink-0 place-items-center rounded-full border border-line peer-checked:border-teal peer-checked:bg-teal"></span>
-                                <span class="font-medium"><?= e($t('browse.validity_current')) ?></span>
-                            </label>
-                        </fieldset>
-                    </div>
-
-                    <div class="flex items-center justify-between gap-3 border-t border-line bg-paper/70 px-5 py-4">
-                        <a href="<?= e($clearFiltersUrl()) ?>"
-                           class="text-sm font-semibold text-muted underline decoration-dotted underline-offset-4 transition hover:text-teal-dark">
-                            <?= e($t('browse.reset_filters')) ?>
-                        </a>
-                        <button type="submit"
-                                class="inline-flex items-center gap-2 rounded-xl bg-teal px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-dark focus:outline-none focus:ring-4 focus:ring-teal/25">
-                            <?= e($t('browse.button')) ?>
-                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M5 12h14m-6-6 6 6-6 6"></path>
-                            </svg>
-                        </button>
-                    </div>
+                <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-[11px] text-muted"><?= e($t('browse.explore_hint')) ?></p>
+                    <a href="<?= e($clearFiltersUrl()) ?>"
+                       class="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 transition hover:text-teal-dark">
+                        <?= e($t('browse.reset_filters')) ?>
+                    </a>
                 </div>
             </div>
         </form>

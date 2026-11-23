@@ -148,20 +148,23 @@ final class BrowseController
     {
         $raw = $_GET['catalog'] ?? '';
 
+        // Los siete catálogos publicados separados por coma ocupan 136 caracteres.
+        // Un tope de 64 recortaba "…regional-ar" y descartaba el NOA al combinarlo
+        // con CAO, aunque ambos estuvieran en la whitelist.
         if (is_array($raw)) {
             $values = [];
             foreach ($raw as $value) {
                 if (!is_scalar($value)) {
                     continue;
                 }
-                $code = Validator::text($value, 32);
+                $code = Validator::text($value, 64);
                 if ($code !== '') {
                     $values[] = $code;
                 }
             }
             $catalog = implode(',', $values);
         } else {
-            $catalog = is_scalar($raw) ? Validator::text($raw, 64) : '';
+            $catalog = is_scalar($raw) ? Validator::text($raw, 200) : '';
         }
 
         return $catalog === '' ? null : $catalog;

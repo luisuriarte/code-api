@@ -1290,13 +1290,17 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $locale) {
     $check(isset($dentarMessages['nomenclador_badge']), $locale . ': falta dentar.nomenclador_badge.');
 }
 
-// 4c. Code Browser rediseñado: barra full-width, drawer de filtros y sin rail izquierdo.
+// 4c. Code Browser rediseñado: barra full-width, filtros en línea y sin rail izquierdo.
 $browseView = (string) file_get_contents($root . '/portal/Views/browse.php');
 $check(
-    str_contains($browseView, 'popovertarget="browse-filters"')
-    && str_contains($browseView, 'popover="auto"')
-    && str_contains($browseView, 'browse-filter-drawer'),
-    'Los filtros deben abrirse en un drawer nativo en el borde derecho.'
+    str_contains($browseView, 'browse-filter-bar')
+    && str_contains($browseView, 'name="family"')
+    && str_contains($browseView, 'name="catalog"')
+    && str_contains($browseView, 'name="type"')
+    && str_contains($browseView, 'name="category"')
+    && !str_contains($browseView, 'browse-filter-drawer')
+    && !str_contains($browseView, 'popovertarget="browse-filters"'),
+    'Los filtros deben ser una barra en línea con Familia, Código, Tipo y Categoría.'
 );
 $check(
     !str_contains($browseView, 'browse-rail')
@@ -1311,8 +1315,14 @@ $check(
 );
 $check(
     !str_contains($browseView, 'array_merge($reservedDentar, $reservedOs)')
-    && str_contains($browseView, "count(\$group['options']) < 2"),
-    'El drawer no debe mostrar etiquetas no consultables ni facetas con una sola opción.'
+    && !str_contains($browseView, 'browse-cat--proposed'),
+    'La barra no debe mostrar etiquetas no consultables.'
+);
+$browseControllerSource = (string) file_get_contents($root . '/portal/Controllers/BrowseController.php');
+$check(
+    str_contains($browseControllerSource, 'Validator::text($value, 64)')
+    && str_contains($browseControllerSource, 'Validator::text($raw, 200)'),
+    'El parámetro catalog debe admitir la lista completa de catálogos (CAO + NOA no debe truncarse).'
 );
 $check(
     str_contains($resultsSource, 'browse-results--explorer')
