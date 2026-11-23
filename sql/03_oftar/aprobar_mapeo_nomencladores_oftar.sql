@@ -3,6 +3,11 @@
 -- sql/03_oftar/aprobar_mapeo_nomencladores_oftar.sql
 -- =============================================================================
 --
+-- EJECUCIÓN EN EL VPS (el rol `root` no existe en PostgreSQL):
+--   cd /var/www/html/origen.ar/code-api
+--   sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 \
+--     -f sql/03_oftar/aprobar_mapeo_nomencladores_oftar.sql
+--
 -- QUÉ HACE
 --   1. Aprueba SOLO `preferred_term` de los textos importados desde los dos
 --      nomencladores de origen. `definition` y `external_display` siguen

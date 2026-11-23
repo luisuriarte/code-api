@@ -3,6 +3,11 @@
 -- sql/03_oftar/verificacion_nomencladores_oftar.sql
 -- =============================================================================
 --
+-- EJECUCIÓN EN EL VPS (el rol `root` no existe en PostgreSQL):
+--   cd /var/www/html/origen.ar/code-api
+--   sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 \
+--     -f sql/03_oftar/verificacion_nomencladores_oftar.sql
+--
 -- Verificación posterior a:
 --   1) nomencladores_oftar_mapping.sql
 --   2) nomenclador_oftalmologico_cao.sql

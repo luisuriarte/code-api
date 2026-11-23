@@ -3189,6 +3189,33 @@ $check(
     'Debe existir una verificación de solo lectura de los nomencladores y su exclusión UVR.'
 );
 
+$oftarNomPostVerifyPath = $root . '/sql/03_oftar/verificacion_post_aprobacion_nomencladores_oftar.sql';
+$oftarNomPostVerify = is_file($oftarNomPostVerifyPath)
+    ? (string) file_get_contents($oftarNomPostVerifyPath)
+    : '';
+$check(
+    str_contains($oftarNomPostVerify, 'BEGIN READ ONLY;')
+        && str_contains($oftarNomPostVerify, 'ROLLBACK;')
+        && str_contains($oftarNomPostVerify, 'v_oftar_search_catalog')
+        && str_contains($oftarNomPostVerify, 'os_field_review')
+        && str_contains($oftarNomPostVerify, 'os_oftar_nomenclador_match')
+        && str_contains($oftarNomPostVerify, 'os_catalog_relation'),
+    'Debe existir la verificación posterior a la aprobación de los nomencladores OFTAR.'
+);
+
+$oftarPairReviewPath = $root . '/sql/03_oftar/revision_pares_nomencladores_oftar.sql';
+$oftarPairReview = is_file($oftarPairReviewPath)
+    ? (string) file_get_contents($oftarPairReviewPath)
+    : '';
+$check(
+    str_contains($oftarPairReview, 'BEGIN READ ONLY;')
+        && str_contains($oftarPairReview, 'ROLLBACK;')
+        && str_contains($oftarPairReview, 'difiere_literalmente')
+        && str_contains($oftarPairReview, "m.review_status = 'proposed'")
+        && str_contains($oftarPairReview, 'nomenclador-oftalmologico-cao-ar'),
+    'Debe existir la lista de solo lectura de los pares CAO pendientes de revisión.'
+);
+
 $check(
     str_contains($approval, "f.review_status = 'unknown'")
         && str_contains($approval, 'hash_esperado')

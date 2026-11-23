@@ -3,6 +3,11 @@
 -- sql/03_oftar/nomencladores_oftar_mapping.sql
 -- =============================================================================
 --
+-- EJECUCIÓN EN EL VPS (el rol `root` no existe en PostgreSQL):
+--   cd /var/www/html/origen.ar/code-api
+--   sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 \
+--     -f sql/03_oftar/nomencladores_oftar_mapping.sql
+--
 -- QUÉ HACE
 --   Crea la tabla gobernada de correspondencias entre los nomencladores
 --   oftalmológicos de origen y los ítems propios de OFTAR-PR.

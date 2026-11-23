@@ -3,6 +3,10 @@
 -- sql/03_oftar/nomenclador_oftalmologico_cao.sql
 -- =============================================================================
 --
+-- EJECUCIÓN EN EL VPS (el rol `root` no existe en PostgreSQL):
+--   cd /var/www/html/origen.ar/code-api
+--   sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/03_oftar/nomenclador_oftalmologico_cao.sql
+--
 -- Generado por tools/generate_nomencladores_oftalmologicos_sql.py desde
 -- tools/sources/oftar/cao.csv. NO EDITAR A MANO; volver a generar.
 --
