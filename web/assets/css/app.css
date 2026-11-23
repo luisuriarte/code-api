@@ -1354,7 +1354,9 @@ svg {
    Portal: DENTAR (sección de primer nivel)
    Reutiliza variables, botones, contenedores y breakpoint del sitio.
    ------------------------------------------------------------------ */
-.page-dentar {
+.page-dentar,
+.page-oftar,
+.page-products {
     --dentar-navy: #071e31;
     --dentar-teal: #0c7c86;
     --dentar-mint: #d9f2ec;
