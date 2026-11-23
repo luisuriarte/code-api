@@ -19,7 +19,7 @@ use OrigenSalud\Web\I18n;
 $baseUrl = rtrim(Config::baseUrl(), '/');
 
 /** Rutas públicas existentes en portal/Router.php (o en la capa legacy). */
-$publicPaths = ['/', '/productos', '/dentar', '/oftar', '/browse', '/docs', '/about', '/contact'];
+$publicPaths = ['/', '/dentar', '/oftar', '/browse', '/docs', '/about', '/contact'];
 
 $locales = I18n::SUPPORTED;
 

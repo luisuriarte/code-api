@@ -19,7 +19,6 @@ use OrigenSalud\Portal\Controllers\ContactController;
 use OrigenSalud\Portal\Controllers\DentarController;
 use OrigenSalud\Portal\Controllers\HomeController;
 use OrigenSalud\Portal\Controllers\OftarController;
-use OrigenSalud\Portal\Controllers\ProductosController;
 use OrigenSalud\Web\I18n;
 
 /**
@@ -89,12 +88,6 @@ final class Router
 
         if ($section === 'docs') {
             $this->legacy('/docs', $locale);
-
-            return;
-        }
-
-        if ($section === 'productos') {
-            ProductosController::index($locale, $currentPath);
 
             return;
         }
