@@ -8,13 +8,15 @@ $mobileView = $focus !== '' ? 'detail' : 'results';
 
 // Catálogos publicados admitidos por el backend: DENTAR y OFTAR.
 $publishedCatalogs = [
-    ['code' => 'dentar-pr', 'label' => $t('dentar.pr_badge'), 'tag' => 'browse.tag_own', 'family' => 'dentar'],
-    ['code' => 'dentar-dx', 'label' => $t('dentar.dx_badge'), 'tag' => 'browse.tag_own', 'family' => 'dentar'],
-    ['code' => 'nomenclador-odontologico-ar', 'label' => $t('dentar.nomenclador_badge'), 'tag' => 'browse.tag_source', 'family' => 'dentar'],
-    ['code' => 'oftar-pr', 'label' => $t('oftar.pr_badge'), 'tag' => 'browse.tag_own', 'family' => 'oftar'],
-    ['code' => 'oftar-dx', 'label' => $t('oftar.dx_badge'), 'tag' => 'browse.tag_own', 'family' => 'oftar'],
-    ['code' => 'nomenclador-oftalmologico-cao-ar', 'label' => $t('oftar.cao_badge'), 'tag' => 'browse.tag_source', 'family' => 'oftar'],
-    ['code' => 'nomenclador-oftalmologico-regional-ar', 'label' => $t('oftar.regional_badge'), 'tag' => 'browse.tag_source', 'family' => 'oftar'],
+    ['code' => 'dentar-pr', 'label' => $t('dentar.pr_badge'), 'tag' => 'browse.tag_own', 'families' => ['dentar']],
+    ['code' => 'dentar-dx', 'label' => $t('dentar.dx_badge'), 'tag' => 'browse.tag_own', 'families' => ['dentar']],
+    ['code' => 'oftar-pr', 'label' => $t('oftar.pr_badge'), 'tag' => 'browse.tag_own', 'families' => ['oftar']],
+    ['code' => 'oftar-dx', 'label' => $t('oftar.dx_badge'), 'tag' => 'browse.tag_own', 'families' => ['oftar']],
+    // Los tres nomencladores de origen son opciones separadas, con etiqueta
+    // explícita, y pertenecen además a la familia de su producto.
+    ['code' => 'nomenclador-odontologico-ar', 'label' => $t('dentar.nomenclador_badge'), 'tag' => 'browse.tag_source', 'families' => ['dentar', 'nomenclador']],
+    ['code' => 'nomenclador-oftalmologico-cao-ar', 'label' => $t('oftar.cao_badge'), 'tag' => 'browse.tag_source', 'families' => ['oftar', 'nomenclador']],
+    ['code' => 'nomenclador-oftalmologico-regional-ar', 'label' => $t('oftar.regional_badge'), 'tag' => 'browse.tag_source', 'families' => ['oftar', 'nomenclador']],
 ];
 
 // Catálogos en artefactos o propuestos. Ninguno se enlaza como consultable.
@@ -66,6 +68,7 @@ foreach ($facetGroups as $group) {
 // La familia activa decide qué opciones se muestran en "Código": sin familia
 // se listan dominios (SNOMED, CIE-10, LOINC…); con DENTAR/OFTAR, sus catálogos.
 $codeFamily = (string) ($filters['family'] ?? '');
+$codeAllSelected = $domainCodes === [] && $catalogs === [];
 $activeFilterCount = count($domainCodes) + count($catalogs) + count($filters);
 
 $catalogRemoveUrl = static function (string $code) use ($stateParams, $paramsUrl, $baseBrowsePath, $catalogs): string {
@@ -200,9 +203,13 @@ foreach ($filters as $key => $code) {
                                 data-code-select
                                 name="<?= $codeFamily === '' ? 'domain[]' : 'catalog[]' ?>"
                                 class="browse-code-select mt-1 w-full rounded-xl border border-line bg-white px-3 py-1 text-sm text-ink outline-none transition focus:border-teal focus:ring-4 focus:ring-teal/15">
+                                            <option value="__all__" data-code-kind="all" data-code-select-all
+                                    <?= $codeAllSelected ? 'selected' : '' ?>>
+                                <?= e($t('browse.filter_all')) ?>
+                            </option>
                             <?php foreach ($domains as $option): ?>
                                 <?php $code = (string) ($option['code'] ?? ''); ?>
-                                <?php if ($code === '') { continue; } ?>
+                                <?php if ($code === '' || ($codeFamily === '' && $code === 'nomenclador')) { continue; } ?>
                                 <option value="<?= e($code) ?>"
                                         data-code-kind="domain"
                                         <?= $codeFamily === '' ? '' : 'hidden disabled' ?>
@@ -211,16 +218,18 @@ foreach ($filters as $key => $code) {
                                 </option>
                             <?php endforeach; ?>
                             <?php foreach ($publishedCatalogs as $option): ?>
-                                <?php $showCatalog = $codeFamily !== '' && $option['family'] === $codeFamily; ?>
+                                <?php $showCatalog = $codeFamily === '' || in_array($codeFamily, $option['families'], true); ?>
                                 <option value="<?= e($option['code']) ?>"
                                         data-code-kind="catalog"
-                                        data-family="<?= e($option['family']) ?>"
+                                        data-families="<?= e(implode(',', $option['families'])) ?>"
                                         <?= $showCatalog ? '' : 'hidden disabled' ?>
                                         <?= in_array($option['code'], $catalogs, true) ? 'selected' : '' ?>>
                                     <?= e($option['label']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <input type="hidden" name="domain" value="<?= e($domain) ?>" data-code-hidden-domain>
+                        <input type="hidden" name="catalog" value="<?= e($catalog) ?>" data-code-hidden-catalog>
                         <span class="mt-1 block text-[11px] leading-5 text-muted"><?= e($t('browse.code_multi_hint')) ?></span>
                     </label>
 

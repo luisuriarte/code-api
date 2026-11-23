@@ -717,11 +717,8 @@ final class CatalogRepository
             }
 
             // Los catálogos DENTAR y OFTAR viven en os_catalog. Con filtro de
-            // producto solo se consulta su rama y se excluyen las fuentes
-            // nativas para no mezclar resultados.
-            if ($catalogs !== [] && !in_array($domain, ['odontologia', 'oftar'], true)) {
-                continue;
-            }
+            // producto solo se consultan esas ramas; las fuentes nativas
+            // (SNOMED, CIE-10, LOINC…) se combinan sin duplicar resultados.
             if ($filters !== [] && !isset(self::OS_CATALOG_DOMAIN_TYPES[$domain])) {
                 continue;
             }
@@ -737,7 +734,9 @@ final class CatalogRepository
                 continue;
             }
 
-            if ($nativeExists && $catalogs === [] && $filters === []) {
+            $nativeAllowed = $filters === []
+                && ($catalogs === [] || !in_array($domain, ['odontologia', 'oftar'], true));
+            if ($nativeExists && $nativeAllowed) {
                 $p = 'p' . $index++;
                 [$sql, $params] = self::branch(
                     $p,
@@ -752,7 +751,8 @@ final class CatalogRepository
                 $parameters += $params;
             }
 
-            if ($osExists) {
+            $osAllowed = $catalogs === [] || in_array($domain, ['odontologia', 'oftar'], true);
+            if ($osExists && $osAllowed) {
                 $p = 'p' . $index++;
                 [$sql, $params] = self::osCatalogBranch(
                     $p,

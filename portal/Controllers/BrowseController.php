@@ -147,50 +147,49 @@ final class BrowseController
         View::render($template, $data, $fragmentMode === '' ? 'main' : null);
     }
 
-    private static function domainParam(): string
+    /**
+     * El selector múltiple envía `domain[]`/`catalog[]`; los campos ocultos y
+     * las URLs canónicas usan `domain`/`catalog`. Se combinan ambos canales.
+     *
+     * @return list<string>
+     */
+    private static function paramValues(string $key): array
     {
-        $raw = $_GET['domain'] ?? '';
-
-        if (is_array($raw)) {
-            $values = [];
-            foreach ($raw as $value) {
-                if (!is_scalar($value)) {
+        $values = [];
+        foreach ([$key, $key . '[]'] as $name) {
+            $raw = $_GET[$name] ?? null;
+            if ($raw === null) {
+                continue;
+            }
+            $items = is_array($raw) ? $raw : [$raw];
+            foreach ($items as $item) {
+                if (!is_scalar($item)) {
                     continue;
                 }
-                $code = Validator::text($value, 64);
-                if ($code !== '') {
-                    $values[] = $code;
+                foreach (explode(',', (string) $item) as $value) {
+                    $code = Validator::text($value, 64);
+                    if ($code !== '') {
+                        $values[$code] = true;
+                    }
                 }
             }
-
-            return implode(',', $values);
         }
 
-        return is_scalar($raw) ? Validator::text($raw, 200) : '';
+        return array_keys($values);
+    }
+
+    private static function domainParam(): string
+    {
+        return implode(',', self::paramValues('domain'));
     }
 
     private static function catalogParam(): ?string
     {
-        $raw = $_GET['catalog'] ?? '';
-
         // Los siete catálogos publicados separados por coma ocupan 136 caracteres.
         // Un tope de 64 recortaba "…regional-ar" y descartaba el NOA al combinarlo
         // con CAO, aunque ambos estuvieran en la whitelist.
-        if (is_array($raw)) {
-            $values = [];
-            foreach ($raw as $value) {
-                if (!is_scalar($value)) {
-                    continue;
-                }
-                $code = Validator::text($value, 64);
-                if ($code !== '') {
-                    $values[] = $code;
-                }
-            }
-            $catalog = implode(',', $values);
-        } else {
-            $catalog = is_scalar($raw) ? Validator::text($raw, 200) : '';
-        }
+        $values = self::paramValues('catalog');
+        $catalog = implode(',', $values);
 
         return $catalog === '' ? null : $catalog;
     }

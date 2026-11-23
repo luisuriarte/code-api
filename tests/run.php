@@ -1299,6 +1299,12 @@ $check(
     && str_contains($browseView, "name=\"<?= \$codeFamily === '' ? 'domain[]' : 'catalog[]' ?>\"")
     && str_contains($browseView, 'data-code-kind="domain"')
     && str_contains($browseView, 'data-code-kind="catalog"')
+    && str_contains($browseView, 'data-code-select-all')
+    && str_contains($browseView, 'data-code-hidden-domain')
+    && str_contains($browseView, 'data-code-hidden-catalog')
+    && str_contains($browseView, 'nomenclador-odontologico-ar')
+    && str_contains($browseView, 'nomenclador-oftalmologico-cao-ar')
+    && str_contains($browseView, 'nomenclador-oftalmologico-regional-ar')
     && str_contains($browseView, 'name="type"')
     && str_contains($browseView, 'name="category"')
     && !str_contains($browseView, 'browse-filter-drawer')
@@ -1323,9 +1329,9 @@ $check(
 );
 $browseControllerSource = (string) file_get_contents($root . '/portal/Controllers/BrowseController.php');
 $check(
-    str_contains($browseControllerSource, 'Validator::text($value, 64)')
-    && str_contains($browseControllerSource, 'Validator::text($raw, 200)'),
-    'El parámetro catalog debe admitir la lista completa de catálogos (CAO + NOA no debe truncarse).'
+    str_contains($browseControllerSource, 'private static function paramValues(string $key): array')
+    && str_contains($browseControllerSource, 'Validator::text($value, 64)'),
+    'Los parámetros catalog/domain deben admitir la lista completa (CAO + NOA no debe truncarse).'
 );
 $check(
     str_contains($browseControllerSource, 'private static function domainParam()')
@@ -1335,8 +1341,10 @@ $check(
 $catalogRepoSource = (string) file_get_contents($root . '/portal/Repositories/CatalogRepository.php');
 $check(
     str_contains($catalogRepoSource, 'public static function normalizeDomains(')
-    && preg_match('/public static function search\(\s*string \$query,\s*array \$domains,/m', $catalogRepoSource) === 1,
-    'El repositorio debe buscar en varios dominios a la vez sin crear dominios nuevos.'
+    && preg_match('/public static function search\(\s*string \$query,\s*array \$domains,/m', $catalogRepoSource) === 1
+    && str_contains($catalogRepoSource, '$nativeAllowed = $filters === []')
+    && str_contains($catalogRepoSource, '$osAllowed = $catalogs === []'),
+    'El repositorio debe combinar dominios y catálogos sin crear dominios nuevos ni duplicar ramas.'
 );
 $check(
     str_contains($resultsSource, 'browse-results--explorer')
@@ -2916,7 +2924,7 @@ $check(
     'El contexto del Browser debe conservar el catálogo al cambiar a oftar y etiquetar sus identificadores.'
 );
 $check(
-    str_contains($browseJsSource, 'optionFamily === family')
+    str_contains($browseJsSource, 'function codeOptionMatches(option, family)')
     && str_contains($browseJsSource, 'oftar-pr,oftar-dx'),
     'Los hooks JS y el fallback de catálogos deben incluir oftar.'
 );

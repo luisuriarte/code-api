@@ -869,30 +869,71 @@
         return serializeLike(url, parsed);
     }
 
-    // El selector "Código" depende de la familia activa: sin familia muestra
-    // dominios (SNOMED, CIE-10…); con DENTAR/OFTAR muestra solo sus catálogos.
+    // El selector "Código" depende de la familia activa. Sin familia muestra
+    // todos los dominios y, además, los tres nomencladores como opciones
+    // separadas; con DENTAR/OFTAR muestra solo los catálogos de esa familia.
+    function codeOptionMatches(option, family) {
+        var kind = option.getAttribute('data-code-kind');
+        if (kind === 'all') {
+            return true;
+        }
+        if (kind === 'domain') {
+            return family === '';
+        }
+        var optionFamilies = (option.getAttribute('data-families') || '').split(',');
+        return family === '' || optionFamilies.indexOf(family) !== -1;
+    }
+
+    function updateCodeHidden(form, select) {
+        if (!form || !select) {
+            return;
+        }
+        var domains = [];
+        var catalogs = [];
+        Array.prototype.forEach.call(select.options, function (option) {
+            if (!option.selected || option.disabled) {
+                return;
+            }
+            var kind = option.getAttribute('data-code-kind');
+            if (kind === 'domain') {
+                domains.push(option.value);
+            } else if (kind === 'catalog') {
+                catalogs.push(option.value);
+            }
+        });
+
+        var hiddenDomain = form.querySelector('[data-code-hidden-domain]');
+        var hiddenCatalog = form.querySelector('[data-code-hidden-catalog]');
+        if (hiddenDomain) {
+            hiddenDomain.value = domains.join(',');
+        }
+        if (hiddenCatalog) {
+            hiddenCatalog.value = catalogs.join(',');
+        }
+
+        var allOption = select.querySelector('[data-code-select-all]');
+        if (allOption) {
+            allOption.selected = domains.length === 0 && catalogs.length === 0;
+        }
+    }
+
     function syncCodeSelect(form, family) {
         var select = form ? form.querySelector('[data-code-select]') : null;
         if (!select) {
             return;
         }
 
-        var domainMode = family === '';
-        select.name = domainMode ? 'domain[]' : 'catalog[]';
+        select.name = family === '' ? 'domain[]' : 'catalog[]';
 
         Array.prototype.forEach.call(select.options, function (option) {
-            var kind = option.getAttribute('data-code-kind');
-            var optionFamily = option.getAttribute('data-family') || '';
-            var match = domainMode
-                ? kind === 'domain'
-                : kind === 'catalog' && optionFamily === family;
-
+            var match = codeOptionMatches(option, family);
             option.hidden = !match;
             option.disabled = !match;
             if (!match) {
                 option.selected = false;
             }
         });
+        updateCodeHidden(form, select);
     }
 
     function syncDomainForm(form, code) {
@@ -902,8 +943,10 @@
             return;
         }
         Array.prototype.forEach.call(select.options, function (option) {
-            option.selected = option.value === code;
+            option.selected = option.getAttribute('data-code-kind') === 'domain'
+                && option.value === code;
         });
+        updateCodeHidden(form, select);
     }
 
     function initCodeSelect(select) {
@@ -919,7 +962,19 @@
                 return;
             }
             event.preventDefault();
-            option.selected = !option.selected;
+
+            if (option.hasAttribute('data-code-select-all')) {
+                var selected = !option.selected;
+                Array.prototype.forEach.call(select.options, function (current) {
+                    current.selected = current === option ? selected : false;
+                });
+            } else {
+                option.selected = !option.selected;
+                var allOption = select.querySelector('[data-code-select-all]');
+                if (allOption) {
+                    allOption.selected = false;
+                }
+            }
             if (typeof window.Event === 'function') {
                 select.dispatchEvent(new window.Event('change', { bubbles: true }));
             }
@@ -1207,6 +1262,9 @@
 
                     if (target.name === 'family') {
                         syncCodeSelect(form, target.value);
+                    }
+                    if (target.hasAttribute('data-code-select')) {
+                        updateCodeHidden(form, target);
                     }
 
                     if (RESULT_PARAMS.indexOf(target.name) === -1
