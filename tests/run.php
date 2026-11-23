@@ -1295,12 +1295,15 @@ $browseView = (string) file_get_contents($root . '/portal/Views/browse.php');
 $check(
     str_contains($browseView, 'browse-filter-bar')
     && str_contains($browseView, 'name="family"')
-    && str_contains($browseView, 'name="catalog"')
+    && str_contains($browseView, 'data-code-select')
+    && str_contains($browseView, "name=\"<?= \$codeFamily === '' ? 'domain[]' : 'catalog[]' ?>\"")
+    && str_contains($browseView, 'data-code-kind="domain"')
+    && str_contains($browseView, 'data-code-kind="catalog"')
     && str_contains($browseView, 'name="type"')
     && str_contains($browseView, 'name="category"')
     && !str_contains($browseView, 'browse-filter-drawer')
     && !str_contains($browseView, 'popovertarget="browse-filters"'),
-    'Los filtros deben ser una barra en línea con Familia, Código, Tipo y Categoría.'
+    'Los filtros deben ser una barra en línea con Familia, Código múltiple dependiente, Tipo y Categoría.'
 );
 $check(
     !str_contains($browseView, 'browse-rail')
@@ -1323,6 +1326,17 @@ $check(
     str_contains($browseControllerSource, 'Validator::text($value, 64)')
     && str_contains($browseControllerSource, 'Validator::text($raw, 200)'),
     'El parámetro catalog debe admitir la lista completa de catálogos (CAO + NOA no debe truncarse).'
+);
+$check(
+    str_contains($browseControllerSource, 'private static function domainParam()')
+    && str_contains($browseControllerSource, 'BrowseService::normalizeDomains($domain)'),
+    'El parámetro domain debe aceptar una lista CSV de dominios seleccionados.'
+);
+$catalogRepoSource = (string) file_get_contents($root . '/portal/Repositories/CatalogRepository.php');
+$check(
+    str_contains($catalogRepoSource, 'public static function normalizeDomains(')
+    && preg_match('/public static function search\(\s*string \$query,\s*array \$domains,/m', $catalogRepoSource) === 1,
+    'El repositorio debe buscar en varios dominios a la vez sin crear dominios nuevos.'
 );
 $check(
     str_contains($resultsSource, 'browse-results--explorer')
@@ -1367,7 +1381,8 @@ require_once $root . '/portal/Repositories/CatalogRepository.php';
 $portalDomains = \OrigenSalud\Portal\Repositories\CatalogRepository::DOMAINS;
 $check(in_array('odontologia', $portalDomains, true), 'El browser debe publicar el dominio odontología.');
 $check(
-    str_contains($portalRepoSource, "\$domains = \$domain === '' ? self::DOMAINS : [\$domain];"),
+    str_contains($portalRepoSource, '$domains = self::normalizeDomains(implode(\',\', $domains));')
+    && str_contains($portalRepoSource, '$domains = self::DOMAINS;'),
     'Sin filtros, el browser debe consultar todas las fuentes, no solo las tres núcleo.'
 );
 $check(
@@ -2901,8 +2916,8 @@ $check(
     'El contexto del Browser debe conservar el catálogo al cambiar a oftar y etiquetar sus identificadores.'
 );
 $check(
-    str_contains($browseJsSource, "code !== 'oftar'")
-        && str_contains($browseJsSource, 'oftar-pr,oftar-dx'),
+    str_contains($browseJsSource, 'optionFamily === family')
+    && str_contains($browseJsSource, 'oftar-pr,oftar-dx'),
     'Los hooks JS y el fallback de catálogos deben incluir oftar.'
 );
 $check(

@@ -44,8 +44,9 @@ final class BrowseService
         $offset = min(5000, ($page - 1) * $limit);
         $catalogs = CatalogRepository::normalizeCatalogs($catalog);
         $filters = CatalogRepository::normalizeFilters($filters);
+        $domains = CatalogRepository::normalizeDomains($domain);
 
-        if ($domain !== '' && !CatalogRepository::isValidDomain($domain)) {
+        if ($domain !== '' && $domains === []) {
             return self::empty('invalid_domain', $page);
         }
 
@@ -70,7 +71,7 @@ final class BrowseService
         }
 
         $cacheKey = self::cacheKey('search', [
-            $query, $domain, $language, $page, $limit, $catalogs, $filters,
+            $query, $domains, $language, $page, $limit, $catalogs, $filters,
         ]);
         $cached = self::cacheRead(self::$searchCache, $cacheKey);
         if ($cached !== null) {
@@ -80,7 +81,7 @@ final class BrowseService
         try {
             $result = CatalogRepository::search(
                 $query,
-                $domain,
+                $domains,
                 $language,
                 $limit,
                 $offset,
@@ -299,6 +300,12 @@ final class BrowseService
     public static function normalizeCatalogs(?string $catalog): array
     {
         return CatalogRepository::normalizeCatalogs($catalog);
+    }
+
+    /** @return list<string> */
+    public static function normalizeDomains(?string $domain): array
+    {
+        return CatalogRepository::normalizeDomains($domain);
     }
 
     /**

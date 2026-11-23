@@ -290,6 +290,32 @@ final class CatalogRepository
     }
 
     /**
+     * Igual que normalizeCatalogs(), pero para dominios. Permite que el browser
+     * combine SNOMED, CIE-10, LOINC, etc. en un único parámetro CSV.
+     *
+     * @return list<string>
+     */
+    public static function normalizeDomains(?string $domain): array
+    {
+        if ($domain === null || trim($domain) === '') {
+            return [];
+        }
+
+        $values = [];
+        foreach (explode(',', $domain) as $candidate) {
+            $code = strtolower(trim($candidate));
+            if (self::isValidDomain($code)) {
+                $values[$code] = true;
+            }
+        }
+
+        $values = array_keys($values);
+        sort($values, SORT_STRING);
+
+        return array_slice($values, 0, count(self::DOMAINS));
+    }
+
+    /**
      * Filtros estructurados. Los valores se validan contra whitelists o formatos
      * estrictos; la UI obtiene las opciones reales desde catalogFacets().
      *
@@ -521,7 +547,7 @@ final class CatalogRepository
      */
     public static function search(
         string $query,
-        string $domain,
+        array $domains,
         string $requestedLanguage,
         int $limit,
         int $offset,
@@ -535,7 +561,10 @@ final class CatalogRepository
         // La API conserva su DEFAULT_DOMAINS acotado por coste; aquí un código
         // DENTAR (DNT-PR/DNT-DX) debe encontrarse sin necesidad de marcar un
         // catálogo a mano. Con catálogo o filtros el ámbito se reduce abajo.
-        $domains = $domain === '' ? self::DOMAINS : [$domain];
+        $domains = self::normalizeDomains(implode(',', $domains));
+        if ($domains === []) {
+            $domains = self::DOMAINS;
+        }
         $catalogs = self::normalizeCatalogs($catalog);
         $filters = self::normalizeFilters($filters);
         if ($catalogs !== []) {
@@ -547,7 +576,7 @@ final class CatalogRepository
                     ? 'oftar'
                     : 'odontologia';
             }
-            $domains = array_values(array_unique($catalogDomains));
+            $domains = array_values(array_unique(array_merge($domains, $catalogDomains)));
         } elseif ($filters !== []) {
             // Los filtros estructurados solo existen en el motor os_catalog.
             $domains = array_values(array_intersect(

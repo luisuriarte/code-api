@@ -806,6 +806,7 @@
         var base = form.getAttribute('action') || window.location.pathname;
         var data = new FormData(form);
         var catalogValues = [];
+        var domainValues = [];
 
         data.forEach(function (value, key) {
             var clean = String(value).trim();
@@ -813,13 +814,17 @@
                 splitValues(clean, catalogValues);
                 return;
             }
+            if (key === 'domain' || key === 'domain[]') {
+                splitValues(clean, domainValues);
+                return;
+            }
             if (clean !== '') {
                 params.set(key, clean);
             }
         });
 
-        // La whitelist viene del servidor (mismo conjunto que el backend).
-        // Evita que un catálogo publicado sea descartado por una lista fija.
+        // Las whitelists vienen del servidor (mismo conjunto que el backend).
+        // Evita que un código publicado sea descartado por una lista fija.
         var allowed = (form.getAttribute('data-catalogs') || 'dentar-pr,dentar-dx,nomenclador-odontologico-ar,oftar-pr,oftar-dx,nomenclador-oftalmologico-cao-ar,nomenclador-oftalmologico-regional-ar')
             .split(',').map(function (code) { return code.trim(); }).filter(Boolean);
         var catalogs = dedupe(catalogValues).filter(function (code) {
@@ -827,6 +832,15 @@
         }).sort();
         if (catalogs.length > 0) {
             params.set('catalog', catalogs.join(','));
+        }
+
+        var allowedDomains = (form.getAttribute('data-domains') || '')
+            .split(',').map(function (code) { return code.trim(); }).filter(Boolean);
+        var domains = dedupe(domainValues).filter(function (code) {
+            return allowedDomains.indexOf(code) !== -1;
+        }).sort();
+        if (domains.length > 0) {
+            params.set('domain', domains.join(','));
         }
 
         params.delete('page');
@@ -855,12 +869,61 @@
         return serializeLike(url, parsed);
     }
 
-    function syncDomainForm(form, code) {
-        if (code !== 'odontologia' && code !== 'oftar') {
-            Array.prototype.forEach.call(form.querySelectorAll('input[name="catalog[]"]'), function (input) {
-                input.checked = false;
-            });
+    // El selector "Código" depende de la familia activa: sin familia muestra
+    // dominios (SNOMED, CIE-10…); con DENTAR/OFTAR muestra solo sus catálogos.
+    function syncCodeSelect(form, family) {
+        var select = form ? form.querySelector('[data-code-select]') : null;
+        if (!select) {
+            return;
         }
+
+        var domainMode = family === '';
+        select.name = domainMode ? 'domain[]' : 'catalog[]';
+
+        Array.prototype.forEach.call(select.options, function (option) {
+            var kind = option.getAttribute('data-code-kind');
+            var optionFamily = option.getAttribute('data-family') || '';
+            var match = domainMode
+                ? kind === 'domain'
+                : kind === 'catalog' && optionFamily === family;
+
+            option.hidden = !match;
+            option.disabled = !match;
+            if (!match) {
+                option.selected = false;
+            }
+        });
+    }
+
+    function syncDomainForm(form, code) {
+        syncCodeSelect(form, '');
+        var select = form ? form.querySelector('[data-code-select]') : null;
+        if (!select) {
+            return;
+        }
+        Array.prototype.forEach.call(select.options, function (option) {
+            option.selected = option.value === code;
+        });
+    }
+
+    function initCodeSelect(select) {
+        if (!select || select.__browseCodeReady) {
+            return;
+        }
+        select.__browseCodeReady = true;
+
+        // Un clic simple alterna la opción: evita depender de Ctrl/⌘ + clic.
+        select.addEventListener('mousedown', function (event) {
+            var option = event.target;
+            if (!option || option.tagName !== 'OPTION' || option.disabled) {
+                return;
+            }
+            event.preventDefault();
+            option.selected = !option.selected;
+            if (typeof window.Event === 'function') {
+                select.dispatchEvent(new window.Event('change', { bubbles: true }));
+            }
+        });
     }
 
     function clearFocusFragment(source) {
@@ -1132,6 +1195,7 @@
             var form = root.querySelector('form.browse-form');
             if (form) {
                 initReactiveSearch(root, form);
+                initCodeSelect(form.querySelector('[data-code-select]'));
 
                 form.addEventListener('change', function (event) {
                     var target = event.target;
@@ -1141,11 +1205,13 @@
                         return;
                     }
 
-                    if (target.name === 'domain') {
-                        syncDomainForm(form, target.value);
+                    if (target.name === 'family') {
+                        syncCodeSelect(form, target.value);
                     }
 
-                    if (RESULT_PARAMS.indexOf(target.name) === -1 && target.name !== 'catalog[]') {
+                    if (RESULT_PARAMS.indexOf(target.name) === -1
+                        && target.name !== 'catalog[]'
+                        && target.name !== 'domain[]') {
                         return;
                     }
 

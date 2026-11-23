@@ -36,6 +36,9 @@ $catalog = is_string($catalog ?? null) ? $catalog : '';
 $catalogs = is_array($catalogs ?? null)
     ? BrowseService::normalizeCatalogs(implode(',', array_map('strval', $catalogs)))
     : BrowseService::normalizeCatalogs($catalog);
+$domainCodes = is_array($domainCodes ?? null)
+    ? BrowseService::normalizeDomains(implode(',', array_map('strval', $domainCodes)))
+    : BrowseService::normalizeDomains($domain ?? '');
 $filters = is_array($filters ?? null) ? BrowseService::normalizeFilters($filters) : [];
 $facets = is_array($facets ?? null) ? $facets : [];
 foreach (['families', 'types', 'categories', 'versions', 'statuses'] as $facetKey) {
@@ -173,6 +176,19 @@ $domainUrl = static function (string $code) use ($stateParams, $paramsUrl, $base
     }
 
     return $paramsUrl($stateParams($overrides), $baseBrowsePath);
+};
+
+// Quita un dominio de la selección múltiple y conserva el resto del contexto.
+$domainRemoveUrl = static function (string $code) use ($stateParams, $paramsUrl, $baseBrowsePath, $domainCodes): string {
+    $remaining = array_values(array_filter(
+        $domainCodes,
+        static fn (string $current): bool => $current !== $code
+    ));
+
+    return $paramsUrl($stateParams([
+        'domain' => $remaining === [] ? null : implode(',', $remaining),
+        'page' => null,
+    ]), $baseBrowsePath);
 };
 
 $clearFiltersUrl = static function () use ($stateParams, $paramsUrl, $baseBrowsePath): string {

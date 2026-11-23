@@ -35,7 +35,9 @@ final class BrowseController
         $isResultsFragment = $fragmentMode === 'results';
 
         $query = Validator::text($_GET['q'] ?? '', 80);
-        $domain = Validator::text($_GET['domain'] ?? '', 64);
+        $domain = self::domainParam();
+        $domainCodes = BrowseService::normalizeDomains($domain);
+        $domain = implode(',', $domainCodes);
         $rawCatalog = self::catalogParam();
         $catalogs = BrowseService::normalizeCatalogs($rawCatalog);
         $catalog = implode(',', $catalogs);
@@ -114,6 +116,7 @@ final class BrowseController
             'bodyClass' => 'page-browse',
             'query' => $query,
             'domain' => $domain,
+            'domainCodes' => $domainCodes,
             'catalog' => $catalog,
             'catalogs' => $catalogs,
             'filters' => $filters,
@@ -142,6 +145,28 @@ final class BrowseController
             ? 'browse-results-fragment'
             : ($isDetailFragment ? 'browse-fragment' : 'browse');
         View::render($template, $data, $fragmentMode === '' ? 'main' : null);
+    }
+
+    private static function domainParam(): string
+    {
+        $raw = $_GET['domain'] ?? '';
+
+        if (is_array($raw)) {
+            $values = [];
+            foreach ($raw as $value) {
+                if (!is_scalar($value)) {
+                    continue;
+                }
+                $code = Validator::text($value, 64);
+                if ($code !== '') {
+                    $values[] = $code;
+                }
+            }
+
+            return implode(',', $values);
+        }
+
+        return is_scalar($raw) ? Validator::text($raw, 200) : '';
     }
 
     private static function catalogParam(): ?string

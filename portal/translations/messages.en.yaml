@@ -565,6 +565,7 @@ browse:
     detail_title: "Code detail"
     back_results: "Back to results"
     code: "Code"
+    code_multi_hint: "Unselected = All. Click to select several."
     term: "Term"
     description: "Description"
     domain: "Catalog"

@@ -565,6 +565,7 @@ browse:
     detail_title: "Detalle del código"
     back_results: "Volver a los resultados"
     code: "Código"
+    code_multi_hint: "Sin marcar = Todos. Clic para marcar varios."
     term: "Término"
     description: "Descripción"
     domain: "Catálogo"
