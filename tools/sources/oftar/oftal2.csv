@@ -1,0 +1,137 @@
+grupo;subgrupo;codigo;descripcion;honorario_medico;gasto;valor_total
+CONSULTAS;;425001;"Consulta oftalmológica de adultos (15 años de edad en adelante)";$ 25.716;$ 11.021;$ 36.737
+CONSULTAS;;425002;"Consulta oftalmoneonatologia o hasta 120 dias de vida inclusive";$ 56.253;$ 24.108;$ 80.362
+CONSULTAS;;425003;"Consulta oftalmopediatría de 121 dias hasta 14 años de edad inclusive";$ 38.574;$ 16.532;$ 50.513
+CONSULTAS;;425004;"Consulta a domicilio o a otra institución (con traslado de aparatos)";$ 126.971;$ 54.416;$ 181.388
+CONSULTAS;;425005;"Consulta o interconsulta en internación dentro de la misma institución (con o sin traslado de aparatos)";$ 64.748;$ 11.021;$ 75.769
+CONSULTAS;;425006;"Consulta por vía electrónica o Telemedicina";$ 25.716;$ 5.511;$ 31.226
+CONSULTAS;;425007;"Consulta de baja visión ‐ Diagnóstico y receta de lentes y/o ayudas especiales y/o su seguimiento y control";$ 48.217;$ 20.664;$ 68.881
+CONSULTAS;;425008;"Realización de informes y/o resumenes de historia clínica";$ 25.716;$ 5.511;$ 31.226
+CONSULTAS;;425009;"Segunda consulta oftalmológica o de seguimiento (dentro del mismo periodo de facturación)";$ 12.858;$ 5.511;$ 18.368
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305001;"Angiografía / RFG (Retinofluoresceinografia) - Bilateral (incluye retinografia) (No incluye material de contraste)";$ 91.268;$ 212.958;$ 304.226
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305003;"Autofluorescencia - Bilateral";$ 48.217;$ 112.506;$ 160.723
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305004;"Autorefractometría – Bilateral";$ 6.888;$ 16.072;$ 22.960
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305005;"Biometría por interferometría láser / IOL Master, Lenstar o similar - Unilateral";$ 34.441;$ 80.362;$ 114.802
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305006;"Campo visual computado - Bilateral";$ 26.864;$ 62.682;$ 89.546
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305007;"Capsulotomía y/o sinequiolisis y/o iridotomía con YAG-Laser - Unilateral";$ 111.588;$ 260.371;$ 371.959
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305008;"Curva tensional – Prueba de tolerancia hídrica para glaucoma – Bilateral";$ 40.181;$ 17.220;$ 57.401
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305009;"Dilatación de puntos lagrimales, sondaje o plombaje de las vías lagrimal con anestesia local en consultorio - Bilateral";$ 128.578;$ 55.105;$ 183.684
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305010;"Ecografía ocular y/u orbitaria modo A y/o B - Bilateral";$ 48.217;$ 112.506;$ 160.723
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305011;"Ecometría - Unilateral";$ 20.664;$ 48.217;$ 68.881
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305012;"Ejercicios ortópticos - por sesión";$ 21.497;$ 9.213;$ 30.710
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305013;"Electrooculograma o videooculograma - Bilateral";$ 89.546;$ 208.940;$ 298.486
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305014;"Electroretinograma – Bilateral";$ 89.546;$ 208.940;$ 298.486
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305015;"Estudio del mapa endotelial corneal - Bilateral";$ 82.658;$ 192.868;$ 275.525
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305016;"Estudio Seguimiento en Miopía Infantil. (Incluye Autorefractometria y/o biometría (cualquier método) y/o topografía corneal) - Bilateral";$ 76.458;$ 178.403;$ 254.861
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305017;"Examen oftalmológico bajo anestesia general (más los estudios a realizar)";$ 103.322;$ 241.085;$ 344.407
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305018;"Examen sensorial y motor en estrabismo (test de fusión y/o test de estereopsia y/o test de nistagmus optocinético y/o registro de motilidad ocular y/o test de Krimsky y/o cover test con prisma y/o test de ducción pasiva y/o test de fuerzas generadas) - Bilateral";$ 80.362;$ 34.441;$ 114.802
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305019;"Exoftalmometria – Bilateral";$ 12.858;$ 5.511;$ 18.368
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305020;"Exoftalmologia – (Incluye prescripción de cristales)";$ 12.858;$ 5.511;$ 18.368
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305021;"Extracción de cuerpo extraño en superficie corneal o en conjuntiva tarsal o de pestañas o Toma de muestra corneal, en consultorio – Unilateral";$ 22.710;$ 9.733;$ 32.443
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305022;"Fondo de ojo con oftalmoscopio binocular indirecto en neonatos o hasta completar la vascularización retinal - Bilateral";$ 57.860;$ 24.797;$ 82.658
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305023;"Fondo de ojo con oftalmoscopio directo o indirecto en mayores de 120 dias de vida - Bilateral";$ 14.465;$ 6.199;$ 20.664
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305024;"Fotocoagulación Laser de la retina - Unilateral (por sesión)";$ 151.539;$ 353.591;$ 505.130
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305025;"Gonioscopía – Bilateral";$ 19.287;$ 8.266;$ 27.553
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305026;"Iconografías  - Bilateral";$ 24.108;$ 10.332;$ 34.441
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305027;"Informe estimado de Agudeza Visual máxima o Test de Lotmar  - Bilateral";$ 8.472;$ 19.769;$ 28.241
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305028;"Meibomiografia - Bilateral";$ 34.441;$ 80.362;$ 114.802
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305029;"Neumotonometría o tonometría de rebote - Bilateral";$ 11.882;$ 27.725;$ 39.607
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305030;"Paquimetría - Bilateral";$ 13.077;$ 30.512;$ 43.589
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305031;"Potenciales evocados visuales - Bilateral";$ 42.018;$ 98.041;$ 140.059
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305032;"Recuento endotelial - Bilateral";$ 65.437;$ 152.687;$ 218.124
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305033;"Retinografía / RG - Bilateral";$ 27.380;$ 63.887;$ 91.268
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305035;"Test de citología de impresión (no incluye anatomopatólogo) - Bilateral";$ 20.664;$ 48.217;$ 68.881
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305036;"Test de visión cromática de Ishihara, Farnsworth o similar – Bilateral";$ 15.751;$ 6.750;$ 22.501
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305037;"Test de Lancaster  - Bilateral";$ 56.253;$ 24.108;$ 80.362
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305038;"Test de mirada preferencial  - Bilateral";$ 24.108;$ 10.332;$ 34.441
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305039;"Test de ojo seco (BUT, test de Schirmer, Rosa de Bengala, Verde de Lisamina, etc) - Bilateral";$ 36.966;$ 15.843;$ 52.809
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305040;"Test computarizado de ojo seco y calidad visual (HD Analyzer o Tearscope o similar) - Bilateral";$ 41.329;$ 96.434;$ 137.763
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305041;"Test sensibilidad al contraste  - Bilateral";$ 19.769;$ 8.472;$ 28.241
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305042;"Tomografía confocal de papila HRT - Bilateral";$ 68.193;$ 159.116;$ 227.308
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305043;"Tomografía de coherencia óptica OCT de cámara anterior y/o posterior – Bilateral";$ 68.193;$ 159.116;$ 227.308
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305044;"Tomografía de coherencia óptica OCT con angiografia (ANGIO-OCT) bilateral";$ 89.546;$ 208.940;$ 298.486
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305045;"Tonometría de aplanación – Bilateral";$ 16.072;$ 6.888;$ 22.960
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305046;"Topografía corneal computada - Bilateral";$ 35.129;$ 81.969;$ 117.098
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305047;"Topografía corneal de curvatura y elevación / Aberrometría (Pentacam, Galilei, Orbscan II o similar) - Bilateral";$ 56.483;$ 131.793;$ 188.276
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305048;"Ultrabiomicroscopia UBM - Bilateral";$ 95.056;$ 221.798;$ 316.854
+PRACTICAS Y ESTUDIOS COMPLEMENTARIOS;;305049;"Visuscopía – Estudio de fijación con Visuscopio";$ 16.072;$ 6.888;$ 22.960
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025001;"Ablación de córnea y/o esclera y/o globo ocular en procedimiento de trasplante de órganos y tejidos";$ 275.525;$ 183.684;$ 459.209
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025002;"Descompresión orbitaria - Unilateral";$ 2.989.450;$ 1.992.967;$ 4.982.416
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025003;"Enucleación o Evisceración  - Unilateral (NO incluye implante)";$ 907.981;$ 605.320;$ 1.513.301
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025004;"Exenteración del contenido orbitario – Unilateral";$ 6.199.320;$ 4.132.880;$ 10.332.200
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025005;"Fractura orbitaria de piso o una pared orbitaria - Unilateral (NO incluye material de osteosíntesis)";$ 1.809.650;$ 1.206.434;$ 3.016.084
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025006;"Fractura orbitaria de dos o mas paredes orbitarias o que comprometen el reborde orbitario  - Unilateral  (NO incluye material de osteosíntesis)";$ 3.168.541;$ 2.112.361;$ 5.280.902
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025007;"Inyección de sustancia subconjuntival y/o parabulbar y/o retrobulbar  - Unilateral - Por sesión (NO incluye sustancia a inyectar)";$ 181.596;$ 121.064;$ 302.660
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025008;"Orbitotomía y exéresis o biopsia de tumor orbitario anterior al ecuador del globo ocular - Unilateral";$ 1.928.677;$ 1.285.785;$ 3.214.462
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025009;"Orbitotomía y exéresis o biopsia de tumor orbitario posterior al ecuador del globo ocular - Unilateral";$ 4.132.880;$ 2.755.253;$ 6.888.133
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la órbita;025010;"Reparación plástica de cavidad anoftálmica con implantes o injertos - Unilateral (NO incluye implantes)";$ 1.809.650;$ 1.206.434;$ 3.016.084
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025101;"Blefaroplastia terapéutica no cosmética, blefarochalasis - Unilateral";$ 385.735;$ 257.157;$ 642.892
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025102;"Cejapexia funcional - Unilateral";$ 303.078;$ 202.052;$ 505.130
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025103;"Ectropion, entropion, distriquiasis, tarsorrafia - Unilateral";$ 478.036;$ 318.691;$ 796.727
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025104;"Escisión de lesión de párpado, nevus, quiste, chalazión o biopsia de lesión - Por párpado";$ 195.623;$ 130.415;$ 326.038
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025105;"IPL - Luz Pulsada Intensa - Por sesión";$ 128.578;$ 192.868;$ 321.446
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025106;"Microexfoliación del borde palpebral - Unilateral";$ 114.802;$ 114.802;$ 229.604
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025107;"Ptosis palpebral - Cirugía de lagoftalmo - Unilateral";$ 734.330;$ 489.553;$ 1.223.883
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025108;"Reconstrucción compleja de párpados por tumor o traumatismo (mayor al 50% del párpado) - Unilateral";$ 1.181.508;$ 787.672;$ 1.969.179
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025109;"Reconstrucción simple de párpados por tumor o traumatismo (menor al 50% del párpado) - Unilateral";$ 585.491;$ 390.328;$ 975.819
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025110;"Retracción palpebral - Unilateral";$ 551.051;$ 367.367;$ 918.418
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025111;"Sutura simple de párpado que no compromete la vía lagrimal - Unilateral";$ 393.836;$ 262.557;$ 656.393
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025112;"Termoterapia mecánica palpebral (Ilux o lipid flow o similar) Por sesión (no incluye insumos)";$ 91.842;$ 137.763;$ 229.604
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de los párpados;025113;"Tratamiento inyectable de toxina botulínica no cosmético - Por sesión (NO incluye la toxina)";$ 275.525;$ 183.684;$ 459.209
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025201;"Canaliculoplastía, puntoplastía con o sin intubación – Unilateral (NO incluye el set de intubación o implante)";$ 276.903;$ 184.602;$ 461.505
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025202;"Conjuntivorrinostomía / cirugía de Jones – Unilateral (NO incluye el implante)";$ 889.056;$ 592.704;$ 1.481.760
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025203;"Dacriocistorrinostomía endoscópica con o sin intubación – Unilateral";$ 1.333.584;$ 889.056;$ 2.222.640
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025204;"Dacriocistorrinostomía externa con o sin intubación, Dacriocistectomía – Unilateral (NO incluye el set de intubación)";$ 902.552;$ 601.701;$ 1.504.253
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025205;"Drenaje de saco lagrimal - Unilateral";$ 303.078;$ 202.052;$ 505.130
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025206;"Oclusión, cauterización o taponamiento del punto lagrimal - Unilateral (NO incluye implantes)";$ 221.518;$ 147.679;$ 369.197
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025207;"Reconstrucción postraumática de la vía lagrimal – Unilateral (NO Incluye el set de intubación)";$ 705.345;$ 470.230;$ 1.175.575
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025208;"Reubicación o recolocación del tubo de Jones después del primer mes";$ 270.745;$ 180.497;$ 451.242
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025209;"Sondaje lagrimal bajo anestesia general con o sin intubación – Unilateral (NO incluye el set de intubación)";$ 440.841;$ 293.894;$ 734.734
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del sistema lagrimal;025210;"Sondaje lagrimal bajo anestesia general en neonatos o hasta 120 dias de vida - Unilateral";$ 1.102.101;$ 293.894;$ 1.395.995
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la conjuntiva;025301;"Conjuntivoplastia, Pterigión con injerto o colgajo conjuntival - Unilateral";$ 470.689;$ 470.689;$ 941.378
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la conjuntiva;025302;"Biopsia de lesión conjuntival y/o sutura de conjuntiva - Unilateral";$ 206.644;$ 206.644;$ 413.288
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la conjuntiva;025303;"Biopsia Escisional de lesión tumoral  conjuntival con crioterapia de los bordes - Unilateral";$ 551.051;$ 826.576;$ 1.377.627
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la conjuntiva;025304;"Pterigion sin injerto o colgajo conjuntival, peritomía conjuntival, pannus  - Unilateral";$ 320.298;$ 320.298;$ 640.596
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025401;"Aspiración o toma de muestra vítrea - Unilateral";$ 275.525;$ 183.684;$ 459.209
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025402;"Retinopexia neumática, Buckling escleral o similar por desprendimiento de retina – Unilateral (No incluye implante o insumos especiales)";$ 1.325.966;$ 1.325.966;$ 2.651.931
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025403;"Vitrectomia posterior por desprendimiento de retina o hemovítreo o extracción de cuerpo extraño intraocular, con endolaser – Unilateral (NO incluye set de vitrectomía, sonda de endolaser ni insumos especiales)";$ 1.594.373;$ 2.391.560;$ 3.985.933
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025404;"Vitrectomia posterior por desprendimiento de retina con endolaser e inyección de sustancias expansoras – Unilateral (No incluye sustancia expansora)  (NO incluye set de vitrectomía, sonda de endolaser ni insumos especiales)";$ 1.947.964;$ 2.921.946;$ 4.869.910
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025405;"Vitrectomía posterior en neonatos o hasta 120 días de vida – Unilateral (NO incluye set de vitrectomía, sonda de endolaser ni insumos especiales)";$ 4.869.910;$ 2.921.946;$ 7.791.856
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025406;"Fotocoagulación Laser mediante oftalmoscopía binocular indirecta en neonatos o hasta completar la vascularizacion retinal - Por sesión - Unilateral";$ 378.847;$ 353.591;$ 732.438
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025407;"Inyección intravítrea en adultos o implante de dispositivo intravítreo - Unilateral (NO incluye sustancia ni dispositivo)";$ 482.169;$ 321.446;$ 803.616
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025408;"Inyección intravítrea en neonatos o hasta completar la vascularizacion retinal - Unilateral  (NO incluye set de vitrectomía, sonda de endolaser ni insumos especiales)";$ 1.205.423;$ 321.446;$ 1.526.870
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025409;"Vitrectomia en niños de 121 dias a 15 años inclusive. – Unilateral (NO incluye set de vitrectomía, sonda de endolaser ni insumos especiales)";$ 3.895.928;$ 2.921.946;$ 6.817.874
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025410;"Vitrectomía en patología maculares, con disección y/o peeling de membrana – Unilateral (NO incluye set de vitrectomía, sonda de endolaser ni insumos especiales)";$ 4.390.955;$ 2.921.946;$ 7.312.901
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la retina y el cuerpo vítreo;025411;"Vitrectomia anterior - Unilateral – (NO incluye set de vitrectomía, sonda de endolaser ni insumos especiales)";$ 797.187;$ 1.195.780;$ 1.992.967
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del cristalino;025501;"Aspiración de masas de cristalino en cámara anterior y/o lavado de cámara anterior y/o extraccion de cuerpo extraño en cámara anterior - Unilateral (Como única intervención) (NO incluye sustancia viscoelástica, cassette de faco ni insumos especiales)";$ 404.104;$ 606.156;$ 1.010.260
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del cristalino;025502;"Catarata en neonatos o hasta 120 días de vida";$ 2.273.084;$ 1.363.850;$ 3.636.934
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del cristalino;025503;"Catarata en adultos extracapsular con implante de LIO monofocal esférico estándar de PMMA - Unilateral (NO incluye sustancia viscoelástica, cassette de faco ni insumos especiales)";$ 606.156;$ 909.234;$ 1.515.389
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del cristalino;025504;"Catarata en adultos por facoemulsificación con implante de LIO monofocal esférico estándar de PMMA - Unilateral (NO incluye sustancia viscoelástica, cassette de faco ni insumos especiales)";$ 909.234;$ 1.363.850;$ 2.273.084
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del cristalino;025505;"Catarata en adultos por facoemulsificación con implante de LIO multifocal o tórico (NO INCLUYE EL LENTE) - Unilateral (NO incluye sustancia viscoelástica, cassette de faco, ni insumos especiales)";$ 1.182.004;$ 1.363.850;$ 2.545.854
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del cristalino;025506;"Extracción de lente en cámara anterior o posterior - Unilateral (Como única intervención, NO incluye sustancia viscoelástica ni insumos especiales)";$ 505.130;$ 505.130;$ 1.010.260
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del cristalino;025507;"Implante secundario de LIO en cámara anterior o posterior, rotación o cambio de LIO - Unilateral  (Como única intervención, NO incluye lente, sustancia viscoelástica ni insumos especiales)";$ 505.130;$ 505.130;$ 1.010.260
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025601;"Cirugía refractiva con EXCIMER-Laser – Unilateral";$ 573.093;$ 859.639;$ 1.432.732
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025602;"Cirugía refractiva corneal lamelar con Laser de Femtosegundo (SMILE o similar) – Unilateral";Presupuesto;Presupuesto;Presupuesto
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025603;"Cross-linking corneal – Unilateral (No incluye Riboflavina) – Unilateral";$ 275.525;$ 413.288;$ 688.813
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025604;"Cross-linking corneal combinado con EXCIMER-Laser (PRK+CXL o LASIK Xtra o similar) (No incluye Riboflavina) – Unilateral";Presupuesto;Presupuesto;Presupuesto
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025605;"Extracción de cuerpo extraño corneal - Queratocentesis – Toma de muestra o biopsia corneal en quirófano. - Unilateral";$ 229.604;$ 229.604;$ 459.209
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025606;"Implante de lente intraocular fáquico – Unilateral (No incluye lente)";$ 906.938;$ 906.938;$ 1.813.875
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025607;"Implante de segmentos intraestromales - Unilateral (NO incluye segmentos ni uso de FEMTO-Laser)";$ 973.523;$ 973.523;$ 1.947.046
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025608;"Inyección Intraestromal corneal en queratitis infecciosas - Unilateral (No incluye la medicación)";$ 344.407;$ 344.407;$ 688.813
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025609;"Recubrimiento corneal con flap conjuntival o membrana amniótica o esclera - (NO incluye membrana amniótica ni esclera) - Unilateral";$ 551.051;$ 551.051;$ 1.102.101
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025610;"Sutura simple de córnea y/o esclera - Unilateral";$ 530.386;$ 530.386;$ 1.060.772
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025611;"Sutura compleja de córnea y/o esclera con prolapso de úvea y/o extracción de cuerpo extraño en cámara anterior - Unilateral";$ 975.819;$ 975.819;$ 1.951.638
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025612;"Trasplante de córnea endotelial – Unilateral (NO incluye insumos especiales)";$ 5.563.315;$ 2.781.658;$ 8.344.973
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025613;"Trasplante de córnea penetrante, queratoplastia penetrante – Unilateral (NO incluye insumos especiales)";$ 2.781.658;$ 2.781.658;$ 5.563.315
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025614;"Trasplante Simplificado de Células Germinales Limbares ( SLET) - Unilateral";Presupuesto;Presupuesto;Presupuesto
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas de la córnea y refractivas;025615;"Uso de Laser de Femtosegundo. Adicional a la práctica principal.";Presupuesto;Presupuesto;Presupuesto
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas por estrabismo;025701;"Estrabismo  - Cirugía cualquier técnica -- Unilateral";$ 838.056;$ 838.056;$ 1.676.112
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas por estrabismo;025702;"Estrabismo - Adicional por técnica de suturas ajustables.";$ 430.508;$ 430.508;$ 861.017
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas por estrabismo;025703;"Estrabismo - Tratamiento con Toxina Botulínica. (No incluye la toxina)";$ 746.214;$ 746.214;$ 1.492.429
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del Iris y cuerpo ciliar;025801;"Trabeculoplastia, Iridectomía, iridotomía, coreoplastía – Unilateral (NO incluye sustancia viscoelástica ni insumos especiales)";$ 417.306;$ 417.306;$ 834.612
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del Iris y cuerpo ciliar;025802;"Iridociclectomía – iridociclotomía – ciclodestrucción – ciclofotocoagulación – Unilateral (NO incluye sustancia viscoelástica, sonda de Laser, ni insumos especiales)";$ 810.733;$ 810.733;$ 1.621.467
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del Iris y cuerpo ciliar;025803;"Revisión de ampolla filtrante, needling, en consultorio - Unilateral";$ 160.723;$ 68.881;$ 229.604
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del Iris y cuerpo ciliar;025804;"Revisión de ampolla filtrante, needling, en quirófano- Unilateral";$ 287.006;$ 287.006;$ 574.011
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del Iris y cuerpo ciliar;025805;"SLT - Trabeculectomia Laser Selectiva - Unilateral (No incluye la sonda laser)";$ 479.414;$ 719.121;$ 1.198.535
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del Iris y cuerpo ciliar;025806;"Trabeculectomía, trabeculotomía, viscocanalostomía – Unilateral (NO incluye sustancia viscoelástica, ni insumos especiales)";$ 998.779;$ 998.779;$ 1.997.559
+PRACTICAS QUIRURGICAS;Prácticas quirúrgicas del Iris y cuerpo ciliar;025807;"Válvula o dispositivo de drenaje para glaucoma, implante o explante, MIGS - Unilateral (NO incluye el dispositivo) (NO incluye sustancia viscoelástica ni insumos especiales)";$ 1.664.632;$ 1.664.632;$ 3.329.264

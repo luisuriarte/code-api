@@ -2866,7 +2866,10 @@ $check(
 );
 $check(in_array('oftar', $portalDomains, true), 'El browser debe publicar el dominio oftar.');
 $check(
-    str_contains($portalRepoSource, "public const OFTAR_CATALOGS = ['oftar-pr', 'oftar-dx'];")
+    str_contains($portalRepoSource, "public const OFTAR_CATALOGS = [")
+        && str_contains($portalRepoSource, "'oftar-pr', 'oftar-dx',")
+        && str_contains($portalRepoSource, "'nomenclador-oftalmologico-cao-ar'")
+        && str_contains($portalRepoSource, "'nomenclador-oftalmologico-regional-ar'")
         && str_contains($portalRepoSource, 'count(self::PUBLISHED_CATALOGS)')
         && str_contains($portalRepoSource, "cat.family_code = 'oftar'")
         && str_contains($portalRepoSource, "in_array(\$domain, ['odontologia', 'oftar'], true)")
@@ -3091,6 +3094,137 @@ $check(
         && !str_contains($oftarPrImport, 'tools/sources/nn/Nomenclador_Nacional_2025.sql\';')
         && !str_contains($oftarPrImport, 'INSERT INTO public.nomenclador_2025'),
     'El importador no debe crear rutas, alterar ACL global ni modificar la fuente original.'
+);
+
+// Nomencladores oftalmológicos de origen: CAO y referencia regional (NOA).
+$oftarMapPath = $root . '/sql/03_oftar/nomencladores_oftar_mapping.sql';
+$oftarMap = is_file($oftarMapPath) ? (string) file_get_contents($oftarMapPath) : '';
+$check(is_file($oftarMapPath), 'Debe existir el SQL de la tabla gobernada de mapeo OFTAR.');
+$check(
+    str_contains($oftarMap, 'CREATE TABLE IF NOT EXISTS public.os_oftar_nomenclador_match')
+        && str_contains($oftarMap, "review_status IN ('proposed', 'approved', 'rejected')")
+        && str_contains($oftarMap, "DEFAULT 'proposed'")
+        && str_contains($oftarMap, 'REVOKE ALL PRIVILEGES ON TABLE public.os_oftar_nomenclador_match FROM PUBLIC')
+        && preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $oftarMap) !== 1,
+    'La tabla de mapeo debe ser gobernada, revocar por objeto y no publicar enlaces por defecto.'
+);
+
+$oftarNomenclators = [
+    'cao' => [
+        'file' => $root . '/sql/03_oftar/nomenclador_oftalmologico_cao.sql',
+        'catalog' => 'nomenclador-oftalmologico-cao-ar',
+        'source_table' => 'os_source_oftar_cao',
+        'system' => 'NOMENCLADOR_CAO_AR',
+        'expected_rows' => 143,
+        'expected_matches' => 91,
+    ],
+    'regional' => [
+        'file' => $root . '/sql/03_oftar/nomenclador_oftalmologico_regional.sql',
+        'catalog' => 'nomenclador-oftalmologico-regional-ar',
+        'source_table' => 'os_source_oftar_regional',
+        'system' => 'NOMENCLADOR_OFTAL_REG_AR',
+        'expected_rows' => 136,
+        'expected_matches' => 0,
+    ],
+];
+foreach ($oftarNomenclators as $name => $spec) {
+    $check(is_file($spec['file']), "Debe existir el artefacto SQL del nomenclador $name.");
+    $sql = is_file($spec['file']) ? (string) file_get_contents($spec['file']) : '';
+    $code = implode("\n", array_values(array_filter(
+        explode("\n", $sql),
+        static fn (string $line): bool => !str_starts_with(ltrim($line), '--')
+    )));
+    $check(
+        str_contains($sql, $spec['catalog'])
+            && str_contains($sql, $spec['source_table'])
+            && str_contains($sql, "'medical', 'oftar', 'catalog'")
+            && str_contains($sql, 'categoria VARCHAR(150)')
+            && str_contains($sql, "'unknown'")
+            && ($spec['expected_matches'] === 0 || str_contains($sql, "'proposed'")),
+        "El artefacto $name debe registrar el catálogo de origen y dejar textos y mapeos sin publicar."
+    );
+    $check(
+        !preg_match('/\b(valor|honorario_medico|gasto|valor_total)\s+(NUMERIC|DECIMAL|BIGINT|INT)/i', $code)
+            && !str_contains($code, 'DROP TABLE')
+            && !str_contains($code, 'CASCADE')
+            && !str_contains($code, 'OFT-PR-')
+            && preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $sql) !== 1,
+        "El artefacto $name no debe guardar precios, renumerar OFT-PR ni alterar ACL globales."
+    );
+    $check(
+        ($spec['expected_matches'] === 0
+            ? !str_contains($code, 'INSERT INTO public.os_oftar_nomenclador_match')
+            : str_contains($code, 'INSERT INTO public.os_oftar_nomenclador_match'))
+            && !str_contains($code, 'os_catalog_identifier')
+            && !str_contains($code, 'os_catalog_relation')
+            && substr_count($sql, "'texto_identico_normalizado'") === $spec['expected_matches'],
+        "El artefacto $name debe sembrar exactamente {$spec['expected_matches']} propuestas de mapeo."
+    );
+}
+
+$generatorPath = $root . '/tools/generate_nomencladores_oftalmologicos_sql.py';
+$generator = is_file($generatorPath) ? (string) file_get_contents($generatorPath) : '';
+$check(
+    str_contains($generator, 'cao.csv')
+        && str_contains($generator, 'oftal2.csv')
+        && str_contains($generator, 'nomenclador-oftalmologico-cao-ar')
+        && str_contains($generator, 'nomenclador-oftalmologico-regional-ar')
+        && !str_contains($generator, "row['valor_total']")
+        && !str_contains($generator, 'row["valor_total"]')
+        && str_contains($generator, 'hashlib'),
+    'El generador debe leer ambos CSV, descartar precios y producir códigos de categoría únicos.'
+);
+
+$approvalPath = $root . '/sql/03_oftar/aprobar_mapeo_nomencladores_oftar.sql';
+$approval = is_file($approvalPath) ? (string) file_get_contents($approvalPath) : '';
+$oftarNomVerifyPath = $root . '/sql/03_oftar/verificacion_nomencladores_oftar.sql';
+$oftarNomVerify = is_file($oftarNomVerifyPath) ? (string) file_get_contents($oftarNomVerifyPath) : '';
+$check(
+    str_contains($oftarNomVerify, 'BEGIN READ ONLY;')
+        && str_contains($oftarNomVerify, 'ROLLBACK;')
+        && str_contains($oftarNomVerify, 'os_source_oftar_cao')
+        && str_contains($oftarNomVerify, 'os_source_oftar_regional')
+        && str_contains($oftarNomVerify, 'os_oftar_nomenclador_match')
+        && str_contains($oftarNomVerify, 'v_os_uvr_prestacion_public'),
+    'Debe existir una verificación de solo lectura de los nomencladores y su exclusión UVR.'
+);
+
+$check(
+    str_contains($approval, "f.review_status = 'unknown'")
+        && str_contains($approval, 'hash_esperado')
+        && str_contains($approval, "'imported_oftar_cao', 'imported_oftar_regional'")
+        && str_contains($approval, "WHERE review_status = 'approved'")
+        && str_contains($approval, "'referencia_literal'")
+        && str_contains($approval, 'NOMENCLADOR-CAO-AR')
+        && str_contains($approval, 'NOMENCLADOR-OFTAL-REG-AR')
+        && str_contains($approval, 'sin juicio de equivalencia clínica'),
+    'La aprobación debe ser gobernada, publicar solo pares aprobados y declarar referencia literal.'
+);
+
+$check(
+    str_contains($repository, "'nomenclador-oftalmologico-cao-ar'")
+        && str_contains($repository, "'nomenclador-oftalmologico-regional-ar'"),
+    'El repositorio debe admitir ambos nomencladores en la whitelist.'
+);
+$catalogRefSource = (string) file_get_contents($root . '/portal/Repositories/CatalogReferenceRepository.php');
+$check(
+    str_contains($catalogRefSource, "'nomenclador-oftalmologico-cao-ar'")
+        && str_contains($catalogRefSource, "'nomenclador-oftalmologico-regional-ar'"),
+    'Los nomencladores de origen deben quedar fuera del selector UVR.'
+);
+$browseSource = (string) file_get_contents($root . '/portal/Views/browse.php');
+$check(
+    str_contains($browseSource, '$t(\'oftar.cao_badge\')')
+        && str_contains($browseSource, '$t(\'oftar.regional_badge\')')
+        && str_contains($browseSource, "nomenclador-oftalmologico-cao-ar")
+        && str_contains($browseSource, "nomenclador-oftalmologico-regional-ar"),
+    'El Browse debe ofrecer ambos nomencladores como catálogos fuente.'
+);
+$docsSource = (string) file_get_contents($root . '/web/docs.php');
+$check(
+    str_contains($docsSource, 'docs.catalogs.code_cao')
+        && str_contains($docsSource, 'docs.catalogs.code_regional'),
+    'Docs debe documentar los dos catálogos de origen.'
 );
 
 $octUvrPath = $root . '/sql/03_oftar/uvr_ejemplo_oct_oftar_pr_u7b.sql';

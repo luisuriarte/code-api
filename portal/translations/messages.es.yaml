@@ -197,6 +197,10 @@ docs:
     fhir_resources_text: "Ejemplo de representación de una intervención restauradora en un recurso HL7 FHIR Procedure con especificación de pieza dental 36 (sistema FDI) en bodySite:"
     copied: "¡Copiado!"
 
+    catalogs:
+        code_cao: 'Nomenclador Nacional de Oftalmología del Consejo Argentino de Oftalmología como catálogo fuente; conserva su numeración original.'
+        code_regional: 'Nomenclador Oftalmológico de Referencia Regional (NOA) como catálogo fuente; conserva su numeración original.'
+
 search:
     title: "Buscar terminología clínica"
     lead: "Probá el buscador público con el mismo locale que elegiste para el portal."
@@ -294,6 +298,8 @@ browse:
     dentar_back: "Volver a DENTAR"
     dentar_detail_note: "Esta ficha pertenece a la familia DENTAR. Solo se muestran los campos disponibles en la fuente y habilitados por la revisión editorial vigente."
     identifier_system_nomenclador: "Nomenclador Odontológico Nacional"
+    identifier_system_cao: "Nomenclador Nacional de Oftalmología (CAO)"
+    identifier_system_oftal_reg: "Nomenclador Oftalmológico de Referencia Regional"
     identifier_system_cie10: "CIE-10"
     identifier_system_cdt: "CDT-2025"
     identifier_system_snomed: "SNOMED-CT"
@@ -552,6 +558,8 @@ oftar:
     dx_text: "Enfermedades, trastornos y condiciones clínicas del capítulo H00-H59 de CIE-10, identificadas con códigos permanentes propios."
     dx_prefix: "Prefijo OFT-DX-NNNNNN"
     dx_action: "Consultar OFTAR-DX"
+    cao_badge: "Nomenclador Nacional CAO"
+    regional_badge: "Nomenclador Regional NOA"
     fields_label: "Campos previstos según disponibilidad real"
     field_code: "Código con etiqueta Código"
     field_status: "Estado editorial y de publicación"

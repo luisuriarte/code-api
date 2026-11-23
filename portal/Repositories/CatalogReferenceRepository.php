@@ -72,7 +72,10 @@ final class CatalogReferenceRepository
      */
     public static function uvrCatalogs(): array
     {
-        $excluded = ['dentar-dx', 'oftar-dx', 'cie10', 'anmat', 'snomed', 'loinc', 'insumos'];
+        $excluded = [
+            'dentar-dx', 'oftar-dx', 'cie10', 'anmat', 'snomed', 'loinc', 'insumos',
+            'nomenclador-oftalmologico-cao-ar', 'nomenclador-oftalmologico-regional-ar',
+        ];
         $params = [];
         $placeholders = [];
 

@@ -13,6 +13,8 @@ $publishedCatalogs = [
     ['code' => 'nomenclador-odontologico-ar', 'label' => $t('dentar.nomenclador_badge'), 'tag' => 'browse.tag_source'],
     ['code' => 'oftar-pr', 'label' => $t('oftar.pr_badge'), 'tag' => 'browse.tag_own'],
     ['code' => 'oftar-dx', 'label' => $t('oftar.dx_badge'), 'tag' => 'browse.tag_own'],
+    ['code' => 'nomenclador-oftalmologico-cao-ar', 'label' => $t('oftar.cao_badge'), 'tag' => 'browse.tag_source'],
+    ['code' => 'nomenclador-oftalmologico-regional-ar', 'label' => $t('oftar.regional_badge'), 'tag' => 'browse.tag_source'],
 ];
 
 // Catálogos en artefactos o propuestos. Ninguno se enlaza como consultable.

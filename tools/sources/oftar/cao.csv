@@ -1,0 +1,144 @@
+codigo;categoria;descripcion;valor
+460001;CONSULTA OFTALMOLÓGICA;"Primera consulta";$ 69.234
+460002;CONSULTA OFTALMOLÓGICA;"Segunda consulta (seguimiento de patología)";$ 34.617
+460003;CONSULTA OFTALMOLÓGICA;"Consulta de urgencia (fuera del horario de consultorio, de 20:00 a 08:00 hs.)";$ 166.213
+460004;CONSULTA OFTALMOLÓGICA;"Consulta a domicilio (con traslado de aparatos)";$ 346.171
+460006;CONSULTA OFTALMOLÓGICA;"Consulta pediátrica (hasta 14 años)";$ 138.469
+460007;CONSULTA OFTALMOLÓGICA;"Consulta o interconsulta en internación con equipos";$ 200.686
+460008;CONSULTA OFTALMOLÓGICA;"Consulta de seguimiento en internación";$ 166.162
+460009;CONSULTA OFTALMOLÓGICA;"Consulta retinólogo - Avalada por SARVy y CAO";$ 161.547
+460010;CONSULTA OFTALMOLÓGICA;"Consulta neuroftalmológica - Avalada por Comisión de Neuroftalmología del CAO";$ 161.547
+460011;CONSULTA OFTALMOLÓGICA;"Consulta con subespecialista";$ 161.547
+460012;CONSULTA OFTALMOLÓGICA;"Consulta por vía electrónica";$ 161.547
+460013;CONSULTA OFTALMOLÓGICA;"Consulta vía e-mail";$ 161.547
+460014;CONSULTA OFTALMOLÓGICA;"Realización de informes y/o resúmenes de historia clínica";$ 34.617
+460101;EXAMEN ESPECIAL;"Módulo de estudios bajo anestesia general (más estudios a realizar)";$ 553.697
+460102;EXAMEN ESPECIAL;"Inyección subconjuntiva o subtenoniana (no incluye fármacos e insumos)";$ 600.376
+460103;EXAMEN ESPECIAL;"Campimetría computarizada bilateral";$ 315.074
+460104;EXAMEN ESPECIAL;"RG bilateral";$ 169.066
+460105;EXAMEN ESPECIAL;"RFG bilateral (no incluye fluoresceína, descartables, cardiólogo ni anestesista)";$ 334.291
+460106;EXAMEN ESPECIAL;"RG digital unilateral sin descartables";$ 399.615
+460107;EXAMEN ESPECIAL;"RFG digital unilateral sin descartables";$ 559.454
+460108;EXAMEN ESPECIAL;"Ecografía A o B unilateral";$ 138.328
+460109;EXAMEN ESPECIAL;"Ecobiometría unilateral";$ 175.329
+460110;EXAMEN ESPECIAL;"Ecobiometría por inmersión unilateral";$ 276.656
+460111;EXAMEN ESPECIAL;"Neumotonometría unilateral";$ 21.236
+460112;EXAMEN ESPECIAL;"Paquimetría bilateral";$ 90.680
+460113;EXAMEN ESPECIAL;"Topografía corneal computada bilateral";$ 169.066
+460114;EXAMEN ESPECIAL;"Visión cromática (Fansworth, Roth o similar)";$ 44.575
+460115;EXAMEN ESPECIAL;"Test de ojo seco (Schirmer, Rosa de Bengala, BUT)";$ 105.202
+460116;EXAMEN ESPECIAL;"Test de sensibilidad de contraste unilateral";$ 56.096
+460117;EXAMEN ESPECIAL;"Ejercicio ortópico por sesión bilateral con sinoptóforo";$ 61.477
+460118;EXAMEN ESPECIAL;"Examen sensorio motor en estrabismo";$ 101.212
+460119;EXAMEN ESPECIAL;"OCT (tomografía óptica coherente) posterior unilateral";$ 453.407
+460120;EXAMEN ESPECIAL;"OCT (tomografía óptica coherente) anterior bilateral";$ 799.222
+460121;EXAMEN ESPECIAL;"Test de citología de impresión (no incluye anatomopatólogo)";$ 160.691
+460123;EXAMEN ESPECIAL;"Test de mirada preferencial unilateral";$ 68.397
+460124;EXAMEN ESPECIAL;"Test de Lotmar (unilateral)";$ 56.096
+460125;EXAMEN ESPECIAL;"Curva diaria de presión ocular";$ 112.196
+460126;EXAMEN ESPECIAL;"Curva diaria de presión ocular según Sampaolesi";$ 287.412
+460127;EXAMEN ESPECIAL;"Refractometría (con autorefractómetro digital) bilateral";$ 52.256
+460128;EXAMEN ESPECIAL;"FDT (perimetría doble frecuencia) unilateral";$ 435.649
+460129;EXAMEN ESPECIAL;"UBM (biomicroscopía ultrasónica) unilateral";$ 315.074
+460130;EXAMEN ESPECIAL;"Fondo de ojo con lente de tres espejos unilateral";$ 34.738
+460131;EXAMEN ESPECIAL;"Aberrometría bilateral";$ 776.169
+460132;EXAMEN ESPECIAL;"Biometría por interferometría laser (IOL Master, Lenstar, Pentacam AXL)";$ 437.421
+460134;EXAMEN ESPECIAL;"Microscopia especular (con recuento endotelial celular de córnea)";$ 315.197
+460135;EXAMEN ESPECIAL;"Angio OCT bilateral";$ 1.052.025
+460136;EXAMEN ESPECIAL;"Angio OCT bilateral de campo amplio";$ 1.093.859
+460137;EXAMEN ESPECIAL;"Examen de prematuros (hasta 120 días de vida, por consulta)";$ 230.793
+460138;EXAMEN ESPECIAL;"HRT (tomografía confocal de retina) unilateral";$ 442.781
+460139;EXAMEN ESPECIAL;"Ecobiometría de no contacto, de coherencia óptica, unilateral";$ 307.191
+460140;EXAMEN ESPECIAL;"Medida de poder corneal central unilateral";$ 166.109
+460142;EXAMEN ESPECIAL;"Recuento endotelial unilateral";$ 293.902
+460143;EXAMEN ESPECIAL;"Exoftalmometría con Heartel";$ 56.939
+460144;EXAMEN ESPECIAL;"Tonometría de aires unilateral-neumotonometría";$ 23.055
+460145;EXAMEN ESPECIAL;"Oftalmoscopia binocular indirecta unilateral";$ 41.195
+460146;EXAMEN ESPECIAL;"Gonioscopia con lente tres o 4 espejos unilateral";$ 36.478
+460148;EXAMEN ESPECIAL;"Test de Lancaster unilateral";$ 160.450
+460149;EXAMEN ESPECIAL;"Test de ducciones pasivas unilateral";$ 86.059
+460150;EXAMEN ESPECIAL;"HD Analizer unilateral Scattering y calidad visual";$ 332.218
+460151;EXAMEN ESPECIAL;"HD Analizer unilizer unilateral función de film lagrimal";$ 354.366
+460153;EXAMEN ESPECIAL;"Campimetría dinámica (con campímetro de Goldmann) bilateral";$ 292.026
+460154;EXAMEN ESPECIAL;"Electroretinograma";$ 221.479
+460155;EXAMEN ESPECIAL;"Electroretinograma multifocal";$ 597.993
+460156;EXAMEN ESPECIAL;"Potenciales evocados bilateral";$ 276.849
+460157;EXAMEN ESPECIAL;"Meibomiografía (por ojo)";$ 238.512
+460158;EXAMEN ESPECIAL;"Topografía Posterior (por ojo)";$ 187.403
+460159;EXAMEN ESPECIAL;"Test de sobrecarga hídrica";$ 165.265
+460160;EXAMEN ESPECIAL;"Extracción de cuerpo extraño subtarsal";$ 69.141
+460161;EXAMEN ESPECIAL;"Sesiones de estimulación visual";$ 69.141
+460201;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"Lesiones maculares (edema macular diabético)";$ 739.217
+460202;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"Lesiones vasculares con isquemia en 1 cuadrante - tratamiento completo";$ 739.217
+460203;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"Desgarros y agujeros de retina";$ 739.217
+460204;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"YAG Láser (capsulotomía posterior 2 sesiones incluidas) - tratamiento completo";$ 739.217
+460205;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"Trabeculoplastia, iridotomía, iridoplastia (láser de argón)";$ 739.217
+460206;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"Láser mediante oftalmoscopia binocular indirecta";$ 900.563
+460207;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"Láser mediante oftalmoscopia binocular indirecta en prematuros en sala de neonatología";$ 4.577.882
+460215;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"SLT trabeculoplastia selectiva para glaucoma unilateral";$ 1.273.503
+460216;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren una sola sesión;"Suturolitis con YAG";$ 739.217
+460208;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren 2 o más sesiones - valor por sesión;"Lesiones vasculares con isquemia en 2 o más cuadrantes";$ 1.200.754
+460209;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren 2 o más sesiones - valor por sesión;"Obstrucciones vasculares (con isquemia en más de 3 cuadrantes)";$ 1.200.754
+460210;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren 2 o más sesiones - valor por sesión;"Retinopatía diabética severa (panfotocoagulación)";$ 1.500.945
+460211;TRATAMIENTO CON LÁSER UNILATERAL - Patologías que requieren 2 o más sesiones - valor por sesión;"Trombosis de vena central tipo isquémica";$ 900.563
+460301;OPERACIÓN DE PÁRPADO UNILATERAL;"Chalazón, resección de lesiones de piel";$ 630.661
+460302;OPERACIÓN DE PÁRPADO UNILATERAL;"Entropión, ectropión, blefaroplastia no cosmética";$ 1.471.551
+460303;OPERACIÓN DE PÁRPADO UNILATERAL;"Ptosis en adulto, retracción de párpado, colocación pesa de oro, reparación trauma palpebral (sin descartables ni implante)";$ 2.563.276
+460305;OPERACIÓN DE PÁRPADO UNILATERAL;"Reconstrucción de párpados simple";$ 1.263.353
+460306;OPERACIÓN DE PÁRPADO UNILATERAL;"Tratamiento inyectable con Botox (en quirófano - no incluye fármaco)";$ 1.579.192
+460307;OPERACIÓN DE PÁRPADO UNILATERAL;"Reconstrucción de párpado compleja (tumor)";$ 2.752.025
+460308;OPERACIÓN DE PÁRPADO UNILATERAL;"Cirugía de distiquiasis";$ 631.675
+460310;OPERACIÓN DE PÁRPADO UNILATERAL;"Ptosis en niños, reconstrucciones de más de 50% del párpado, reposicionamiento de cejas";$ 4.660.502
+460311;OPERACIÓN DE PÁRPADO UNILATERAL;"Biopsia de párpado";$ 630.661
+460401;OPERACIÓN DE CONJUNTIVA UNILATERAL;"Escisión lesión conjuntival (pterigión, nevus, epitelioma, quiste)";$ 884.883
+460402;OPERACIÓN DE CONJUNTIVA UNILATERAL;"Conjuntivoplastia (+ flapping, recubrimiento conjuntival de córnea)";$ 1.327.332
+460403;OPERACIÓN DE CONJUNTIVA UNILATERAL;"Peritomía, peritectomía";$ 663.663
+460404;OPERACIÓN DE CONJUNTIVA UNILATERAL;"Sutura conjuntiva - biopsia de conjuntiva";$ 663.663
+460405;OPERACIÓN DE CONJUNTIVA UNILATERAL;"Conjuntivoplastia con injerto de limbo";$ 1.474.810
+460406;OPERACIÓN DE CONJUNTIVA UNILATERAL;"Biopsia de conjuntiva";$ 595.062
+460407;OPERACIÓN DE CONJUNTIVA UNILATERAL;"Sutura de conjuntiva";$ 510.053
+460212;OPERACIÓN DE CÓRNEA UNILATERAL;"Cirugía refractiva con excimer láser (unilateral) LASIK";$ 2.736.465
+460213;OPERACIÓN DE CÓRNEA UNILATERAL;"Láser femto asociado a cualquier práctica";$ 2.018.959
+460214;OPERACIÓN DE CÓRNEA UNILATERAL;"Cirugía refractiva con excimer láser (unilateral) PRK";$ 2.736.465
+460313;OPERACIÓN DE CÓRNEA UNILATERAL;"Sutura de córnea (con prolapso de iris)";$ 1.437.939
+460325;OPERACIÓN DE CÓRNEA UNILATERAL;"Queratoplastia penetrante";$ 10.626.100
+460326;OPERACIÓN DE CÓRNEA UNILATERAL;"Queratoplastia laminar";$ 17.001.760
+460327;OPERACIÓN DE CÓRNEA UNILATERAL;"Trasplante endotelial (por presupuesto)";10.000 dolares
+460328;OPERACIÓN DE CÓRNEA UNILATERAL;"Implante de anillos intracorneales (no incluye descartables, láser femto ni anillo)";$ 3.719.135
+460329;OPERACIÓN DE CÓRNEA UNILATERAL;"Crosslinking unilateral";$ 3.400.352
+460330;OPERACIÓN DE CÓRNEA UNILATERAL;"Sutura de córnea (sin prolapso de iris)";$ 958.628
+460331;OPERACIÓN DE CÓRNEA UNILATERAL;"Queratocentesis - cauterización - toma de material";$ 811.144
+460332;OPERACIÓN DE CÓRNEA UNILATERAL;"Ablación de córnea y esclera limbar y reparación cosmética de cierre palpebral (en procedimiento de donación de órganos)";$ 1.168.871
+460333;OPERACIÓN DE CÓRNEA UNILATERAL;"Recubrimiento con membrana amniótica";$ 10.626.100
+460501;OPERACIÓN DE MÚSCULO EXTRAOCULAR UNILATERAL;"Estrabismo (toda técnica o cantidad de músculos - no incluye monitoreo, anestesia ni remedios)";$ 2.449.316
+460502;OPERACIÓN DE MÚSCULO EXTRAOCULAR UNILATERAL;"Estrabismo unilateral con sutura reajustable";$ 3.187.830
+460601;OPERACIÓN DE IRIS Y CUERPO CILIAR UNILATERAL;"Iridectomía, iridotomía, coreoplastía";$ 1.203.060
+460602;OPERACIÓN DE IRIS Y CUERPO CILIAR UNILATERAL;"Iridociclectomía o iridociclotomía por tumores";$ 2.972.265
+460603;OPERACIÓN DE IRIS Y CUERPO CILIAR UNILATERAL;"Trabeculectomía - viscocanalostomía (no incluye dispositivos migs)";$ 2.028.646
+460604;OPERACIÓN DE IRIS Y CUERPO CILIAR UNILATERAL;"Implante de dispositivo de drenaje (no incluye válvula)";$ 2.547.653
+460605;OPERACIÓN DE IRIS Y CUERPO CILIAR UNILATERAL;"Endociclo Fotocoagulación";$ 2.028.646
+461206;OPERACIÓN DE VÍAS LAGRIMALES;"Dacriocistorinostomía con láser";$ 3.888.662
+461207;OPERACIÓN DE VÍAS LAGRIMALES;"Dacriorinostomía con tubo de Jones (no incluye tubo)";$ 2.592.436
+461208;OPERACIÓN DE VÍAS LAGRIMALES;"Reubicación de tubo de Jones después de los 30 días";$ 792.133
+461209;OPERACIÓN DE VÍAS LAGRIMALES;"Sondaje lagrimal con anestesia local";$ 637.566
+461210;OPERACIÓN DE VÍAS LAGRIMALES;"Exfoliación, canalización e inyección de sustancias en glándulas de Meibomio";$ 1.965.829
+461211;OPERACIÓN DE VÍAS LAGRIMALES;"Estudio de las glándulas de Meibomio, capa líquidos, NIBUT con imágenes infrarrojas";$ 249.713
+461212;OPERACIÓN DE VÍAS LAGRIMALES;"Estudio parasitológico de pestañas (demódex)";$ 74.383
+461213;OPERACIÓN DE VÍAS LAGRIMALES;"Dacriocistorinostomía endoscópica";$ 4.250.440
+461214;OPERACIÓN DE VÍAS LAGRIMALES;"Canuloplastia";$ 1.275.132
+461301;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Extracción cuerpo extraño subconjuntival o subtenoniano";$ 1.152.194
+461302;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Extracción de cuerpo extraño intracorneal";$ 432.075
+461304;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Herida perforante con cuerpo extraño en cámara anterior";$ 1.584.270
+461305;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Lavado de cámara anterior (como única operación)";$ 936.160
+461306;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Herida perforante con lesión de córnea, esclera, iris y cristalino (puede ir LIO)";$ 4.313.531
+461307;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Herida perforante c/ cuerpo extraño intraocular q/ requiera extracción y procedimientos s/ retina y/o vitreo (láser, gas, aceite)";$ 6.841.158
+461308;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Sutura de herida palpebral sin compromiso de vía lagrimal";$ 864.143
+461309;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Sutura herida palpebral c/ compromiso vía lagrimal (intubación c/ silicón y extracción a los 2 meses)";$ 1.728.293
+461311;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Herida escleral + 4mm por detrás del limbo q/ requiera tratamiento profiláctico de DR (implante silicón, crio, diatermia, láser)";$ 3.312.563
+461312;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Fractura de piso orbitario (no incluye prótesis)";$ 3.960.672
+461313;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Lipectomía uni o bilateral";$ 5.760.975
+461314;OPERACIÓN POR TRAUMA OCULAR UNILATERAL;"Descompresión uni o bilateral";$ 5.760.975
+461401;MÓDULO BAJA VISIÓN BILATERAL Y LENTES DE CONTACTO;"Primera consulta de baja visión - Diagnóstico y receta de lentes especiales y/o ayudas";$ 371.914
+461402;MÓDULO BAJA VISIÓN BILATERAL Y LENTES DE CONTACTO;"Consultas siguientes (seguimiento de patología)";$ 185.957
+461403;MÓDULO BAJA VISIÓN BILATERAL Y LENTES DE CONTACTO;"Adaptación de lentes de contacto";$ 425.044
+461404;MÓDULO BAJA VISIÓN BILATERAL Y LENTES DE CONTACTO;"Eventuales controles post adaptación";$ 106.261

@@ -288,6 +288,12 @@ $identifierSystemLabels = [
     'oftar-pr' => 'browse.identifier_system_oftar_pr',
     'OFTAR-DX' => 'browse.identifier_system_oftar_dx',
     'oftar-dx' => 'browse.identifier_system_oftar_dx',
+    'NOMENCLADOR_CAO_AR' => 'browse.identifier_system_cao',
+    'NOMENCLADOR-CAO-AR' => 'browse.identifier_system_cao',
+    'nomenclador-oftalmologico-cao-ar' => 'browse.identifier_system_cao',
+    'NOMENCLADOR_OFTAL_REG_AR' => 'browse.identifier_system_oftal_reg',
+    'NOMENCLADOR-OFTAL-REG-AR' => 'browse.identifier_system_oftal_reg',
+    'nomenclador-oftalmologico-regional-ar' => 'browse.identifier_system_oftal_reg',
 ];
 $identifierSystemLabel = static function (string $system) use ($t, $identifierSystemLabels): string {
     return isset($identifierSystemLabels[$system]) ? $t($identifierSystemLabels[$system]) : $system;

@@ -864,6 +864,8 @@ JSON;
                             <tr><td><code>dentar-pr</code></td><td><?= $esc($t('docs.catalogs.code_dentar_pr')) ?></td></tr>
                             <tr><td><code>dentar-dx</code></td><td><?= $esc($t('docs.catalogs.code_dentar_dx')) ?></td></tr>
                             <tr><td><code>nomenclador-odontologico-ar</code></td><td><?= $esc($t('docs.catalogs.code_nomenclador')) ?></td></tr>
+                            <tr><td><code>nomenclador-oftalmologico-cao-ar</code></td><td><?= $esc($t('docs.catalogs.code_cao')) ?></td></tr>
+                            <tr><td><code>nomenclador-oftalmologico-regional-ar</code></td><td><?= $esc($t('docs.catalogs.code_regional')) ?></td></tr>
                             <tr><td><code>nbu</code></td><td><?= $esc($t('docs.catalogs.code_nbu')) ?></td></tr>
                             <tr><td><code>nn-pmo</code></td><td><?= $esc($t('docs.catalogs.code_nn_pmo')) ?></td></tr>
                         </tbody>

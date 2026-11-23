@@ -820,7 +820,7 @@
 
         // La whitelist viene del servidor (mismo conjunto que el backend).
         // Evita que un catálogo publicado sea descartado por una lista fija.
-        var allowed = (form.getAttribute('data-catalogs') || 'dentar-pr,dentar-dx,nomenclador-odontologico-ar,oftar-pr,oftar-dx')
+        var allowed = (form.getAttribute('data-catalogs') || 'dentar-pr,dentar-dx,nomenclador-odontologico-ar,oftar-pr,oftar-dx,nomenclador-oftalmologico-cao-ar,nomenclador-oftalmologico-regional-ar')
             .split(',').map(function (code) { return code.trim(); }).filter(Boolean);
         var catalogs = dedupe(catalogValues).filter(function (code) {
             return allowed.indexOf(code) !== -1;

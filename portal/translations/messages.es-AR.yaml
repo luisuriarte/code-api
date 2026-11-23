@@ -307,6 +307,8 @@ docs:
         code_dentar_pr: 'Procedimientos odontológicos propios con códigos DNT-PR-NNNNNN.'
         code_dentar_dx: 'Diagnósticos odontológicos propios con códigos DNT-DX-NNNNNN.'
         code_nomenclador: 'Nomenclador Odontológico Nacional como catálogo fuente e identificador secundario de DENTAR-PR.'
+        code_cao: 'Nomenclador Nacional de Oftalmología del Consejo Argentino de Oftalmología como catálogo fuente; conserva su numeración original.'
+        code_regional: 'Nomenclador Oftalmológico de Referencia Regional (NOA) como catálogo fuente; conserva su numeración original.'
         code_nbu: 'Nomenclador Bioquímico Único con Unidades Bioquímicas.'
         code_nn_pmo: 'Nomenclador Nacional de prácticas médicas y quirúrgicas.'
         editorial_title: 'Control editorial idiomático'
@@ -686,6 +688,8 @@ browse:
     identifiers: "Identificadores"
     identifier_primary: "Identificador principal"
     identifier_system_nomenclador: "Nomenclador Odontológico Nacional"
+    identifier_system_cao: "Nomenclador Nacional de Oftalmología (CAO)"
+    identifier_system_oftal_reg: "Nomenclador Oftalmológico de Referencia Regional"
     identifier_system_cie10: "CIE-10"
     identifier_system_cdt: "CDT-2025"
     identifier_system_snomed: "SNOMED-CT"
@@ -987,6 +991,8 @@ oftar:
     dx_text: "Enfermedades, trastornos y condiciones clínicas del capítulo H00-H59 de CIE-10, identificadas con códigos permanentes propios."
     dx_prefix: "Prefijo OFT-DX-NNNNNN"
     dx_action: "Consultar OFTAR-DX"
+    cao_badge: "Nomenclador Nacional CAO"
+    regional_badge: "Nomenclador Regional NOA"
     fields_label: "Campos previstos según disponibilidad real"
     field_code: "Código con etiqueta Código"
     field_status: "Estado editorial y de publicación"

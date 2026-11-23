@@ -34,15 +34,21 @@ final class CatalogRepository
     public const DENTAR_CATALOGS = ['dentar-pr', 'dentar-dx', 'nomenclador-odontologico-ar'];
 
     /**
-     * Familia OFTAR: un único dominio (`oftar`) para los dos productos.
-     * `oftar-dx` sigue excluido de UVR; `oftar-pr` es el único valorable.
+     * Familia OFTAR: un único dominio (`oftar`) para los dos productos propios
+     * y sus dos nomencladores de origen (CAO y referencia regional).
+     * `oftar-dx` y los catálogos de origen quedan fuera de UVR; `oftar-pr` es
+     * el único valorable.
      */
-    public const OFTAR_CATALOGS = ['oftar-pr', 'oftar-dx'];
+    public const OFTAR_CATALOGS = [
+        'oftar-pr', 'oftar-dx',
+        'nomenclador-oftalmologico-cao-ar', 'nomenclador-oftalmologico-regional-ar',
+    ];
 
     /** Whitelist completa de catálogos publicados que acepta el explorador. */
     public const PUBLISHED_CATALOGS = [
         'dentar-pr', 'dentar-dx', 'nomenclador-odontologico-ar',
         'oftar-pr', 'oftar-dx',
+        'nomenclador-oftalmologico-cao-ar', 'nomenclador-oftalmologico-regional-ar',
     ];
 
     private const SNOMED_FSN = '900000000000003001';
