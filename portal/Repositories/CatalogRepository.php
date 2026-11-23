@@ -561,28 +561,33 @@ final class CatalogRepository
         // La API conserva su DEFAULT_DOMAINS acotado por coste; aquí un código
         // DENTAR (DNT-PR/DNT-DX) debe encontrarse sin necesidad de marcar un
         // catálogo a mano. Con catálogo o filtros el ámbito se reduce abajo.
-        $domains = self::normalizeDomains(implode(',', $domains));
-        if ($domains === []) {
-            $domains = self::DOMAINS;
-        }
+        $requestedDomains = self::normalizeDomains(implode(',', $domains));
         $catalogs = self::normalizeCatalogs($catalog);
         $filters = self::normalizeFilters($filters);
+
         if ($catalogs !== []) {
-            // El filtro de catálogo implica su dominio aunque el usuario no
-            // haya marcado explícitamente ese dominio en el formulario.
+            // El filtro de catálogo implica su dominio. Si el usuario no marcó
+            // dominios explícitos, solo se buscan esos catálogos: caer en
+            // self::DOMAINS haría que SNOMED, CIE-10, etc. aparecieran también.
             $catalogDomains = [];
             foreach ($catalogs as $catalogCode) {
                 $catalogDomains[] = in_array($catalogCode, self::OFTAR_CATALOGS, true)
                     ? 'oftar'
                     : 'odontologia';
             }
-            $domains = array_values(array_unique(array_merge($domains, $catalogDomains)));
+            $domains = $requestedDomains === []
+                ? $catalogDomains
+                : array_merge($requestedDomains, $catalogDomains);
+            $domains = array_values(array_unique($domains));
         } elseif ($filters !== []) {
             // Los filtros estructurados solo existen en el motor os_catalog.
+            $scope = $requestedDomains !== [] ? $requestedDomains : self::DOMAINS;
             $domains = array_values(array_intersect(
-                $domains,
+                $scope,
                 array_keys(self::OS_CATALOG_DOMAIN_TYPES)
             ));
+        } else {
+            $domains = $requestedDomains !== [] ? $requestedDomains : self::DOMAINS;
         }
         $offset = max(0, min(self::MAX_OFFSET, $offset));
 

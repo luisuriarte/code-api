@@ -1343,7 +1343,8 @@ $check(
     str_contains($catalogRepoSource, 'public static function normalizeDomains(')
     && preg_match('/public static function search\(\s*string \$query,\s*array \$domains,/m', $catalogRepoSource) === 1
     && str_contains($catalogRepoSource, '$nativeAllowed = $filters === []')
-    && str_contains($catalogRepoSource, '$osAllowed = $catalogs === []'),
+    && str_contains($catalogRepoSource, '$osAllowed = $catalogs === []')
+    && str_contains($catalogRepoSource, '$domains = $requestedDomains === []'),
     'El repositorio debe combinar dominios y catálogos sin crear dominios nuevos ni duplicar ramas.'
 );
 $check(
@@ -1389,8 +1390,8 @@ require_once $root . '/portal/Repositories/CatalogRepository.php';
 $portalDomains = \OrigenSalud\Portal\Repositories\CatalogRepository::DOMAINS;
 $check(in_array('odontologia', $portalDomains, true), 'El browser debe publicar el dominio odontología.');
 $check(
-    str_contains($portalRepoSource, '$domains = self::normalizeDomains(implode(\',\', $domains));')
-    && str_contains($portalRepoSource, '$domains = self::DOMAINS;'),
+    str_contains($portalRepoSource, '$requestedDomains = self::normalizeDomains(implode(\',\', $domains));')
+    && str_contains($portalRepoSource, '$domains = $requestedDomains !== [] ? $requestedDomains : self::DOMAINS;'),
     'Sin filtros, el browser debe consultar todas las fuentes, no solo las tres núcleo.'
 );
 $check(
