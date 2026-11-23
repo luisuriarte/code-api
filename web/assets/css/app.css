@@ -1361,12 +1361,14 @@ svg {
     --dentar-line: #cfe2df;
 }
 
-.site-nav a.nav-dentar {
+.site-nav a.nav-dentar,
+.site-nav a.nav-oftar {
     color: var(--teal-dark);
     font-weight: 750;
 }
 
-.site-nav a.nav-dentar::after {
+.site-nav a.nav-dentar::after,
+.site-nav a.nav-oftar::after {
     content: "";
     display: inline-block;
     width: 6px;
@@ -1377,7 +1379,8 @@ svg {
     vertical-align: middle;
 }
 
-.page-dentar .site-nav a.nav-dentar {
+.page-dentar .site-nav a.nav-dentar,
+.page-oftar .site-nav a.nav-oftar {
     border-bottom-color: var(--teal);
 }
 

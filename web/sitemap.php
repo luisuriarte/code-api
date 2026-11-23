@@ -7,7 +7,7 @@ declare(strict_types=1);
  *
  * Se genera desde las rutas y locales REALMENTE implementados. No incluye
  * DENTAR-AN/CL (su exposición pública requiere aprobación explícita), ni
- * secciones reservadas (IN/PD/EQ, productos), la página metodológica UVR
+ * secciones reservadas (IN/PD/EQ), la página metodológica UVR
  * (enlazada desde Docs) y la ruta rota /cart.
  */
 
@@ -19,7 +19,7 @@ use OrigenSalud\Web\I18n;
 $baseUrl = rtrim(Config::baseUrl(), '/');
 
 /** Rutas públicas existentes en portal/Router.php (o en la capa legacy). */
-$publicPaths = ['/', '/dentar', '/browse', '/docs', '/about', '/contact'];
+$publicPaths = ['/', '/dentar', '/oftar', '/browse', '/docs', '/about', '/contact'];
 
 $locales = I18n::SUPPORTED;
 

@@ -1465,7 +1465,8 @@ require $root . '/web/sitemap.php';
 $sitemapXml = (string) ob_get_clean();
 $sitemapDoc = new DOMDocument();
 $check($sitemapDoc->loadXML($sitemapXml), 'El sitemap generado debe ser XML válido.');
-$check($sitemapDoc->getElementsByTagName('url')->length === 18, 'El sitemap debe tener 18 URLs (3 locales × 6 rutas).');
+$check($sitemapDoc->getElementsByTagName('url')->length === 21, 'El sitemap debe tener 21 URLs (3 locales × 7 rutas).');
+$check(str_contains($sitemapXml, '/oftar'), 'El sitemap debe incluir la página de OFTAR.');
 $check(!str_contains($sitemapXml, '/cart'), 'El sitemap no debe incluir /cart.');
 $check(
     !str_contains($sitemapXml, 'dentar-an') && !str_contains($sitemapXml, 'dentar-cl'),
@@ -2913,6 +2914,102 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $oftarLocale) {
         );
     }
 }
+// Página de primer nivel de OFTAR: espejo de DENTAR, sin modificar DENTAR.
+$oftarControllerPath = $root . '/portal/Controllers/OftarController.php';
+$oftarViewPath = $root . '/portal/Views/oftar.php';
+$check(is_file($oftarControllerPath), 'Debe existir el controlador de la página OFTAR.');
+$check(is_file($oftarViewPath), 'Debe existir la vista de la página OFTAR.');
+$oftarController = is_file($oftarControllerPath) ? (string) file_get_contents($oftarControllerPath) : '';
+$oftarView = is_file($oftarViewPath) ? (string) file_get_contents($oftarViewPath) : '';
+$check(
+    str_contains($oftarController, "View::render('oftar'")
+        && str_contains($oftarController, "'bodyClass' => 'page-oftar'")
+        && str_contains($oftarController, '?domain=oftar&catalog=oftar-pr')
+        && str_contains($oftarController, '?domain=oftar&catalog=oftar-dx')
+        && !str_contains($oftarController, '/v1/')
+        && !str_contains($oftarController, '/fhir/'),
+    'El controlador OFTAR debe usar el explorador compartido sin rutas de API inexistentes.'
+);
+$check(
+    str_contains($oftarView, 'oftar-logo0.png')
+        && str_contains($oftarView, 'oftar-logo1.png')
+        && !str_contains($oftarView, 'oftar-logo0.svg')
+        && !str_contains($oftarView, 'oftar-logo1.svg')
+        && str_contains($oftarView, 'name="domain" value="oftar"')
+        && str_contains($oftarView, 'value="oftar-pr"')
+        && str_contains($oftarView, 'value="oftar-dx"')
+        && str_contains($oftarView, "t('oftar.value_work_title')")
+        && !str_contains($oftarView, 'ID interno')
+        && !str_contains($oftarView, 'OFTAR-PR-NNNNNN'),
+    'La vista OFTAR debe usar sus logos, el dominio único y los prefijos OFT-PR/OFT-DX.'
+);
+$oftarRouter = (string) file_get_contents($root . '/portal/Router.php');
+$check(
+    str_contains($oftarRouter, 'use OrigenSalud\Portal\Controllers\OftarController;')
+        && str_contains($oftarRouter, "if (\$section === 'oftar')")
+        && str_contains($oftarRouter, 'OftarController::index($locale, $currentPath)'),
+    'El router debe exponer /{locale}/oftar.'
+);
+$check(
+    str_contains((string) file_get_contents($root . '/portal/Views/partials/nav-links.php'), "'class' => 'nav-oftar'")
+        && str_contains((string) file_get_contents($root . '/portal/Views/partials/footer.php'), "t('footer.product_oftar')")
+        && str_contains((string) file_get_contents($root . '/web/assets/css/app.css'), '.site-nav a.nav-oftar'),
+    'OFTAR debe tener entrada en el menú, el pie y el CSS de navegación.'
+);
+foreach (['oftar-logo0.png', 'oftar-logo1.png'] as $oftarLogo) {
+    $check(is_file($root . '/web/assets/logos/' . $oftarLogo), 'Falta el logo ' . $oftarLogo . ' en el DocumentRoot.');
+}
+
+$oftarPageKeys = [
+    'meta_title', 'meta_description', 'hero_eyebrow', 'hero_title', 'hero_subtitle', 'hero_lead',
+    'hero_primary', 'hero_secondary', 'hero_docs', 'hero_note', 'hero_card_title', 'hero_card_label',
+    'hero_card_pr', 'hero_card_dx', 'hero_card_foot', 'problem_eyebrow', 'problem_title', 'problem_lead',
+    'problem_1_title', 'problem_1_text', 'problem_2_title', 'problem_2_text',
+    'problem_3_title', 'problem_3_text', 'problem_4_title', 'problem_4_text',
+    'problem_5_title', 'problem_5_text', 'problem_6_title', 'problem_6_text',
+    'catalogs_eyebrow', 'catalogs_title', 'catalogs_lead', 'pr_badge', 'pr_title', 'pr_text',
+    'pr_prefix', 'pr_action', 'dx_badge', 'dx_title', 'dx_text', 'dx_prefix', 'dx_action',
+    'fields_label', 'field_code', 'field_status', 'field_term', 'field_category', 'field_laterality',
+    'field_language', 'field_criteria', 'field_uvr', 'field_source', 'field_validity', 'no_uvr',
+    'catalogs_note', 'search_eyebrow', 'search_title', 'search_lead', 'search_all_link',
+    'search_label', 'search_placeholder', 'search_catalog_label', 'search_option_pr',
+    'search_option_dx', 'search_button', 'detail_eyebrow', 'detail_title', 'detail_lead',
+    'detail_pr_title', 'detail_pr_text', 'detail_dx_title', 'detail_dx_text', 'detail_note',
+    'interop_eyebrow', 'interop_title', 'interop_lead', 'interop_pr_title', 'interop_dx_title',
+    'interop_legend_title', 'interop_internal', 'interop_external', 'interop_pending', 'interop_note',
+    'system_nomenclature', 'system_snomed', 'system_cie10', 'system_oftar_pr', 'system_oftar_dx',
+    'value_eyebrow', 'value_title', 'value_lead', 'value_work_title', 'value_work_text',
+    'value_total_title', 'value_total_text', 'value_amount_title', 'value_amount_text', 'value_note',
+    'ecosystem_eyebrow', 'ecosystem_title', 'ecosystem_lead', 'ecosystem_snomed', 'ecosystem_cie10',
+    'ecosystem_loinc', 'ecosystem_anmat', 'ecosystem_nomencladores', 'ecosystem_prestaciones',
+    'roadmap_eyebrow', 'roadmap_title', 'roadmap_lead', 'roadmap_1_title', 'roadmap_1_text',
+    'roadmap_2_title', 'roadmap_2_text', 'roadmap_3_title', 'roadmap_3_text', 'roadmap_note',
+    'cta_title', 'cta_text', 'cta_primary', 'cta_secondary', 'cta_contact',
+];
+$oftarKeySets = [];
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $oftarPageLocale) {
+    $oftarPageMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $oftarPageLocale . '.yaml');
+    $oftarNamespace = $oftarPageMessages['oftar'] ?? [];
+    $oftarKeySets[$oftarPageLocale] = array_keys($oftarNamespace);
+    $missing = [];
+    foreach ($oftarPageKeys as $oftarPageKey) {
+        if (!isset($oftarNamespace[$oftarPageKey]) || trim((string) $oftarNamespace[$oftarPageKey]) === '') {
+            $missing[] = $oftarPageKey;
+        }
+    }
+    $check($missing === [], $oftarPageLocale . ': faltan claves de la página OFTAR (' . implode(', ', $missing) . ').');
+    $check(
+        isset($oftarPageMessages['nav']['oftar'], $oftarPageMessages['footer']['product_oftar']),
+        $oftarPageLocale . ': faltan nav.oftar o footer.product_oftar.'
+    );
+}
+$check(
+    $oftarKeySets['en'] === $oftarKeySets['es-AR']
+        && $oftarKeySets['pt-BR'] === $oftarKeySets['es-AR']
+        && $oftarKeySets['es'] === $oftarKeySets['es-AR'],
+    'Los cuatro idiomas deben tener el mismo conjunto de claves de la página OFTAR.'
+);
+
 $oftarPreflightPath = $root . '/sql/03_oftar/preflight_oftar_pr.sql';
 $oftarPreflight = is_file($oftarPreflightPath) ? (string) file_get_contents($oftarPreflightPath) : '';
 $check(

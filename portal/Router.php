@@ -18,6 +18,7 @@ use OrigenSalud\Portal\Controllers\BrowseController;
 use OrigenSalud\Portal\Controllers\ContactController;
 use OrigenSalud\Portal\Controllers\DentarController;
 use OrigenSalud\Portal\Controllers\HomeController;
+use OrigenSalud\Portal\Controllers\OftarController;
 use OrigenSalud\Web\I18n;
 
 /**
@@ -93,6 +94,12 @@ final class Router
 
         if ($section === 'dentar') {
             DentarController::index($locale, $currentPath);
+
+            return;
+        }
+
+        if ($section === 'oftar') {
+            OftarController::index($locale, $currentPath);
 
             return;
         }

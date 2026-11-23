@@ -11,6 +11,7 @@ use OrigenSalud\Web\I18n;
 $navItems = [
     ['key' => 'home', 'label' => $t('nav.home'), 'href' => I18n::localizedPath($locale, '/')],
     ['key' => 'dentar', 'label' => $t('nav.dentar'), 'href' => I18n::localizedPath($locale, '/dentar'), 'class' => 'nav-dentar'],
+    ['key' => 'oftar', 'label' => $t('nav.oftar'), 'href' => I18n::localizedPath($locale, '/oftar'), 'class' => 'nav-oftar'],
     ['key' => 'browse', 'label' => $t('nav.browse'), 'href' => I18n::localizedPath($locale, '/browse')],
     ['key' => 'docs', 'label' => $t('nav.docs'), 'href' => I18n::localizedPath($locale, '/docs')],
     ['key' => 'uvr', 'label' => $t('nav.uvr'), 'href' => '/uvr?lang=' . rawurlencode($locale)],
