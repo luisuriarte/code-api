@@ -176,6 +176,11 @@ def build_artifact(config: dict, rows: list[dict[str, str]], nn_index: dict[str,
     add(f"-- sql/03_oftar/{os.path.basename(config['output'])}")
     add("-- =============================================================================")
     add("--")
+    add("-- EJECUCIÓN EN EL VPS (el rol `root` no existe en PostgreSQL):")
+    add("--   cd /var/www/html/origen.ar/code-api")
+    add("--   sudo -u postgres psql -d origen_codes -v ON_ERROR_STOP=1 -f sql/03_oftar/"
+        + os.path.basename(config["output"]))
+    add("--")
     add("-- Generado por tools/generate_nomencladores_oftalmologicos_sql.py desde")
     add(f"-- {config['source_file']}. NO EDITAR A MANO; volver a generar.")
     add("--")
