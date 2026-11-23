@@ -7,6 +7,7 @@ use OrigenSalud\Web\I18n;
 $footerProduct = [
     ['label' => $t('nav.docs'), 'href' => I18n::localizedPath($locale, '/docs')],
     ['label' => $t('nav.uvr'), 'href' => '/uvr?lang=' . rawurlencode($locale)],
+    ['label' => $t('footer.product_hub'), 'href' => I18n::localizedPath($locale, '/productos')],
     ['label' => $t('footer.product_dentar'), 'href' => I18n::localizedPath($locale, '/dentar')],
     ['label' => $t('footer.product_oftar'), 'href' => I18n::localizedPath($locale, '/oftar')],
     ['label' => $t('footer.product_snomed'), 'href' => I18n::localizedPath($locale, '/browse')],

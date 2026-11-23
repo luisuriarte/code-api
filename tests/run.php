@@ -1465,8 +1465,9 @@ require $root . '/web/sitemap.php';
 $sitemapXml = (string) ob_get_clean();
 $sitemapDoc = new DOMDocument();
 $check($sitemapDoc->loadXML($sitemapXml), 'El sitemap generado debe ser XML válido.');
-$check($sitemapDoc->getElementsByTagName('url')->length === 21, 'El sitemap debe tener 21 URLs (3 locales × 7 rutas).');
+$check($sitemapDoc->getElementsByTagName('url')->length === 24, 'El sitemap debe tener 24 URLs (3 locales × 8 rutas).');
 $check(str_contains($sitemapXml, '/oftar'), 'El sitemap debe incluir la página de OFTAR.');
+$check(str_contains($sitemapXml, '/productos'), 'El sitemap debe incluir el hub Productos.');
 $check(!str_contains($sitemapXml, '/cart'), 'El sitemap no debe incluir /cart.');
 $check(
     !str_contains($sitemapXml, 'dentar-an') && !str_contains($sitemapXml, 'dentar-cl'),
@@ -2914,6 +2915,94 @@ foreach (['es-AR', 'en', 'pt-BR', 'es'] as $oftarLocale) {
         );
     }
 }
+// Hub Productos: reúne DENTAR y OFTAR sin duplicar sus páginas ni su buscador.
+$productosControllerPath = $root . '/portal/Controllers/ProductosController.php';
+$productosViewPath = $root . '/portal/Views/productos.php';
+$check(is_file($productosControllerPath), 'Debe existir el controlador del hub Productos.');
+$check(is_file($productosViewPath), 'Debe existir la vista del hub Productos.');
+$productosController = is_file($productosControllerPath) ? (string) file_get_contents($productosControllerPath) : '';
+$productosView = is_file($productosViewPath) ? (string) file_get_contents($productosViewPath) : '';
+$check(
+    str_contains($productosController, "View::render('productos'")
+        && str_contains($productosController, "'bodyClass' => 'page-products'")
+        && str_contains($productosController, "'activeNav' => 'products'")
+        && str_contains($productosController, '?domain=odontologia&catalog=dentar-pr')
+        && str_contains($productosController, '?domain=odontologia&catalog=dentar-dx')
+        && str_contains($productosController, '?domain=oftar&catalog=oftar-pr')
+        && str_contains($productosController, '?domain=oftar&catalog=oftar-dx')
+        && !str_contains($productosController, '/v1/')
+        && !str_contains($productosController, '/fhir/'),
+    'El controlador del hub debe apuntar a las cuatro combinaciones de dominio y catálogo.'
+);
+$check(
+    str_contains($productosView, 'dentar-logo0.png')
+        && str_contains($productosView, 'dentar-logo1.png')
+        && str_contains($productosView, 'oftar-logo0.png')
+        && str_contains($productosView, 'oftar-logo1.png')
+        && str_contains($productosView, "t('products.dentar_prefix')")
+        && str_contains($productosView, "t('products.oftar_prefix')")
+        && str_contains($productosView, 't(\'products.dentar_page_action\')')
+        && str_contains($productosView, 't(\'products.oftar_page_action\')')
+        && !str_contains($productosView, 'ID interno')
+        && !str_contains($productosView, 'OFTAR-PR-NNNNNN'),
+    'La vista del hub debe mostrar ambas familias con sus logos y prefijos reales.'
+);
+$productosRouter = (string) file_get_contents($root . '/portal/Router.php');
+$check(
+    str_contains($productosRouter, 'use OrigenSalud\\Portal\\Controllers\\ProductosController;')
+        && str_contains($productosRouter, "if (\$section === 'productos')")
+        && str_contains($productosRouter, 'ProductosController::index($locale, $currentPath)'),
+    'El router debe exponer /{locale}/productos.'
+);
+$check(
+    str_contains((string) file_get_contents($root . '/portal/Views/partials/nav-links.php'), "'class' => 'nav-products'")
+        && str_contains((string) file_get_contents($root . '/portal/Views/partials/footer.php'), "t('footer.product_hub')")
+        && str_contains((string) file_get_contents($root . '/web/assets/css/app.css'), '.page-products .site-nav a.nav-products'),
+    'El hub debe tener entrada en el menú, el pie y el CSS de navegación.'
+);
+$productPageKeys = [
+    'meta_title', 'meta_description', 'hero_eyebrow', 'hero_title', 'hero_subtitle', 'hero_lead',
+    'hero_primary', 'hero_secondary', 'hero_note', 'hero_card_title', 'hero_card_label',
+    'hero_card_dentar', 'hero_card_oftar', 'hero_card_foot', 'families_eyebrow', 'families_title',
+    'families_lead', 'dentar_badge', 'dentar_title', 'dentar_text', 'dentar_prefix',
+    'dentar_catalog_pr', 'dentar_catalog_dx', 'dentar_page_action', 'dentar_browse_action',
+    'oftar_badge', 'oftar_title', 'oftar_text', 'oftar_prefix', 'oftar_catalog_pr',
+    'oftar_catalog_dx', 'oftar_page_action', 'oftar_browse_action', 'choose_eyebrow',
+    'choose_title', 'choose_lead', 'choose_pr_title', 'choose_pr_text', 'choose_dx_title',
+    'choose_dx_text', 'choose_uvr_title', 'choose_uvr_text', 'browser_eyebrow', 'browser_title',
+    'browser_lead', 'browser_1_title', 'browser_1_text', 'browser_2_title', 'browser_2_text',
+    'browser_3_title', 'browser_3_text', 'cta_title', 'cta_text', 'cta_primary',
+    'cta_secondary', 'cta_contact',
+];
+$productKeySets = [];
+foreach (['es-AR', 'en', 'pt-BR', 'es'] as $productPageLocale) {
+    $productPageMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $productPageLocale . '.yaml');
+    $productNamespace = $productPageMessages['products'] ?? [];
+    $productKeySets[$productPageLocale] = array_keys($productNamespace);
+    $missing = [];
+    foreach ($productPageKeys as $productPageKey) {
+        if (!isset($productNamespace[$productPageKey]) || trim((string) $productNamespace[$productPageKey]) === '') {
+            $missing[] = $productPageKey;
+        }
+    }
+    $check($missing === [], $productPageLocale . ': faltan claves del hub Productos (' . implode(', ', $missing) . ').');
+    $check(
+        str_contains((string) ($productNamespace['dentar_prefix'] ?? ''), 'DNT-PR-NNNNNN')
+            && str_contains((string) ($productNamespace['oftar_prefix'] ?? ''), 'OFT-PR-NNNNNN'),
+        $productPageLocale . ': los prefijos del hub deben ser DNT-PR/OFT-PR.'
+    );
+    $check(
+        isset($productPageMessages['nav']['products'], $productPageMessages['footer']['product_hub']),
+        $productPageLocale . ': faltan nav.products o footer.product_hub.'
+    );
+}
+$check(
+    $productKeySets['en'] === $productKeySets['es-AR']
+        && $productKeySets['pt-BR'] === $productKeySets['es-AR']
+        && $productKeySets['es'] === $productKeySets['es-AR'],
+    'Los cuatro idiomas deben tener el mismo conjunto de claves del hub Productos.'
+);
+
 // Página de primer nivel de OFTAR: espejo de DENTAR, sin modificar DENTAR.
 $oftarControllerPath = $root . '/portal/Controllers/OftarController.php';
 $oftarViewPath = $root . '/portal/Views/oftar.php';

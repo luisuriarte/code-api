@@ -1362,13 +1362,15 @@ svg {
 }
 
 .site-nav a.nav-dentar,
-.site-nav a.nav-oftar {
+.site-nav a.nav-oftar,
+.site-nav a.nav-products {
     color: var(--teal-dark);
     font-weight: 750;
 }
 
 .site-nav a.nav-dentar::after,
-.site-nav a.nav-oftar::after {
+.site-nav a.nav-oftar::after,
+.site-nav a.nav-products::after {
     content: "";
     display: inline-block;
     width: 6px;
@@ -1380,8 +1382,37 @@ svg {
 }
 
 .page-dentar .site-nav a.nav-dentar,
-.page-oftar .site-nav a.nav-oftar {
+.page-oftar .site-nav a.nav-oftar,
+.page-products .site-nav a.nav-products {
     border-bottom-color: var(--teal);
+}
+
+/* Hub Productos: reutiliza el sistema visual de las fichas de familia. */
+.products-family-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.products-family-mark {
+    display: block;
+    flex: 0 0 auto;
+    width: 56px;
+    padding: 6px;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.products-family-mark img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.page-products .dentar-logo-lockup + .dentar-logo-lockup {
+    margin-top: 14px;
 }
 
 .dentar-hero {
