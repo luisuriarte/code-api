@@ -12,6 +12,16 @@
 
 BEGIN;
 
+-- Guarda: esta migración solo se ejecuta en la base aislada de prueba.
+DO $guard$
+BEGIN
+    IF current_database() NOT LIKE 'origen_codes_portal_clientes%' THEN
+        RAISE EXCEPTION 'Base no permitida para la Etapa 7: %', current_database()
+            USING ERRCODE = '42501';
+    END IF;
+END
+$guard$;
+
 -- ---------------------------------------------------------------------------
 -- Catálogo técnico de servicios
 -- ---------------------------------------------------------------------------
@@ -190,6 +200,44 @@ DROP TRIGGER IF EXISTS trg_operator_touch ON os_customer.operator;
 CREATE TRIGGER trg_operator_touch
     BEFORE UPDATE ON os_customer.operator
     FOR EACH ROW EXECUTE FUNCTION os_customer.touch_updated_at();
+
+-- Una habilitación activa no puede escribirse sin pago verificado, ni siquiera
+-- por acceso directo a la base. La identidad del actor sí se controla en la app.
+CREATE OR REPLACE FUNCTION os_customer.require_verified_payment_for_active_entitlement()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+    v_contract os_customer.contract%ROWTYPE;
+BEGIN
+    IF NEW.status IS DISTINCT FROM 'active' THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.contract_id IS NULL THEN
+        RAISE EXCEPTION 'La habilitación activa exige un contrato verificado.'
+            USING ERRCODE = '23514';
+    END IF;
+
+    SELECT * INTO v_contract FROM os_customer.contract WHERE id = NEW.contract_id;
+
+    IF NOT FOUND
+       OR v_contract.status <> 'active'
+       OR v_contract.commercial_condition <> 'payment_confirmed'
+       OR v_contract.commercial_verified_by IS NULL
+       OR v_contract.commercial_verified_at IS NULL
+       OR (v_contract.valid_from IS NOT NULL AND v_contract.valid_from > now())
+       OR (v_contract.valid_to IS NOT NULL AND v_contract.valid_to <= now()) THEN
+        RAISE EXCEPTION 'El pago confirmado debe estar verificado antes de activar.'
+            USING ERRCODE = '23514';
+    END IF;
+
+    RETURN NEW;
+END
+$$;
+
+DROP TRIGGER IF EXISTS trg_entitlement_verified_payment ON os_customer.entitlement;
+CREATE TRIGGER trg_entitlement_verified_payment
+    BEFORE INSERT OR UPDATE OF status, contract_id ON os_customer.entitlement
+    FOR EACH ROW EXECUTE FUNCTION os_customer.require_verified_payment_for_active_entitlement();
 
 -- ---------------------------------------------------------------------------
 -- RBAC: permisos nuevos y rol de superadministrador de Origen Salud

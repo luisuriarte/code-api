@@ -5,6 +5,16 @@
 
 BEGIN;
 
+-- Guarda: esta reversión solo se ejecuta en la base aislada de prueba.
+DO $guard$
+BEGIN
+    IF current_database() NOT LIKE 'origen_codes_portal_clientes%' THEN
+        RAISE EXCEPTION 'Base no permitida para la Etapa 7: %', current_database()
+            USING ERRCODE = '42501';
+    END IF;
+END
+$guard$;
+
 DELETE FROM os_customer.role_permission
 WHERE permission_id IN (
     SELECT id FROM os_customer.permission
@@ -24,5 +34,7 @@ DROP TABLE IF EXISTS os_customer.service_request_item;
 DROP TABLE IF EXISTS os_customer.service_request;
 DROP TABLE IF EXISTS os_customer.service_item;
 DROP TABLE IF EXISTS os_customer.service;
+
+DROP FUNCTION IF EXISTS os_customer.require_verified_payment_for_active_entitlement();
 
 COMMIT;

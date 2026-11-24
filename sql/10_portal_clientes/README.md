@@ -112,7 +112,9 @@ sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
   -f sql/10_portal_clientes/V7.001__services_entitlements.verify_rollback.sql
 ```
 
-La verificación de V7 debe devolver `columnas_prohibidas = 0`, `capacidades_inexistentes = 0` y `servicios_verificados = 13`. El catálogo inicial contiene solo rutas `GET` documentadas en `api/index.php`, `docs/api/openapi-3.1.yaml`, `README-API.md`, `web/docs.php` y `portal/Router.php`.
+La verificación de V7 debe devolver `columnas_prohibidas = 0`, `capacidades_inexistentes = 0`, `servicios_verificados = 13`, `catalogo_solo_lectura = t` y `trigger_pago_verificado = 1`. El catálogo inicial contiene solo rutas `GET` documentadas en `api/index.php`, `docs/api/openapi-3.1.yaml`, `README-API.md`, `web/docs.php` y `portal/Router.php`.
+
+La base rechaza por trigger cualquier habilitación en `active` cuyo contrato no tenga pago confirmado verificado. La identidad del superadministrador se valida en la aplicación, no en la base: el rol de base es compartido por la app.
 
 El permiso de superadministrador **no se asigna automáticamente**. Después de aplicar `up`, un administrador de la base debe aprovisionar explícitamente cada operador, sin contraseñas ni datos personales:
 
@@ -122,5 +124,7 @@ VALUES (<id de app_user de prueba>, <id de app_user de prueba>);
 ```
 
 Si se ejecuta el `down`, esa fila se elimina con la tabla y debe aprovisionarse de nuevo tras reaplicar `up`. Sin ese paso, ningún usuario puede verificar pagos ni habilitar servicios.
+
+Los cuatro archivos de V7 llevan una guarda: se niegan a ejecutarse si `current_database()` no empieza con `origen_codes_portal_clientes`. Esto evita accidentes con variables de shell vacías.
 
 **Prohibido:** ejecutar cualquiera de estos archivos en `origen_codes` productiva.

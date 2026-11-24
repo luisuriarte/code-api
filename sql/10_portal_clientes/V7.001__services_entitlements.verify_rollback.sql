@@ -3,6 +3,15 @@
 
 BEGIN READ ONLY;
 
+DO $guard$
+BEGIN
+    IF current_database() NOT LIKE 'origen_codes_portal_clientes%' THEN
+        RAISE EXCEPTION 'Base no permitida para la Etapa 7: %', current_database()
+            USING ERRCODE = '42501';
+    END IF;
+END
+$guard$;
+
 SELECT current_database() AS base, current_user AS usuario;
 
 SELECT count(*) AS tablas_v7_restantes
@@ -30,6 +39,11 @@ SELECT tgname
 FROM pg_trigger
 WHERE tgrelid::regclass::text = 'os_customer.audit_log'
   AND NOT tgisinternal;
+
+SELECT count(*) AS funcion_pago_v7_restante
+FROM pg_proc
+WHERE pronamespace = 'os_customer'::regnamespace
+  AND proname = 'require_verified_payment_for_active_entitlement';
 
 SELECT count(*) AS permisos_v7_restantes
 FROM os_customer.permission

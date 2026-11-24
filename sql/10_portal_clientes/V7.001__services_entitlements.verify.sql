@@ -3,6 +3,15 @@
 
 BEGIN READ ONLY;
 
+DO $guard$
+BEGIN
+    IF current_database() NOT LIKE 'origen_codes_portal_clientes%' THEN
+        RAISE EXCEPTION 'Base no permitida para la Etapa 7: %', current_database()
+            USING ERRCODE = '42501';
+    END IF;
+END
+$guard$;
+
 SELECT current_database() AS base, current_user AS usuario, version() AS version_pg;
 
 SELECT tablename
@@ -69,6 +78,19 @@ ORDER BY code;
 SELECT count(*) AS capacidades_inexistentes
 FROM os_customer.service
 WHERE api_route ~* '(^|/)(fhir|uvr|cdt)(/|$)';
+
+-- La base rechaza habilitaciones activas sin pago verificado.
+SELECT tgname, tgrelid::regclass AS tabla, pg_get_triggerdef(oid) AS definicion
+FROM pg_trigger
+WHERE tgrelid::regclass::text = 'os_customer.entitlement'
+  AND tgname = 'trg_entitlement_verified_payment'
+  AND NOT tgisinternal;
+
+SELECT count(*) AS trigger_pago_verificado
+FROM pg_trigger
+WHERE tgrelid::regclass::text = 'os_customer.entitlement'
+  AND tgname = 'trg_entitlement_verified_payment'
+  AND NOT tgisinternal;
 
 -- Una sola habilitación activa por organización y servicio.
 SELECT indexname, indexdef

@@ -3399,6 +3399,13 @@ $s7Down = is_file($s7DownPath) ? (string) file_get_contents($s7DownPath) : '';
 $s7Verify = is_file($s7VerifyPath) ? (string) file_get_contents($s7VerifyPath) : '';
 $s7Rollback = is_file($s7RollbackPath) ? (string) file_get_contents($s7RollbackPath) : '';
 
+foreach ([$s7Up, $s7Down, $s7Verify, $s7Rollback] as $s7Sql) {
+    $check(
+        str_contains($s7Sql, "current_database() NOT LIKE 'origen_codes_portal_clientes%'"),
+        'Etapa 7: todo SQL debe rechazar bases que no sean de prueba aislada.'
+    );
+}
+
 foreach ([
     'service', 'service_item', 'service_request', 'service_request_item',
     'contract', 'entitlement', 'operator',
@@ -3415,6 +3422,8 @@ foreach ([
 $check(
     str_contains($s7Up, 'entitlement_one_active_per_service')
         && str_contains($s7Up, 'contract_requires_verification')
+        && str_contains($s7Up, 'trg_entitlement_verified_payment')
+        && str_contains($s7Down, 'DROP FUNCTION IF EXISTS os_customer.require_verified_payment_for_active_entitlement')
         && str_contains($s7Up, "'payment_confirmed'"),
     'Etapa 7: una habilitación activa y pago confirmado verificado son obligatorios.'
 );
@@ -3438,12 +3447,14 @@ $check(
         && str_contains($s7Verify, 'ROLLBACK;')
         && str_contains($s7Verify, 'columnas_prohibidas')
         && str_contains($s7Verify, 'capacidades_inexistentes')
-        && str_contains($s7Verify, 'catalogo_solo_lectura'),
+        && str_contains($s7Verify, 'catalogo_solo_lectura')
+        && str_contains($s7Verify, 'trigger_pago_verificado'),
     'Etapa 7: la verificación debe ser solo lectura y comprobar catálogo sin datos comerciales.'
 );
 $check(
     str_contains($s7Rollback, 'BEGIN READ ONLY;')
         && str_contains($s7Rollback, 'tablas_v7_restantes')
+        && str_contains($s7Rollback, 'funcion_pago_v7_restante')
         && str_contains($s7Rollback, 'audit_log'),
     'Etapa 7: la verificación del rollback debe conservar la auditoría de V5.'
 );

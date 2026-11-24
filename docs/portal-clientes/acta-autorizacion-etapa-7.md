@@ -47,7 +47,7 @@ La aprobación manual se registra en dos momentos distintos: verificación comer
 1. Backup previo con `pg_dump -Fc` y hash SHA-256.
 2. Aplicar `V7.001__services_entitlements.up.sql`.
 3. Ejecutar `V7.001__services_entitlements.verify.sql` en `BEGIN READ ONLY`.
-4. Verificar rechazo de escrituras inválidas: doble habilitación activa, activación sin pago verificado, activación por no superadministrador.
+4. Verificar rechazo de escrituras inválidas: doble habilitación activa, activación sin pago verificado (trigger de base) y activación por no superadministrador (control de aplicación).
 5. Ejecutar `V7.001__services_entitlements.down.sql` y `verify_rollback.sql`.
 6. Reaplicar `up` y dejar la base de prueba en estado consistente.
 7. `php -l`, verificaciones i18n y `php tests/run.php`.
