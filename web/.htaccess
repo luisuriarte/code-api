@@ -15,11 +15,6 @@ Options -Indexes
     RewriteRule ^search/?$ search.php [L,QSA]
     RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
 
-    # El portal privado de clientes tiene su propio front controller y su
-    # .htaccess interno. Se excluye del catch-all para que no sea capturado
-    # por el router del portal público.
-    RewriteRule ^portal-clientes(?:/|$) - [L]
-
     # Resto de solicitudes → front controller del portal.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

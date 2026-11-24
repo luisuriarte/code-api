@@ -48,16 +48,62 @@ Esta autorización deja sin efecto, **solo para este cambio**, la prohibición d
 
 El primer intento devolvió el 404 del **portal público**: el texto «La página solicitada no existe.» está en `portal/Router.php`, mientras que el 404 del portal de clientes dice «La ruta solicitada no existe en este portal.»
 
-**Causa:** el catch-all de `web/.htaccess` capturaba `/portal-clientes/es-AR/` porque `web/portal-clientes/es-AR` no existe como archivo ni directorio. El `.htaccess` interno de `web/portal-clientes/` nunca se ejecutaba.
+**Causa real:** el servidor usa **nginx**, no Apache. Los archivos `.htaccess` son ignorados por completo. El `try_files` del server block envía `/portal-clientes/es-AR/` al front controller público `web/index.php`, porque no existe ni archivo ni directorio con esa ruta.
 
-**Corrección autorizada por el responsable:** agregar, antes del catch-all, una regla que excluya el prefijo sin reescribirlo:
+**Corrección autorizada por el responsable:** revertir la regla de Apache, que era inerte, y preparar una ubicación dedicada en la configuración de nginx. El responsable aplicará el cambio en el VPS y hará el `reload`.
 
-```apache
-RewriteRule ^portal-clientes(?:/|$) - [L]
+El responsable aportó `/etc/nginx/sites-available/med.origen.ar.conf`:
+
+- `root /var/www/html/origen.ar/code-api/web;`
+- `location / { try_files $uri $uri/ /index.php?$query_string; }`
+- `location ~ \.php$ { include snippets/fastcgi-php.conf; fastcgi_pass unix:/run/php/php-fpm.sock; ... include fastcgi_params; }`
+
+`fastcgi_params` pasa `REQUEST_URI=$request_uri`, es decir la URI original, que es lo que necesita el router del portal de clientes. Por eso no hace falta reescribir la URI manualmente.
+
+**Bloque a insertar antes de `location /`:**
+
+```nginx
+    # Portal privado de clientes: front controller propio.
+    location /portal-clientes/ {
+        try_files $uri $uri/ /portal-clientes/index.php?$query_string;
+    }
 ```
 
-Esto preserva las URLs limpias y permite que se aplique el `.htaccess` interno del portal de clientes. No se modificó ninguna otra regla ni la configuración global de Apache.
+Es un `location` de prefijo **sin `^~`**, así que las ubicaciones regex siguen evaluándose: `/portal-clientes/index.php` continúa siendo procesado por `location ~ \.php$`. No se modifica ninguna otra ubicación.
+
+También se requiere subir por WinSCP el front controller `web/portal-clientes/index.php`; el servidor no lo tiene todavía.
+
+**No se debe mover** el directorio `portal-clientes/` de la raíz de `code-api`. Es el código de aplicación y debe seguir fuera del `DocumentRoot`. El front controller lo localiza con `dirname(__DIR__, 2) . '/portal-clientes/bootstrap.php'`; si se moviera a `web/`, esa ruta dejaría de existir. Localmente ambos archivos ya están versionados (`git ls-files web/portal-clientes` → `.htaccess` e `index.php`, commit `d9669eb`).
 
 ## 7. Condición para que el botón funcione
 
-El enlace apunta a una aplicación que todavía no tiene credenciales de base configuradas. Sin `PORTAL_CUSTOMER_DB_DSN`, `PORTAL_CUSTOMER_DB_USER` y `PORTAL_CUSTOMER_DB_PASS`, el portal responde `503 — Portal no disponible`. Eso es esperado: no se intenta ninguna conexión a producción.
+El enlace apunta a una aplicación que todavía no tiene credenciales de base configuradas. La página de login se renderiza sin tocar la base; el `503 — Portal no disponible` aparece cuando una acción intenta usar el repositorio sin `PORTAL_CUSTOMER_DB_DSN`, `PORTAL_CUSTOMER_DB_USER` y `PORTAL_CUSTOMER_DB_PASS`. Es el comportamiento previsto: no se intenta ninguna conexión a producción.
+
+## 8. Base canónica configurada en el VPS
+
+Una vez corregido el enrutamiento, la navegación redirigía a `https://portal-clientes.test.example.invalid/es-AR/login`. Ese dominio es el default de `Config::baseUrl()` y no es un error de nginx: `Services\Http::redirect()` usa siempre la base canónica y deliberadamente nunca usa el header `Host`.
+
+Configuración requerida en `/var/www/html/origen.ar/code-api/.env`:
+
+```dotenv
+PORTAL_CUSTOMER_BASE_URL=https://med.origen.ar/portal-clientes
+```
+
+`bootstrap.php` carga `.env` desde `BASE_PATH` con `Dotenv::createImmutable()->safeLoad()`, por lo que no hace falta recargar nginx ni PHP-FPM: se lee en cada request. Si la variable ya estuviera definida en el pool de PHP-FPM con otro valor, `createImmutable` no la sobrescribe y habría que corregirla también en el pool.
+
+Verificación esperada:
+
+```bash
+curl -sSI "https://med.origen.ar/portal-clientes/" | grep -i '^location'
+# Location: https://med.origen.ar/portal-clientes/es-AR/
+
+curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' \
+  "https://med.origen.ar/portal-clientes/es-AR/"
+# 302 https://med.origen.ar/portal-clientes/es-AR/login
+
+curl -sS -o /tmp/pc.html -w 'HTTP=%{http_code}\n' \
+  "https://med.origen.ar/portal-clientes/es-AR/login?cb=$(date +%s)"
+# HTTP=200
+```
+
+La segunda comprobación usa `GET`, no `HEAD`: el router actual solo trata `GET` como método válido para la página de inicio, así que un `curl -I` sobre `/es-AR/` devuelve 404 sin `Location`. Ese detalle no afecta la navegación desde el navegador.
