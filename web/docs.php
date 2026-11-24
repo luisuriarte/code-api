@@ -55,7 +55,6 @@ $flags = [
 
 $homePath = I18n::localizedPath($locale, '/');
 $contactPath = I18n::localizedPath($locale, '/contact');
-$accessMailto = 'mailto:contacto@origen.ar?subject=' . rawurlencode($t('nav.access_api'));
 $contactMailto = 'mailto:contacto@origen.ar';
 $legalMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal'));
 $privacyMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal_privacy'));
@@ -596,6 +595,7 @@ JSON;
         </nav>
 
         <div class="ms-auto flex items-center gap-2 sm:gap-3">
+            <?php require dirname(__DIR__) . '/portal/Views/partials/customer-portal-href.php'; ?>
             <div class="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-line bg-paper/80 p-0.5"
                  role="group" aria-label="<?= $esc($t('lang.label')) ?>">
                 <?php foreach ($alternates as $alternate): ?>
@@ -617,7 +617,7 @@ JSON;
             <a class="hidden items-center rounded-full border border-line bg-white px-4 py-2 text-xs font-semibold text-ink-soft transition hover:border-teal/40 hover:bg-mint hover:text-teal-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15 sm:inline-flex"
                href="/admin/login"><?= $esc($t('nav.management')) ?></a>
             <a class="hidden items-center rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white shadow-card transition hover:bg-teal-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15 sm:inline-flex"
-               href="<?= $esc($accessMailto) ?>"><?= $esc($t('nav.access')) ?></a>
+               href="<?= $esc($customerPortalHref) ?>"><?= $esc($t('nav.customer_portal')) ?></a>
 
             <details class="relative lg:hidden">
                 <summary class="flex size-10 cursor-pointer list-none items-center justify-center rounded-xl border border-line bg-white text-ink shadow-card transition hover:border-teal/40 hover:text-teal focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15 [&::-webkit-details-marker]:hidden">
@@ -634,7 +634,7 @@ JSON;
                         <a class="inline-flex items-center justify-center rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-soft transition hover:bg-mint hover:text-teal-dark"
                            href="/admin/login"><?= $esc($t('nav.management')) ?></a>
                         <a class="inline-flex items-center justify-center rounded-xl bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-dark"
-                           href="<?= $esc($accessMailto) ?>"><?= $esc($t('nav.access')) ?></a>
+                           href="<?= $esc($customerPortalHref) ?>"><?= $esc($t('nav.customer_portal')) ?></a>
                     </div>
                 </div>
             </details>

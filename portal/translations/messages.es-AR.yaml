@@ -20,6 +20,7 @@ nav:
     contact: "Contacto"
     access: "Solicitar acceso"
     management: 'Gestión'
+    customer_portal: "Portal Cliente"
 
     access_api: "Solicitud de acceso API"
 
