@@ -44,8 +44,20 @@ Esta autorización deja sin efecto, **solo para este cambio**, la prohibición d
 - 19 comprobaciones de etiquetas, claves i18n, destino y ausencia del botón anterior: sin fallas.
 - Suite existente: `OK: 3578 comprobaciones`.
 
-## 6. Condición para que el botón funcione
+## 6. Corrección de enrutamiento autorizada
+
+El primer intento devolvió el 404 del **portal público**: el texto «La página solicitada no existe.» está en `portal/Router.php`, mientras que el 404 del portal de clientes dice «La ruta solicitada no existe en este portal.»
+
+**Causa:** el catch-all de `web/.htaccess` capturaba `/portal-clientes/es-AR/` porque `web/portal-clientes/es-AR` no existe como archivo ni directorio. El `.htaccess` interno de `web/portal-clientes/` nunca se ejecutaba.
+
+**Corrección autorizada por el responsable:** agregar, antes del catch-all, una regla que excluya el prefijo sin reescribirlo:
+
+```apache
+RewriteRule ^portal-clientes(?:/|$) - [L]
+```
+
+Esto preserva las URLs limpias y permite que se aplique el `.htaccess` interno del portal de clientes. No se modificó ninguna otra regla ni la configuración global de Apache.
+
+## 7. Condición para que el botón funcione
 
 El enlace apunta a una aplicación que todavía no tiene credenciales de base configuradas. Sin `PORTAL_CUSTOMER_DB_DSN`, `PORTAL_CUSTOMER_DB_USER` y `PORTAL_CUSTOMER_DB_PASS`, el portal responde `503 — Portal no disponible`. Eso es esperado: no se intenta ninguna conexión a producción.
-
-Además, el rewrite interno depende de que Apache permita `.htaccess` en `web/portal-clientes/`. No se modificó la configuración global del servidor.
