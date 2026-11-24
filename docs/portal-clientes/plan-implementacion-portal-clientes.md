@@ -252,4 +252,4 @@ Ver `plan-pruebas-portal-clientes.md`. Cada etapa debe pasar sus pruebas antes d
 - [x] No se modificaron Nginx, FreeScout ni Invoice Ninja.
 - [x] No se hicieron commits, push ni despliegues.
 - [x] Diseño completo presentado y aprobado.
-- [ ] Autorización expresa recibida para iniciar la etapa 4.
+- [x] Autorización expresa recibida para iniciar la etapa 4; ver `acta-autorizacion-etapa-4.md`.

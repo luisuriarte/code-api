@@ -79,9 +79,10 @@ Aunque el paquete de diseño esté aprobado, siguen pendientes de decisión o ve
 |---|---|
 | 1 — Auditoría | **APROBADA** |
 | 2 — Diseño arquitectónico | **APROBADA** |
-| 3 — Decisión de implementación | **PENDIENTE** |
-| 4 en adelante — Preparación e implementación | **NO AUTORIZADA** |
+| 3 — Decisión de implementación | **CERRADA** con el acta de aprobación del diseño. |
+| 4 — Preparación técnica | **AUTORIZADA** posteriormente; ver `acta-autorizacion-etapa-4.md`. |
+| 5 en adelante — Identidad e implementación | **NO AUTORIZADA** |
 
 ## 6. Regla de cierre
 
-El trabajo se detiene en este punto. No se inicia la etapa 4 sin una autorización expresa que indique qué etapas se habilitan, con qué alcance y bajo qué condiciones de rollback.
+La Etapa 4 fue autorizada con un alcance limitado mediante `acta-autorizacion-etapa-4.md`. Las etapas 5 en adelante siguen sin autorización y requieren un acta posterior que indique etapas, alcance, entorno y condiciones de rollback.
