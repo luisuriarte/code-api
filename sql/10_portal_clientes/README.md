@@ -8,6 +8,7 @@
 - `V5.001__os_customer_identity.down.sql`: revierte los objetos creados, **sin borrar `os_customer.audit_log` ni su trigger**.
 - `V5.001__os_customer_identity.verify.sql`: verificaciones `SELECT`-only.
 - `V5.001__os_customer_identity.verify_rollback.sql`: comprueba que el rollback conservó la auditoría.
+- `DEV_ONLY__reset_os_customer.sql`: reseteo completo **solo para desarrollo**; borra también la auditoría. No es una migración versionada.
 
 ## Autorización
 
@@ -45,4 +46,15 @@ sudo -u postgres psql -d origen_codes_portal_clientes_test \
   -f sql/10_portal_clientes/V5.001__os_customer_identity.down.sql
 ```
 
-**Prohibido:** ejecutar en `origen_codes` productiva.
+La migración `down` es re-ejecutable: puede correrse varias veces seguidas sin fallar aunque el rol o las tablas ya no existan. Conserva `os_customer.audit_log`.
+
+Para reiniciar por completo una base de desarrollo, incluida la auditoría, usar el script separado:
+
+```bash
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/DEV_ONLY__reset_os_customer.sql
+```
+
+Ese script se niega a ejecutarse si `current_database()` es `origen_codes`. **No es una migración versionada** y nunca debe incluirse en un despliegue.
+
+**Prohibido:** ejecutar cualquiera de estos archivos en `origen_codes` productiva.

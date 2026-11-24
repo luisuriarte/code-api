@@ -90,4 +90,6 @@ Esta aclaración **no** habilita:
 - hacer commit, push ni deploy;
 - avanzar a la Etapa 6 sin autorización expresa.
 
-Tampoco cambia la regla de conservar la auditoría append-only en la migración `down` de entrega. Si se necesita un reseteo completo de auditoría durante desarrollo, debe hacerse mediante un script separado, explícitamente marcado como `DEV ONLY` y nunca aplicable en producción.
+Tampoco cambia la regla de conservar la auditoría append-only en la migración `down` de entrega, que además fue ajustada para ser re-ejecutable.
+
+Para reseteos completos durante desarrollo se agregó `sql/10_portal_clientes/DEV_ONLY__reset_os_customer.sql`. Borra también la auditoría, está explícitamente marcado como `DEV ONLY`, no es una migración versionada y se rechaza a sí mismo si `current_database()` es `origen_codes`. Nunca debe incluirse en un despliegue ni ejecutarse en producción.
