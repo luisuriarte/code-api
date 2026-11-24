@@ -157,3 +157,5 @@ FATAL: too many connections for role "origen_codes_portal"
 ```
 
 No era un problema de grants ni de driver (`pdo_pgsql` está presente). El portal estaba compartiendo el rol con otras aplicaciones y agotó su `CONNECTION LIMIT`. La corrección arquitectónica es usar el rol dedicado `origen_customer`, con su propio límite y sus grants, y dejar `origen_codes_portal` para las aplicaciones que ya lo usan.
+
+**Resolución confirmada en el VPS:** con `PORTAL_CUSTOMER_DB_USER=origen_customer` y su contraseña actualizada en `.env`, la conexión PDO directa devolvió `connect=ok`, `db=origen_codes_portal_clientes_test`, `current_user=origen_customer`, `schema_usage=true` y `tables=13`. Queda pendiente repetir el check con `CustomerDatabase::connection()` y verificar el login desde el navegador.
