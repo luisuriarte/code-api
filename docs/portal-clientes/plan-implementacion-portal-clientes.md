@@ -39,8 +39,8 @@ Cada entrega posterior debe distinguir:
 | 1 | Auditoría técnica | Solo lectura | 4 documentos de auditoría | No requiere cambios |
 | 2 | Diseño arquitectónico | Documental | 7 documentos de diseño | No requiere cambios |
 | 3 | Aprobación | Decisión | Acta de aprobación por etapa | **Requerida** |
-| 4 | Preparación técnica | Implementación controlada | Entorno de prueba, rollback | **Requerida** |
-| 5 | Identidad y organizaciones | Implementación | Modelo `os_customer_*` | **Requerida** |
+| 4 | Preparación técnica | Implementación controlada | Entorno de prueba, rollback | **Autorizada**; ver `acta-autorizacion-etapa-4.md` |
+| 5 | Identidad y organizaciones | Implementación | Modelo `os_customer_*` | **Autorizada solo en prueba**; ver `acta-autorizacion-etapa-5.md` |
 | 6 | Integración Invoice Ninja | Implementación | Servicio backend y pruebas | **Requerida** |
 | 7 | Servicios y habilitaciones | Implementación | Entitlements administrados | **Requerida** |
 | 8 | Credenciales API | Implementación | Gestión según mecanismo real | **Requerida, específica** |
@@ -156,7 +156,7 @@ Cualquier cambio que afecte:
 - No compartir cookies de sesión ni secretos de sesión.
 - No heredar roles de gobernanza por coincidencia de correo.
 
-**Autorización requerida:** creación de esquema/tablas/rol y ejecución en producción.
+**Estado:** autorizada únicamente en entorno de prueba por `acta-autorizacion-etapa-5.md`. Los artefactos SQL y PHP ya están preparados en `sql/10_portal_clientes/` y `portal-clientes/`, pero no se ejecutaron contra ninguna base. La ejecución en producción sigue sin autorización.
 
 ## 9. Etapa 6 — Integración con Invoice Ninja
 
