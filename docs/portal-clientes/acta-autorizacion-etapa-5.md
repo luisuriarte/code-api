@@ -93,3 +93,39 @@ Esta aclaración **no** habilita:
 Tampoco cambia la regla de conservar la auditoría append-only en la migración `down` de entrega, que además fue ajustada para ser re-ejecutable.
 
 Para reseteos completos durante desarrollo se agregó `sql/10_portal_clientes/DEV_ONLY__reset_os_customer.sql`. Borra también la auditoría, está explícitamente marcado como `DEV ONLY`, no es una migración versionada y se rechaza a sí mismo si `current_database()` es `origen_codes`. Nunca debe incluirse en un despliegue ni ejecutarse en producción.
+
+## 8. Verificación en vivo confirmada por el responsable
+
+**Fecha:** 2026-11-24.  
+**Base:** `origen_codes_portal_clientes_test`.  
+**Usuario PostgreSQL:** `postgres`.  
+**Versión:** PostgreSQL 18.6 sobre Ubuntu 26.04.
+
+El responsable ejecutó la secuencia completa con `sudo -u postgres`:
+
+1. Backup lógico `pg_dump -Fc` verificado con `pg_restore -l`; hash SHA-256 registrado.
+2. Migración `up`: aplicada correctamente.
+3. `verify.sql`: 11 tablas, 5 triggers, 5 roles, 15 permisos y 39 asignaciones rol/permiso.
+4. Comprobación de privilegios: `origen_customer` usa el esquema, inserta en auditoría, **no** actualiza auditoría y lee usuarios.
+5. Migración `down`: aplicada correctamente.
+6. `verify_rollback.sql`: `os_customer.audit_log` conservado, trigger `trg_audit_log_immutable` habilitado, rol `origen_customer` eliminado y única tabla restante `audit_log`.
+7. Nueva ejecución del `up`: reaplicada correctamente de forma idempotente, reutilizando `audit_log` y su índice. Los `NOTICE` por `schema already exists`, `relation already exists` y triggers inexistentes son esperados en esa segunda pasada.
+
+No se observaron errores. No se usaron credenciales reales de sistemas externos ni se tocó producción.
+
+El responsable repitió `verify.sql` después de la última re-aplicación del `up`. Resultado: 11 tablas, 5 triggers, rol `origen_customer` presente y `actualiza_auditoria = f`.
+
+## 9. Cierre de la etapa
+
+La **Etapa 5 queda cerrada en entorno de prueba** con backup verificado, migración `up` aplicada, verificación `SELECT`-only sin hallazgos, rollback ensayado y re-aplicación idempotente.
+
+No se autoriza por este cierre:
+
+- avanzar a la Etapa 6;
+- crear clientes, contactos, facturas ni pagos en Invoice Ninja;
+- configurar servicios, habilitaciones ni credenciales API;
+- modificar `/admin`, catálogos, API pública, Nginx, Invoice Ninja ni FreeScout;
+- ejecutar nada en producción;
+- hacer commit, push ni deploy.
+
+La Etapa 6 requiere un acta de autorización explícita.
