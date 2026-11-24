@@ -107,3 +107,53 @@ curl -sS -o /tmp/pc.html -w 'HTTP=%{http_code}\n' \
 ```
 
 La segunda comprobación usa `GET`, no `HEAD`: el router actual solo trata `GET` como método válido para la página de inicio, así que un `curl -I` sobre `/es-AR/` devuelve 404 sin `Location`. Ese detalle no afecta la navegación desde el navegador.
+
+Resultado observado en el VPS: redirección correcta a `/es-AR/login`, `HTTP=200` y cabeceras `X-Frame-Options: DENY` y `Cache-Control: private, no-store` provenientes del front controller.
+
+## 9. Conflicto de cabeceras `X-Frame-Options`
+
+El `curl -sSI` mostró dos valores contradictorios:
+
+```
+x-frame-options: DENY
+x-frame-options: SAMEORIGIN
+```
+
+`DENY` lo emite `web/portal-clientes/index.php`; `SAMEORIGIN` lo agrega el bloque `server` de nginx con `add_header ... always`. La directiva `add_header` no se hereda cuando el `location` define las suyas, por lo que la corrección es declarar las tres cabeceras dentro del `location /portal-clientes/`:
+
+```nginx
+    location /portal-clientes/ {
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        try_files $uri $uri/ /portal-clientes/index.php?$query_string;
+    }
+```
+
+Así desaparece el `SAMEORIGIN` heredado. La cabecera `DENY` del PHP queda como redundancia intencional (defensa en profundidad) y ya no contradice a nginx.
+
+## 10. Diagnóstico de conexión a la base de prueba
+
+`CustomerDatabase::connection()` transforma cualquier `PDOException` en `customer_database_unavailable`, por lo que ese mensaje no distingue entre driver ausente, credenciales inválidas y falta de grants. Antes de otorgar permisos hay que verificar, en este orden:
+
+1. `php -m | grep -i pgsql` → debe existir `pdo_pgsql`.
+2. Conexión PDO directa con el DSN/usuario/contraseña de `.env`, imprimiendo solo el mensaje de `PDOException` (nunca la contraseña).
+3. `current_database()`, `current_user`, `has_schema_privilege(..., 'os_customer', 'USAGE')` y `count(*)` de `information_schema.tables` para `os_customer`.
+
+Grants requeridos por el rol `origen_customer`, ya definidos en V5/V6 y que deben volver a aplicarse después de cada migración porque **no** se usan `ALTER DEFAULT PRIVILEGES`:
+
+- `CONNECT ON DATABASE origen_codes_portal_clientes_test`
+- `USAGE ON SCHEMA os_customer`
+- `SELECT, INSERT, UPDATE, DELETE` en todas las tablas excepto `audit_log`
+- `SELECT, INSERT` en `os_customer.audit_log` (append-only)
+- `USAGE, SELECT` en todas las secuencias de `os_customer`
+
+El rol también necesita `LOGIN` y contraseña coincidente con `.env`, y `pg_hba.conf` debe permitir autenticación por password desde el usuario de PHP-FPM.
+
+**Hallazgo en el VPS:** el DSN configurado usa `PORTAL_CUSTOMER_DB_USER=origen_codes_portal`, no `origen_customer`. El error real fue:
+
+```
+FATAL: too many connections for role "origen_codes_portal"
+```
+
+No era un problema de grants ni de driver (`pdo_pgsql` está presente). El portal estaba compartiendo el rol con otras aplicaciones y agotó su `CONNECTION LIMIT`. La corrección arquitectónica es usar el rol dedicado `origen_customer`, con su propio límite y sus grants, y dejar `origen_codes_portal` para las aplicaciones que ya lo usan.
