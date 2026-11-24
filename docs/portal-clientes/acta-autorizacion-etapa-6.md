@@ -93,3 +93,27 @@ No se avanza a la Etapa 7 hasta que el responsable confirme:
 - rollback ensayado;
 - ninguna llamada con token real;
 - ningún cambio en producción.
+
+## 8. Verificación en vivo confirmada por el responsable
+
+**Fecha:** 2026-11-24.  
+**Base:** `origen_codes_portal_clientes_test`.  
+**Usuario PostgreSQL:** `postgres`.  
+**Versión:** PostgreSQL 18.6.
+
+El responsable ejecutó la secuencia completa con `sudo -u postgres`:
+
+1. Backup lógico `pg_dump -Fc` previo a V6, verificado con `pg_restore -l` y hash SHA-256 registrado.
+2. `V6.001 up`: aplicado correctamente. Los `NOTICE` sobre triggers inexistentes son esperados.
+3. `verify.sql`: 2 tablas, 2 triggers, `columnas_prohibidas = 0`, privilegios `t` para `origen_customer` y `total_tablas = 13`.
+4. `V6.001 down`: aplicado correctamente; quedaron las 11 tablas de V5.
+5. `verify_rollback.sql`: vínculos y revisiones ausentes, `audit_log` conservado con su trigger habilitado y rol `origen_customer` intacto.
+6. Re-aplicación del `up` y verificación final: mismos resultados correctos.
+
+No se observaron errores. No se usaron credenciales reales de Invoice Ninja, no se realizó ninguna llamada HTTP y no se tocó producción.
+
+## 9. Cierre de la etapa
+
+La **Etapa 6 queda cerrada en entorno de prueba** con backup verificado, `up` aplicado, verificación `SELECT`-only sin hallazgos, rollback ensayado y re-aplicación idempotente.
+
+La Etapa 7 requiere un acta de autorización explícita.
