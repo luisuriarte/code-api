@@ -57,4 +57,67 @@ final class Config
             'require_https' => filter_var(env('PORTAL_CUSTOMER_REQUIRE_HTTPS', true), FILTER_VALIDATE_BOOL),
         ];
     }
+
+    /**
+     * Integración con Invoice Ninja (Etapa 6).
+     *
+     * El modo por defecto es `mock`: no realiza ninguna llamada HTTP.
+     * Para consultar la instancia designada como de prueba se requieren tres
+     * condiciones simultáneas: modo `http`, el opt-in explícito de llamadas de
+     * prueba y un token de prueba configurado. El token real está prohibido por
+     * el acta de autorización y nunca se registra ni se expone.
+     *
+     * @return array{
+     *     mode: string,
+     *     base_url: string,
+     *     api_prefix: string,
+     *     token: string,
+     *     allow_test_calls: bool,
+     *     timeout: int,
+     *     retries: int
+     * }
+     */
+    public static function invoiceNinja(): array
+    {
+        $mode = strtolower(trim((string) env('PORTAL_CUSTOMER_IN_MODE', 'mock')));
+        if (!in_array($mode, ['mock', 'http'], true)) {
+            $mode = 'mock';
+        }
+
+        $baseUrl = rtrim(trim((string) env(
+            'PORTAL_CUSTOMER_IN_BASE_URL',
+            'https://gestion.uriarte.ar'
+        )), '/');
+        if ($baseUrl === '' || !str_starts_with($baseUrl, 'https://')) {
+            $baseUrl = 'https://gestion.uriarte.ar';
+        }
+
+        $prefix = trim((string) env('PORTAL_CUSTOMER_IN_API_PREFIX', '/api/v1'));
+        if ($prefix === '' || !str_starts_with($prefix, '/')) {
+            $prefix = '/api/v1';
+        }
+
+        $allow = filter_var(env('PORTAL_CUSTOMER_IN_ALLOW_TEST_CALLS', false), FILTER_VALIDATE_BOOL);
+        $token = (string) env('PORTAL_CUSTOMER_IN_TOKEN', '');
+
+        return [
+            'mode' => $mode,
+            'base_url' => $baseUrl,
+            'api_prefix' => rtrim($prefix, '/'),
+            'token' => $token,
+            'allow_test_calls' => $allow,
+            'timeout' => max(1, min(30, (int) env('PORTAL_CUSTOMER_IN_TIMEOUT', '8'))),
+            'retries' => max(0, min(2, (int) env('PORTAL_CUSTOMER_IN_RETRIES', '1'))),
+        ];
+    }
+
+    /** Indica si están dadas las tres condiciones para una llamada HTTP de prueba. */
+    public static function invoiceNinjaHttpEnabled(): bool
+    {
+        $config = self::invoiceNinja();
+
+        return $config['mode'] === 'http'
+            && $config['allow_test_calls'] === true
+            && $config['token'] !== '';
+    }
 }

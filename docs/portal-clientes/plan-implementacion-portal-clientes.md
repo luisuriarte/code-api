@@ -41,7 +41,7 @@ Cada entrega posterior debe distinguir:
 | 3 | Aprobación | Decisión | Acta de aprobación por etapa | **Requerida** |
 | 4 | Preparación técnica | Implementación controlada | Entorno de prueba, rollback | **Autorizada**; ver `acta-autorizacion-etapa-4.md` |
 | 5 | Identidad y organizaciones | Implementación | Modelo `os_customer_*` | **Cerrada en prueba**; ver `acta-autorizacion-etapa-5.md` |
-| 6 | Integración Invoice Ninja | Implementación | Servicio backend y pruebas | **Requerida** |
+| 6 | Integración Invoice Ninja | Implementación | Servicio backend y pruebas | **Autorizada en prueba**; artefactos preparados, pendiente de ejecución; ver `acta-autorizacion-etapa-6.md` |
 | 7 | Servicios y habilitaciones | Implementación | Entitlements administrados | **Requerida** |
 | 8 | Credenciales API | Implementación | Gestión según mecanismo real | **Requerida, específica** |
 | 9 | Interfaz del portal | Implementación | Secciones y i18n | **Requerida** |
@@ -171,7 +171,7 @@ Cualquier cambio que afecte:
 
 **Pruebas:** entorno de prueba o datos ficticios. No generar facturas ni pagos reales.
 
-**Autorización requerida:** uso de API real, creación de clientes o presupuestos.
+**Estado:** autorizada únicamente en entorno de prueba por `acta-autorizacion-etapa-6.md`. La URL `https://gestion.uriarte.ar` queda designada como instancia de prueba, pero solo con token de prueba; está prohibido el token real. No se crean clientes, contactos, presupuestos, facturas ni pagos.
 
 ## 10. Etapa 7 — Servicios y habilitaciones
 
