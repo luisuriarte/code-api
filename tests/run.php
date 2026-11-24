@@ -3385,6 +3385,106 @@ $check(
     'El diagnóstico del 500 debe ser solo lectura y revisar privilegios y columnas.'
 );
 
+// Etapa 7 del portal de clientes: servicios y habilitaciones administradas.
+$s7UpPath = $root . '/sql/10_portal_clientes/V7.001__services_entitlements.up.sql';
+$s7DownPath = $root . '/sql/10_portal_clientes/V7.001__services_entitlements.down.sql';
+$s7VerifyPath = $root . '/sql/10_portal_clientes/V7.001__services_entitlements.verify.sql';
+$s7RollbackPath = $root . '/sql/10_portal_clientes/V7.001__services_entitlements.verify_rollback.sql';
+$s7Paths = [$s7UpPath, $s7DownPath, $s7VerifyPath, $s7RollbackPath];
+foreach ($s7Paths as $s7Path) {
+    $check(is_file($s7Path), 'Etapa 7: debe existir ' . basename((string) $s7Path));
+}
+$s7Up = is_file($s7UpPath) ? (string) file_get_contents($s7UpPath) : '';
+$s7Down = is_file($s7DownPath) ? (string) file_get_contents($s7DownPath) : '';
+$s7Verify = is_file($s7VerifyPath) ? (string) file_get_contents($s7VerifyPath) : '';
+$s7Rollback = is_file($s7RollbackPath) ? (string) file_get_contents($s7RollbackPath) : '';
+
+foreach ([
+    'service', 'service_item', 'service_request', 'service_request_item',
+    'contract', 'entitlement', 'operator',
+] as $s7Table) {
+    $check(
+        str_contains($s7Up, 'CREATE TABLE IF NOT EXISTS os_customer.' . $s7Table . ' ('),
+        'Etapa 7: la migración debe crear ' . $s7Table
+    );
+    $check(
+        str_contains($s7Down, 'DROP TABLE IF EXISTS os_customer.' . $s7Table),
+        'Etapa 7: el rollback debe eliminar ' . $s7Table
+    );
+}
+$check(
+    str_contains($s7Up, 'entitlement_one_active_per_service')
+        && str_contains($s7Up, 'contract_requires_verification')
+        && str_contains($s7Up, "'payment_confirmed'"),
+    'Etapa 7: una habilitación activa y pago confirmado verificado son obligatorios.'
+);
+$check(
+    preg_match('/^\\s*ALTER\\s+DEFAULT\\s+PRIVILEGES/mi', $s7Up) !== 1
+        && !str_contains($s7Up, 'GRANT ALL'),
+    'Etapa 7: los privilegios deben ser por objeto, sin ALTER DEFAULT PRIVILEGES ni GRANT ALL.'
+);
+$check(
+    str_contains($s7Up, "'/health'")
+        && str_contains($s7Up, "'/v1/search'")
+        && str_contains($s7Up, "'/v1/catalogs'")
+        && str_contains($s7Up, 'verified_source')
+        && !str_contains($s7Up, "'/v1/uvr'")
+        && !str_contains($s7Up, "'/v1/cdt'")
+        && !str_contains($s7Up, "'/fhir/"),
+    'Etapa 7: el catálogo inicial solo puede contener rutas GET verificadas.'
+);
+$check(
+    str_contains($s7Verify, 'BEGIN READ ONLY;')
+        && str_contains($s7Verify, 'ROLLBACK;')
+        && str_contains($s7Verify, 'columnas_prohibidas')
+        && str_contains($s7Verify, 'capacidades_inexistentes')
+        && str_contains($s7Verify, 'catalogo_solo_lectura'),
+    'Etapa 7: la verificación debe ser solo lectura y comprobar catálogo sin datos comerciales.'
+);
+$check(
+    str_contains($s7Rollback, 'BEGIN READ ONLY;')
+        && str_contains($s7Rollback, 'tablas_v7_restantes')
+        && str_contains($s7Rollback, 'audit_log'),
+    'Etapa 7: la verificación del rollback debe conservar la auditoría de V5.'
+);
+$check(
+    !str_contains($s7Down, 'DROP TABLE IF EXISTS os_customer.audit_log')
+        && !str_contains($s7Down, 'DROP SCHEMA'),
+    'Etapa 7: el rollback no debe borrar auditoría ni el esquema.'
+);
+
+$s7Controller = (string) file_get_contents($root . '/portal-clientes/Controllers/ServiceController.php');
+$s7Service = (string) file_get_contents($root . '/portal-clientes/Services/EntitlementService.php');
+$s7Router = (string) file_get_contents($root . '/portal-clientes/Router.php');
+$s7View = (string) file_get_contents($root . '/portal-clientes/Views/services.php');
+$check(
+    str_contains($s7Controller, '$_POST')
+        && str_contains($s7Controller, "'service_ids'")
+        && str_contains($s7Service, 'OperatorRepository::isSuperAdmin')
+        && str_contains($s7Service, 'ContractRepository::paymentVerified')
+        && str_contains($s7Service, 'createPending'),
+    'Etapa 7: la solicitud y la habilitación deben validar entradas, superadmin y pago.'
+);
+foreach (['servicios', 'servicios/request', 'servicios/contrato', 'servicios/entitlement', 'servicios/payment', 'servicios/activate', 'servicios/status'] as $s7Route) {
+    $check(str_contains($s7Router, "'" . $s7Route . "'"), 'Etapa 7: debe existir la ruta ' . $s7Route);
+}
+$check(
+    str_contains($s7View, "e(\$t('customer.service.title'))")
+        && !str_contains($s7View, 'Invoice Ninja'),
+    'Etapa 7: la vista debe usar i18n y no copiar textos comerciales.'
+);
+foreach (['es-AR', 'en', 'pt-BR'] as $s7Locale) {
+    $s7Messages = (string) file_get_contents($root . '/portal-clientes/translations/messages.' . $s7Locale . '.yaml');
+    foreach (['customer.nav.services', 'customer.service.title', 'customer.service.payment_required', 'customer.service.status.active'] as $s7Key) {
+        $check(str_contains($s7Messages, $s7Key . ':'), "Etapa 7: falta $s7Key en $s7Locale");
+    }
+}
+$s7NinjaService = (string) file_get_contents($root . '/portal-clientes/Services/InvoiceNinjaService.php');
+$check(
+    preg_match("/^\\s*'(ok|needs_review|approved|rejected|discarded)',\\s*$/m", $s7NinjaService) !== 1,
+    'Etapa 7: los resultados de auditoría de Invoice Ninja deben ser success/denied/failure.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

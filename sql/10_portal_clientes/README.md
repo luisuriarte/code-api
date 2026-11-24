@@ -13,18 +13,23 @@
 - `V6.001__invoice_ninja_links.down.sql`: revierte solo las tablas de la Etapa 6; re-ejecutable; no toca V5 ni la auditoría.
 - `V6.001__invoice_ninja_links.verify.sql`: verificación `SELECT`-only de la Etapa 6.
 - `V6.001__invoice_ninja_links.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V6.
+- `V7.001__services_entitlements.up.sql`: catálogo técnico, solicitudes, contratos verificados, habilitaciones y operadores de la Etapa 7.
+- `V7.001__services_entitlements.down.sql`: revierte solo la Etapa 7; conserva V5, V6 y la auditoría.
+- `V7.001__services_entitlements.verify.sql`: verificación `SELECT`-only de la Etapa 7.
+- `V7.001__services_entitlements.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V7.
 
 ## Autorización
 
 - Etapa 5: `docs/portal-clientes/acta-autorizacion-etapa-5.md`.
 - Etapa 6: `docs/portal-clientes/acta-autorizacion-etapa-6.md`.
+- Etapa 7: `docs/portal-clientes/acta-autorizacion-etapa-7.md`.
 
 ## Orden de migraciones
 
-Aplicar: `V5.001 up` → `V6.001 up`.  
-Revertir: `V6.001 down` → `V5.001 down`.
+Aplicar: `V5.001 up` → `V6.001 up` → `V7.001 up`.  
+Revertir: `V7.001 down` → `V6.001 down` → `V5.001 down`.
 
-`V6.001` usa la función `os_customer.touch_updated_at()`, creada por `V5.001`. Por eso el `down` de V6 debe ejecutarse antes que el de V5.
+`V6.001` y `V7.001` usan la función `os_customer.touch_updated_at()`, creada por `V5.001`. Por eso sus `down` deben ejecutarse antes que el de V5.
 
 ## Regla de ejecución
 
@@ -88,5 +93,34 @@ sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
 ```
 
 La verificación de V6 debe devolver **0 filas** y `columnas_prohibidas = 0`: no se guardan precios, importes, productos, facturas, pagos, correos ni razones sociales.
+
+### Etapa 7
+
+```bash
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V7.001__services_entitlements.up.sql
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V7.001__services_entitlements.verify.sql
+```
+
+Rollback de V7, sin afectar V5, V6 ni la auditoría:
+
+```bash
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V7.001__services_entitlements.down.sql
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V7.001__services_entitlements.verify_rollback.sql
+```
+
+La verificación de V7 debe devolver `columnas_prohibidas = 0`, `capacidades_inexistentes = 0` y `servicios_verificados = 13`. El catálogo inicial contiene solo rutas `GET` documentadas en `api/index.php`, `docs/api/openapi-3.1.yaml`, `README-API.md`, `web/docs.php` y `portal/Router.php`.
+
+El permiso de superadministrador **no se asigna automáticamente**. Después de aplicar `up`, un administrador de la base debe aprovisionar explícitamente cada operador, sin contraseñas ni datos personales:
+
+```sql
+INSERT INTO os_customer.operator (user_id, created_by)
+VALUES (<id de app_user de prueba>, <id de app_user de prueba>);
+```
+
+Si se ejecuta el `down`, esa fila se elimina con la tabla y debe aprovisionarse de nuevo tras reaplicar `up`. Sin ese paso, ningún usuario puede verificar pagos ni habilitar servicios.
 
 **Prohibido:** ejecutar cualquiera de estos archivos en `origen_codes` productiva.

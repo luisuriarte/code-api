@@ -1,6 +1,6 @@
 # Modelo de servicios técnicos y habilitaciones
 
-> **Estado:** propuesta arquitectónica. **No implementado.**
+> **Estado:** propuesta arquitectónica; Etapa 7 implementada localmente en la base de prueba y pendiente de verificación en el VPS. **No desplegada en producción.**
 > **Fecha:** 2026-11-24.
 >
 > Los nombres de tablas y estados son ilustrativos y requieren aprobación.
@@ -194,14 +194,19 @@ Registrar, como mínimo:
 - Mostrar servicios solicitados como si estuvieran activos.
 - Inventar scopes o entornos que la API no posee.
 
-## 11. Decisiones pendientes
+## 11. Decisiones
 
-1. ¿La habilitación exige pago confirmado, presupuesto aceptado o aprobación manual?
-2. ¿Quién puede habilitar: superadministrador, administrador comercial o ambos?
-3. ¿Los servicios vencen automáticamente por fecha o solo por decisión administrativa?
-4. ¿Se permite suspensión parcial de servicios dentro de un contrato?
-5. ¿Cómo se representan planes institucionales con varios servicios?
-6. ¿Qué servicios reales se publican en la primera versión?
+Resueltas por `acta-autorizacion-etapa-7.md` (solo entorno de prueba):
+
+1. La habilitación exige **pago confirmado verificado manualmente + decisión técnica manual**; no se dispara por factura ni webhook.
+2. Solo el **superadministrador de Origen Salud** puede verificar el pago y habilitar, suspender o revocar.
+6. El catálogo inicial contiene **solo servicios verificables en la API actual** (rutas `GET` documentadas); no se publican `/fhir/*`, `/v1/uvr` ni `/v1/cdt`.
+
+Sigue pendiente y **no se implementa** en esta etapa:
+
+3. Vencimiento automático por fecha: la columna `expires_at` existe, pero el cambio a `expired` solo lo decide un superadministrador.
+4. Suspensión parcial dentro de un contrato: la habilitación se decide por organización y servicio.
+5. Planes institucionales con varios servicios: la relación producto ↔ servicio queda como referencia opaca, sin precios ni agrupaciones comerciales locales.
 
 ## 12. Requisito de autorización
 

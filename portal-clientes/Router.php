@@ -9,6 +9,7 @@ use OrigenSalud\CustomerPortal\Controllers\HomeController;
 use OrigenSalud\CustomerPortal\Controllers\InvitationController;
 use OrigenSalud\CustomerPortal\Controllers\MemberController;
 use OrigenSalud\CustomerPortal\Controllers\OrganizationController;
+use OrigenSalud\CustomerPortal\Controllers\ServiceController;
 use OrigenSalud\CustomerPortal\I18n\CustomerI18n;
 use OrigenSalud\CustomerPortal\Services\Http;
 use OrigenSalud\Web\I18n;
@@ -191,6 +192,38 @@ final class Router
             }
 
             MemberController::revokeSubmit();
+
+            return;
+        }
+
+        if ($section === 'servicios') {
+            if ($method !== 'GET') {
+                Http::abort(404, 'errors/404');
+
+                return;
+            }
+
+            ServiceController::index();
+
+            return;
+        }
+
+        $serviceActions = [
+            'servicios/request' => 'requestSubmit',
+            'servicios/contrato' => 'contractSubmit',
+            'servicios/entitlement' => 'entitlementSubmit',
+            'servicios/payment' => 'verifyPaymentSubmit',
+            'servicios/activate' => 'activateSubmit',
+            'servicios/status' => 'statusSubmit',
+        ];
+        if (isset($serviceActions[$section])) {
+            if ($method !== 'POST') {
+                Http::abort(404, 'errors/404');
+
+                return;
+            }
+
+            ServiceController::{$serviceActions[$section]}();
 
             return;
         }

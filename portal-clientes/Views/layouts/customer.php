@@ -61,6 +61,7 @@
 </main>
 <footer>
     <a href="<?= e($baseUrl . '/' . $locale . '/') ?>"><?= e($t('customer.nav.home')) ?></a>
+    <a href="<?= e($baseUrl . '/' . $locale . '/servicios') ?>"><?= e($t('customer.nav.services')) ?></a>
     <span><?= e($t('customer.footer.note')) ?></span>
 </footer>
 </body>

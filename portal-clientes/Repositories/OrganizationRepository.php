@@ -40,6 +40,20 @@ final class OrganizationRepository
         return is_array($rows) ? $rows : [];
     }
 
+    /** @return list<array<string, mixed>> */
+    public static function findAllActive(): array
+    {
+        $statement = CustomerDatabase::connection()->query(
+            'SELECT id, code, display_name, legal_name
+               FROM os_customer.organization
+              WHERE status = \'active\'
+              ORDER BY display_name, legal_name, id'
+        );
+        $rows = $statement->fetchAll();
+
+        return is_array($rows) ? $rows : [];
+    }
+
     public static function update(int $id, string $legalName, string $displayName, ?string $taxId): void
     {
         $statement = CustomerDatabase::connection()->prepare(

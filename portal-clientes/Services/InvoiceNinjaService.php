@@ -166,7 +166,7 @@ final class InvoiceNinjaService
                     'invoice_ninja.link_created',
                     'invoice_ninja_client_link',
                     $clientId,
-                    'ok',
+                    'success',
                     ['criteria' => array_values(array_unique($criteriaUsed))]
                 );
 
@@ -194,8 +194,8 @@ final class InvoiceNinjaService
                 'invoice_ninja.review_requested',
                 'invoice_ninja_duplicate_review',
                 is_array($review) ? (string) ($review['id'] ?? '') : null,
-                'needs_review',
-                ['criteria' => array_values(array_unique($criteriaUsed)), 'candidate_count' => count($ids)]
+                'success',
+                ['status' => 'needs_review', 'criteria' => array_values(array_unique($criteriaUsed)), 'candidate_count' => count($ids)]
             );
 
             return [
@@ -298,8 +298,8 @@ final class InvoiceNinjaService
                 'invoice_ninja.review_resolved',
                 'invoice_ninja_duplicate_review',
                 (string) $reviewId,
-                $decision,
-                []
+                $decision === 'approved' ? 'success' : 'denied',
+                ['decision' => $decision]
             );
         }
 

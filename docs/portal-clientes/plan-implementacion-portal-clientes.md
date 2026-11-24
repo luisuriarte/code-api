@@ -183,7 +183,9 @@ Cualquier cambio que afecte:
 - Habilitación administrativa controlada; no automática por factura emitida.
 - Auditoría de cada cambio de estado y de quien lo ejecuta.
 
-**Autorización requerida:** política de activación y ejecución de habilitaciones.
+**Autorización:** recibida el 2026-11-24 en `acta-autorizacion-etapa-7.md`, **solo en la base de prueba aislada**. La condición comercial es pago confirmado **más** aprobación manual; solo un superadministrador de Origen Salud puede verificar el pago y decidir la habilitación; el catálogo inicial contiene únicamente servicios verificables en la API actual.
+
+**Estado:** implementada localmente; pendiente de que el responsable ejecute `up` / `verify` / `down` / `verify_rollback` / `up` en `origen_codes_portal_clientes_test` y reporte los resultados. No desplegada en producción.
 
 ## 11. Etapa 8 — Credenciales API
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrigenSalud\CustomerPortal\Services;
 
 use OrigenSalud\CustomerPortal\Repositories\MembershipRepository;
+use OrigenSalud\CustomerPortal\Repositories\OperatorRepository;
 use OrigenSalud\CustomerPortal\Repositories\OrganizationRepository;
 use OrigenSalud\CustomerPortal\Repositories\RoleRepository;
 use OrigenSalud\CustomerPortal\Repositories\SessionRepository;
@@ -126,5 +127,30 @@ final class AccessControl
         }
 
         return $context;
+    }
+
+    /** Superadministrador de Origen Salud, aprovisionado explícitamente en os_customer.operator. */
+    public static function isSuperAdmin(?int $userId = null): bool
+    {
+        $current = self::current();
+        if ($current === null) {
+            return false;
+        }
+
+        $userId ??= (int) $current['user_id'];
+
+        return OperatorRepository::isSuperAdmin($userId);
+    }
+
+    /** @return array<string, mixed> */
+    public static function requireSuperAdmin(): array
+    {
+        $current = self::requireUser();
+
+        if (!self::isSuperAdmin((int) $current['user_id'])) {
+            Http::abort(403, 'errors/denied');
+        }
+
+        return $current;
     }
 }
