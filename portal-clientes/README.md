@@ -1,6 +1,6 @@
 # Portal privado de clientes — Etapas 5, 6 y 7
 
-> **Estado:** Etapas 5 y 6 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 implementada localmente y pendiente de verificación en el VPS. **No desplegado en producción.**
+> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. **No desplegado en producción.**
 > **Autorizaciones:** `docs/portal-clientes/acta-autorizacion-etapa-5.md`, `acta-autorizacion-etapa-6.md` y `acta-autorizacion-etapa-7.md`.
 
 ## 1. Límites
@@ -134,10 +134,29 @@ El permiso de superadministrador se aprovisiona a mano, nunca por correo ni por 
 - `php -l` en todos los archivos PHP nuevos: sin errores.
 - Carga de las clases por autoloader: correcta.
 - Traducciones: 74 claves en la Etapa 5; 133 claves con Etapa 7, presentes en `es-AR`, `en` y `pt-BR`; sin faltantes.
-- Suite existente: `php tests/run.php` → `OK: 3646 comprobaciones` (68 comprobaciones nuevas de Etapa 7).
+- Suite existente: `php tests/run.php` → `OK: 3647 comprobaciones` (69 comprobaciones nuevas de Etapa 7).
 - Etapa 6: 13 comprobaciones locales del modo `mock`, la clasificación y las guardias HTTP, sin red ni base: sin fallas.
 - Etapa 7: 518 comprobaciones locales de SQL, rutas, permisos, i18n, diseño y resultados de auditoría: sin fallas.
 - Los resultados de auditoría inválidos detectados en la Etapa 6 (`ok`, `needs_review`, `approved`, `rejected`, `discarded`) se corrigieron a `success`/`denied`, porque `os_customer.audit_log` tiene un `CHECK` y esas escrituras habrían fallado.
+
+### Verificación en el VPS de prueba
+
+- `php tests/run.php` → `OK: 3647 comprobaciones`, sin avisos `Deprecated`.
+- Cabeceras: `/portal-clientes/es-AR/login` → `X-Frame-Options: DENY`; `/es-AR/` → `SAMEORIGIN`; una sola línea en cada caso.
+- Flujo ejecutado en navegador: solicitud → contrato → pago confirmado verificado → habilitación pendiente → activación → suspensión → revocación.
+- Estado final de la habilitación de prueba: `1|revoked`.
+- Auditoría `os_customer.audit_log` filtrada por `service.%`:
+
+```text
+service.contract.created|success|1
+service.contract.payment_verified|success|1
+service.entitlement.activated|success|1
+service.entitlement.created|success|1
+service.entitlement.status_changed|success|2
+service.request.created|success|1
+```
+
+`status_changed` con count `2` corresponde a la suspensión y a la revocación de la misma habilitación.
 
 ## 6. Estado de producción
 

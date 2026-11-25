@@ -35,7 +35,7 @@ final class EntitlementService
             return ['ok' => false, 'id' => null, 'error' => 'customer.service.invalid'];
         }
 
-        $cleanNote = $note === null ? null : trim($note);
+        $cleanNote = trim($note ?? '');
         if ($cleanNote !== '' && mb_strlen($cleanNote) > 2000) {
             return ['ok' => false, 'id' => null, 'error' => 'customer.service.invalid'];
         }
@@ -256,7 +256,7 @@ final class EntitlementService
         }
 
         $target = ['suspend' => 'suspended', 'revoke' => 'revoked', 'expire' => 'expired'][$action];
-        $cleanReason = $reason === null ? null : trim($reason);
+        $cleanReason = trim($reason ?? '');
         if ($cleanReason !== '' && mb_strlen($cleanReason) > 1000) {
             return ['ok' => false, 'error' => 'customer.service.invalid'];
         }

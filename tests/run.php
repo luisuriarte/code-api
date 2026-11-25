@@ -3493,6 +3493,11 @@ $check(
         && str_contains($s7Service, 'createPending'),
     'Etapa 7: la solicitud y la habilitación deben validar entradas, superadmin y pago.'
 );
+$check(
+    str_contains($s7Service, "trim(\$note ?? '')")
+        && str_contains($s7Service, "trim(\$reason ?? '')"),
+    'Etapa 7: nota y motivo deben normalizarse a string antes de mb_strlen().'
+);
 foreach (['servicios', 'servicios/request', 'servicios/contrato', 'servicios/entitlement', 'servicios/payment', 'servicios/activate', 'servicios/status'] as $s7Route) {
     $check(str_contains($s7Router, "'" . $s7Route . "'"), 'Etapa 7: debe existir la ruta ' . $s7Route);
 }
