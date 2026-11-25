@@ -3517,9 +3517,12 @@ $check(
 );
 $check(
     str_contains($s7View, 'servicios/status')
-        && str_contains($s7View, 'value="suspended"')
-        && str_contains($s7View, 'value="revoked"'),
-    'Etapa 7: el panel de operador debe permitir suspender y revocar desde la vista.'
+        && str_contains($s7View, 'value="suspend"')
+        && str_contains($s7View, 'value="revoke"')
+        && !str_contains($s7View, 'value="suspended"')
+        && !str_contains($s7View, 'value="revoked"')
+        && str_contains($s7Service, "['suspend', 'revoke', 'expire']"),
+    'Etapa 7: el panel de operador debe enviar suspend/revoke, igual que el servicio.'
 );
 $check(
     str_contains($s7Repo, 'public static function findForOperator()'),

@@ -327,14 +327,14 @@
                                                     <form method="post" action="/portal-clientes/<?= e($locale) ?>/servicios/status">
                                                         <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
                                                         <input type="hidden" name="entitlement_id" value="<?= e((string) $item['id']) ?>">
-                                                        <input type="hidden" name="action" value="suspended">
+                                                        <input type="hidden" name="action" value="suspend">
                                                         <button class="btn-secondary !mt-0 !py-1" type="submit"><?= e($t('customer.service.suspend')) ?></button>
                                                     </form>
                                                 <?php endif; ?>
                                                 <form method="post" action="/portal-clientes/<?= e($locale) ?>/servicios/status">
                                                     <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
                                                     <input type="hidden" name="entitlement_id" value="<?= e((string) $item['id']) ?>">
-                                                    <input type="hidden" name="action" value="revoked">
+                                                    <input type="hidden" name="action" value="revoke">
                                                     <button class="btn-secondary !mt-0 !py-1" type="submit"><?= e($t('customer.service.revoke')) ?></button>
                                                 </form>
                                             <?php endif; ?>
