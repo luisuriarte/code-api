@@ -3509,6 +3509,13 @@ foreach (['es-AR', 'en', 'pt-BR'] as $s7Locale) {
     }
 }
 $s7Repo = (string) file_get_contents($root . '/portal-clientes/Repositories/EntitlementRepository.php');
+$s7Session = (string) file_get_contents($root . '/portal-clientes/Services/CustomerSession.php');
+$check(
+    str_contains($s7Session, "setcookie(session_name(), '', [")
+        && str_contains($s7Session, "'expires' => time() - 42000")
+        && !str_contains($s7Session, "setcookie(session_name(), '', time() - 42000, ["),
+    'Etapa 7: el cierre de sesión debe pasar las opciones de setcookie como tercer argumento.'
+);
 $check(
     str_contains($s7View, 'servicios/status')
         && str_contains($s7View, 'value="suspended"')
