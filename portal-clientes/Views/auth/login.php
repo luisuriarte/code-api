@@ -45,4 +45,8 @@
             <a class="font-semibold text-teal transition hover:text-teal-dark" href="<?= e($baseUrl . '/' . $locale . '/forgot') ?>"><?= e($t('customer.login.forgot')) ?></a>
         </p>
     </div>
+
+    <p class="mt-5 text-center">
+        <a class="btn-secondary" href="https://med.origen.ar/"><?= e($t('customer.login.back_site')) ?></a>
+    </p>
 </div>
