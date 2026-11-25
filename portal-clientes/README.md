@@ -134,9 +134,9 @@ El permiso de superadministrador se aprovisiona a mano, nunca por correo ni por 
 - `php -l` en todos los archivos PHP nuevos: sin errores.
 - Carga de las clases por autoloader: correcta.
 - Traducciones: 74 claves en la Etapa 5; 133 claves con Etapa 7, presentes en `es-AR`, `en` y `pt-BR`; sin faltantes.
-- Suite existente: `php tests/run.php` → `OK: 3639 comprobaciones` (61 comprobaciones nuevas de Etapa 7).
+- Suite existente: `php tests/run.php` → `OK: 3646 comprobaciones` (68 comprobaciones nuevas de Etapa 7).
 - Etapa 6: 13 comprobaciones locales del modo `mock`, la clasificación y las guardias HTTP, sin red ni base: sin fallas.
-- Etapa 7: 490 comprobaciones locales de SQL, rutas, permisos, i18n y resultados de auditoría: sin fallas.
+- Etapa 7: 518 comprobaciones locales de SQL, rutas, permisos, i18n, diseño y resultados de auditoría: sin fallas.
 - Los resultados de auditoría inválidos detectados en la Etapa 6 (`ok`, `needs_review`, `approved`, `rejected`, `discarded`) se corrigieron a `success`/`denied`, porque `os_customer.audit_log` tiene un `CHECK` y esas escrituras habrían fallado.
 
 ## 6. Estado de producción

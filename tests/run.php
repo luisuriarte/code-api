@@ -3526,6 +3526,60 @@ $check(
     str_contains($s7Repo, 'public static function findForOperator()'),
     'Etapa 7: el repositorio debe listar habilitaciones para el operador.'
 );
+foreach (['organizations', 'members', 'services'] as $s7HomeView) {
+    $s7HomeSource = (string) file_get_contents($root . '/portal-clientes/Views/' . $s7HomeView . '.php');
+    $check(
+        str_contains($s7HomeSource, 'btn-secondary')
+            && str_contains($s7HomeSource, "e(\$t('customer.nav.home'))"),
+        'Etapa 7: la vista ' . $s7HomeView . ' debe ofrecer el botón Inicio.'
+    );
+}
+$s7CustomerLayout = (string) file_get_contents($root . '/portal-clientes/Views/layouts/customer.php');
+$s7CustomerCss = (string) file_get_contents($root . '/resources/css/public.css');
+$s7CustomerCssBuilt = (string) file_get_contents($root . '/web/assets/css/public.css');
+$check(
+    str_contains($s7CustomerLayout, '/assets/css/public.css')
+        && !str_contains($s7CustomerLayout, '<style>'),
+    'Etapa 7: el portal de clientes debe usar el CSS público compilado, sin estilos inline.'
+);
+$check(
+    str_contains($s7CustomerCss, '@source "../../portal-clientes/Views/**/*.php"')
+        && str_contains($s7CustomerCss, '.btn-primary')
+        && str_contains($s7CustomerCssBuilt, '.btn-primary'),
+    'Etapa 7: Tailwind debe escanear y compilar los componentes del portal de clientes.'
+);
+$s7CustomerViewFiles = glob($root . '/portal-clientes/Views/*.php');
+$s7CustomerViewFiles = array_merge(
+    is_array($s7CustomerViewFiles) ? $s7CustomerViewFiles : [],
+    glob($root . '/portal-clientes/Views/*/*.php') ?: []
+);
+$s7CustomerLegacyClasses = false;
+foreach ($s7CustomerViewFiles as $s7CustomerViewFile) {
+    $s7CustomerViewSource = (string) file_get_contents($s7CustomerViewFile);
+    if (str_contains($s7CustomerViewSource, 'class="card"') || str_contains($s7CustomerViewSource, 'class="button"')) {
+        $s7CustomerLegacyClasses = true;
+    }
+}
+$check(
+    !$s7CustomerLegacyClasses,
+    'Etapa 7: las vistas del portal de clientes no deben conservar clases del diseño anterior.'
+);
+$s7CustomerKeySets = [];
+foreach (['es-AR', 'en', 'pt-BR'] as $s7Locale) {
+    $s7CustomerMessages = \Symfony\Component\Yaml\Yaml::parseFile(
+        $root . '/portal-clientes/translations/messages.' . $s7Locale . '.yaml'
+    );
+    $s7CustomerFlat = [];
+    foreach (is_array($s7CustomerMessages) ? $s7CustomerMessages : [] as $s7Key => $s7Value) {
+        $s7CustomerFlat[$s7Key] = is_scalar($s7Value) || $s7Value === null;
+    }
+    $s7CustomerKeySets[$s7Locale] = array_keys($s7CustomerFlat);
+}
+$check(
+    $s7CustomerKeySets['es-AR'] === $s7CustomerKeySets['en']
+        && $s7CustomerKeySets['es-AR'] === $s7CustomerKeySets['pt-BR'],
+    'Etapa 7: las claves i18n del rediseño deben estar iguales en los tres idiomas.'
+);
 $s7NinjaService = (string) file_get_contents($root . '/portal-clientes/Services/InvoiceNinjaService.php');
 $check(
     preg_match("/^\\s*'(ok|needs_review|approved|rejected|discarded)',\\s*$/m", $s7NinjaService) !== 1,

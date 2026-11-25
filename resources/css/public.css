@@ -21,6 +21,7 @@
 
 /* El build escanea solo PHP: no hay plantillas JS ni CDN. */
 @source "../../portal/Views/**/*.php";
+@source "../../portal-clientes/Views/**/*.php";
 @source "../../web/**/*.php";
 
 @theme {
@@ -100,5 +101,26 @@
             transform: translateX(100%);
             opacity: 0;
         }
+    }
+
+    /* Shell compartido: el portal privado usa los mismos tokens que el sitio. */
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white shadow-card transition hover:bg-teal-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15;
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink-soft transition hover:border-teal/40 hover:bg-mint hover:text-teal-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15;
+    }
+
+    .surface-card {
+        @apply rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6;
+    }
+
+    .form-field {
+        @apply w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted transition focus:border-teal focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal/15;
+    }
+
+    .table-head {
+        @apply text-xs font-semibold uppercase tracking-wide text-muted;
     }
 }
