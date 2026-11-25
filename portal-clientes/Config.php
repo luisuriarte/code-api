@@ -120,4 +120,22 @@ final class Config
             && $config['allow_test_calls'] === true
             && $config['token'] !== '';
     }
+
+    /**
+     * Conexión operativa de la Etapa 8 (Opción A): servicio de servidor que
+     * escribe solo en public.api_clients. Vacía por defecto: sin credenciales
+     * configuradas el self-service queda deshabilitado. Ningún valor viaja al
+     * navegador, a logs ni a repositorio; solo se configura en .env del VPS.
+     *
+     * @return array{dsn: string, user: string, pass: string, timeout: int}
+     */
+    public static function apiCredentials(): array
+    {
+        return [
+            'dsn' => (string) env('PORTAL_CUSTOMER_CREDENTIAL_DB_DSN', ''),
+            'user' => (string) env('PORTAL_CUSTOMER_CREDENTIAL_DB_USER', ''),
+            'pass' => (string) env('PORTAL_CUSTOMER_CREDENTIAL_DB_PASS', ''),
+            'timeout' => (int) env('PORTAL_CUSTOMER_CREDENTIAL_DB_STATEMENT_TIMEOUT', '3'),
+        ];
+    }
 }

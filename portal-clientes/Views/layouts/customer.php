@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use OrigenSalud\CustomerPortal\I18n\CustomerI18n;
+use OrigenSalud\CustomerPortal\Services\AccessControl;
 use OrigenSalud\CustomerPortal\Services\CustomerSession;
 
 /**
@@ -30,6 +31,7 @@ $suffix = str_starts_with($basePath, '/portal-clientes')
     : $basePath;
 
 $isAuthenticated = CustomerSession::get('customer_user_id') !== null;
+$canCredentials = $isAuthenticated && AccessControl::can('credential.read');
 $home = $baseUrl . '/' . $locale . '/';
 
 $flags = [
@@ -43,7 +45,14 @@ $navItems = [
     ['href' => $baseUrl . '/' . $locale . '/servicios', 'key' => 'customer.nav.services', 'icon' => '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>'],
     ['href' => $baseUrl . '/' . $locale . '/organizations', 'key' => 'customer.nav.organizations', 'icon' => '<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M8 7h2M8 11h2M8 15h2M16 9h2a2 2 0 0 1 2 2v10"/>'],
     ['href' => $baseUrl . '/' . $locale . '/members', 'key' => 'customer.nav.members', 'icon' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'],
+    ['href' => $baseUrl . '/' . $locale . '/credentials', 'key' => 'customer.nav.credentials', 'icon' => '<circle cx="8" cy="15" r="4"/><path d="M11 12V5a3 3 0 0 1 6 0v3M17 8h3v3h-3"/>'],
 ];
+if (!$canCredentials) {
+    $navItems = array_values(array_filter(
+        $navItems,
+        static fn (array $item): bool => $item['key'] !== 'customer.nav.credentials'
+    ));
+}
 ?>
 <!doctype html>
 <html lang="<?= e($locale) ?>">
@@ -164,6 +173,9 @@ $navItems = [
         <div class="flex flex-wrap items-center gap-4">
             <a class="transition hover:text-white" href="<?= e($home) ?>"><?= e($t('customer.nav.home')) ?></a>
             <a class="transition hover:text-white" href="<?= e($baseUrl . '/' . $locale . '/servicios') ?>"><?= e($t('customer.nav.services')) ?></a>
+            <?php if ($canCredentials): ?>
+                <a class="transition hover:text-white" href="<?= e($baseUrl . '/' . $locale . '/credentials') ?>"><?= e($t('customer.nav.credentials')) ?></a>
+            <?php endif; ?>
             <a class="transition hover:text-white" href="/<?= e($locale) ?>/"><?= e($t('customer.footer.public_site')) ?></a>
         </div>
         <span><?= e($t('customer.footer.note')) ?></span>

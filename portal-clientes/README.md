@@ -1,7 +1,7 @@
-# Portal privado de clientes — Etapas 5, 6 y 7
+# Portal privado de clientes — Etapas 5, 6, 7 y 8
 
-> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. **No desplegado en producción.**
-> **Autorizaciones:** `docs/portal-clientes/acta-autorizacion-etapa-5.md`, `acta-autorizacion-etapa-6.md` y `acta-autorizacion-etapa-7.md`.
+> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 implementada localmente, pendiente de verificación en VPS. **No desplegado en producción.**
+> **Autorizaciones:** `docs/portal-clientes/acta-autorizacion-etapa-5.md`, `acta-autorizacion-etapa-6.md`, `acta-autorizacion-etapa-7.md` y `acta-autorizacion-etapa-8.md`.
 
 ## 1. Límites
 
@@ -13,11 +13,13 @@ Este código es independiente de `/portal` y de `/admin`:
 - pepper de contraseñas y de huellas distinto;
 - dominio i18n `customer_portal`, sin modificar los YAML del portal público.
 
-No implementa FreeScout, credenciales API, facturación ni pagos. Tampoco modificó Nginx, PHP-FPM ni el front controller de `/portal`.
+No implementa FreeScout, facturación ni pagos. Tampoco modificó Nginx, PHP-FPM ni el front controller de `/portal`.
 
 La Etapa 6 agregó un adaptador de **solo lectura** hacia Invoice Ninja. No crea clientes, contactos, presupuestos, facturas ni pagos. El modo por defecto es `mock`: sin llamadas de red.
 
 La Etapa 7 agrega un catálogo técnico y habilitaciones administradas en el portal. No copia productos, precios, facturas ni pagos: la habilitación exige que un superadministrador de Origen Salud verifique manualmente el pago confirmado y después decida la habilitación. El catálogo inicial solo incluye rutas `GET` documentadas en la API real; no publica `/fhir/*`, `/v1/uvr` ni `/v1/cdt`.
+
+La Etapa 8 agrega self-service de credenciales de la API propia (`/v1`). Respeta el mecanismo real: clave en texto plano, sin scopes, expiración, último uso ni medición. La escritura en `public.api_clients` la hace un servicio de servidor con una conexión operativa configurada solo en el VPS (Opción A), sin rol nuevo ni ampliación de grants. El secreto se muestra una sola vez y nunca se guarda en metadatos, sesión, URL ni logs.
 
 ## 2. Estructura
 
@@ -25,11 +27,12 @@ La Etapa 7 agrega un catálogo técnico y habilitaciones administradas en el por
 - `Config.php`: variables de configuración; sin secretos reales.
 - `Router.php`: rutas `/portal-clientes/{locale}/...`.
 - `I18n/CustomerI18n.php`: reutiliza Symfony Translator con dominio separado.
-- `Services/`: sesión, CSRF, RBAC, autenticación, auditoría, base, notificaciones de prueba, `InvoiceNinjaService` y `EntitlementService`.
+- `Services/`: sesión, CSRF, RBAC, autenticación, auditoría, base, notificaciones de prueba, `InvoiceNinjaService`, `EntitlementService`, `CredentialDatabase` y `ApiCredentialService`.
 - `Services/InvoiceNinja/`: transporte `mock` determinista y transporte HTTP con HTTPS obligatorio, reintentos acotados y token solo en cabecera.
-- `Repositories/`: acceso parametrizado a `os_customer`, incluidos vínculos y revisiones de Invoice Ninja.
-- `Controllers/`: login, logout, recuperación, invitaciones, organizaciones, miembros y servicios.
+- `Repositories/`: acceso parametrizado a `os_customer`, incluidos vínculos, revisiones y metadatos de credenciales.
+- `Controllers/`: login, logout, recuperación, invitaciones, organizaciones, miembros, servicios y credenciales.
 - `Views/` y `translations/`: interfaz en `es-AR`, `en` y `pt-BR`.
+- `bin/api-credential-probe.php`: prueba HTTP real acotada contra `https://api.origen.ar`, solo `GET`, sin imprimir la clave.
 - `../sql/10_portal_clientes/`: migraciones `up`, `down` y verificaciones.
 
 El front controller nuevo es `web/portal-clientes/index.php`, con un `.htaccess` propio dentro de ese directorio.
@@ -59,6 +62,12 @@ El front controller nuevo es `web/portal-clientes/index.php`, con un `.htaccess`
 | `PORTAL_CUSTOMER_IN_ALLOW_TEST_CALLS` | Opt-in explícito para llamadas HTTP de prueba. Default `false`. |
 | `PORTAL_CUSTOMER_IN_TIMEOUT` | Timeout en segundos, 1..30. |
 | `PORTAL_CUSTOMER_IN_RETRIES` | Reintentos en respuestas transitorias, 0..2. |
+| `PORTAL_CUSTOMER_CREDENTIAL_DB_DSN` | DSN operativo de la Etapa 8. Vacío por defecto: self-service deshabilitado. |
+| `PORTAL_CUSTOMER_CREDENTIAL_DB_USER` | Usuario operativo con permisos de escritura solo sobre `public.api_clients`. |
+| `PORTAL_CUSTOMER_CREDENTIAL_DB_PASS` | Contraseña operativa; solo en `.env` del VPS, nunca en Git ni logs. |
+| `PORTAL_CUSTOMER_CREDENTIAL_DB_STATEMENT_TIMEOUT` | Timeout en segundos de la conexión operativa. |
+| `PORTAL_CUSTOMER_API_TEST_KEY` | Clave **de prueba** para el sondeo real; solo en el entorno del VPS. |
+| `PORTAL_CUSTOMER_API_TEST_EXPECT` | `200` antes de revocar, `401` después; default `200`. |
 
 Para que exista una llamada HTTP deben cumplirse **simultáneamente** las tres condiciones: `mode=http`, `allow_test_calls=true` y token de prueba configurado. Sin eso, el servicio usa el adaptador `mock` y no abre conexión. El token real está prohibido por el acta.
 
@@ -133,15 +142,16 @@ El permiso de superadministrador se aprovisiona a mano, nunca por correo ni por 
 
 - `php -l` en todos los archivos PHP nuevos: sin errores.
 - Carga de las clases por autoloader: correcta.
-- Traducciones: 74 claves en la Etapa 5; 133 claves con Etapa 7, presentes en `es-AR`, `en` y `pt-BR`; sin faltantes.
-- Suite existente: `php tests/run.php` → `OK: 3647 comprobaciones` (69 comprobaciones nuevas de Etapa 7).
+- Traducciones: 74 claves en la Etapa 5; 141 claves hasta la Etapa 7; 168 claves con Etapa 8, presentes en `es-AR`, `en` y `pt-BR`; sin faltantes.
+- Suite existente: `php tests/run.php` → `OK: 3695 comprobaciones` (48 comprobaciones nuevas de Etapa 8).
 - Etapa 6: 13 comprobaciones locales del modo `mock`, la clasificación y las guardias HTTP, sin red ni base: sin fallas.
 - Etapa 7: 518 comprobaciones locales de SQL, rutas, permisos, i18n, diseño y resultados de auditoría: sin fallas.
+- Etapa 8: comprobaciones locales de migración, guardas, grants, self-service, secreto de un solo uso, rutas, i18n y sondeo `GET`-only: sin fallas.
 - Los resultados de auditoría inválidos detectados en la Etapa 6 (`ok`, `needs_review`, `approved`, `rejected`, `discarded`) se corrigieron a `success`/`denied`, porque `os_customer.audit_log` tiene un `CHECK` y esas escrituras habrían fallado.
 
 ### Verificación en el VPS de prueba
 
-- `php tests/run.php` → `OK: 3647 comprobaciones`, sin avisos `Deprecated`.
+- Con Etapa 7: `php tests/run.php` → `OK: 3647 comprobaciones`, sin avisos `Deprecated`. Con Etapa 8, pendiente de repetir en VPS; localmente da `OK: 3695 comprobaciones`.
 - Cabeceras: `/portal-clientes/es-AR/login` → `X-Frame-Options: DENY`; `/es-AR/` → `SAMEORIGIN`; una sola línea en cada caso.
 - Flujo ejecutado en navegador: solicitud → contrato → pago confirmado verificado → habilitación pendiente → activación → suspensión → revocación.
 - Estado final de la habilitación de prueba: `1|revoked`.
@@ -158,16 +168,74 @@ service.request.created|success|1
 
 `status_changed` con count `2` corresponde a la suspensión y a la revocación de la misma habilitación.
 
-## 6. Estado de producción
+## 6. Etapa 8 — Credenciales API
 
-Sin cambios. No se creó esquema, rol, tabla, dato, usuario ni credencial real. No se hizo commit, push ni deploy.
+### Migración
 
-## 7. Fuera de alcance
+Solo en `origen_codes_portal_clientes_test`:
+
+```bash
+cd /var/www/html/origen.ar/code-api
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V8.001__api_credentials.up.sql
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V8.001__api_credentials.verify.sql
+```
+
+Rollback ensayado y reaplicación:
+
+```bash
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V8.001__api_credentials.down.sql
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V8.001__api_credentials.verify_rollback.sql
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V8.001__api_credentials.up.sql
+```
+
+`verify.sql` debe dar `tablas_v8 = 1`, `columnas_prohibidas = 0`, `capacidades_inexistentes = 0`, `columnas_api_clients = 6`, `trigger_revocacion = 1` y `sin_borrado = t`.
+
+### Configuración del servidor
+
+La escritura en `public.api_clients` requiere la conexión operativa de la Opción A. Sin estas variables, el panel muestra el aviso `customer.credential.unavailable` y no abre conexión:
+
+```dotenv
+PORTAL_CUSTOMER_CREDENTIAL_DB_DSN=pgsql:host=...;dbname=...
+PORTAL_CUSTOMER_CREDENTIAL_DB_USER=...
+PORTAL_CUSTOMER_CREDENTIAL_DB_PASS=...
+PORTAL_CUSTOMER_CREDENTIAL_DB_STATEMENT_TIMEOUT=3
+```
+
+Los valores se ponen solo en `.env` del VPS, con permisos restringidos. No se creó ningún rol nuevo de base ni se ampliaron los grants de `origen_customer`.
+
+### Uso
+
+`/portal-clientes/{locale}/credentials` con un usuario `technical_admin` permite crear, rotar y revocar. `developer` y `viewer` solo listan. La institución se deriva de la organización activa. Toda escritura exige CSRF y queda auditada como `credential.created`, `credential.rotated` o `credential.revoked`.
+
+### Prueba HTTP real acotada
+
+Solo después de confirmar la base que sirve a `api.origen.ar` y su backup:
+
+```bash
+PORTAL_CUSTOMER_API_TEST_KEY=<clave-de-prueba> php portal-clientes/bin/api-credential-probe.php
+# Revocar la credencial de prueba desde el portal y repetir:
+PORTAL_CUSTOMER_API_TEST_KEY=<clave-de-prueba> PORTAL_CUSTOMER_API_TEST_EXPECT=401 \
+  php portal-clientes/bin/api-credential-probe.php
+```
+
+Esperado: `200` en `/health` y `/v1/domains` antes de revocar, y `401` en ambos después. El script solo hace `GET`, no imprime la clave ni el cuerpo y verifica HTTPS y host `api.origen.ar`.
+
+## 7. Estado de producción
+
+Sin cambios de esquema. No se creó rol ni tabla nueva en producción. La única excepción autorizada es la credencial **de prueba** creada para el sondeo real, que debe quedar revocada. No se hizo commit, push ni deploy.
+
+## 8. Fuera de alcance
 
 - Pantalla de revisión administrativa de la Etapa 6: el backend expone `resolveReview()`, pero no se modificó `/admin` ni se agregaron rutas de interfaz.
 - Consulta de contactos, productos, precios, facturas o pagos.
 - Webhooks, conciliación y creación de clientes.
 - Enlace al Client Portal oficial de Invoice Ninja.
-- Vencimiento automático, suspensión parcial, planes institucionales y credenciales API.
+- Vencimiento automático, suspensión parcial y planes institucionales.
+- Evolución M6 de la API: hash con pepper, scopes, expiración, último uso, medición y `429`.
 
 Cada uno requiere autorización específica.

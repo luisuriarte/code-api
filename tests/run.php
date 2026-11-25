@@ -3593,6 +3593,172 @@ $check(
     'Etapa 7: los resultados de auditoría de Invoice Ninja deben ser success/denied/failure.'
 );
 
+// Etapa 8 del portal de clientes: credenciales de la API propia de code-api.
+$s8UpPath = $root . '/sql/10_portal_clientes/V8.001__api_credentials.up.sql';
+$s8DownPath = $root . '/sql/10_portal_clientes/V8.001__api_credentials.down.sql';
+$s8VerifyPath = $root . '/sql/10_portal_clientes/V8.001__api_credentials.verify.sql';
+$s8RollbackPath = $root . '/sql/10_portal_clientes/V8.001__api_credentials.verify_rollback.sql';
+$s8Paths = [$s8UpPath, $s8DownPath, $s8VerifyPath, $s8RollbackPath];
+foreach ($s8Paths as $s8Path) {
+    $check(is_file($s8Path), 'Etapa 8: debe existir ' . basename((string) $s8Path));
+}
+$s8Up = is_file($s8UpPath) ? (string) file_get_contents($s8UpPath) : '';
+$s8Down = is_file($s8DownPath) ? (string) file_get_contents($s8DownPath) : '';
+$s8Verify = is_file($s8VerifyPath) ? (string) file_get_contents($s8VerifyPath) : '';
+$s8Rollback = is_file($s8RollbackPath) ? (string) file_get_contents($s8RollbackPath) : '';
+
+foreach ([$s8Up, $s8Down, $s8Verify, $s8Rollback] as $s8Sql) {
+    $check(
+        str_contains($s8Sql, "current_database() NOT LIKE 'origen_codes_portal_clientes%'"),
+        'Etapa 8: todo SQL debe rechazar bases que no sean de prueba aislada.'
+    );
+}
+$check(
+    str_contains($s8Up, 'CREATE TABLE IF NOT EXISTS os_customer.api_credential (')
+        && str_contains($s8Down, 'DROP TABLE IF EXISTS os_customer.api_credential'),
+    'Etapa 8: la migración debe crear y revertir os_customer.api_credential.'
+);
+$check(
+    str_contains($s8Up, 'trg_api_credential_immutable_revocation')
+        && str_contains($s8Down, 'DROP FUNCTION IF EXISTS os_customer.api_credential_immutable_revocation()'),
+    'Etapa 8: una revocación no puede deshacerse desde la base.'
+);
+$check(
+    preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $s8Up) !== 1
+        && !str_contains($s8Up, 'GRANT ALL'),
+    'Etapa 8: los privilegios deben ser por objeto, sin ALTER DEFAULT PRIVILEGES ni GRANT ALL.'
+);
+$check(
+    str_contains($s8Up, 'GRANT SELECT, INSERT, UPDATE ON TABLE os_customer.api_credential TO origen_customer')
+        && str_contains($s8Up, 'GRANT USAGE, SELECT ON SEQUENCE os_customer.api_credential_id_seq TO origen_customer'),
+    'Etapa 8: grants por objeto al rol origen_customer, sin rol nuevo de escritura.'
+);
+$check(
+    !str_contains($s8Up, 'ALTER TABLE public.api_clients')
+        && !str_contains($s8Up, 'ALTER TABLE api_clients')
+        && !str_contains($s8Up, 'CREATE TABLE api_clients'),
+    'Etapa 8: no se modifica el esquema de public.api_clients.'
+);
+$check(
+    str_contains($s8Verify, 'BEGIN READ ONLY;')
+        && str_contains($s8Verify, 'ROLLBACK;')
+        && str_contains($s8Verify, 'columnas_prohibidas')
+        && str_contains($s8Verify, 'capacidades_inexistentes')
+        && str_contains($s8Verify, 'columnas_api_clients'),
+    'Etapa 8: la verificación debe ser solo lectura y comprobar que no se guardan secretos.'
+);
+$check(
+    str_contains($s8Rollback, 'BEGIN READ ONLY;')
+        && str_contains($s8Rollback, 'tablas_v8_restantes')
+        && str_contains($s8Rollback, 'funcion_revocacion_v8_restante')
+        && str_contains($s8Rollback, 'audit_log'),
+    'Etapa 8: el rollback debe conservar auditoría y no dejar objetos V8.'
+);
+
+$s8Service = (string) file_get_contents($root . '/portal-clientes/Services/ApiCredentialService.php');
+$s8Repository = (string) file_get_contents($root . '/portal-clientes/Repositories/ApiCredentialRepository.php');
+$s8Controller = (string) file_get_contents($root . '/portal-clientes/Controllers/CredentialController.php');
+$s8Router = (string) file_get_contents($root . '/portal-clientes/Router.php');
+$s8Config = (string) file_get_contents($root . '/portal-clientes/Config.php');
+$s8Database = (string) file_get_contents($root . '/portal-clientes/Services/CredentialDatabase.php');
+$s8View = (string) file_get_contents($root . '/portal-clientes/Views/credentials.php');
+$s8Layout = (string) file_get_contents($root . '/portal-clientes/Views/layouts/customer.php');
+$s8Probe = (string) file_get_contents($root . '/portal-clientes/bin/api-credential-probe.php');
+$s8Acta = (string) file_get_contents($root . '/docs/portal-clientes/acta-autorizacion-etapa-8.md');
+$s8SqlReadme = (string) file_get_contents($root . '/sql/10_portal_clientes/README.md');
+
+$check(
+    str_contains($s8Service, 'bin2hex(random_bytes(self::KEY_BYTES))')
+        && str_contains($s8Service, 'INSERT INTO public.api_clients')
+        && str_contains($s8Service, 'UPDATE public.api_clients')
+        && str_contains($s8Service, 'SET api_key = :api_key')
+        && str_contains($s8Service, 'SET is_active = FALSE')
+        && str_contains($s8Service, 'CredentialDatabase::connection()'),
+    'Etapa 8: la clave se genera en servidor y solo se escribe en public.api_clients.'
+);
+$check(
+    str_contains($s8Service, 'ApiCredentialRepository::findOwned')
+        && str_contains($s8Service, "'credential.created'")
+        && str_contains($s8Service, "'credential.rotated'")
+        && str_contains($s8Service, "'credential.revoked'")
+        && str_contains($s8Service, "'success'")
+        && str_contains($s8Service, "'denied'")
+        && str_contains($s8Service, "'failure'"),
+    'Etapa 8: creación, rotación y revocación filtran por organización y auditan el resultado.'
+);
+$check(
+    !str_contains($s8Repository, 'api_key')
+        && !str_contains($s8Repository, 'secret')
+        && str_contains($s8Repository, 'WHERE id = :id AND organization_id = :organization_id')
+        && str_contains($s8Repository, "status = \\'active\\'"),
+    'Etapa 8: los metadatos nunca guardan la clave y exigen pertenencia a la organización.'
+);
+$check(
+    str_contains($s8Controller, "requirePermission('credential.read')")
+        && str_contains($s8Controller, "requireWithAudit('credential.create'")
+        && str_contains($s8Controller, "requireWithAudit('credential.rotate'")
+        && str_contains($s8Controller, "requireWithAudit('credential.revoke'")
+        && str_contains($s8Controller, 'assertPost()'),
+    'Etapa 8: cada operación exige permiso credential.* y CSRF.'
+);
+$check(
+    str_contains($s8Controller, "self::render(\$context, isset(\$result['secret'])")
+        && !str_contains($s8Controller, "'flash', ['key' => \$secret"),
+    'Etapa 8: el secreto se entrega en la respuesta, no se guarda en la sesión.'
+);
+foreach (['credentials', 'credentials/create', 'credentials/rotate', 'credentials/revoke'] as $s8Route) {
+    $check(str_contains($s8Router, "'" . $s8Route . "'"), 'Etapa 8: debe existir la ruta ' . $s8Route);
+}
+$check(
+    str_contains($s8Config, 'PORTAL_CUSTOMER_CREDENTIAL_DB_DSN')
+        && str_contains($s8Config, "env('PORTAL_CUSTOMER_CREDENTIAL_DB_PASS', '')")
+        && str_contains($s8Database, 'customer_credential_database_not_configured'),
+    'Etapa 8: la conexión operativa se configura solo por entorno y está deshabilitada por defecto.'
+);
+$check(
+    str_contains($s8View, "e(\$t('customer.credential.title'))")
+        && str_contains($s8View, "e(\$t('customer.nav.home'))")
+        && str_contains($s8View, 'btn-primary')
+        && str_contains($s8View, 'surface-card')
+        && !str_contains($s8View, 'Invoice Ninja'),
+    'Etapa 8: la vista usa Tailwind, i18n y ofrece el botón Inicio.'
+);
+$check(
+    str_contains($s8Layout, 'customer.nav.credentials'),
+    'Etapa 8: la navegación del portal debe incluir Credenciales API.'
+);
+$check(
+    str_contains($s8Probe, 'CURLOPT_HTTPGET => true')
+        && str_contains($s8Probe, "'/health'")
+        && str_contains($s8Probe, "'/v1/domains'")
+        && str_contains($s8Probe, 'https://api.origen.ar')
+        && !str_contains($s8Probe, 'CURLOPT_POST')
+        && !str_contains($s8Probe, 'CURLOPT_CUSTOMREQUEST')
+        && !str_contains($s8Probe, 'echo $key'),
+    'Etapa 8: la prueba real es solo GET, contra api.origen.ar y sin imprimir la clave.'
+);
+$check(
+    str_contains($s8Acta, 'AUTORIZADA')
+        && str_contains($s8Acta, 'Opción A')
+        && str_contains($s8Acta, 'self-service')
+        && str_contains($s8Acta, 'https://api.origen.ar'),
+    'Etapa 8: el acta debe registrar Opción A, self-service y la prueba real acotada.'
+);
+$check(
+    str_contains($s8SqlReadme, 'V8.001__api_credentials.up.sql')
+        && str_contains($s8SqlReadme, 'V8.001__api_credentials.verify_rollback.sql'),
+    'Etapa 8: el README de migraciones debe documentar V8.'
+);
+foreach (['es-AR', 'en', 'pt-BR'] as $s8Locale) {
+    $s8Messages = (string) file_get_contents($root . '/portal-clientes/translations/messages.' . $s8Locale . '.yaml');
+    foreach ([
+        'customer.nav.credentials', 'customer.credential.title', 'customer.credential.secret_once',
+        'customer.credential.status.active', 'customer.credential.revoked', 'customer.credential.limits',
+    ] as $s8Key) {
+        $check(str_contains($s8Messages, $s8Key . ':'), "Etapa 8: falta $s8Key en $s8Locale");
+    }
+}
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

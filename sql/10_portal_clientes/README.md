@@ -17,17 +17,22 @@
 - `V7.001__services_entitlements.down.sql`: revierte solo la Etapa 7; conserva V5, V6 y la auditoría.
 - `V7.001__services_entitlements.verify.sql`: verificación `SELECT`-only de la Etapa 7.
 - `V7.001__services_entitlements.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V7.
+- `V8.001__api_credentials.up.sql`: metadatos de credenciales de la API propia. No modifica `public.api_clients` ni guarda claves.
+- `V8.001__api_credentials.down.sql`: revierte solo la Etapa 8; conserva V5, V6, V7 y la auditoría.
+- `V8.001__api_credentials.verify.sql`: verificación `SELECT`-only de la Etapa 8.
+- `V8.001__api_credentials.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V8.
 
 ## Autorización
 
 - Etapa 5: `docs/portal-clientes/acta-autorizacion-etapa-5.md`.
 - Etapa 6: `docs/portal-clientes/acta-autorizacion-etapa-6.md`.
 - Etapa 7: `docs/portal-clientes/acta-autorizacion-etapa-7.md`.
+- Etapa 8: `docs/portal-clientes/acta-autorizacion-etapa-8.md`.
 
 ## Orden de migraciones
 
-Aplicar: `V5.001 up` → `V6.001 up` → `V7.001 up`.  
-Revertir: `V7.001 down` → `V6.001 down` → `V5.001 down`.
+Aplicar: `V5.001 up` → `V6.001 up` → `V7.001 up` → `V8.001 up`.  
+Revertir: `V8.001 down` → `V7.001 down` → `V6.001 down` → `V5.001 down`.
 
 `V6.001` y `V7.001` usan la función `os_customer.touch_updated_at()`, creada por `V5.001`. Por eso sus `down` deben ejecutarse antes que el de V5.
 

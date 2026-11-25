@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrigenSalud\CustomerPortal;
 
 use OrigenSalud\CustomerPortal\Controllers\AuthController;
+use OrigenSalud\CustomerPortal\Controllers\CredentialController;
 use OrigenSalud\CustomerPortal\Controllers\HomeController;
 use OrigenSalud\CustomerPortal\Controllers\InvitationController;
 use OrigenSalud\CustomerPortal\Controllers\MemberController;
@@ -192,6 +193,35 @@ final class Router
             }
 
             MemberController::revokeSubmit();
+
+            return;
+        }
+
+        if ($section === 'credentials') {
+            if ($method !== 'GET') {
+                Http::abort(404, 'errors/404');
+
+                return;
+            }
+
+            CredentialController::index();
+
+            return;
+        }
+
+        $credentialActions = [
+            'credentials/create' => 'createSubmit',
+            'credentials/rotate' => 'rotateSubmit',
+            'credentials/revoke' => 'revokeSubmit',
+        ];
+        if (isset($credentialActions[$section])) {
+            if ($method !== 'POST') {
+                Http::abort(404, 'errors/404');
+
+                return;
+            }
+
+            CredentialController::{$credentialActions[$section]}();
 
             return;
         }
