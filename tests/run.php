@@ -2629,9 +2629,8 @@ if (is_file($adminCssBuilt)) {
 require_once $root . '/portal/Repositories/CatalogRepository.php';
 $loincReflection = new ReflectionClass(OrigenSalud\Portal\Repositories\CatalogRepository::class);
 $loincChainMethod = $loincReflection->getMethod('loincLanguageChain');
-$loincChainMethod->setAccessible(true);
 $loincBranchMethod = $loincReflection->getMethod('loincBranch');
-$loincBranchMethod->setAccessible(true);
+// Desde PHP 8.1 ReflectionMethod::invoke() accede a métodos privados sin setAccessible().
 foreach ([
     'es-AR' => ['es-AR', 'es-MX', 'en'],
     'es' => ['es-AR', 'es-MX', 'en'],
