@@ -193,7 +193,7 @@ sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
   -f sql/10_portal_clientes/V8.001__api_credentials.up.sql
 ```
 
-`verify.sql` debe dar `tablas_v8 = 1`, `columnas_prohibidas = 0`, `capacidades_inexistentes = 0`, `columnas_api_clients = 6`, `trigger_revocacion = 1` y `sin_borrado = t`.
+`verify.sql` debe dar `tablas_v8 = 1`, `columnas_prohibidas = 0`, `capacidades_inexistentes = 0`, `trigger_revocacion = 1` y `sin_borrado = t`. En la base de prueba aislada `columnas_api_clients = 0`: ese esquema nunca tuvo el catálogo público. La base real que sirve a `api.origen.ar` sí debe tener las 6 columnas originales de `api_clients`.
 
 ### Configuración del servidor
 
