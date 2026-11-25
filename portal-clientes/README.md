@@ -206,7 +206,7 @@ PORTAL_CUSTOMER_CREDENTIAL_DB_PASS=...
 PORTAL_CUSTOMER_CREDENTIAL_DB_STATEMENT_TIMEOUT=3
 ```
 
-Los valores se ponen solo en `.env` del VPS, con permisos restringidos. No se creó ningún rol nuevo de base ni se ampliaron los grants de `origen_customer`.
+Los valores se ponen solo en `.env` del VPS, con permisos restringidos. No se creó ningún rol nuevo de base ni se ampliaron los grants de `origen_customer`. Para la base real `origen_codes` el responsable autorizó un grant sobre el rol existente `origen_admin`, documentado en el acta: `SELECT, INSERT, UPDATE` en `public.api_clients` y `USAGE` en `public.api_clients_id_seq` (necesarios por `INSERT ... RETURNING id` y por `id SERIAL`).
 
 ### Uso
 
@@ -227,7 +227,7 @@ Esperado: `200` en `/health` y `/v1/domains` antes de revocar, y `401` en ambos 
 
 ## 7. Estado de producción
 
-Sin cambios de esquema. No se creó rol ni tabla nueva en producción. La única excepción autorizada es la credencial **de prueba** creada para el sondeo real, que debe quedar revocada. No se hizo commit, push ni deploy.
+Sin cambios de esquema. No se creó rol ni tabla nueva en producción. Las excepciones autorizadas son el grant operativo a `origen_admin` (punto 4.2 del acta) y la credencial **de prueba** creada para el sondeo real, que debe quedar revocada. El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
 
 ## 8. Fuera de alcance
 

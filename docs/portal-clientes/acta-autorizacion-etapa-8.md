@@ -1,6 +1,6 @@
 # Acta de autorización — Etapa 8: Credenciales API
 
-> **Estado:** AUTORIZADA. **Implementada localmente; pendiente de verificación en VPS.** **Producción intacta excepto la prueba real acotada autorizada en el punto 7.**
+> **Estado:** AUTORIZADA. **Implementada y con V8 aplicada/verificada en la base de prueba.** **Producción intacta salvo dos excepciones autorizadas: el grant operativo del punto 4.2 y la credencial de prueba revocada del punto 7.**
 > **Fecha:** 2026-11-25.
 > **Autorizado por:** responsable del proyecto.
 > **Relación:** continuación de la Etapa 7, cerrada en `origen_codes_portal_clientes_test`.
@@ -77,6 +77,21 @@ Para que el self-service sea real sin crear un rol nuevo ni ampliar `origen_cust
 
 Si en la implementación esta conexión no puede configurarse sin exponer credenciales, se detiene la etapa y se vuelve a plantear la Opción B; no se improvisa un grant alternativo.
 
+### 4.2 Excepción autorizada en producción: grant operativo a `origen_admin`
+
+La base real que sirve a `api.origen.ar` es `origen_codes` (confirmada por el responsable el 2026-11-25). Allí `origen_admin` no tenía `INSERT` ni `UPDATE` sobre `public.api_clients` (`f|f`), por lo que la conexión operativa de la Opción A no podía funcionar. El responsable autorizó expresamente otorgar esos permisos a ese **rol ya existente**:
+
+```sql
+GRANT SELECT, INSERT, UPDATE ON TABLE public.api_clients TO origen_admin;
+GRANT USAGE ON SEQUENCE public.api_clients_id_seq TO origen_admin;
+```
+
+- `SELECT` es necesario porque el servicio usa `INSERT ... RETURNING id`.
+- `USAGE` sobre la secuencia es necesario porque `api_clients.id` es `SERIAL`.
+- **No se crea ningún rol nuevo**, no se amplían los grants de `origen_customer` y no se modifica el esquema de `public.api_clients`.
+- Backup lógico previo verificado: `/var/lib/postgresql/backups/etapa8_pre_2026-11-25_1716.dump`, SHA-256 `1497374da5c05227f0ba44bc858f5f59d3f53df9c966e270ba9b7fe7dd4c0ef5`, `pg_restore -l` correcto (1665 entradas).
+- Grant ejecutado y verificado el 2026-11-25: `t|t|t|t` para `SELECT`, `INSERT`, `UPDATE` y `USAGE` sobre la secuencia.
+
 ## 5. Alcance habilitado
 
 1. Crear, solo en `origen_codes_portal_clientes_test`, la tabla de metadatos `os_customer.api_credential` con:
@@ -151,21 +166,23 @@ Se autoriza **una sola** prueba contra `https://api.origen.ar`, con estas condic
 - Las operaciones sensibles quedan auditadas.
 - El buscador público, los clientes API existentes y `/portal` siguen funcionando.
 - No se usaron credenciales reales preexistentes.
-- No se tocó producción salvo la credencial de prueba revocada.
+- No se tocó producción salvo el grant operativo autorizado en el punto 4.2 y la credencial de prueba revocada.
 
 ## 10. Estado actual
 
 | Elemento | Estado |
 |---|---|
 | Acta | **AUTORIZADA** el 2026-11-25 |
-| Código de la Etapa 8 | Implementado localmente: `ApiCredentialService`, `CredentialDatabase`, `ApiCredentialRepository`, `CredentialController`, vista y rutas |
-| Migración V8 | Implementada: `up`, `down`, `verify`, `verify_rollback`; pendiente de ejecutar en VPS |
+| Código de la Etapa 8 | Implementado: `ApiCredentialService`, `CredentialDatabase`, `ApiCredentialRepository`, `CredentialController`, vista y rutas |
+| Suite local y en VPS | `OK: 3695 comprobaciones`, sin fallas ni avisos `Deprecated` |
+| Migración V8 en base de prueba | `up` y `verify` ejecutados: `tablas_v8 = 1`, `columnas_prohibidas = 0`, `capacidades_inexistentes = 0`, `trigger_revocacion = 1`. Pendiente `down` → `verify_rollback` → `up` |
 | Cambios en `.env` del portal | Pendientes; solo en servidor |
-| Conexión operativa de escritura | Pendiente de configurar; sin rol nuevo |
+| Base real confirmada | `origen_codes`, 1 fila preexistente en `public.api_clients` |
+| Backup previo | Verificado: `etapa8_pre_2026-11-25_1716.dump`, SHA-256 registrado en el punto 4.2 |
+| Conexión operativa de escritura | Roll `origen_admin` existente; grant ejecutado y verificado (`t|t|t|t`). Falta configurar/verificar `.env` |
 | Credencial de prueba real | Pendiente de crear; se revocará al finalizar |
 | Llamadas HTTP | Ninguna hasta la prueba autorizada |
-| Suite local | `OK: 3695 comprobaciones`, sin fallas |
-| Commit / push / deploy | Ninguno |
+| Commit / push / deploy | El asistente no hizo ninguno; el responsable gestionó la versión del código |
 
 ## 11. Condición de avance
 
@@ -176,4 +193,4 @@ La Etapa 8 puede comenzar. Antes de la prueba HTTP real, el responsable debe con
 - los casos negativos pasen;
 - la prueba real devuelva `200` antes de revocar y `401` después;
 - la credencial de prueba quede revocada y documentada;
-- no se haya hecho commit, push ni deploy.
+- el asistente no haya hecho commit, push ni deploy.
