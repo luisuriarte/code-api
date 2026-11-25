@@ -1,6 +1,6 @@
 # Acta de autorización — Etapa 8: Credenciales API
 
-> **Estado:** AUTORIZADA. **Implementada y con V8 aplicada/verificada en la base de prueba.** **Producción intacta salvo dos excepciones autorizadas: el grant operativo del punto 4.2 y la credencial de prueba revocada del punto 7.**
+> **Estado:** AUTORIZADA y **CERRADA EN PRUEBA** el 2026-11-25. Migración, rollback, self-service y prueba HTTP real verificados. **Producción intacta salvo dos excepciones autorizadas: el grant operativo del punto 4.2 y las credenciales de prueba revocadas del punto 7. No desplegado en producción.**
 > **Fecha:** 2026-11-25.
 > **Autorizado por:** responsable del proyecto.
 > **Relación:** continuación de la Etapa 7, cerrada en `origen_codes_portal_clientes_test`.
@@ -175,13 +175,13 @@ Se autoriza **una sola** prueba contra `https://api.origen.ar`, con estas condic
 | Acta | **AUTORIZADA** el 2026-11-25 |
 | Código de la Etapa 8 | Implementado: `ApiCredentialService`, `CredentialDatabase`, `ApiCredentialRepository`, `CredentialController`, vista y rutas |
 | Suite local y en VPS | `OK: 3695 comprobaciones`, sin fallas ni avisos `Deprecated` |
-| Migración V8 en base de prueba | `up` y `verify` ejecutados: `tablas_v8 = 1`, `columnas_prohibidas = 0`, `capacidades_inexistentes = 0`, `trigger_revocacion = 1`. Pendiente `down` → `verify_rollback` → `up` |
-| Cambios en `.env` del portal | Pendientes; solo en servidor |
+| Migración V8 en base de prueba | `up` → `verify` → `down` → `verify_rollback` → `up` → `verify` ejecutados. `tablas_v8 = 1`, `columnas_prohibidas = 0`, `capacidades_inexistentes = 0`, `trigger_revocacion = 1`, `sin_borrado = t`, `total_tablas = 21` |
+| Cambios en `.env` del portal | Configurados y verificados solo en el VPS (conexión operativa y clave de prueba) |
 | Base real confirmada | `origen_codes`, 1 fila preexistente en `public.api_clients` |
 | Backup previo | Verificado: `etapa8_pre_2026-11-25_1716.dump`, SHA-256 registrado en el punto 4.2 |
-| Conexión operativa de escritura | Roll `origen_admin` existente; grant ejecutado y verificado (`t|t|t|t`). Falta configurar/verificar `.env` |
-| Credencial de prueba real | Pendiente de crear; se revocará al finalizar |
-| Llamadas HTTP | Ninguna hasta la prueba autorizada |
+| Conexión operativa de escritura | Roll `origen_admin` existente; grant ejecutado (`t|t|t|t`) y conexión `PDO=OK` verificada como `www-data` |
+| Credencial de prueba real | Creada, rotada y revocada. Las tres filas de `api_credential` quedan `revoked`; `api_clients` `id=3,4,5` con `is_active = f` |
+| Llamadas HTTP | Solo `GET`: `/health` y `/v1/domains` → `200` antes de revocar; `/v1/domains` → `401` después |
 | Commit / push / deploy | El asistente no hizo ninguno; el responsable gestionó la versión del código |
 
 ### 10.1 Incidente: credenciales duplicadas por reenvío del POST
@@ -190,15 +190,22 @@ Durante la prueba visual se recargó dos veces `/credentials` después de crear 
 
 Corrección aplicada: cada formulario lleva un `submit_nonce` de un solo uso, consumido con `hash_equals()`. Un reenvío del navegador ya no coincide, se convierte en un `GET` inofensivo y no crea ni rota nada. El secreto sigue sin guardarse en sesión, metadatos, URL ni logs.
 
-Las dos credenciales duplicadas se **revocan** (no se eliminan), conservan su rastro en `os_customer.audit_log` y **no se usaron** en la prueba HTTP real. La credencial autorizada es la primera, la única cuyo secreto quedó en `.env` y se usó para el sondeo `200`.
+Las tres credenciales creadas se **revocaron** (ninguna se eliminó) y conservan su rastro en `os_customer.audit_log`. El sondeo `200` se verificó con la credencial inicial y, tras corregir el DSN y el reenvío, con la clave rotada de la última; el `401` final se verificó con esa clave rotada ya revocada. Ninguna credencial preexistente fue modificada.
 
-## 11. Condición de avance
+## 11. Resultado de la prueba real
 
-La Etapa 8 puede comenzar. Antes de la prueba HTTP real, el responsable debe confirmar la base que sirve a `api.origen.ar` y el backup previo. La etapa se considerará cerrada cuando:
+- Antes de revocar: `OK /health => 200`, `OK /v1/domains => 200`.
+- Después de revocar: `OK /v1/domains => 401 (esperado 401)`. `/health` no se consulta en modo `401` porque es público y responde `200` sin API Key.
+- Auditoría: `credential.created|success|3`, `credential.rotated|success|1`, `credential.revoked|success|3` y `credential.created|failure|8` (intentos previos al DSN correcto y validaciones rechazadas).
+- Metadatos: `1|3|revoked|f|t`, `2|4|revoked|f|t`, `3|5|revoked|t|t`.
+- `public.api_clients` en `origen_codes`: `id=1` preexistente `t`; `id=3,4,5` con `f`.
+- Sin operaciones `POST`, `PUT`, `PATCH` ni `DELETE` contra la API real. Sin datos clínicos ni términos de pacientes.
 
-- la migración `up`/`verify`/`down`/`verify_rollback`/`up` esté verificada en prueba;
-- `php tests/run.php` pase sin fallas;
-- los casos negativos pasen;
-- la prueba real devuelva `200` antes de revocar y `401` después;
-- la credencial de prueba quede revocada y documentada;
-- el asistente no haya hecho commit, push ni deploy.
+## 12. Cierre
+
+Ensayo de rollback ejecutado en `origen_codes_portal_clientes_test`: `down` → `verify_rollback` → `up` → `verify`.
+
+- `verify_rollback`: `tablas_v8_restantes = 0`, `funcion_revocacion_v8_restante = 0`, `audit_log = 1`, `tablas_v5_v6_v7 = 10`, `columnas_api_clients = 0`.
+- `verify` tras reaplicar: `tablas_v8 = 1`, `columnas_prohibidas = 0`, `capacidades_inexistentes = 0`, `trigger_revocacion = 1`, `columnas_api_clients = 0`, `columnas_api_clients_prohibidas = 0`, `lee/crea/actualiza_metadatos = t`, `sin_borrado = t`, `usa_secuencia = t`, `total_tablas = 21`.
+
+La Etapa 8 queda **cerrada en prueba**. No se desplegó en producción: permanece el grant operativo autorizado y las credenciales de prueba revocadas. Siguen sin autorización las Etapas 9-12 y la evolución M6 de la API (hash, scopes, expiración, último uso, medición y `429`). El asistente no hizo commit, push ni deploy.

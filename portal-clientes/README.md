@@ -1,6 +1,6 @@
 # Portal privado de clientes — Etapas 5, 6, 7 y 8
 
-> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 implementada localmente, pendiente de verificación en VPS. **No desplegado en producción.**
+> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 cerrada en prueba: self-service verificado, prueba HTTP real acotada completada y rollback de V8 ensayado. **No desplegado en producción.**
 > **Autorizaciones:** `docs/portal-clientes/acta-autorizacion-etapa-5.md`, `acta-autorizacion-etapa-6.md`, `acta-autorizacion-etapa-7.md` y `acta-autorizacion-etapa-8.md`.
 
 ## 1. Límites
@@ -151,7 +151,7 @@ El permiso de superadministrador se aprovisiona a mano, nunca por correo ni por 
 
 ### Verificación en el VPS de prueba
 
-- Con Etapa 7: `php tests/run.php` → `OK: 3647 comprobaciones`, sin avisos `Deprecated`. Con Etapa 8, pendiente de repetir en VPS; localmente da `OK: 3695 comprobaciones`.
+- Con Etapa 7: `OK: 3647 comprobaciones`, sin avisos `Deprecated`. Con Etapa 8, en VPS: `OK: 3695 comprobaciones`, sin avisos `Deprecated`.
 - Cabeceras: `/portal-clientes/es-AR/login` → `X-Frame-Options: DENY`; `/es-AR/` → `SAMEORIGIN`; una sola línea en cada caso.
 - Flujo ejecutado en navegador: solicitud → contrato → pago confirmado verificado → habilitación pendiente → activación → suspensión → revocación.
 - Estado final de la habilitación de prueba: `1|revoked`.
@@ -227,7 +227,7 @@ Esperado: `200` en `/health` y `/v1/domains` antes de revocar; después de revoc
 
 ## 7. Estado de producción
 
-Sin cambios de esquema. No se creó rol ni tabla nueva en producción. Las excepciones autorizadas son el grant operativo a `origen_admin` (punto 4.2 del acta) y la credencial **de prueba** creada para el sondeo real, que debe quedar revocada. El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
+Sin cambios de esquema. No se creó rol ni tabla nueva en producción. Las excepciones autorizadas son el grant operativo a `origen_admin` (punto 4.2 del acta) y las credenciales **de prueba** del sondeo real, que quedaron revocadas (`api_clients` `id=3,4,5` con `is_active = f`; el `id=1` preexistente intacto). El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
 
 ## 8. Fuera de alcance
 
