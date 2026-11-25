@@ -203,5 +203,51 @@
                 </tbody>
             </table>
         <?php endif; ?>
+
+        <h3><?= e($t('customer.service.operator_entitlements')) ?></h3>
+        <?php if ($operator_entitlements === []): ?>
+            <p><?= e($t('customer.service.no_operator_entitlements')) ?></p>
+        <?php else: ?>
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th><?= e($t('customer.service.organization')) ?></th>
+                    <th><?= e($t('customer.service.name')) ?></th>
+                    <th><?= e($t('customer.service.status_label')) ?></th>
+                    <th><?= e($t('customer.service.actions')) ?></th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($operator_entitlements as $item): ?>
+                    <?php $itemStatus = (string) ($item['status'] ?? ''); ?>
+                    <tr>
+                        <td><?= e((string) $item['id']) ?></td>
+                        <td><?= e((string) ($item['organization_name'] ?: $item['organization_code'])) ?></td>
+                        <td><?= e((string) $item['service_name']) ?></td>
+                        <td><?= e($t('customer.service.status.' . $itemStatus)) ?></td>
+                        <td>
+                            <?php if (in_array($itemStatus, ['active', 'suspended'], true)): ?>
+                                <?php if ($itemStatus === 'active'): ?>
+                                    <form method="post" action="/portal-clientes/<?= e($locale) ?>/servicios/status">
+                                        <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+                                        <input type="hidden" name="entitlement_id" value="<?= e((string) $item['id']) ?>">
+                                        <input type="hidden" name="action" value="suspended">
+                                        <button type="submit"><?= e($t('customer.service.suspend')) ?></button>
+                                    </form>
+                                <?php endif; ?>
+                                <form method="post" action="/portal-clientes/<?= e($locale) ?>/servicios/status">
+                                    <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+                                    <input type="hidden" name="entitlement_id" value="<?= e((string) $item['id']) ?>">
+                                    <input type="hidden" name="action" value="revoked">
+                                    <button type="submit"><?= e($t('customer.service.revoke')) ?></button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
     </div>
 <?php endif; ?>

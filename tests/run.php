@@ -3504,10 +3504,21 @@ $check(
 );
 foreach (['es-AR', 'en', 'pt-BR'] as $s7Locale) {
     $s7Messages = (string) file_get_contents($root . '/portal-clientes/translations/messages.' . $s7Locale . '.yaml');
-    foreach (['customer.nav.services', 'customer.service.title', 'customer.service.payment_required', 'customer.service.status.active'] as $s7Key) {
+    foreach (['customer.nav.services', 'customer.service.title', 'customer.service.payment_required', 'customer.service.status.active', 'customer.service.suspend', 'customer.service.revoke'] as $s7Key) {
         $check(str_contains($s7Messages, $s7Key . ':'), "Etapa 7: falta $s7Key en $s7Locale");
     }
 }
+$s7Repo = (string) file_get_contents($root . '/portal-clientes/Repositories/EntitlementRepository.php');
+$check(
+    str_contains($s7View, 'servicios/status')
+        && str_contains($s7View, 'value="suspended"')
+        && str_contains($s7View, 'value="revoked"'),
+    'Etapa 7: el panel de operador debe permitir suspender y revocar desde la vista.'
+);
+$check(
+    str_contains($s7Repo, 'public static function findForOperator()'),
+    'Etapa 7: el repositorio debe listar habilitaciones para el operador.'
+);
 $s7NinjaService = (string) file_get_contents($root . '/portal-clientes/Services/InvoiceNinjaService.php');
 $check(
     preg_match("/^\\s*'(ok|needs_review|approved|rejected|discarded)',\\s*$/m", $s7NinjaService) !== 1,

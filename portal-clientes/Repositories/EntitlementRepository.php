@@ -60,6 +60,24 @@ final class EntitlementRepository
         return is_array($rows) ? $rows : [];
     }
 
+    /** @return list<array<string, mixed>> */
+    public static function findForOperator(): array
+    {
+        $statement = CustomerDatabase::connection()->query(
+            'SELECT e.id, e.status, e.organization_id, e.contract_id,
+                    o.code AS organization_code, o.display_name AS organization_name,
+                    s.code AS service_code, s.name AS service_name
+               FROM os_customer.entitlement e
+               JOIN os_customer.organization o ON o.id = e.organization_id
+               JOIN os_customer.service s ON s.id = e.service_id
+              ORDER BY e.id DESC
+              LIMIT 100'
+        );
+        $rows = $statement->fetchAll();
+
+        return is_array($rows) ? $rows : [];
+    }
+
     public static function create(
         int $organizationId,
         int $serviceId,

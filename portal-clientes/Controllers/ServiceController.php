@@ -36,6 +36,7 @@ final class ServiceController
             'entitlements' => [],
             'requests' => [],
             'pending' => [],
+            'operator_entitlements' => [],
             'organizations' => [],
             'can_request' => false,
         ];
@@ -48,6 +49,7 @@ final class ServiceController
 
         if ($isSuperAdmin) {
             $data['pending'] = EntitlementRepository::findPending();
+            $data['operator_entitlements'] = EntitlementRepository::findForOperator();
             $data['organizations'] = OrganizationRepository::findAllActive();
         }
 
