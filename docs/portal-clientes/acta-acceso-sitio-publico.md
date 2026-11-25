@@ -119,18 +119,33 @@ x-frame-options: DENY
 x-frame-options: SAMEORIGIN
 ```
 
-`DENY` lo emite `web/portal-clientes/index.php`; `SAMEORIGIN` lo agrega el bloque `server` de nginx con `add_header ... always`. La directiva `add_header` no se hereda cuando el `location` define las suyas, por lo que la corrección es declarar las tres cabeceras dentro del `location /portal-clientes/`:
+`DENY` lo emite `web/portal-clientes/index.php`; `SAMEORIGIN` lo agrega el bloque `server` de nginx con `add_header ... always`. Declarar `add_header` dentro de `location /portal-clientes/` **no fue suficiente**: el `try_files` termina en `/portal-clientes/index.php`, que es manejado por `location ~ \.php$`. Ese `location` no define `add_header` propias, por lo que hereda la directiva del bloque `server` y vuelve a agregar `SAMEORIGIN` después del `DENY` de PHP.
+
+La corrección efectiva es un `map` en el bloque `http`, para que la directiva heredada cambie de valor según la URI original:
 
 ```nginx
-    location /portal-clientes/ {
-        add_header X-Frame-Options "DENY" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        try_files $uri $uri/ /portal-clientes/index.php?$query_string;
-    }
+map $uri $portal_customer_frame_options {
+    default                     "SAMEORIGIN";
+    ~^/portal-clientes(/|$)     "DENY";
+}
 ```
 
-Así desaparece el `SAMEORIGIN` heredado. La cabecera `DENY` del PHP queda como redundancia intencional (defensa en profundidad) y ya no contradice a nginx.
+Y en el bloque `server`, reemplazar la línea fija:
+
+```nginx
+    add_header X-Frame-Options $portal_customer_frame_options always;
+```
+
+Con el `map` aplicado se observaron dos líneas `x-frame-options: DENY`: una del `header()` de PHP y otra de nginx. Aunque ya no se contradecían, se eliminó el `header('X-Frame-Options: DENY')` de `web/portal-clientes/index.php` para dejar una sola fuente. El `location /portal-clientes/` conserva `X-Content-Type-Options` y `X-XSS-Protection`.
+
+Resultado final verificado en el VPS:
+
+```
+/portal-clientes/es-AR/login  -> x-frame-options: DENY   (una sola línea)
+/es-AR/                       -> x-frame-options: SAMEORIGIN
+```
+
+La cabecera `DENY` la emite nginx para toda URI que empiece con `/portal-clientes/`, inclusive las respuestas 302 y las rutas procesadas por PHP-FPM.
 
 ## 10. Diagnóstico de conexión a la base de prueba
 

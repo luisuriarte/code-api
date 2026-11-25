@@ -15,7 +15,8 @@ header('Content-Type: text/html; charset=UTF-8');
 header('Vary: Accept-Language, Cookie');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-header('X-Frame-Options: DENY');
+// X-Frame-Options lo emite nginx mediante el map $portal_customer_frame_options.
+// Emitirlo también aquí duplicaría la cabecera en todas las respuestas PHP.
 header('Cache-Control: private, no-store');
 
 try {

@@ -3390,6 +3390,8 @@ $s7UpPath = $root . '/sql/10_portal_clientes/V7.001__services_entitlements.up.sq
 $s7DownPath = $root . '/sql/10_portal_clientes/V7.001__services_entitlements.down.sql';
 $s7VerifyPath = $root . '/sql/10_portal_clientes/V7.001__services_entitlements.verify.sql';
 $s7RollbackPath = $root . '/sql/10_portal_clientes/V7.001__services_entitlements.verify_rollback.sql';
+$nginxActaPath = $root . '/docs/portal-clientes/acta-acceso-sitio-publico.md';
+$frontControllerPath = $root . '/web/portal-clientes/index.php';
 $s7Paths = [$s7UpPath, $s7DownPath, $s7VerifyPath, $s7RollbackPath];
 foreach ($s7Paths as $s7Path) {
     $check(is_file($s7Path), 'Etapa 7: debe existir ' . basename((string) $s7Path));
@@ -3398,6 +3400,22 @@ $s7Up = is_file($s7UpPath) ? (string) file_get_contents($s7UpPath) : '';
 $s7Down = is_file($s7DownPath) ? (string) file_get_contents($s7DownPath) : '';
 $s7Verify = is_file($s7VerifyPath) ? (string) file_get_contents($s7VerifyPath) : '';
 $s7Rollback = is_file($s7RollbackPath) ? (string) file_get_contents($s7RollbackPath) : '';
+$nginxActa = is_file($nginxActaPath)
+    ? (string) file_get_contents($nginxActaPath)
+    : '';
+$frontController = is_file($frontControllerPath)
+    ? (string) file_get_contents($frontControllerPath)
+    : '';
+
+$check(
+    str_contains($nginxActa, 'map $uri $portal_customer_frame_options')
+        && str_contains($nginxActa, 'add_header X-Frame-Options $portal_customer_frame_options always;'),
+    'Etapa 7: el acta documenta el map de nginx que evita el SAMEORIGIN heredado por PHP-FPM.'
+);
+$check(
+    !str_contains($frontController, "header('X-Frame-Options:"),
+    'Etapa 7: el front controller no duplica X-Frame-Options; nginx es la fuente única.'
+);
 
 foreach ([$s7Up, $s7Down, $s7Verify, $s7Rollback] as $s7Sql) {
     $check(
