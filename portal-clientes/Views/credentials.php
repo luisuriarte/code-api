@@ -10,6 +10,7 @@
 /** @var bool $can_revoke */
 /** @var bool $available */
 /** @var string|null $secret */
+/** @var string $submit_nonce */
 
 $orgLabel = trim((string) ($organization['display_name'] ?? ''));
 if ($orgLabel === '') {
@@ -73,6 +74,7 @@ if ($orgLabel === '') {
             <div class="sm:text-end">
                 <form method="post" action="/portal-clientes/<?= e($locale) ?>/credentials/create">
                     <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+                    <input type="hidden" name="submit_nonce" value="<?= e($submit_nonce) ?>">
                     <button class="btn-primary !mt-0" type="submit">
                         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                         <?= e($t('customer.credential.create')) ?>
@@ -119,6 +121,7 @@ if ($orgLabel === '') {
                                     <?php if ($can_rotate): ?>
                                         <form method="post" action="/portal-clientes/<?= e($locale) ?>/credentials/rotate">
                                             <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+                                            <input type="hidden" name="submit_nonce" value="<?= e($submit_nonce) ?>">
                                             <input type="hidden" name="credential_id" value="<?= e((string) $credential['id']) ?>">
                                             <button class="btn-secondary !mt-0 !py-1.5" type="submit"><?= e($t('customer.credential.rotate')) ?></button>
                                         </form>
@@ -126,6 +129,7 @@ if ($orgLabel === '') {
                                     <?php if ($can_revoke): ?>
                                         <form method="post" action="/portal-clientes/<?= e($locale) ?>/credentials/revoke">
                                             <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+                                            <input type="hidden" name="submit_nonce" value="<?= e($submit_nonce) ?>">
                                             <input type="hidden" name="credential_id" value="<?= e((string) $credential['id']) ?>">
                                             <button class="btn-secondary !mt-0 !py-1.5" type="submit"><?= e($t('customer.credential.revoke')) ?></button>
                                         </form>

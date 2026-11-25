@@ -210,7 +210,7 @@ Los valores se ponen solo en `.env` del VPS, con permisos restringidos. No se cr
 
 ### Uso
 
-`/portal-clientes/{locale}/credentials` con un usuario `technical_admin` permite crear, rotar y revocar. `developer` y `viewer` solo listan. La institución se deriva de la organización activa. Toda escritura exige CSRF y queda auditada como `credential.created`, `credential.rotated` o `credential.revoked`.
+`/portal-clientes/{locale}/credentials` con un usuario `technical_admin` permite crear, rotar y revocar. `developer` y `viewer` solo listan. La institución se deriva de la organización activa. Toda escritura exige CSRF y un nonce de un solo uso por formulario: si el navegador reenvía el POST al recargar, se convierte en un GET inofensivo y **no crea una credencial duplicada**. Cada operación queda auditada como `credential.created`, `credential.rotated` o `credential.revoked`.
 
 ### Prueba HTTP real acotada
 
@@ -223,7 +223,7 @@ PORTAL_CUSTOMER_API_TEST_KEY=<clave-de-prueba> PORTAL_CUSTOMER_API_TEST_EXPECT=4
   php portal-clientes/bin/api-credential-probe.php
 ```
 
-Esperado: `200` en `/health` y `/v1/domains` antes de revocar, y `401` en ambos después. El script solo hace `GET`, no imprime la clave ni el cuerpo y verifica HTTPS y host `api.origen.ar`.
+Esperado: `200` en `/health` y `/v1/domains` antes de revocar; después de revocar, `401` solo en `/v1/domains` (`/health` es público y sigue dando `200`, por lo que el modo `401` no lo consulta). El script solo hace `GET`, no imprime la clave ni el cuerpo y verifica HTTPS y host `api.origen.ar`.
 
 ## 7. Estado de producción
 

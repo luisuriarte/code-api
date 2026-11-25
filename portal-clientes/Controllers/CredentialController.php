@@ -26,6 +26,7 @@ final class CredentialController
     public static function createSubmit(): void
     {
         self::assertPost();
+        self::assertSubmit();
         $context = self::requireWithAudit('credential.create', 'credential.create');
 
         // institution_name se deriva de la organización activa: nunca se acepta
@@ -59,6 +60,7 @@ final class CredentialController
     public static function rotateSubmit(): void
     {
         self::assertPost();
+        self::assertSubmit();
         $context = self::requireWithAudit('credential.rotate', 'credential.rotate');
         $credentialId = (int) (Http::post()['credential_id'] ?? 0);
 
@@ -79,6 +81,7 @@ final class CredentialController
     public static function revokeSubmit(): void
     {
         self::assertPost();
+        self::assertSubmit();
         $context = self::requireWithAudit('credential.revoke', 'credential.revoke');
         $credentialId = (int) (Http::post()['credential_id'] ?? 0);
 
@@ -101,6 +104,10 @@ final class CredentialController
     private static function render(array $context, ?string $secret = null): void
     {
         $organizationId = (int) $context['organization_id'];
+        // Nonce de un solo uso: evita que F5 reenvíe un POST y cree otra
+        // credencial, sin guardar el secreto en la sesión.
+        $submitNonce = bin2hex(random_bytes(16));
+        CustomerSession::set('credential_submit_nonce', $submitNonce);
 
         View::render('credentials', [
             'title' => CustomerI18n::t('customer.credential.title'),
@@ -111,6 +118,7 @@ final class CredentialController
             'can_revoke' => AccessControl::can('credential.revoke', $organizationId, $context['user']),
             'available' => ApiCredentialService::available(),
             'secret' => $secret,
+            'submit_nonce' => $submitNonce,
         ]);
     }
 
@@ -136,6 +144,22 @@ final class CredentialController
     {
         if (!Http::isPost() || !CustomerCsrf::valid(Http::post()['_csrf'] ?? null)) {
             Http::abort(400, 'errors/denied');
+        }
+    }
+
+    /**
+     * Cada formulario lleva un nonce distinto que se consume al enviarlo. Un
+     * reenvío del navegador (F5 sobre la respuesta del POST) ya no coincide y
+     * se convierte en un GET inofensivo, sin crear ni rotar nada.
+     */
+    private static function assertSubmit(): void
+    {
+        $posted = (string) (Http::post()['submit_nonce'] ?? '');
+        $expected = (string) CustomerSession::pull('credential_submit_nonce', '');
+
+        if ($posted === '' || $expected === '' || !hash_equals($expected, $posted)) {
+            CustomerSession::set('flash', ['key' => 'customer.credential.invalid', 'params' => []]);
+            Http::redirect(CustomerI18n::locale() . '/credentials');
         }
     }
 }

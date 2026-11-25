@@ -184,6 +184,14 @@ Se autoriza **una sola** prueba contra `https://api.origen.ar`, con estas condic
 | Llamadas HTTP | Ninguna hasta la prueba autorizada |
 | Commit / push / deploy | El asistente no hizo ninguno; el responsable gestionó la versión del código |
 
+### 10.1 Incidente: credenciales duplicadas por reenvío del POST
+
+Durante la prueba visual se recargó dos veces `/credentials` después de crear la credencial. El controlador renderizaba la clave directamente en la respuesta del `POST` (sin POST-Redirect-GET), por lo que el navegador reenvió el formulario y creó **dos credenciales adicionales**. Resultado: tres credenciales creadas, una autorizada para la prueba y dos duplicadas no utilizadas.
+
+Corrección aplicada: cada formulario lleva un `submit_nonce` de un solo uso, consumido con `hash_equals()`. Un reenvío del navegador ya no coincide, se convierte en un `GET` inofensivo y no crea ni rota nada. El secreto sigue sin guardarse en sesión, metadatos, URL ni logs.
+
+Las dos credenciales duplicadas se **revocan** (no se eliminan), conservan su rastro en `os_customer.audit_log` y **no se usaron** en la prueba HTTP real. La credencial autorizada es la primera, la única cuyo secreto quedó en `.env` y se usó para el sondeo `200`.
+
 ## 11. Condición de avance
 
 La Etapa 8 puede comenzar. Antes de la prueba HTTP real, el responsable debe confirmar la base que sirve a `api.origen.ar` y el backup previo. La etapa se considerará cerrada cuando:

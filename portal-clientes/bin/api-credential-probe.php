@@ -16,6 +16,9 @@ declare(strict_types=1);
  *   PORTAL_CUSTOMER_API_TEST_KEY=<clave-de-prueba> \
  *   PORTAL_CUSTOMER_API_TEST_EXPECT=401 \
  *   php portal-clientes/bin/api-credential-probe.php
+ *
+ * En modo 401 solo se consulta /v1/domains: /health es público y sigue
+ * respondiendo 200, por lo que no forma parte de la verificación de revocación.
  */
 
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
@@ -48,8 +51,10 @@ if (!function_exists('curl_init')) {
     exit(2);
 }
 
+$paths = $expect === '401' ? ['/v1/domains'] : ['/health', '/v1/domains'];
+
 $failed = false;
-foreach (['/health', '/v1/domains'] as $path) {
+foreach ($paths as $path) {
     $handle = curl_init($base . $path);
     if ($handle === false) {
         fwrite(STDERR, "FAIL: no se pudo iniciar la solicitud a " . $path . ".\n");
@@ -68,10 +73,11 @@ foreach (['/health', '/v1/domains'] as $path) {
     ]);
 
     // El cuerpo se descarta: la prueba solo comprueba códigos de respuesta.
+    // No se cierra el handle: esa función está deprecated desde PHP 8.5 y no
+    // tiene efecto desde PHP 8.0; el recurso se libera al salir de la función.
     curl_exec($handle);
     $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
     $error = curl_error($handle);
-    curl_close($handle);
 
     if ($error !== '') {
         echo 'FAIL ' . $path . " => error de red\n";

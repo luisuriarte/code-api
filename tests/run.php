@@ -3698,8 +3698,10 @@ $check(
         && str_contains($s8Controller, "requireWithAudit('credential.create'")
         && str_contains($s8Controller, "requireWithAudit('credential.rotate'")
         && str_contains($s8Controller, "requireWithAudit('credential.revoke'")
-        && str_contains($s8Controller, 'assertPost()'),
-    'Etapa 8: cada operación exige permiso credential.* y CSRF.'
+        && str_contains($s8Controller, 'assertPost()')
+        && str_contains($s8Controller, 'assertSubmit()')
+        && str_contains($s8Controller, 'hash_equals('),
+    'Etapa 8: cada operación exige permiso credential.*, CSRF y nonce de un solo uso.'
 );
 $check(
     str_contains($s8Controller, "self::render(\$context, isset(\$result['secret'])")
@@ -3720,6 +3722,7 @@ $check(
         && str_contains($s8View, "e(\$t('customer.nav.home'))")
         && str_contains($s8View, 'btn-primary')
         && str_contains($s8View, 'surface-card')
+        && str_contains($s8View, 'submit_nonce')
         && !str_contains($s8View, 'Invoice Ninja'),
     'Etapa 8: la vista usa Tailwind, i18n y ofrece el botón Inicio.'
 );
@@ -3731,9 +3734,11 @@ $check(
     str_contains($s8Probe, 'CURLOPT_HTTPGET => true')
         && str_contains($s8Probe, "'/health'")
         && str_contains($s8Probe, "'/v1/domains'")
+        && str_contains($s8Probe, "\$paths = \$expect === '401' ? ['/v1/domains'] : ['/health', '/v1/domains']")
         && str_contains($s8Probe, 'https://api.origen.ar')
         && !str_contains($s8Probe, 'CURLOPT_POST')
         && !str_contains($s8Probe, 'CURLOPT_CUSTOMREQUEST')
+        && !str_contains($s8Probe, 'curl_close(')
         && !str_contains($s8Probe, 'echo $key'),
     'Etapa 8: la prueba real es solo GET, contra api.origen.ar y sin imprimir la clave.'
 );
