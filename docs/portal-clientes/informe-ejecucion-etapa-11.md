@@ -159,7 +159,16 @@ También se comprobó que los archivos nuevos todavía no estaban subidos al VPS
 - `php tests/run.php` → `FALLOS (3 de 3912)`, todos por un `.env.example` desactualizado.
 - Verificador con `--post` → `OK: 37`, todavía sin las nuevas comprobaciones.
 
-Queda pendiente de autorización el ajuste cluster-wide de `rolconnlimit` de `origen_med`, además de subir los archivos corregidos.
+Después de subir `portal/Config.php` y `portal/Repositories/ServiceRequestDatabase.php`, la conexión dedicada respondió:
+
+```text
+dsn=pgsql:host=127.0.0.1;port=5432;dbname=origen_codes_portal_clientes_test
+user=origen_med
+pass=presente
+OK: origen_med @ origen_codes_portal_clientes_test
+```
+
+En el VPS, `php tests/run.php` terminó en `OK: 3912 comprobaciones` y el verificador con `--post` en `OK: 41 comprobaciones`. La diferencia de `3912` frente a `3938` indica que `tests/run.php` en el VPS todavía es la versión anterior; el verificador sí está actualizado. Falta confirmar el valor actual de `rolconnlimit` y terminar de subir el resto de los archivos.
 
 ## 6. Cierre
 
