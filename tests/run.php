@@ -4087,6 +4087,15 @@ $check(
         && !str_contains($s10View, '/cart'),
     'Etapa 10: la vista usa i18n, CSRF y ninguna ruta retirada.'
 );
+$s10PublicCss = (string) file_get_contents($root . '/web/assets/css/public.css');
+$check(
+    str_contains($s10View, 'bg-gradient-to-b')
+        && str_contains($s10View, 'blur-3xl')
+        && str_contains($s10View, 'hover:-translate-y-0.5')
+        && str_contains($s10View, 'aria-labelledby=')
+        && str_contains($s10PublicCss, 'group-hover'),
+    'Etapa 13: la Solicitud de Servicios debe usar el mismo lenguaje visual Tailwind que la home, con CSS recompilado.'
+);
 
 $s10Locales = ['es-AR', 'en', 'pt-BR'];
 $s10KeySets = [];

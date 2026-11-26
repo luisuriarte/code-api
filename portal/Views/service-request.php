@@ -31,25 +31,38 @@ foreach ($selection as $id => $quantity) {
     }
 }
 $errorKey = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $flash['error'] : '';
+
+$eyebrow = 'inline-flex items-center gap-2 rounded-full bg-mint px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-teal-dark';
+$card = 'rounded-3xl border border-line bg-white p-5 shadow-card sm:p-6';
+$step = 'flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal/10 font-mono text-sm font-bold text-teal';
+$labelClass = 'mb-1.5 block text-sm font-semibold text-ink-soft';
 ?>
-<section class="border-b border-line/70 bg-paper">
-    <div class="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
-        <span class="text-xs font-semibold uppercase tracking-[0.18em] text-teal"><?= e($t('service_request.eyebrow')) ?></span>
-        <h1 class="mt-3 text-3xl font-semibold tracking-tight text-ink sm:text-4xl"><?= e($t('service_request.title')) ?></h1>
-        <p class="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-ink-soft sm:text-lg"><?= e($t('service_request.lead')) ?></p>
+<section class="relative overflow-hidden border-b border-line/70 bg-gradient-to-b from-white via-paper to-white">
+    <div class="pointer-events-none absolute -end-32 -top-40 size-[32rem] rounded-full bg-mint/70 blur-3xl" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -bottom-48 start-[35%] size-[26rem] rounded-full bg-teal/10 blur-3xl" aria-hidden="true"></div>
+
+    <div class="relative mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+        <span class="<?= $eyebrow ?>">
+            <span class="size-1.5 rounded-full bg-teal" aria-hidden="true"></span>
+            <?= e($t('service_request.eyebrow')) ?>
+        </span>
+        <h1 class="mt-6 text-balance text-4xl font-semibold tracking-tight text-ink sm:text-5xl"><?= e($t('service_request.title')) ?></h1>
+        <p class="mt-5 max-w-3xl text-base leading-relaxed text-muted sm:text-lg"><?= e($t('service_request.lead')) ?></p>
     </div>
 </section>
 
 <section class="bg-white py-12 sm:py-16">
     <div class="mx-auto w-full max-w-6xl px-4 sm:px-6">
         <?php if (is_array($flash) && !empty($flash['ok'])): ?>
-            <div class="mb-8 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-800" role="status">
-                <svg class="mt-0.5 size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>
-                </svg>
+            <div class="mb-8 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-800 shadow-card" role="status">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100" aria-hidden="true">
+                    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>
+                    </svg>
+                </span>
                 <div>
                     <p class="font-semibold"><?= e($t('service_request.success_title')) ?></p>
-                    <p class="text-sm"><?= e($t('service_request.success_text')) ?></p>
+                    <p class="text-sm opacity-80"><?= e($t('service_request.success_text')) ?></p>
                     <?php if (is_string($flash['reference'] ?? null) && $flash['reference'] !== ''): ?>
                         <p class="mt-1 text-sm font-mono"><?= e($t('service_request.success_reference')) ?>: <?= e((string) $flash['reference']) ?></p>
                     <?php endif; ?>
@@ -57,10 +70,12 @@ $errorKey = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $f
             </div>
         <?php elseif ($errorKey !== ''): ?>
             <?php $message = $t('service_request.error_' . $errorKey); ?>
-            <div class="mb-8 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-red-800" role="alert">
-                <svg class="mt-0.5 size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>
-                </svg>
+            <div class="mb-8 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-red-800 shadow-card" role="alert">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-100" aria-hidden="true">
+                    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>
+                    </svg>
+                </span>
                 <div>
                     <p class="font-semibold"><?= e($t('service_request.error_title')) ?></p>
                     <p class="text-sm"><?= e($message === 'service_request.error_' . $errorKey ? $t('service_request.error_text') : $message) ?></p>
@@ -68,93 +83,135 @@ $errorKey = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $f
             </div>
         <?php endif; ?>
 
-        <div class="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,1fr)] lg:items-start">
-            <div class="grid gap-6">
-                <section class="surface-card">
-                    <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)] lg:items-start">
+            <section class="<?= $card ?>" aria-labelledby="service-catalog-title">
+                <div class="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
+                    <div class="flex items-start gap-3">
+                        <span class="<?= $step ?>" aria-hidden="true">01</span>
                         <div>
-                            <h2 class="text-lg font-semibold tracking-tight text-ink"><?= e($t('service_request.catalog_title')) ?></h2>
+                            <h2 id="service-catalog-title" class="text-lg font-semibold tracking-tight text-ink"><?= e($t('service_request.catalog_title')) ?></h2>
                             <p class="mt-1 text-sm text-muted"><?= e($t('service_request.catalog_hint')) ?></p>
                         </div>
-                        <span class="rounded-full bg-mint px-3 py-1 text-xs font-semibold text-teal-dark"><?= e($t('service_request.catalog_source')) ?></span>
                     </div>
+                    <span class="rounded-full bg-mint px-3 py-1 text-xs font-semibold text-teal-dark"><?= e($t('service_request.catalog_source')) ?></span>
+                </div>
 
-                    <?php if (!$catalogAvailable): ?>
-                        <div class="rounded-2xl border border-dashed border-line bg-paper p-5">
+                <?php if (!$catalogAvailable): ?>
+                    <div class="mt-5 flex items-start gap-3 rounded-2xl border border-dashed border-line bg-paper p-5">
+                        <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-muted shadow-card" aria-hidden="true">
+                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                                <path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/>
+                            </svg>
+                        </span>
+                        <div>
                             <p class="font-semibold text-ink"><?= e($t('service_request.catalog_unavailable_title')) ?></p>
                             <p class="mt-1 text-sm text-muted"><?= e($t('service_request.catalog_unavailable_text')) ?></p>
                         </div>
-                    <?php else: ?>
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <?php foreach ($products as $product): ?>
-                                <?php $id = (string) $product['id']; ?>
-                                <article class="flex flex-col justify-between gap-3 rounded-2xl border border-line bg-paper p-4 transition hover:border-teal/40">
-                                    <div>
-                                        <h3 class="text-sm font-semibold text-ink"><?= e((string) $product['label']) ?></h3>
-                                        <?php if ((string) $product['key'] !== ''): ?>
-                                            <p class="mt-1 font-mono text-xs text-ink-soft"><?= e((string) $product['key']) ?></p>
+                    </div>
+                <?php else: ?>
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                        <?php foreach ($products as $product): ?>
+                            <?php $id = (string) $product['id']; ?>
+                            <article class="group flex flex-col justify-between gap-5 rounded-2xl border border-line bg-paper p-5 transition duration-200 hover:-translate-y-0.5 hover:border-teal/40 hover:bg-white hover:shadow-card">
+                                <div>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal/10 text-teal transition group-hover:bg-teal group-hover:text-white" aria-hidden="true">
+                                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                                                <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                                            </svg>
+                                        </span>
+                                        <?php if ($product['price'] === null): ?>
+                                            <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink-soft"><?= e($t('service_request.quote_only')) ?></span>
+                                        <?php else: ?>
+                                            <span class="rounded-full bg-mint px-3 py-1 text-sm font-semibold text-teal-dark"><?= e(number_format((float) $product['price'], 2, ',', '.')) ?></span>
                                         <?php endif; ?>
-                                        <p class="mt-2 text-sm font-semibold text-teal-dark">
-                                            <?= $product['price'] === null
-                                                ? e($t('service_request.quote_only'))
-                                                : e(number_format((float) $product['price'], 2, ',', '.')) ?>
-                                        </p>
-                                        <p class="mt-1 text-xs text-muted"><?= e($t('service_request.modality_' . (string) $product['modality'])) ?></p>
                                     </div>
-                                    <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/agregar')) ?>" class="flex items-center gap-2">
-                                        <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
-                                        <input type="hidden" name="product_id" value="<?= e($id) ?>">
-                                        <label class="sr-only" for="qty-<?= e($id) ?>"><?= e($t('service_request.quantity')) ?></label>
-                                        <input class="form-field !w-16" id="qty-<?= e($id) ?>" name="quantity" type="number" min="1" max="20" value="1">
-                                        <button class="btn-secondary !mt-0" type="submit"><?= e($t('service_request.add')) ?></button>
-                                    </form>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </section>
-            </div>
+                                    <h3 class="mt-4 text-sm font-semibold text-ink"><?= e((string) $product['label']) ?></h3>
+                                    <?php if ((string) $product['key'] !== ''): ?>
+                                        <p class="mt-1 font-mono text-xs text-muted"><?= e((string) $product['key']) ?></p>
+                                    <?php endif; ?>
+                                    <p class="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-teal"><?= e($t('service_request.modality_' . (string) $product['modality'])) ?></p>
+                                </div>
+                                <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/agregar')) ?>" class="flex items-center gap-2 border-t border-line pt-4">
+                                    <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
+                                    <input type="hidden" name="product_id" value="<?= e($id) ?>">
+                                    <label class="sr-only" for="qty-<?= e($id) ?>"><?= e($t('service_request.quantity')) ?></label>
+                                    <input class="form-field !w-16" id="qty-<?= e($id) ?>" name="quantity" type="number" min="1" max="20" value="1">
+                                    <button class="btn-secondary !mt-0" type="submit">
+                                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                                        <?= e($t('service_request.add')) ?>
+                                    </button>
+                                </form>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </section>
 
             <div class="grid gap-6">
-                <section class="surface-card">
-                    <h2 class="text-lg font-semibold tracking-tight text-ink"><?= e($t('service_request.selection_title')) ?></h2>
+                <section class="<?= $card ?>" aria-labelledby="service-selection-title">
+                    <div class="flex items-start gap-3 border-b border-line pb-5">
+                        <span class="<?= $step ?>" aria-hidden="true">02</span>
+                        <h2 id="service-selection-title" class="text-lg font-semibold tracking-tight text-ink"><?= e($t('service_request.selection_title')) ?></h2>
+                    </div>
+
                     <?php if ($selection === []): ?>
-                        <p class="mt-4 rounded-xl border border-dashed border-line bg-paper p-4 text-sm text-muted"><?= e($t('service_request.selection_empty')) ?></p>
+                        <div class="mt-5 flex items-start gap-3 rounded-2xl border border-dashed border-line bg-paper p-4">
+                            <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-muted shadow-card" aria-hidden="true">
+                                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                                    <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+                                </svg>
+                            </span>
+                            <p class="text-sm text-muted"><?= e($t('service_request.selection_empty')) ?></p>
+                        </div>
                     <?php else: ?>
-                        <ul class="mt-4 divide-y divide-line">
+                        <ul class="mt-5 grid gap-2">
                             <?php foreach ($selection as $id => $quantity): ?>
                                 <?php $product = $byId[(string) $id] ?? null; ?>
-                                <li class="flex items-center justify-between gap-3 py-3 text-sm">
-                                    <span class="font-semibold text-ink"><?= e($product['label'] ?? (string) $id) ?></span>
-                                    <span class="flex items-center gap-2">
-                                        <span class="text-muted"><?= e((string) $quantity) ?></span>
+                                <li class="flex items-center justify-between gap-3 rounded-2xl bg-paper px-3 py-3">
+                                    <div class="min-w-0">
+                                        <span class="block truncate text-sm font-semibold text-ink"><?= e($product['label'] ?? (string) $id) ?></span>
+                                        <span class="mt-0.5 block font-mono text-xs text-muted"><?= e((string) $quantity) ?></span>
+                                    </div>
+                                    <div class="flex shrink-0 items-center gap-1.5">
                                         <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/restar')) ?>">
                                             <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
                                             <input type="hidden" name="product_id" value="<?= e((string) $id) ?>">
-                                            <button class="btn-secondary !mt-0 !py-1" type="submit"><?= e($t('service_request.remove_one')) ?></button>
+                                            <button class="btn-secondary !mt-0 !px-3 !py-1.5" type="submit">
+                                                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>
+                                                <?= e($t('service_request.remove_one')) ?>
+                                            </button>
                                         </form>
                                         <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/quitar')) ?>">
                                             <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
                                             <input type="hidden" name="product_id" value="<?= e((string) $id) ?>">
-                                            <button class="btn-secondary !mt-0 !py-1" type="submit"><?= e($t('service_request.remove')) ?></button>
+                                            <button class="btn-secondary !mt-0 !px-3 !py-1.5" type="submit">
+                                                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                                                <?= e($t('service_request.remove')) ?>
+                                            </button>
                                         </form>
-                                    </span>
+                                    </div>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
                         <?php if ($hasPrices): ?>
-                            <p class="mt-4 rounded-xl bg-paper px-4 py-3 text-sm">
-                                <span class="font-semibold text-ink"><?= e($t('service_request.total_label')) ?>:</span>
-                                <span class="text-teal-dark"><?= e(number_format($total, 2, ',', '.')) ?></span>
-                            </p>
+                            <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl bg-ink px-4 py-4 shadow-card">
+                                <span class="text-sm font-semibold text-white/80"><?= e($t('service_request.total_label')) ?></span>
+                                <span class="font-mono text-lg font-semibold text-mint"><?= e(number_format($total, 2, ',', '.')) ?></span>
+                            </div>
                         <?php endif; ?>
-                        <p class="mt-2 text-xs text-muted"><?= e($t('service_request.total_hint')) ?></p>
+                        <p class="mt-3 text-xs leading-relaxed text-muted"><?= e($t('service_request.total_hint')) ?></p>
                     <?php endif; ?>
                 </section>
 
-                <section class="surface-card">
-                    <h2 class="text-lg font-semibold tracking-tight text-ink"><?= e($t('service_request.form_title')) ?></h2>
-                    <p class="mt-1 text-xs text-muted"><?= e($t('service_request.form_hint')) ?></p>
+                <section class="<?= $card ?>" aria-labelledby="service-form-title">
+                    <div class="flex items-start gap-3 border-b border-line pb-5">
+                        <span class="<?= $step ?>" aria-hidden="true">03</span>
+                        <div>
+                            <h2 id="service-form-title" class="text-lg font-semibold tracking-tight text-ink"><?= e($t('service_request.form_title')) ?></h2>
+                            <p class="mt-1 text-xs text-muted"><?= e($t('service_request.form_hint')) ?></p>
+                        </div>
+                    </div>
 
                     <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/enviar')) ?>" class="mt-5 grid gap-4">
                         <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
@@ -165,36 +222,36 @@ $errorKey = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $f
                         </div>
 
                         <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-ink-soft" for="request-organization"><?= e($t('service_request.form_organization')) ?> *</label>
+                            <label class="<?= $labelClass ?>" for="request-organization"><?= e($t('service_request.form_organization')) ?> *</label>
                             <input class="form-field" id="request-organization" name="organization" type="text" required maxlength="160" value="<?= e($value('organization')) ?>" autocomplete="organization">
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-ink-soft" for="request-contact"><?= e($t('service_request.form_contact')) ?> *</label>
+                            <label class="<?= $labelClass ?>" for="request-contact"><?= e($t('service_request.form_contact')) ?> *</label>
                             <input class="form-field" id="request-contact" name="contact_name" type="text" required maxlength="120" value="<?= e($value('contact_name')) ?>" autocomplete="name">
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-ink-soft" for="request-email"><?= e($t('service_request.form_email')) ?> *</label>
+                            <label class="<?= $labelClass ?>" for="request-email"><?= e($t('service_request.form_email')) ?> *</label>
                             <input class="form-field" id="request-email" name="email" type="email" required maxlength="254" value="<?= e($value('email')) ?>" autocomplete="email">
                         </div>
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label class="mb-1.5 block text-sm font-semibold text-ink-soft" for="request-country"><?= e($t('service_request.form_country')) ?></label>
+                                <label class="<?= $labelClass ?>" for="request-country"><?= e($t('service_request.form_country')) ?></label>
                                 <input class="form-field" id="request-country" name="country" type="text" maxlength="100" value="<?= e($value('country')) ?>" autocomplete="country-name">
                             </div>
                             <div>
-                                <label class="mb-1.5 block text-sm font-semibold text-ink-soft" for="request-tax"><?= e($t('service_request.form_tax_id')) ?></label>
+                                <label class="<?= $labelClass ?>" for="request-tax"><?= e($t('service_request.form_tax_id')) ?></label>
                                 <input class="form-field" id="request-tax" name="tax_id" type="text" maxlength="64" value="<?= e($value('tax_id')) ?>">
                             </div>
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-ink-soft" for="request-note"><?= e($t('service_request.form_notes')) ?></label>
+                            <label class="<?= $labelClass ?>" for="request-note"><?= e($t('service_request.form_notes')) ?></label>
                             <textarea class="form-field min-h-32 resize-y" id="request-note" name="note" rows="5" maxlength="2000" placeholder="<?= e($t('service_request.form_notes_placeholder')) ?>"><?= e($value('note')) ?></textarea>
                         </div>
-                        <label class="flex items-start gap-2 text-sm text-ink-soft">
-                            <input class="mt-1 size-4 rounded border-line text-teal focus:ring-teal/20" type="checkbox" name="terms" value="1" required>
+                        <label class="flex items-start gap-3 rounded-2xl bg-paper p-4 text-sm leading-relaxed text-ink-soft">
+                            <input class="mt-0.5 size-4 shrink-0 rounded border-line text-teal focus:ring-teal/20" type="checkbox" name="terms" value="1" required>
                             <span><?= e($t('service_request.form_terms')) ?></span>
                         </label>
-                        <p class="text-xs text-muted"><?= e($t('service_request.privacy_note')) ?></p>
+                        <p class="text-xs leading-relaxed text-muted"><?= e($t('service_request.privacy_note')) ?></p>
                         <button class="btn-primary justify-self-start" type="submit">
                             <?= e($t('service_request.submit')) ?>
                             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
