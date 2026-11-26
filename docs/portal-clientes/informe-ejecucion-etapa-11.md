@@ -61,17 +61,23 @@ OK: 37 comprobaciones de la Etapa 11.
 
 Cubierto: las tres locales de `/solicitud`, ausencia de enlace en la home, ausencia de secretos en HTML y rechazo `303` de un POST sin CSRF.
 
-Tras el hallazgo de la sección 5 se agregaron comprobaciones del DSN dedicado y del manejo localizado de fallos de conexión. En local:
+Tras el hallazgo de la sección 5 se agregaron comprobaciones del DSN dedicado y del manejo localizado de fallos de conexión. Durante T-08 apareció un segundo defecto en la selección: los IDs numéricos de Invoice Ninja se descartaban al reconstruir la sesión y «Agregar» sobrescribía la cantidad en vez de sumarla. Corregido en local:
+
+- `ServiceRequestService::selection()` normaliza las claves a string.
+- `ServiceRequestService::addToSelection()` acumula la cantidad con tope de 20.
+- `ServiceRequestController::add()` valida `quantity` con `FILTER_VALIDATE_INT`.
+
+En local:
 
 ```text
 php tests/run.php
-OK: 3938 comprobaciones.
+OK: 3940 comprobaciones.
 
 php tools/php/verificar_etapa11_portal_clientes.php
-OK: 31 comprobaciones de la Etapa 11.
+OK: 33 comprobaciones de la Etapa 11.
 ```
 
-Después de subir los archivos y configurar el DSN, el verificador con `--post` debería terminar en `OK: 41 comprobaciones`.
+Después de subir los archivos y configurar el DSN, el verificador con `--post` debería terminar en `OK: 43 comprobaciones`.
 
 ## 3. Estado de la base antes de T-08
 

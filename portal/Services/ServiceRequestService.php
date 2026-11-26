@@ -162,7 +162,10 @@ final class ServiceRequestService
 
         $selection = [];
         foreach ($stored as $id => $quantity) {
-            if (!is_string($id) || $id === '') {
+            // Los identificadores numéricos de Invoice Ninja llegan como claves
+            // enteras en PHP; se normalizan a string para no perderlos.
+            $id = (string) $id;
+            if ($id === '') {
                 continue;
             }
             $selection[$id] = max(1, min(self::MAX_QUANTITY, (int) $quantity));
@@ -173,15 +176,20 @@ final class ServiceRequestService
 
     public static function addToSelection(string $id, int $quantity): void
     {
-        if ($id === '' || strlen($id) > 64) {
+        if ($id === '' || strlen($id) > 64 || $quantity < 1) {
             return;
         }
 
         $selection = self::selection();
-        $selection[$id] = max(1, min(self::MAX_QUANTITY, $quantity));
-        if (count($selection) > self::MAX_ITEMS) {
+        if (!isset($selection[$id]) && count($selection) >= self::MAX_ITEMS) {
             return;
         }
+
+        $current = isset($selection[$id]) ? (int) $selection[$id] : 0;
+        // «Agregar» suma al producto ya seleccionado, con tope por producto.
+        $selection[$id] = max(1, min(self::MAX_QUANTITY, $current + $quantity));
+
+        Session::set(self::SELECTION_KEY, $selection);
 
         Session::set(self::SELECTION_KEY, $selection);
     }

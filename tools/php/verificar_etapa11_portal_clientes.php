@@ -110,9 +110,18 @@ $check(
 );
 
 $service = $read('portal/Services/ServiceRequestService.php');
+$controller = $read('portal/Controllers/ServiceRequestController.php');
 $check(
     str_contains($service, 'Csrf::valid') && str_contains($service, 'Csrf::rotate()'),
     'T-05: CSRF debe validarse y rotarse tras el envío.'
+);
+$check(
+    str_contains($service, '$id = (string) $id;') && str_contains($service, '$current + $quantity'),
+    'T-08: IDs numéricos se conservan y «Agregar» acumula cantidades.'
+);
+$check(
+    str_contains($controller, 'FILTER_VALIDATE_INT'),
+    'T-08: la cantidad enviada por el navegador se valida como entero.'
 );
 $check(
     str_contains($service, 'RateLimiter::hit') && str_contains($service, 'spam_error'),

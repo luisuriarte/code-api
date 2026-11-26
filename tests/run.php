@@ -4050,6 +4050,16 @@ $check(
     preg_match('/findRecent\([^;]+;\s*}\s*catch \(RepositoryException\)/s', $s10Service) === 1,
     'Etapa 10: un fallo de BD al buscar duplicados debe responder localizado, sin 500.'
 );
+$check(
+    str_contains($s10Service, '$id = (string) $id;')
+        && str_contains($s10Service, '$current + $quantity'),
+    'Etapa 10: la selección conserva IDs numéricos y «Agregar» acumula cantidades.'
+);
+$s10Controller = (string) file_get_contents($s10Files['controller']);
+$check(
+    str_contains($s10Controller, 'FILTER_VALIDATE_INT'),
+    'Etapa 10: la cantidad enviada por el navegador se valida como entero.'
+);
 $s10View = (string) file_get_contents($s10Files['view']);
 $check(
     str_contains($s10View, "e(\$t('service_request.title'))")

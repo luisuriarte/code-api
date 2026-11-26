@@ -47,9 +47,12 @@ final class ServiceRequestController
         $id = isset($_POST['product_id']) && is_string($_POST['product_id'])
             ? $_POST['product_id']
             : '';
-        $quantity = isset($_POST['quantity']) && ctype_digit((string) $_POST['quantity'])
-            ? (int) $_POST['quantity']
-            : 1;
+        $quantity = filter_var(
+            isset($_POST['quantity']) ? (string) $_POST['quantity'] : '1',
+            FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 1, 'max_range' => 20]]
+        );
+        $quantity = $quantity === false ? 1 : (int) $quantity;
 
         if (Csrf::valid(isset($_POST[Csrf::FIELD]) && is_string($_POST[Csrf::FIELD]) ? $_POST[Csrf::FIELD] : null)
             && isset($products[$id])) {
