@@ -16,8 +16,11 @@ final class SmtpMailer
 {
     private const TIMEOUT = 10;
 
-    /** @return array{ok: bool, error: ?string, detail?: ?string} */
-    public static function send(string $to, string $subject, string $textBody, string $htmlBody = ''): array
+    /**
+     * @param string|null $replyTo Dirección validada del remitente humano; nunca reemplaza al destinatario.
+     * @return array{ok: bool, error: ?string, detail?: ?string}
+     */
+    public static function send(string $to, string $subject, string $textBody, string $htmlBody = '', ?string $replyTo = null): array
     {
         $config = Config::smtp();
 
@@ -96,7 +99,7 @@ final class SmtpMailer
                 return self::fail('smtp_data_failed', $data);
             }
 
-            $message = self::buildMessage($config, $to, $subject, $textBody, $htmlBody);
+            $message = self::buildMessage($config, $to, $subject, $textBody, $htmlBody, $replyTo);
             self::writeData($socket, $message);
 
             $sent = self::read($socket);
@@ -228,8 +231,11 @@ final class SmtpMailer
         return str_replace("\n", "\r\n", $message);
     }
 
-    /** @param array{from: string, from_name: string} $config */
-    private static function buildMessage(array $config, string $to, string $subject, string $textBody, string $htmlBody): string
+    /**
+     * @param array{from: string, from_name: string} $config
+     * @param string|null $replyTo Solo se usa si pasa validación de email.
+     */
+    private static function buildMessage(array $config, string $to, string $subject, string $textBody, string $htmlBody, ?string $replyTo = null): string
     {
         $boundary = 'origen-' . bin2hex(random_bytes(16));
         $from = self::encodeHeader($config['from_name']) . ' <' . $config['from'] . '>';
@@ -243,6 +249,10 @@ final class SmtpMailer
             'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
             'Content-Transfer-Encoding: 8bit',
         ];
+
+        if ($replyTo !== null && self::validEmail($replyTo)) {
+            $headers[] = 'Reply-To: <' . $replyTo . '>';
+        }
 
         $body = '--' . $boundary . "\n";
         $body .= "Content-Type: text/plain; charset=UTF-8\n";

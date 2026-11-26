@@ -39,6 +39,7 @@ final class ContactController
             'ok' => $result['ok'],
             'error' => $result['error'],
             'fields' => $result['fields'],
+            'reason' => $result['reason'] ?? null,
         ]);
 
         $target = I18n::localizedPath($locale, '/contact') . ($result['ok'] ? '?sent=1' : '?error=1');

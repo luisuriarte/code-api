@@ -77,9 +77,12 @@ final class ContactService
         $textBody = implode("\n", $lines);
         $htmlBody = nl2br(e($textBody), false);
 
-        $mail = SmtpMailer::send(Config::contactEmail(), $subject, $textBody, $htmlBody);
+        $mail = SmtpMailer::send(Config::contactEmail(), $subject, $textBody, $htmlBody, $email);
         if (!$mail['ok']) {
-            return self::failure('error_text', $fields);
+            $reason = is_string($mail['error'] ?? null) ? $mail['error'] : 'mail_failed';
+            $detail = is_string($mail['detail'] ?? null) ? trim($mail['detail']) : '';
+            error_log('contact mail failed: ' . $reason . ($detail !== '' ? ' | ' . $detail : ''));
+            return self::failure('error_text', $fields, $reason);
         }
 
         if (OpenWaClient::configured()) {
@@ -93,9 +96,12 @@ final class ContactService
         return ['ok' => true, 'error' => null, 'fields' => []];
     }
 
-    /** @param array<string, string> $fields */
-    private static function failure(string $error, array $fields): array
+    /**
+     * @param array<string, string> $fields
+     * @return array{ok: bool, error: ?string, fields: array<string, string>, reason: ?string}
+     */
+    private static function failure(string $error, array $fields, ?string $reason = null): array
     {
-        return ['ok' => false, 'error' => $error, 'fields' => $fields];
+        return ['ok' => false, 'error' => $error, 'fields' => $fields, 'reason' => $reason];
     }
 }
