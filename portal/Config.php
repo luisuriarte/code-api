@@ -93,6 +93,44 @@ final class Config
         return (string) env('CONTACT_EMAIL', 'contacto@origen.ar');
     }
 
+    /**
+     * Copias ocultas del formulario de contacto.
+     * Acepta varias direcciones separadas por coma o punto y coma.
+     * `REPLY_TO` se conserva como alias, aunque no altera la cabecera Reply-To.
+     *
+     * @return list<string>
+     */
+    public static function contactBcc(): array
+    {
+        $raw = trim((string) env('CONTACT_BCC', ''));
+
+        if ($raw === '') {
+            $raw = trim((string) env('REPLY_TO', ''));
+        }
+
+        if ($raw === '') {
+            return [];
+        }
+
+        $emails = [];
+
+        foreach (preg_split('/[,;]/', $raw) ?: [] as $candidate) {
+            $email = strtolower(trim($candidate));
+
+            if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                continue;
+            }
+
+            if (count($emails) >= 20 || in_array($email, $emails, true)) {
+                continue;
+            }
+
+            $emails[] = $email;
+        }
+
+        return $emails;
+    }
+
     /** @return array{contact: int, cart: int, browse: int, window: int} */
     public static function rateLimits(): array
     {

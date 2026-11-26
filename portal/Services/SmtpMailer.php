@@ -18,9 +18,17 @@ final class SmtpMailer
 
     /**
      * @param string|null $replyTo Dirección validada del remitente humano; nunca reemplaza al destinatario.
+     * @param list<string> $bcc Copias ocultas: se agregan como RCPT TO, nunca como cabecera.
      * @return array{ok: bool, error: ?string, detail?: ?string}
      */
-    public static function send(string $to, string $subject, string $textBody, string $htmlBody = '', ?string $replyTo = null): array
+    public static function send(
+        string $to,
+        string $subject,
+        string $textBody,
+        string $htmlBody = '',
+        ?string $replyTo = null,
+        array $bcc = []
+    ): array
     {
         $config = Config::smtp();
 
@@ -87,10 +95,29 @@ final class SmtpMailer
                 return self::fail('smtp_mail_from_failed', $mailFrom);
             }
 
-            self::write($socket, 'RCPT TO:<' . $to . '>');
-            $rcpt = self::read($socket);
-            if (!self::hasCode($rcpt, [250, 251])) {
-                return self::fail('smtp_rcpt_failed', $rcpt);
+            $recipients = [$to];
+            foreach ($bcc as $bccAddress) {
+                if (is_string($bccAddress) && strcasecmp($bccAddress, $to) !== 0) {
+                    $recipients[] = $bccAddress;
+                }
+            }
+
+            $rejectedBcc = 0;
+            foreach ($recipients as $index => $recipient) {
+                self::write($socket, 'RCPT TO:<' . $recipient . '>');
+                $rcpt = self::read($socket);
+
+                if (self::hasCode($rcpt, [250, 251])) {
+                    continue;
+                }
+
+                // Si falla el destinatario principal no hay mensaje que enviar.
+                if ($index === 0) {
+                    return self::fail('smtp_rcpt_failed', $rcpt);
+                }
+
+                // Una copia oculta rechazada no debe impedir la notificación principal.
+                $rejectedBcc++;
             }
 
             self::write($socket, 'DATA');
@@ -110,7 +137,11 @@ final class SmtpMailer
             self::write($socket, 'QUIT');
             self::read($socket);
 
-            return ['ok' => true, 'error' => null, 'detail' => null];
+            return [
+                'ok' => true,
+                'error' => null,
+                'detail' => $rejectedBcc > 0 ? 'bcc_rejected:' . $rejectedBcc : null,
+            ];
         } finally {
             fclose($socket);
         }

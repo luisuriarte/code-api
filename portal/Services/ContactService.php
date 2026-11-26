@@ -77,7 +77,7 @@ final class ContactService
         $textBody = implode("\n", $lines);
         $htmlBody = nl2br(e($textBody), false);
 
-        $mail = SmtpMailer::send(Config::contactEmail(), $subject, $textBody, $htmlBody, $email);
+        $mail = SmtpMailer::send(Config::contactEmail(), $subject, $textBody, $htmlBody, $email, Config::contactBcc());
         if (!$mail['ok']) {
             $reason = is_string($mail['error'] ?? null) ? $mail['error'] : 'mail_failed';
             $detail = is_string($mail['detail'] ?? null) ? trim($mail['detail']) : '';
