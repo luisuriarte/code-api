@@ -158,6 +158,7 @@ final class Router
         $postActions = [
             'solicitud/agregar' => 'add',
             'solicitud/quitar' => 'remove',
+            'solicitud/restar' => 'decrement',
             'solicitud/enviar' => 'send',
         ];
         if (isset($postActions[$section])) {

@@ -126,12 +126,19 @@ $errorKey = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $f
                                 <?php $product = $byId[(string) $id] ?? null; ?>
                                 <li class="flex items-center justify-between gap-3 py-3 text-sm">
                                     <span class="font-semibold text-ink"><?= e($product['label'] ?? (string) $id) ?></span>
-                                    <span class="text-muted"><?= e((string) $quantity) ?></span>
-                                    <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/quitar')) ?>">
-                                        <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
-                                        <input type="hidden" name="product_id" value="<?= e((string) $id) ?>">
-                                        <button class="btn-secondary !mt-0 !py-1" type="submit"><?= e($t('service_request.remove')) ?></button>
-                                    </form>
+                                    <span class="flex items-center gap-2">
+                                        <span class="text-muted"><?= e((string) $quantity) ?></span>
+                                        <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/restar')) ?>">
+                                            <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
+                                            <input type="hidden" name="product_id" value="<?= e((string) $id) ?>">
+                                            <button class="btn-secondary !mt-0 !py-1" type="submit"><?= e($t('service_request.remove_one')) ?></button>
+                                        </form>
+                                        <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/quitar')) ?>">
+                                            <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
+                                            <input type="hidden" name="product_id" value="<?= e((string) $id) ?>">
+                                            <button class="btn-secondary !mt-0 !py-1" type="submit"><?= e($t('service_request.remove')) ?></button>
+                                        </form>
+                                    </span>
                                 </li>
                             <?php endforeach; ?>
                         </ul>

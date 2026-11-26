@@ -201,6 +201,21 @@ final class ServiceRequestService
         Session::set(self::SELECTION_KEY, $selection);
     }
 
+    public static function removeOneFromSelection(string $id): void
+    {
+        $selection = self::selection();
+        if (!isset($selection[$id])) {
+            return;
+        }
+
+        $selection[$id]--;
+        if ($selection[$id] < 1) {
+            unset($selection[$id]);
+        }
+
+        Session::set(self::SELECTION_KEY, $selection);
+    }
+
     public static function clearSelection(): void
     {
         Session::set(self::SELECTION_KEY, []);

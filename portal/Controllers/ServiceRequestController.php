@@ -76,6 +76,20 @@ final class ServiceRequestController
         self::redirect($locale);
     }
 
+    public static function decrement(string $locale): void
+    {
+        $id = isset($_POST['product_id']) && is_string($_POST['product_id'])
+            ? $_POST['product_id']
+            : '';
+
+        if (Csrf::valid(isset($_POST[Csrf::FIELD]) && is_string($_POST[Csrf::FIELD]) ? $_POST[Csrf::FIELD] : null)
+            && $id !== '') {
+            ServiceRequestService::removeOneFromSelection($id);
+        }
+
+        self::redirect($locale);
+    }
+
     public static function send(string $locale): void
     {
         $result = ServiceRequestService::submit($_POST, $locale);

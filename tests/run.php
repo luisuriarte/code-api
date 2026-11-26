@@ -3976,7 +3976,7 @@ foreach ($s10Sources as $s10Source) {
 }
 
 $s10Router = (string) file_get_contents($root . '/portal/Router.php');
-foreach (['solicitud', 'solicitud/agregar', 'solicitud/quitar', 'solicitud/enviar'] as $s10Route) {
+foreach (['solicitud', 'solicitud/agregar', 'solicitud/quitar', 'solicitud/restar', 'solicitud/enviar'] as $s10Route) {
     $check(str_contains($s10Router, "'" . $s10Route . "'"), 'Etapa 10: debe existir la ruta ' . $s10Route . '.');
 }
 foreach (['header.php', 'footer.php', 'nav-links.php'] as $s10Partial) {
@@ -4054,6 +4054,11 @@ $check(
     str_contains($s10Service, '$id = (string) $id;')
         && str_contains($s10Service, '$current + $quantity'),
     'Etapa 10: la selección conserva IDs numéricos y «Agregar» acumula cantidades.'
+);
+$check(
+    str_contains($s10Service, 'removeOneFromSelection')
+        && str_contains((string) file_get_contents($s10Files['view']), 'service_request.remove_one'),
+    'Etapa 10: debe poder quitarse una unidad sin borrar el servicio completo.'
 );
 $s10Controller = (string) file_get_contents($s10Files['controller']);
 $check(

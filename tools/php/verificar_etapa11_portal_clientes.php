@@ -69,7 +69,7 @@ $check(
 // T-05 / T-07 / T-08: contrato estático del flujo.
 // ---------------------------------------------------------------------------
 $router = $read('portal/Router.php');
-foreach (['solicitud', 'solicitud/agregar', 'solicitud/quitar', 'solicitud/enviar'] as $route) {
+foreach (['solicitud', 'solicitud/agregar', 'solicitud/quitar', 'solicitud/restar', 'solicitud/enviar'] as $route) {
     $check(str_contains($router, "'" . $route . "'"), 'T-07: debe existir la ruta ' . $route . '.');
 }
 $check(!str_contains($router, "'/cart'"), 'T-06: no debe reintroducirse la ruta /cart.');
@@ -118,6 +118,11 @@ $check(
 $check(
     str_contains($service, '$id = (string) $id;') && str_contains($service, '$current + $quantity'),
     'T-08: IDs numéricos se conservan y «Agregar» acumula cantidades.'
+);
+$check(
+    str_contains($service, 'removeOneFromSelection')
+        && str_contains($read('portal/Views/service-request.php'), 'service_request.remove_one'),
+    'T-08: se puede quitar una unidad sin borrar el servicio completo.'
 );
 $check(
     str_contains($controller, 'FILTER_VALIDATE_INT'),

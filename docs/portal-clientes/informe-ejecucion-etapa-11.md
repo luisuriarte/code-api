@@ -67,17 +67,19 @@ Tras el hallazgo de la sección 5 se agregaron comprobaciones del DSN dedicado y
 - `ServiceRequestService::addToSelection()` acumula la cantidad con tope de 20.
 - `ServiceRequestController::add()` valida `quantity` con `FILTER_VALIDATE_INT`.
 
+También se ajustó la UX de la selección: se mantiene **una fila por servicio con su cantidad acumulada** y se agregó el botón «Quitar uno» (`/solicitud/restar`) para decrementar de a una unidad. «Quitar» sigue eliminando el servicio completo. Así se puede quitar una sola unidad sin perder las demás, sin duplicar filas del mismo servicio.
+
 En local:
 
 ```text
 php tests/run.php
-OK: 3940 comprobaciones.
+OK: 3942 comprobaciones.
 
 php tools/php/verificar_etapa11_portal_clientes.php
-OK: 33 comprobaciones de la Etapa 11.
+OK: 35 comprobaciones de la Etapa 11.
 ```
 
-Después de subir los archivos y configurar el DSN, el verificador con `--post` debería terminar en `OK: 43 comprobaciones`.
+Después de subir los archivos y configurar el DSN, el verificador con `--post` debería terminar en `OK: 45 comprobaciones`.
 
 ## 3. Estado de la base antes de T-08
 
@@ -101,7 +103,17 @@ solicitudes_sin_items = 0
 columnas_prohibidas   = 0
 ```
 
-No hay solicitudes de prueba todavía. No se crearon clientes, facturas ni pagos.
+No había solicitudes de prueba antes del envío manual. No se crearon clientes, facturas ni pagos.
+
+Primer envío manual de T-08 completado en el navegador:
+
+```text
+Solicitud recibida
+Quedó registrada para revisión humana. Te vamos a responder al correo indicado.
+Número de referencia: SR-20261126-FA328564
+```
+
+Queda pendiente ejecutar el SQL de verificación y confirmar correo e Invoice Ninja.
 
 ## 4. Pendiente para cerrar T-08
 

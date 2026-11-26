@@ -1811,6 +1811,7 @@ service_request:
     quantity: "Quantity"
     add: "Add"
     remove: "Remove"
+    remove_one: "Remove one"
     selection_title: "Your selected services"
     selection_empty: "You have not selected any services yet."
     total_label: "Estimated total"
