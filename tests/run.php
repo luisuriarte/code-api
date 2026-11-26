@@ -3764,6 +3764,125 @@ foreach (['es-AR', 'en', 'pt-BR'] as $s8Locale) {
     }
 }
 
+// Etapa 9 del portal de clientes: interfaz sin medición de consumo ni precios propios.
+$s9Controllers = ['ApiController.php', 'DocumentationController.php', 'SupportController.php', 'BillingController.php'];
+foreach ($s9Controllers as $s9Controller) {
+    $check(
+        is_file($root . '/portal-clientes/Controllers/' . $s9Controller),
+        'Etapa 9: debe existir el controlador ' . $s9Controller
+    );
+}
+$s9Views = ['api.php', 'documentation.php', 'support.php', 'billing.php'];
+foreach ($s9Views as $s9View) {
+    $check(
+        is_file($root . '/portal-clientes/Views/' . $s9View),
+        'Etapa 9: debe existir la vista ' . $s9View
+    );
+}
+$s9Router = (string) file_get_contents($root . '/portal-clientes/Router.php');
+foreach (['api', 'documentation', 'support', 'billing'] as $s9Route) {
+    $check(str_contains($s9Router, "'" . $s9Route . "'"), 'Etapa 9: debe existir la ruta ' . $s9Route);
+}
+$check(
+    !str_contains($s9Router, "'consumption'") && !str_contains($s9Router, "'usage'"),
+    'Etapa 9: no se publica una sección de consumo sin medición real.'
+);
+$s9Layout = (string) file_get_contents($root . '/portal-clientes/Views/layouts/customer.php');
+foreach (['customer.nav.api', 'customer.nav.documentation', 'customer.nav.support', 'customer.nav.billing'] as $s9NavKey) {
+    $check(str_contains($s9Layout, $s9NavKey), 'Etapa 9: falta la navegación ' . $s9NavKey);
+}
+$check(
+    !str_contains($s9Layout, 'customer.nav.consumption') && !str_contains($s9Layout, 'customer.nav.usage'),
+    'Etapa 9: la navegación no debe incluir consumo.'
+);
+$s9Config = (string) file_get_contents($root . '/portal-clientes/Config.php');
+$check(
+    str_contains($s9Config, 'PORTAL_CUSTOMER_BILLING_URL')
+        && str_contains($s9Config, 'function billingPortalUrl')
+        && str_contains($s9Config, 'function publicUrl'),
+    'Etapa 9: Config debe exponer la URL de facturación y la URL pública validada.'
+);
+$s9BillingView = (string) file_get_contents($root . '/portal-clientes/Views/billing.php');
+$check(
+    str_contains($s9BillingView, 'target="_blank"') && str_contains($s9BillingView, 'rel="noopener noreferrer"'),
+    'Etapa 9: el enlace de facturación debe abrir en pestaña nueva y sin referrer.'
+);
+$check(
+    !str_contains($s9BillingView, 'gestion.uriarte') && !str_contains($s9BillingView, 'Invoice Ninja'),
+    'Etapa 9: la vista de facturación no debe fijar hosts ni marcas en el código.'
+);
+$s9ServicesView = (string) file_get_contents($root . '/portal-clientes/Views/services.php');
+foreach ([
+    'customer.service.modalities_title',
+    'customer.service.modality_public',
+    'customer.service.modality_from',
+    'customer.service.modality_quote',
+    'customer.service.pricing_note',
+    'customer.service.usage_note',
+] as $s9ServiceKey) {
+    $check(str_contains($s9ServicesView, $s9ServiceKey), 'Etapa 9: falta la modalidad ' . $s9ServiceKey);
+}
+$check(
+    preg_match('/(?:ARS|USD|\$\s?\d)/', $s9ServicesView) === 0,
+    'Etapa 9: las modalidades comerciales no deben incluir importes en el código.'
+);
+$s9CustomerViewFiles = array_merge(
+    glob($root . '/portal-clientes/Views/*.php') ?: [],
+    glob($root . '/portal-clientes/Views/*/*.php') ?: []
+);
+$s9LegacyClasses = false;
+foreach ($s9CustomerViewFiles as $s9CustomerViewFile) {
+    $s9Source = (string) file_get_contents($s9CustomerViewFile);
+    if (str_contains($s9Source, 'class="card"') || str_contains($s9Source, 'class="button"')) {
+        $s9LegacyClasses = true;
+    }
+}
+$check(!$s9LegacyClasses, 'Etapa 9: las vistas nuevas no deben usar clases del diseño anterior.');
+$s9Keys = [
+    'customer.nav.api', 'customer.nav.documentation', 'customer.nav.support', 'customer.nav.billing',
+    'customer.home.quick_links',
+    'customer.service.modalities_title', 'customer.service.modality_public',
+    'customer.service.modality_public_hint', 'customer.service.modality_from',
+    'customer.service.modality_from_hint', 'customer.service.modality_quote',
+    'customer.service.modality_quote_hint', 'customer.service.pricing_note',
+    'customer.service.usage_note',
+    'customer.api.title', 'customer.api.intro', 'customer.api.empty', 'customer.api.route',
+    'customer.api.method', 'customer.api.status', 'customer.api.credentials_link',
+    'customer.api.docs_link', 'customer.api.consumption_unavailable',
+    'customer.docs.title', 'customer.docs.intro', 'customer.docs.api_reference',
+    'customer.docs.api_reference_hint', 'customer.docs.credentials', 'customer.docs.credentials_hint',
+    'customer.support.title', 'customer.support.intro', 'customer.support.contact_link',
+    'customer.support.contact_hint',
+    'customer.billing.title', 'customer.billing.intro', 'customer.billing.open_portal',
+    'customer.billing.open_portal_hint', 'customer.billing.unavailable', 'customer.billing.no_prices',
+];
+$check(count($s9Keys) === 39, 'Etapa 9: el bloque i18n debe tener 39 claves nuevas.');
+foreach (['es-AR', 'en', 'pt-BR'] as $s9Locale) {
+    $s9Messages = \Symfony\Component\Yaml\Yaml::parseFile(
+        $root . '/portal-clientes/translations/messages.' . $s9Locale . '.yaml'
+    );
+    foreach ($s9Keys as $s9Key) {
+        $check(
+            is_array($s9Messages) && array_key_exists($s9Key, $s9Messages),
+            'Etapa 9: falta ' . $s9Key . ' en ' . $s9Locale
+        );
+    }
+}
+$s9EnvExample = (string) file_get_contents($root . '/.env.example');
+$check(
+    str_contains($s9EnvExample, 'PORTAL_CUSTOMER_BILLING_URL='),
+    'Etapa 9: .env.example debe documentar la URL de facturación sin valor real.'
+);
+$s9Readme = (string) file_get_contents($root . '/portal-clientes/README.md');
+$check(
+    str_contains($s9Readme, 'Etapa 9 — Interfaz del portal'),
+    'Etapa 9: el README debe documentar la etapa.'
+);
+$check(
+    is_file($root . '/docs/portal-clientes/acta-autorizacion-etapa-9.md'),
+    'Etapa 9: debe existir el acta de autorización.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

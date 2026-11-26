@@ -29,7 +29,7 @@ final class EntitlementRepository
     {
         $statement = CustomerDatabase::connection()->prepare(
             'SELECT e.id, e.status, e.decision_at, e.expires_at, e.contract_id,
-                    s.code AS service_code, s.name AS service_name, s.api_route
+                    s.code AS service_code, s.name AS service_name, s.api_route, s.api_method
                FROM os_customer.entitlement e
                JOIN os_customer.service s ON s.id = e.service_id
               WHERE e.organization_id = :org

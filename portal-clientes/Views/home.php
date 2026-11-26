@@ -7,6 +7,7 @@
 /** @var list<array<string, mixed>> $organizations */
 /** @var array<string, mixed>|null $organization */
 /** @var int|null $organization_id */
+/** @var bool $can_credentials */
 ?>
 <div class="mb-8 overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-white via-mint to-paper shadow-card">
     <div class="grid gap-6 p-6 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -85,3 +86,34 @@
         </div>
     </section>
 </div>
+
+<section class="surface-card mt-6">
+    <div class="mb-4 flex items-center gap-3">
+        <span class="flex size-9 items-center justify-center rounded-xl bg-teal/10 text-teal">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h.01M12 12h.01M19 12h.01"/>
+            </svg>
+        </span>
+        <h2 class="text-lg font-semibold tracking-tight text-ink"><?= e($t('customer.home.quick_links')) ?></h2>
+    </div>
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <?php
+        $quickLinks = [
+            ['servicios', 'customer.nav.services'],
+            ['api', 'customer.nav.api'],
+            ['documentation', 'customer.nav.documentation'],
+            ['support', 'customer.nav.support'],
+            ['billing', 'customer.nav.billing'],
+        ];
+        if ($can_credentials) {
+            $quickLinks[] = ['credentials', 'customer.nav.credentials'];
+        }
+        ?>
+        <?php foreach ($quickLinks as [$path, $key]): ?>
+            <a class="flex items-center justify-between rounded-xl border border-line bg-paper p-4 text-sm font-semibold text-ink-soft transition hover:border-teal/40 hover:bg-mint hover:text-teal-dark" href="<?= e($baseUrl . '/' . $locale . '/' . $path) ?>">
+                <?= e($t($key)) ?>
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</section>

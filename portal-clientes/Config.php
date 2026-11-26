@@ -138,4 +138,28 @@ final class Config
             'timeout' => (int) env('PORTAL_CUSTOMER_CREDENTIAL_DB_STATEMENT_TIMEOUT', '3'),
         ];
     }
+
+    /**
+     * URL del portal nativo de facturación (Etapa 9). Vacía por defecto:
+     * la vista informa que el enlace no está configurado. Solo https.
+     */
+    public static function billingPortalUrl(): ?string
+    {
+        $raw = trim((string) env('PORTAL_CUSTOMER_BILLING_URL', ''));
+
+        if ($raw === '' || preg_match('#^https://[^\s]+$#', $raw) !== 1) {
+            return null;
+        }
+
+        return rtrim($raw, '/');
+    }
+
+    /** URL pública localizada, validada contra caracteres seguros. */
+    public static function publicUrl(string $locale, string $path): string
+    {
+        $safeLocale = preg_match('/^[a-z]{2}(?:-[A-Z]{2})?$/', $locale) === 1 ? $locale : 'es-AR';
+        $safePath = preg_match('/^[a-z-]+$/', $path) === 1 ? $path : 'docs';
+
+        return '/' . $safeLocale . '/' . $safePath;
+    }
 }

@@ -1,7 +1,7 @@
-# Portal privado de clientes — Etapas 5, 6, 7 y 8
+# Portal privado de clientes — Etapas 5, 6, 7, 8 y 9
 
-> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 cerrada en prueba: self-service verificado, prueba HTTP real acotada completada y rollback de V8 ensayado. **No desplegado en producción.**
-> **Autorizaciones:** `docs/portal-clientes/acta-autorizacion-etapa-5.md`, `acta-autorizacion-etapa-6.md`, `acta-autorizacion-etapa-7.md` y `acta-autorizacion-etapa-8.md`.
+> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 cerrada en prueba: self-service verificado, prueba HTTP real acotada completada y rollback de V8 ensayado. Etapa 9 implementada en local: navegación y secciones nuevas, sin medición de consumo, sin importes propios y sin despliegue. **No desplegado en producción.**
+> **Autorizaciones:** `docs/portal-clientes/acta-autorizacion-etapa-5.md`, `acta-autorizacion-etapa-6.md`, `acta-autorizacion-etapa-7.md`, `acta-autorizacion-etapa-8.md` y `acta-autorizacion-etapa-9.md`.
 
 ## 1. Límites
 
@@ -20,6 +20,8 @@ La Etapa 6 agregó un adaptador de **solo lectura** hacia Invoice Ninja. No crea
 La Etapa 7 agrega un catálogo técnico y habilitaciones administradas en el portal. No copia productos, precios, facturas ni pagos: la habilitación exige que un superadministrador de Origen Salud verifique manualmente el pago confirmado y después decida la habilitación. El catálogo inicial solo incluye rutas `GET` documentadas en la API real; no publica `/fhir/*`, `/v1/uvr` ni `/v1/cdt`.
 
 La Etapa 8 agrega self-service de credenciales de la API propia (`/v1`). Respeta el mecanismo real: clave en texto plano, sin scopes, expiración, último uso ni medición. La escritura en `public.api_clients` la hace un servicio de servidor con una conexión operativa configurada solo en el VPS (Opción A), sin rol nuevo ni ampliación de grants. El secreto se muestra una sola vez y nunca se guarda en metadatos, sesión, URL ni logs.
+
+La Etapa 9 completa la interfaz: `Mis API`, `Documentación técnica`, `Soporte` y `Facturación y pagos`. No publica `Consumo` porque no existe medición confiable, y no incorpora tabla de precios: muestra las tres modalidades comerciales (precio público, desde y cotización) como texto localizado, sin importes. Los importes publicados y las condiciones corresponden al sistema comercial y al sitio público; este portal solo muestra servicios habilitados y enlaza al portal de facturación cuando la URL está configurada en el servidor.
 
 ## 2. Estructura
 
@@ -225,16 +227,57 @@ PORTAL_CUSTOMER_API_TEST_KEY=<clave-de-prueba> PORTAL_CUSTOMER_API_TEST_EXPECT=4
 
 Esperado: `200` en `/health` y `/v1/domains` antes de revocar; después de revocar, `401` solo en `/v1/domains` (`/health` es público y sigue dando `200`, por lo que el modo `401` no lo consulta). El script solo hace `GET`, no imprime la clave ni el cuerpo y verifica HTTPS y host `api.origen.ar`.
 
-## 7. Estado de producción
+## 7. Etapa 9 — Interfaz del portal
+
+Sin migración SQL: solo controladores, vistas, traducciones y rutas `GET`.
+
+### Rutas nuevas
+
+| Ruta | Contenido |
+| --- | --- |
+| `/portal-clientes/{locale}/api` | Habilitaciones activas o suspendidas de la organización, con ruta y método reales. Enlaces a credenciales y documentación. Aviso honesto de consumo no disponible. |
+| `/portal-clientes/{locale}/documentation` | Enlace a la documentación pública de la API y, según permisos, a las credenciales. No duplica el contenido de `/docs`. |
+| `/portal-clientes/{locale}/support` | Enlace al formulario público de contacto y a la documentación. No crea tickets ni envía correo desde este portal. |
+| `/portal-clientes/{locale}/billing` | Enlace opcional al portal nativo de facturación, con `rel="noopener noreferrer"` y apertura en pestaña nueva. Sin importes ni creación de facturas. |
+
+`Consumo` queda deliberadamente fuera de la navegación hasta que exista medición real. Cobrar por consumo sin medición quedaría expuesto a facturación incorrecta.
+
+### Modalidades comerciales
+
+La vista `Mis servicios` muestra tres modalidades como texto localizado, sin precios en PostgreSQL ni en el código:
+
+1. **Precio público**: servicios estandarizados con alcance definido.
+2. **Desde un importe**: el valor depende de volumen, catálogos o características.
+3. **Cotización personalizada**: instituciones grandes, integraciones y convenios.
+
+La decisión de cobro híbrido (tarifa base con volumen incluido) queda registrada como preferencia comercial, pero no se factura excedentes mientras no haya medición confiable. Precio de lista y precio presupuestado no se confunden: las condiciones especiales se registran en el sistema comercial, no en este portal.
+
+### Configuración
+
+```dotenv
+# Solo https. Vacío => la vista informa que el enlace no está configurado.
+PORTAL_CUSTOMER_BILLING_URL=
+```
+
+La URL se lee del entorno del servidor; nunca se deriva del `Host` de la petición ni se escribe en el repositorio. Las URLs públicas de documentación y contacto se construyen con el locale de la ruta y caracteres validados.
+
+### Verificación local
+
+- `php -l` en todos los archivos PHP del portal de clientes: sin errores.
+- `php tests/run.php`: comprobaciones de rutas, controladores, vistas, claves i18n en los tres idiomas, ausencia de ruta de consumo y ausencia de importes en las vistas.
+- 39 claves i18n nuevas; las mismas en `es-AR`, `en` y `pt-BR`.
+- Sin llamadas HTTP nuevas a Invoice Ninja y sin acceso a la base de producción.
+
+## 8. Estado de producción
 
 Sin cambios de esquema. No se creó rol ni tabla nueva en producción. Las excepciones autorizadas son el grant operativo a `origen_admin` (punto 4.2 del acta) y las credenciales **de prueba** del sondeo real, que quedaron revocadas (`api_clients` `id=3,4,5` con `is_active = f`; el `id=1` preexistente intacto). El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
 
-## 8. Fuera de alcance
+## 9. Fuera de alcance
 
 - Pantalla de revisión administrativa de la Etapa 6: el backend expone `resolveReview()`, pero no se modificó `/admin` ni se agregaron rutas de interfaz.
 - Consulta de contactos, productos, precios, facturas o pagos.
 - Webhooks, conciliación y creación de clientes.
-- Enlace al Client Portal oficial de Invoice Ninja.
+- Consulta de facturas, comprobantes o pagos dentro de este portal: solo se ofrece un enlace configurable al portal de facturación.
 - Vencimiento automático, suspensión parcial y planes institucionales.
 - Evolución M6 de la API: hash con pepper, scopes, expiración, último uso, medición y `429`.
 

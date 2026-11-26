@@ -42,10 +42,14 @@ $flags = [
 
 $navItems = [
     ['href' => $home, 'key' => 'customer.nav.home', 'icon' => '<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/>'],
-    ['href' => $baseUrl . '/' . $locale . '/servicios', 'key' => 'customer.nav.services', 'icon' => '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>'],
     ['href' => $baseUrl . '/' . $locale . '/organizations', 'key' => 'customer.nav.organizations', 'icon' => '<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M8 7h2M8 11h2M8 15h2M16 9h2a2 2 0 0 1 2 2v10"/>'],
     ['href' => $baseUrl . '/' . $locale . '/members', 'key' => 'customer.nav.members', 'icon' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'],
+    ['href' => $baseUrl . '/' . $locale . '/servicios', 'key' => 'customer.nav.services', 'icon' => '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>'],
+    ['href' => $baseUrl . '/' . $locale . '/api', 'key' => 'customer.nav.api', 'icon' => '<path d="M8 9 3 12l5 3M16 9l5 3-5 3M14 4l-4 16"/>'],
     ['href' => $baseUrl . '/' . $locale . '/credentials', 'key' => 'customer.nav.credentials', 'icon' => '<circle cx="8" cy="15" r="4"/><path d="M11 12V5a3 3 0 0 1 6 0v3M17 8h3v3h-3"/>'],
+    ['href' => $baseUrl . '/' . $locale . '/documentation', 'key' => 'customer.nav.documentation', 'icon' => '<path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 7h8M8 11h8M8 15h5"/>'],
+    ['href' => $baseUrl . '/' . $locale . '/support', 'key' => 'customer.nav.support', 'icon' => '<path d="M12 3a6 6 0 0 0-6 6v5l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 21h4"/>'],
+    ['href' => $baseUrl . '/' . $locale . '/billing', 'key' => 'customer.nav.billing', 'icon' => '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>'],
 ];
 if (!$canCredentials) {
     $navItems = array_values(array_filter(
@@ -173,9 +177,13 @@ if (!$canCredentials) {
         <div class="flex flex-wrap items-center gap-4">
             <a class="transition hover:text-white" href="<?= e($home) ?>"><?= e($t('customer.nav.home')) ?></a>
             <a class="transition hover:text-white" href="<?= e($baseUrl . '/' . $locale . '/servicios') ?>"><?= e($t('customer.nav.services')) ?></a>
+            <a class="transition hover:text-white" href="<?= e($baseUrl . '/' . $locale . '/api') ?>"><?= e($t('customer.nav.api')) ?></a>
             <?php if ($canCredentials): ?>
                 <a class="transition hover:text-white" href="<?= e($baseUrl . '/' . $locale . '/credentials') ?>"><?= e($t('customer.nav.credentials')) ?></a>
             <?php endif; ?>
+            <a class="transition hover:text-white" href="<?= e($baseUrl . '/' . $locale . '/documentation') ?>"><?= e($t('customer.nav.documentation')) ?></a>
+            <a class="transition hover:text-white" href="<?= e($baseUrl . '/' . $locale . '/support') ?>"><?= e($t('customer.nav.support')) ?></a>
+            <a class="transition hover:text-white" href="<?= e($baseUrl . '/' . $locale . '/billing') ?>"><?= e($t('customer.nav.billing')) ?></a>
             <a class="transition hover:text-white" href="/<?= e($locale) ?>/"><?= e($t('customer.footer.public_site')) ?></a>
         </div>
         <span><?= e($t('customer.footer.note')) ?></span>

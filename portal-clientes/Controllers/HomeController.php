@@ -24,6 +24,7 @@ final class HomeController
             'organizations' => $organizations,
             'organization' => $organization,
             'organization_id' => $organizationId,
+            'can_credentials' => AccessControl::can('credential.read', $organizationId),
         ]);
     }
 }

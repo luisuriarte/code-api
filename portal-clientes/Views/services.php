@@ -66,6 +66,33 @@
     <?php endif; ?>
 </section>
 
+<section class="surface-card mt-6">
+    <div class="mb-4 flex items-center gap-3">
+        <span class="flex size-9 items-center justify-center rounded-xl bg-teal/10 text-teal">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v18M7 7h7a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h8"/>
+            </svg>
+        </span>
+        <h2 class="text-lg font-semibold tracking-tight text-ink"><?= e($t('customer.service.modalities_title')) ?></h2>
+    </div>
+    <div class="grid gap-3 md:grid-cols-3">
+        <div class="rounded-2xl border border-line bg-paper p-4">
+            <h3 class="text-sm font-semibold text-teal-dark"><?= e($t('customer.service.modality_public')) ?></h3>
+            <p class="mt-2 text-xs text-muted"><?= e($t('customer.service.modality_public_hint')) ?></p>
+        </div>
+        <div class="rounded-2xl border border-line bg-paper p-4">
+            <h3 class="text-sm font-semibold text-teal-dark"><?= e($t('customer.service.modality_from')) ?></h3>
+            <p class="mt-2 text-xs text-muted"><?= e($t('customer.service.modality_from_hint')) ?></p>
+        </div>
+        <div class="rounded-2xl border border-line bg-paper p-4">
+            <h3 class="text-sm font-semibold text-teal-dark"><?= e($t('customer.service.modality_quote')) ?></h3>
+            <p class="mt-2 text-xs text-muted"><?= e($t('customer.service.modality_quote_hint')) ?></p>
+        </div>
+    </div>
+    <p class="mt-4 rounded-xl border border-line bg-white px-4 py-3 text-xs text-muted"><?= e($t('customer.service.pricing_note')) ?></p>
+    <p class="mt-2 rounded-xl border border-line bg-white px-4 py-3 text-xs text-muted"><?= e($t('customer.service.usage_note')) ?></p>
+</section>
+
 <?php if ($can_request): ?>
     <section class="surface-card mt-6">
         <div class="mb-4 flex items-center gap-3">

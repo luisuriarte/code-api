@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace OrigenSalud\CustomerPortal;
 
+use OrigenSalud\CustomerPortal\Controllers\ApiController;
 use OrigenSalud\CustomerPortal\Controllers\AuthController;
+use OrigenSalud\CustomerPortal\Controllers\BillingController;
 use OrigenSalud\CustomerPortal\Controllers\CredentialController;
+use OrigenSalud\CustomerPortal\Controllers\DocumentationController;
 use OrigenSalud\CustomerPortal\Controllers\HomeController;
 use OrigenSalud\CustomerPortal\Controllers\InvitationController;
 use OrigenSalud\CustomerPortal\Controllers\MemberController;
 use OrigenSalud\CustomerPortal\Controllers\OrganizationController;
 use OrigenSalud\CustomerPortal\Controllers\ServiceController;
+use OrigenSalud\CustomerPortal\Controllers\SupportController;
 use OrigenSalud\CustomerPortal\I18n\CustomerI18n;
 use OrigenSalud\CustomerPortal\Services\Http;
 use OrigenSalud\Web\I18n;
@@ -254,6 +258,24 @@ final class Router
             }
 
             ServiceController::{$serviceActions[$section]}();
+
+            return;
+        }
+
+        $customerPages = [
+            'api' => ApiController::class,
+            'documentation' => DocumentationController::class,
+            'support' => SupportController::class,
+            'billing' => BillingController::class,
+        ];
+        if (isset($customerPages[$section])) {
+            if ($method !== 'GET') {
+                Http::abort(404, 'errors/404');
+
+                return;
+            }
+
+            $customerPages[$section]::index();
 
             return;
         }
