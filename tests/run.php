@@ -3946,6 +3946,7 @@ $s10Files = [
     'service' => $root . '/portal/Services/ServiceRequestService.php',
     'catalog' => $root . '/portal/Services/InvoiceNinjaCatalogService.php',
     'repository' => $root . '/portal/Repositories/PublicServiceRequestRepository.php',
+    'serviceDatabase' => $root . '/portal/Repositories/ServiceRequestDatabase.php',
     'view' => $root . '/portal/Views/service-request.php',
 ];
 foreach ($s10Files as $s10Name => $s10Path) {
@@ -4020,12 +4021,34 @@ $check(
         && preg_match('/\b(UPDATE|DELETE\s+FROM)\b/i', $s10Repository) !== 1,
     'Etapa 10: el repositorio solo inserta y consulta solicitudes.'
 );
+$s10ServiceDatabase = (string) file_get_contents($s10Files['serviceDatabase']);
+$check(
+    str_contains($s10ServiceDatabase, 'Config::serviceRequestDatabase()')
+        && str_contains($s10ServiceDatabase, 'new PDO'),
+    'Etapa 10: debe existir una conexión dedicada para la Solicitud de Servicios.'
+);
+$check(
+    str_contains($s10Repository, 'ServiceRequestDatabase::available()')
+        && str_contains($s10Repository, 'ServiceRequestDatabase::connection()')
+        && !str_contains($s10Repository, 'PortalDatabase::connection()'),
+    'Etapa 10: el repositorio debe usar el DSN dedicado, no el DSN público.'
+);
+$check(
+    str_contains($s10Config, "env('SERVICE_REQUEST_DB_DSN', '')")
+        && str_contains($s10Env, 'SERVICE_REQUEST_DB_DSN=')
+        && !str_contains($s10Env, 'SERVICE_REQUEST_DB_DSN=pgsql:'),
+    'Etapa 10: el DSN dedicado se documenta vacío y se configura solo en el servidor.'
+);
 $s10Service = (string) file_get_contents($s10Files['service']);
 $check(
     str_contains($s10Service, "RateLimiter::hit('request'")
         && str_contains($s10Service, "hash('sha256'")
         && str_contains($s10Service, 'Csrf::rotate()'),
     'Etapa 10: el envío usa rate limiting, deduplicación y rotación de CSRF.'
+);
+$check(
+    preg_match('/findRecent\([^;]+;\s*}\s*catch \(RepositoryException\)/s', $s10Service) === 1,
+    'Etapa 10: un fallo de BD al buscar duplicados debe responder localizado, sin 500.'
 );
 $s10View = (string) file_get_contents($s10Files['view']);
 $check(

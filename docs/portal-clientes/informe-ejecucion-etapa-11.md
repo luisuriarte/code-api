@@ -61,6 +61,18 @@ OK: 37 comprobaciones de la Etapa 11.
 
 Cubierto: las tres locales de `/solicitud`, ausencia de enlace en la home, ausencia de secretos en HTML y rechazo `303` de un POST sin CSRF.
 
+Tras el hallazgo de la sección 5 se agregaron comprobaciones del DSN dedicado y del manejo localizado de fallos de conexión. En local:
+
+```text
+php tests/run.php
+OK: 3938 comprobaciones.
+
+php tools/php/verificar_etapa11_portal_clientes.php
+OK: 31 comprobaciones de la Etapa 11.
+```
+
+Después de subir los archivos y configurar el DSN, el verificador con `--post` debería terminar en `OK: 41 comprobaciones`.
+
 ## 3. Estado de la base antes de T-08
 
 ```bash
@@ -96,6 +108,59 @@ No hay solicitudes de prueba todavía. No se crearon clientes, facturas ni pagos
 7. Repetir el envío con los mismos datos dentro de los 30 días: esperado `marcadas_duplicadas = 1`, la segunda solicitud en `needs_review`, y ningún cliente duplicado en Invoice Ninja.
 8. Documentar cualquier falla con severidad, reproducibilidad y decisión pendiente.
 
-## 5. Cierre
+## 5. Hallazgo durante el envío de T-08
 
-La Etapa 11 no se considera cerrada hasta completar el punto 4. La Etapa 12 (despliegue) sigue sin autorización.
+El primer `POST /es-AR/solicitud/enviar` terminó en 500:
+
+```text
+RepositoryException: database_unavailable
+PortalDatabase.php:55 → PublicServiceRequestRepository.php:94 → ServiceRequestService.php:99
+```
+
+Diagnóstico en el VPS:
+
+```text
+dsn=pgsql:host=127.0.0.1;port=5432;dbname=origen_codes
+user=origen_med
+pass=presente
+FALLO PDO: SQLSTATE[08006] [7] FATAL: too many connections for role "origen_med"
+```
+
+Causas:
+
+1. `origen_med` tiene un límite de conexiones por rol y, al perder `SUPERUSER`, dejó de estar exento de ese límite. Afecta también a las lecturas públicas.
+2. `PORTAL_DB_DSN` apunta a `origen_codes`, pero las tablas V10 están en `origen_codes_portal_clientes_test`. Aunque se corrija el límite, el DSN público no debe usarse para esta escritura.
+
+Corrección aplicada en local:
+
+- `Config::serviceRequestDatabase()`, `ServiceRequestDatabase` y `PublicServiceRequestRepository` usan ahora `SERVICE_REQUEST_DB_DSN`, separado del DSN público. Sin esa variable, el formulario responde con `database_unavailable` localizado.
+- `ServiceRequestService::submit()` captura `RepositoryException` también en `findRecent()`. Antes ese único punto podía escapar y producir el 500; ahora cualquier fallo de conexión se convierte en el mismo mensaje localizado.
+- Falta subir esos archivos y configurar `SERVICE_REQUEST_DB_DSN` en el VPS con la base `origen_codes_portal_clientes_test`.
+
+El `GRANT CONNECT` sobre la base de prueba ya fue ejecutado y verificado en el VPS (`t` para ambas bases).
+
+Comprobación adicional en el VPS:
+
+```text
+rolname    | rolconnlimit
+-----------+-------------
+origen_med |            0
+
+state | count
+-------+-------
+(sin filas)
+```
+
+`rolconnlimit = 0` explica el rechazo: PostgreSQL no admite ninguna conexión nueva para ese rol. Antes `SUPERUSER` lo eximía de ese límite. No hay sesiones activas de `origen_med`.
+
+También se comprobó que los archivos nuevos todavía no estaban subidos al VPS:
+
+- `Config::serviceRequestDatabase()` → `Call to undefined method`.
+- `php tests/run.php` → `FALLOS (3 de 3912)`, todos por un `.env.example` desactualizado.
+- Verificador con `--post` → `OK: 37`, todavía sin las nuevas comprobaciones.
+
+Queda pendiente de autorización el ajuste cluster-wide de `rolconnlimit` de `origen_med`, además de subir los archivos corregidos.
+
+## 6. Cierre
+
+La Etapa 11 no se considera cerrada hasta completar el punto 4 y el hallazgo de la sección 5. La Etapa 12 (despliegue) sigue sin autorización.

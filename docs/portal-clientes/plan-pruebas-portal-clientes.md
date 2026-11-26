@@ -228,6 +228,7 @@ sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
 
 Secuencia manual de T-08 con datos ficticios:
 
+0. Requisito previo: configurar `SERVICE_REQUEST_DB_DSN` en el servidor apuntando a `origen_codes_portal_clientes_test`. El límite de conexiones de `origen_med` (`rolconnlimit`) es un cambio cluster-wide y requiere autorización expresa antes de modificarse; sin él, el formulario debe mostrar el mensaje localizado `database_unavailable`, no un 500.
 1. Abrir `/es-AR/solicitud` por URL directa.
 2. Agregar servicios, quitar uno y mantener al menos uno.
 3. Enviar con organización, contacto y correo ficticios.

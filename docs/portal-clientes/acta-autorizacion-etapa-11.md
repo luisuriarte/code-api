@@ -19,6 +19,7 @@ Se autoriza iniciar la **Etapa 11 — Pruebas** definida en `plan-implementacion
 | Navegación | La Solicitud de Servicios permanece sin enlaces en nav, footer ni home. Solo se alcanza por URL directa. |
 | Secretos | Ningún token, clave ni dato sensible en HTML, JS, logs, fixtures ni respuestas. |
 | Producción | Sin cambios de esquema, sin despliegue y sin operaciones comerciales reales. |
+| Cambios cluster-wide | Fuera de alcance salvo autorización expresa. En particular, el ajuste de `rolconnlimit` de `origen_med` no está autorizado por esta acta. |
 
 ## 3. Casos incluidos
 

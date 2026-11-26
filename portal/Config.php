@@ -42,6 +42,26 @@ final class Config
     }
 
     /**
+     * Conexión exclusiva de la Solicitud de Servicios (Etapa 10).
+     *
+     * El sitio público sigue leyendo desde `PORTAL_DB_DSN`. Las tablas de la
+     * solicitud viven en la base aislada de prueba, por eso requieren un DSN
+     * propio y configurado solo en el servidor. Sin configuración, el flujo se
+     * deshabilita con un mensaje localizado en vez de caer en 500.
+     *
+     * @return array{dsn: string, user: string, pass: string, timeout: int}
+     */
+    public static function serviceRequestDatabase(): array
+    {
+        return [
+            'dsn' => (string) env('SERVICE_REQUEST_DB_DSN', ''),
+            'user' => (string) env('SERVICE_REQUEST_DB_USER', 'origen_med'),
+            'pass' => (string) env('SERVICE_REQUEST_DB_PASS', ''),
+            'timeout' => (int) env('SERVICE_REQUEST_DB_STATEMENT_TIMEOUT', (string) env('PORTAL_DB_STATEMENT_TIMEOUT', '3')),
+        ];
+    }
+
+    /**
      * Integración de solo lectura con Invoice Ninja para la Solicitud de Servicios.
      *
      * El token es de prueba, vive solo en el servidor y nunca se expone. Las

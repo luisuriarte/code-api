@@ -89,6 +89,13 @@ $check(
     str_contains($config, 'INVOICE_NINJA_ALLOW_TEST_CALLS') && str_contains($config, 'https://'),
     'T-03: las consultas a Invoice Ninja requieren opt-in y HTTPS.'
 );
+$envExample = $read('.env.example');
+$check(
+    str_contains($config, "env('SERVICE_REQUEST_DB_DSN', '')")
+        && str_contains($envExample, 'SERVICE_REQUEST_DB_DSN=')
+        && !str_contains($envExample, 'SERVICE_REQUEST_DB_DSN=pgsql:'),
+    'T-08: el DSN dedicado de la solicitud se configura solo en el servidor.'
+);
 
 $catalog = $read('portal/Services/InvoiceNinjaCatalogService.php');
 $check(
@@ -117,10 +124,26 @@ $check(
 );
 
 $repository = $read('portal/Repositories/PublicServiceRequestRepository.php');
+$serviceDatabase = $read('portal/Repositories/ServiceRequestDatabase.php');
 $check(
     str_contains($repository, 'INSERT INTO os_customer.public_service_request')
         && !preg_match('/\b(UPDATE|DELETE\s+FROM)\b/i', $repository),
     'T-08: el repositorio solo inserta y consulta solicitudes.'
+);
+$check(
+    str_contains($serviceDatabase, 'Config::serviceRequestDatabase()')
+        && str_contains($serviceDatabase, 'new PDO'),
+    'T-08: debe existir una conexión dedicada para la Solicitud de Servicios.'
+);
+$check(
+    str_contains($repository, 'ServiceRequestDatabase::available()')
+        && str_contains($repository, 'ServiceRequestDatabase::connection()')
+        && !str_contains($repository, 'PortalDatabase::connection()'),
+    'T-08: la solicitud debe escribir en el DSN dedicado, no en el DSN público.'
+);
+$check(
+    preg_match('/findRecent\([^;]+;\s*}\s*catch \(RepositoryException\)/s', $service) === 1,
+    'T-08: un fallo de BD al buscar duplicados debe responder localizado, sin 500.'
 );
 $check(
     !preg_match('/\b(price|amount|total|invoice|payment|currency)\b/i', $repository),

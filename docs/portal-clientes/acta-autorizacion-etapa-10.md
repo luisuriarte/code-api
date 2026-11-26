@@ -32,6 +32,8 @@ No hay columnas de precio, importe, total, moneda, factura ni pago. `origen_med`
 
 La migración lleva guarda de base de prueba, `down`, verificación `SELECT`-only y verificación de rollback. Producción queda intacta en cuanto a esquema y datos.
 
+Durante la Etapa 11 se comprobó que `PORTAL_DB_DSN` apunta a `origen_codes` (producción), mientras que las tablas de la solicitud están en `origen_codes_portal_clientes_test`. Para no modificar el DSN público ni crear tablas en producción, la Solicitud de Servicios usa un DSN dedicado `SERVICE_REQUEST_DB_DSN`. El repositorio no emplea `PortalDatabase`. Si la variable no está configurada en el servidor, el flujo se deshabilita con un mensaje localizado en vez de producir un error 500.
+
 La primera verificación en el VPS mostró que `origen_med` tenía `rolsuper = t`. Los ACL de las tablas nuevas eran correctos (`origen_med=ar`), pero un superusuario tiene implícitamente todos los privilegios, por lo que `sin_update`, `sin_delete`, `sin_insert_en_servicios` y `sin_insert_en_habilitaciones` dieron `f`. Se autorizó expresamente la corrección `V10.002__origen_med_no_superuser` para que los permisos por objeto sean efectivos. El cambio de atributo de rol es cluster-wide: afecta también a `origen_codes`, aunque el script se ejecute con `-d origen_codes_portal_clientes_test`. Tras aplicarlo deben repetirse las comprobaciones públicas de solo lectura.
 
 ## 4. Integración con Invoice Ninja

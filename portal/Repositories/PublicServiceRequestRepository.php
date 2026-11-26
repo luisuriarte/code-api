@@ -4,22 +4,19 @@ declare(strict_types=1);
 
 namespace OrigenSalud\Portal\Repositories;
 
-use OrigenSalud\Portal\Config;
-
 /**
  * Persistencia de la Solicitud de Servicios pública (Etapa 10).
  *
  * Guarda solo la solicitud y las referencias opacas de productos elegidos.
  * No guarda precios, importes, facturas, pagos ni datos de la base comercial.
- * Usa la conexión pública con privilegios limitados a estas dos tablas.
+ * Usa una conexión dedicada a la base aislada, con privilegios limitados a
+ * estas dos tablas, independiente del DSN público de solo lectura.
  */
 final class PublicServiceRequestRepository
 {
     public static function available(): bool
     {
-        $config = Config::database();
-
-        return $config['dsn'] !== '' && $config['pass'] !== '';
+        return ServiceRequestDatabase::available();
     }
 
     /**
@@ -40,7 +37,7 @@ final class PublicServiceRequestRepository
                 RETURNING id';
 
         try {
-            $statement = PortalDatabase::connection()->prepare($sql);
+            $statement = ServiceRequestDatabase::connection()->prepare($sql);
             $statement->execute([
                 ':reference' => (string) $request['reference'],
                 ':locale' => (string) $request['locale'],
@@ -69,7 +66,7 @@ final class PublicServiceRequestRepository
     public static function addItem(int $requestId, string $productRef, int $quantity): void
     {
         try {
-            $statement = PortalDatabase::connection()->prepare(
+            $statement = ServiceRequestDatabase::connection()->prepare(
                 'INSERT INTO os_customer.public_service_request_item
                     (request_id, product_ref, quantity)
                  VALUES (:request_id, :product_ref, :quantity)'
@@ -91,7 +88,7 @@ final class PublicServiceRequestRepository
     public static function findRecent(string $dedupeKey, int $windowDays): ?array
     {
         try {
-            $statement = PortalDatabase::connection()->prepare(
+            $statement = ServiceRequestDatabase::connection()->prepare(
                 'SELECT id, reference, created_at
                    FROM os_customer.public_service_request
                   WHERE dedupe_key = :dedupe_key

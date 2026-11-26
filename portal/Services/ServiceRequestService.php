@@ -96,7 +96,11 @@ final class ServiceRequestService
             ? $taxId
             : strtolower($organization . '|' . $email);
         $dedupeKey = hash('sha256', $dedupeSource);
-        $duplicate = PublicServiceRequestRepository::findRecent($dedupeKey, self::DUPLICATE_WINDOW_DAYS);
+        try {
+            $duplicate = PublicServiceRequestRepository::findRecent($dedupeKey, self::DUPLICATE_WINDOW_DAYS);
+        } catch (RepositoryException) {
+            return self::failure('database_unavailable', $fields);
+        }
 
         $clientMatch = $catalogService->findClients($taxId, $organization, $email);
         $ninjaStatus = (string) $clientMatch['status'];
