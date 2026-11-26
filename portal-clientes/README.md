@@ -1,6 +1,6 @@
 # Portal privado de clientes — Etapas 5, 6, 7, 8 y 9
 
-> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 cerrada en prueba: self-service verificado, prueba HTTP real acotada completada y rollback de V8 ensayado. Etapa 9 implementada en local: navegación y secciones nuevas, sin medición de consumo, sin importes propios y sin despliegue. Etapa 10 implementada en local y preparada en base de prueba como **Solicitud de Servicios**, sin navegación pública ni operaciones comerciales reales. **No desplegado en producción.**
+> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 cerrada en prueba: self-service verificado, prueba HTTP real acotada completada y rollback de V8 ensayado. Etapa 9 implementada en local: navegación y secciones nuevas, sin medición de consumo, sin importes propios y sin despliegue. Etapa 10 implementada en local y preparada en base de prueba como **Solicitud de Servicios**, sin navegación pública ni operaciones comerciales reales. Etapa 11 autorizada para ejecución de pruebas en entorno de prueba, sin despliegue. **No desplegado en producción.**
 > **Autorizaciones:** `docs/portal-clientes/acta-autorizacion-etapa-5.md`, `acta-autorizacion-etapa-6.md`, `acta-autorizacion-etapa-7.md`, `acta-autorizacion-etapa-8.md` y `acta-autorizacion-etapa-9.md`.
 
 ## 1. Límites
@@ -279,11 +279,20 @@ Flujo público sin cuenta en `/{locale}/solicitud`, con las acciones `agregar`, 
 - CSRF, honeypot, tiempo mínimo, `RATE_REQUEST`, deduplicación y escalado a revisión humana. Nunca se crean clientes, presupuestos, facturas, pagos ni credenciales.
 - 55 claves i18n nuevas por idioma en `es-AR`, `en` y `pt-BR`; sin textos hardcodeados. Suite local: `OK: 3924 comprobaciones`.
 
-## 9. Estado de producción
+## 9. Etapa 11 — Pruebas
+
+Autorizada por `docs/portal-clientes/acta-autorizacion-etapa-11.md`. Cubre T-01 a T-08 en entorno de prueba; T-09 no aplica por falta de medición real y T-10 pertenece a la Etapa 12. Sin despliegue, sin datos comerciales reales y sin token real.
+
+- Plan de pruebas actualizado con el nombre **Solicitud de Servicios** y comandos de ejecución.
+- `php tools/php/verificar_etapa11_portal_clientes.php`: 27 comprobaciones estáticas y HTTP opcional de solo lectura, con `--post` opt-in para el caso negativo de CSRF.
+- `sql/10_portal_clientes/ETAPA11__verificacion_solicitudes.sql`: agregados de solicitudes e ítems, sin correos ni importes.
+- Suite local: `OK: 3932 comprobaciones`.
+
+## 10. Estado de producción
 
 Sin cambios de esquema. No se creó rol ni tabla nueva en producción. Las excepciones autorizadas son el grant operativo a `origen_admin` (punto 4.2 del acta), las credenciales **de prueba** del sondeo real, que quedaron revocadas (`api_clients` `id=3,4,5` con `is_active = f`; el `id=1` preexistente intacto), y el cambio de atributo `NOSUPERUSER` de `origen_med` autorizado en la Etapa 10, que por ser cluster-wide también aplica a `origen_codes`. El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
 
-## 10. Fuera de alcance
+## 11. Fuera de alcance
 
 - Pantalla de revisión administrativa de la Etapa 6: el backend expone `resolveReview()`, pero no se modificó `/admin` ni se agregaron rutas de interfaz.
 - Consulta de contactos, facturas o pagos en este portal privado. La Solicitud de Servicios pública consulta productos y precios de solo lectura desde Invoice Ninja, sin crear ni modificar datos comerciales.

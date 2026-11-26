@@ -4139,6 +4139,48 @@ $check(
     'Etapa 10: el README de SQL debe documentar V10.001, V10.002 y sus verificaciones.'
 );
 
+// Etapa 11 — Pruebas (autorizadas, sin despliegue).
+$s11ActaPath = $root . '/docs/portal-clientes/acta-autorizacion-etapa-11.md';
+$s11VerifierPath = $root . '/tools/php/verificar_etapa11_portal_clientes.php';
+$s11SqlPath = $root . '/sql/10_portal_clientes/ETAPA11__verificacion_solicitudes.sql';
+$check(is_file($s11ActaPath), 'Etapa 11: debe existir el acta de autorización.');
+$check(is_file($s11VerifierPath), 'Etapa 11: debe existir el verificador de la etapa.');
+$check(is_file($s11SqlPath), 'Etapa 11: debe existir la verificación SQL SELECT-only.');
+
+$s11Acta = is_file($s11ActaPath) ? (string) file_get_contents($s11ActaPath) : '';
+$s11Plan = (string) file_get_contents($root . '/docs/portal-clientes/plan-pruebas-portal-clientes.md');
+$s11Implementation = (string) file_get_contents($root . '/docs/portal-clientes/plan-implementacion-portal-clientes.md');
+$s11Verifier = is_file($s11VerifierPath) ? (string) file_get_contents($s11VerifierPath) : '';
+$s11Sql = is_file($s11SqlPath) ? (string) file_get_contents($s11SqlPath) : '';
+$check(
+    str_contains($s11Acta, 'Etapa 11') && str_contains($s11Acta, 'No incluye despliegue')
+        && str_contains($s11Acta, 'T-09') && str_contains($s11Acta, 'No aplica'),
+    'Etapa 11: el acta debe excluir despliegue y declarar T-09 no aplicable.'
+);
+$check(
+    str_contains($s11Plan, 'autorizado para ejecución en entorno de prueba')
+        && str_contains($s11Plan, 'Solicitud de Servicios')
+        && !preg_match('/\bcarrito\b/i', $s11Plan),
+    'Etapa 11: el plan debe estar autorizado y usar el nombre aprobado.'
+);
+$check(
+    str_contains($s11Implementation, 'acta-autorizacion-etapa-11.md')
+        && str_contains($s11Implementation, 'T-10 pertenece a la Etapa 12'),
+    'Etapa 11: el plan de implementación debe reflejar la autorización y el límite de T-10.'
+);
+$check(
+    str_contains($s11Verifier, 'HttpClient::request')
+        && str_contains($s11Verifier, 'Solicitud de Servicios')
+        && str_contains($s11Verifier, '--post'),
+    'Etapa 11: el verificador debe incluir HTTP de solo lectura y CSRF opt-in.'
+);
+$check(
+    str_contains($s11Sql, 'BEGIN READ ONLY')
+        && str_contains($s11Sql, "current_database() NOT LIKE 'origen_codes_portal_clientes%'")
+        && !preg_match('/\b(contact_email|tax_id_normalized)\b/', $s11Sql),
+    'Etapa 11: el SQL debe ser SELECT-only, acotado y sin datos personales.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

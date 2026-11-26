@@ -1,7 +1,7 @@
 # Plan de pruebas — Portal privado de clientes
 
-> **Estado:** propuesta para revisión. **No ejecutado.**
-> **Fecha:** 2026-11-24.
+> **Estado:** autorizado para ejecución en entorno de prueba por `acta-autorizacion-etapa-11.md`. **No ejecutado contra producción.**
+> **Fecha:** 2026-11-24. Actualizado 2026-11-26.
 >
 > Ninguna prueba de este plan se ejecutó contra producción. Las pruebas que
 > impliquen creación de datos deben hacerse en entorno de prueba o con datos
@@ -29,16 +29,16 @@
 
 | ID | Ámbito | Tipo | Estado |
 |---|---|---|---|
-| T-01 | Separación de portales | Seguridad | Propuesta |
-| T-02 | Multi-organización | Seguridad | Propuesta |
-| T-03 | Invoice Ninja | Integración | Propuesta |
-| T-04 | Credenciales API | Seguridad | Propuesta |
-| T-05 | Seguridad general | Seguridad | Propuesta |
-| T-06 | Regresión | Regresión | Propuesta |
-| T-07 | I18n y rutas | Funcional | Propuesta |
-| T-08 | Contratación pública | Funcional | Propuesta |
-| T-09 | Consumo y métricas | Datos | Propuesta |
-| T-10 | Despliegue y rollback | Operación | Propuesta |
+| T-01 | Separación de portales | Seguridad | Autorizada en entorno de prueba |
+| T-02 | Multi-organización | Seguridad | Autorizada en entorno de prueba |
+| T-03 | Invoice Ninja | Integración | Autorizada con token de prueba |
+| T-04 | Credenciales API | Seguridad | Autorizada en entorno de prueba |
+| T-05 | Seguridad general | Seguridad | Autorizada en entorno de prueba |
+| T-06 | Regresión | Regresión | Autorizada; sin `/cart` |
+| T-07 | I18n y rutas | Funcional | Autorizada en entorno de prueba |
+| T-08 | Solicitud de Servicios | Funcional | Autorizada con datos ficticios |
+| T-09 | Consumo y métricas | Datos | No aplica: sin medición real |
+| T-10 | Despliegue y rollback | Operación | No autorizada; pertenece a Etapa 12 |
 
 ## 4. T-01 — Separación de portales
 
@@ -137,7 +137,7 @@ Verificar al final de cada etapa de implementación:
 - API pública: rutas `/v1/*` y `/fhir/*` existentes, autenticación y formatos.
 - Browse Codes: búsqueda, filtros, parámetros GET y fragments AJAX.
 - DENTAR y OFTAR: páginas y navegación.
-- Docs, Cart, About y Contact.
+- Docs, About y Contact (sin `/cart`).
 - Sitemap localizado y selector de idioma.
 - Permisos de base: gobernanza no gana privilegios sobre esquemas de clientes y viceversa.
 
@@ -156,12 +156,12 @@ Casos propuestos:
 
 Casos propuestos:
 
-1. Visitante sin cuenta arma un carrito y envía solicitud.
+1. Visitante sin cuenta selecciona servicios y envía una Solicitud de Servicios.
 2. Productos y precios se validan contra Invoice Ninja desde backend.
 3. Manipular importes o IDs en el navegador → rechazado.
 4. CSRF, rate limiting y anti-spam activos.
 5. Solicitudes duplicadas detectadas y no crean cliente duplicado.
-6. El carrito no crea cuenta técnica ni habilita API.
+6. La Solicitud de Servicios no crea cuenta técnica ni habilita API.
 7. La solicitud queda registrada para revisión humana.
 
 ## 12. T-09 — Consumo y métricas
@@ -199,4 +199,40 @@ Casos propuestos:
 
 ## 15. Autorización
 
-Ninguna prueba de este plan faculta por sí sola a ejecutar cambios. La ejecución de pruebas con datos reales, creación de clientes, modificación de infraestructura o despliegue requiere autorización expresa del propietario del proyecto.
+Ninguna prueba de este plan faculta por sí sola a ejecutar cambios. La ejecución de pruebas con datos reales, creación de clientes, modificación de infraestructura o despliegue requiere autorización expresa del propietario del proyecto. La autorización vigente para la Etapa 11 está en `acta-autorizacion-etapa-11.md`.
+
+## 16. Ejecución de la Etapa 11
+
+Local, sin red:
+
+```bash
+php tests/run.php
+php tools/php/verificar_etapa11_portal_clientes.php
+```
+
+VPS, después de subir los archivos:
+
+```bash
+cd /var/www/html/origen.ar/code-api
+
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.001__public_service_requests.verify.sql
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.002__origen_med_no_superuser.verify.sql
+
+php tools/php/verificar_etapa11_portal_clientes.php --site=https://med.origen.ar
+php tools/php/verificar_etapa11_portal_clientes.php --site=https://med.origen.ar --post
+sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/ETAPA11__verificacion_solicitudes.sql
+```
+
+Secuencia manual de T-08 con datos ficticios:
+
+1. Abrir `/es-AR/solicitud` por URL directa.
+2. Agregar servicios, quitar uno y mantener al menos uno.
+3. Enviar con organización, contacto y correo ficticios.
+4. Verificar la fila con el SQL de solo lectura indicado arriba.
+5. Confirmar en Invoice Ninja que **no** se creó cliente, presupuesto, factura ni pago.
+6. Repetir el envío con los mismos datos dentro de los 30 días y comprobar que la segunda solicitud queda marcada para revisión, sin duplicar nada en Invoice Ninja.
+
+Si alguna comprobación falla, documentar severidad, reproducibilidad y decisión pendiente. No habilitar la Etapa 12 hasta que todas estén cerradas.

@@ -46,7 +46,7 @@ Cada entrega posterior debe distinguir:
 | 8 | Credenciales API | Implementación | Gestión según mecanismo real | **Requerida, específica** |
 | 9 | Interfaz del portal | Implementación | Secciones y i18n | **Requerida** |
 | 10 | Contratación pública | Implementación | Solicitud de Servicios y registro para revisión | **Autorizada en local**; ver `acta-autorizacion-etapa-10.md` |
-| 11 | Pruebas | Verificación | Plan de pruebas ejecutado | Parte de cada etapa |
+| 11 | Pruebas | Verificación | Plan de pruebas ejecutado en entorno de prueba | **Autorizada**; ver `acta-autorizacion-etapa-11.md` |
 | 12 | Despliegue | Producción | Publicación | **Requerida, explícita** |
 
 ## 4. Etapa 1 — Auditoría técnica
@@ -235,7 +235,9 @@ Cualquier cambio que afecte:
 
 ## 14. Etapa 11 — Pruebas
 
-Ver `plan-pruebas-portal-clientes.md`. Cada etapa debe pasar sus pruebas antes de habilitar la siguiente.
+> Estado: autorizada por `acta-autorizacion-etapa-11.md`. Ejecución en entorno de prueba; sin despliegue.
+
+Ver `plan-pruebas-portal-clientes.md`, con la sección 16 para los comandos de ejecución. Cada etapa debe pasar sus pruebas antes de habilitar la siguiente. T-09 no aplica por falta de medición real; T-10 pertenece a la Etapa 12.
 
 ## 15. Etapa 12 — Despliegue
 
