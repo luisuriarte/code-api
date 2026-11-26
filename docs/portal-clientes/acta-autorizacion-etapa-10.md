@@ -19,6 +19,7 @@ La ruta histórica rota `/cart` permanece retirada: no se reincorpora ni al enru
 | Navegación pública | **Sin** enlaces en nav, footer ni home. Solo rutas y vistas para revisión. |
 | Cuentas y accesos | No se crean cuentas técnicas, credenciales ni habilitaciones. |
 | Operaciones comerciales | No se crean clientes, contactos, presupuestos, facturas ni pagos. |
+| Rol de conexión pública | Autorizado `ALTER ROLE origen_med NOSUPERUSER` mediante `V10.002`. Es un cambio cluster-wide que también afecta a `origen_codes`; se ejecuta únicamente desde la base de prueba verificada. |
 
 ## 3. Migración autorizada
 
@@ -29,7 +30,9 @@ La ruta histórica rota `/cart` permanece retirada: no se reincorpora ni al enru
 
 No hay columnas de precio, importe, total, moneda, factura ni pago. `origen_med` recibe `USAGE` en el esquema y `SELECT, INSERT` únicamente en esas dos tablas, más `USAGE` en sus secuencias. No recibe `UPDATE`, `DELETE` ni acceso a otras tablas. No se usa `ALTER DEFAULT PRIVILEGES`.
 
-La migración lleva guarda de base de prueba, `down`, verificación `SELECT`-only y verificación de rollback. Producción queda intacta.
+La migración lleva guarda de base de prueba, `down`, verificación `SELECT`-only y verificación de rollback. Producción queda intacta en cuanto a esquema y datos.
+
+La primera verificación en el VPS mostró que `origen_med` tenía `rolsuper = t`. Los ACL de las tablas nuevas eran correctos (`origen_med=ar`), pero un superusuario tiene implícitamente todos los privilegios, por lo que `sin_update`, `sin_delete`, `sin_insert_en_servicios` y `sin_insert_en_habilitaciones` dieron `f`. Se autorizó expresamente la corrección `V10.002__origen_med_no_superuser` para que los permisos por objeto sean efectivos. El cambio de atributo de rol es cluster-wide: afecta también a `origen_codes`, aunque el script se ejecute con `-d origen_codes_portal_clientes_test`. Tras aplicarlo deben repetirse las comprobaciones públicas de solo lectura.
 
 ## 4. Integración con Invoice Ninja
 
@@ -55,6 +58,6 @@ Tres idiomas con paridad de claves: `es-AR`, `en` y `pt-BR`. No hay textos hardc
 
 ## 7. Verificación local
 
-Antes de entregar: `php -l` sin errores, `php tests/run.php` sin fallas, paridad de claves i18n y comprobación de que no aparecen «cart», «carrito», importes fijos ni llamadas de escritura a Invoice Ninja.
+Antes de entregar: `php -l` sin errores, `php tests/run.php` sin fallas, paridad de claves i18n y comprobación de que no aparecen «cart», «carrito», importes fijos ni llamadas de escritura a Invoice Ninja. En el VPS, después de `V10.001`, ejecutar `V10.002` y confirmar `sin_superuser = t` junto con los cuatro privilegios negativos en `t`.
 
 Quedan fuera de esta autorización la publicación en la navegación, las pruebas de despliegue (Etapa 11), el despliegue (Etapa 12), la creación real de clientes o facturas y cualquier habilitación automática.

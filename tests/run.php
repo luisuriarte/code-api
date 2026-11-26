@@ -4086,14 +4086,46 @@ $check(
     'Etapa 10: la verificación del rollback comprueba que no quedan tablas.'
 );
 
+$s10RoleSqlFiles = [];
+foreach (['up', 'down', 'verify', 'verify_rollback'] as $s10Step) {
+    $s10Path = $root . '/sql/10_portal_clientes/V10.002__origen_med_no_superuser.' . $s10Step . '.sql';
+    $check(is_file($s10Path), 'Etapa 10: debe existir V10.002 ' . $s10Step . '.');
+    $s10RoleSqlFiles[$s10Step] = is_file($s10Path) ? (string) file_get_contents($s10Path) : '';
+}
+foreach ($s10RoleSqlFiles as $s10Step => $s10Sql) {
+    $check(
+        str_contains($s10Sql, "current_database() NOT LIKE 'origen_codes_portal_clientes%'"),
+        'Etapa 10: V10.002 ' . $s10Step . ' debe rechazar bases que no sean de prueba.'
+    );
+}
+$check(
+    str_contains($s10RoleSqlFiles['up'] ?? '', 'ALTER ROLE origen_med NOSUPERUSER')
+        && str_contains($s10RoleSqlFiles['up'] ?? '', 'CLUSTER-WIDE'),
+    'Etapa 10: V10.002 debe quitar SUPERUSER y advertir el alcance cluster-wide.'
+);
+$check(
+    str_contains($s10RoleSqlFiles['down'] ?? '', 'ALTER ROLE origen_med SUPERUSER'),
+    'Etapa 10: el rollback de V10.002 debe restaurar SUPERUSER.'
+);
+$check(
+    str_contains($s10RoleSqlFiles['verify'] ?? '', 'sin_superuser')
+        && str_contains($s10RoleSqlFiles['verify'] ?? '', 'sin_insert_en_habilitaciones'),
+    'Etapa 10: la verificación de V10.002 debe comprobar el rol y los ACL efectivos.'
+);
+$check(
+    str_contains($s10RoleSqlFiles['verify_rollback'] ?? '', 'superuser_restorado'),
+    'Etapa 10: la verificación de rollback de V10.002 debe comprobar SUPERUSER.'
+);
+
 $s10Acta = is_file($s10ActaPath) ? (string) file_get_contents($s10ActaPath) : '';
 $s10Plan = (string) file_get_contents($root . '/docs/portal-clientes/plan-implementacion-portal-clientes.md');
 $s10SqlReadme = (string) file_get_contents($root . '/sql/10_portal_clientes/README.md');
 $check(
     str_contains($s10Acta, 'Solicitud de Servicios')
         && str_contains($s10Acta, 'token de prueba')
-        && str_contains($s10Acta, 'Sin** enlaces en nav'),
-    'Etapa 10: el acta debe registrar nombre, token de prueba y sin navegación.'
+        && str_contains($s10Acta, 'Sin** enlaces en nav')
+        && str_contains($s10Acta, 'ALTER ROLE origen_med NOSUPERUSER'),
+    'Etapa 10: el acta debe registrar nombre, token de prueba, sin navegación y el cambio de rol.'
 );
 $check(
     str_contains($s10Plan, 'Solicitud de Servicios sin exigir cuenta.'),
@@ -4101,8 +4133,10 @@ $check(
 );
 $check(
     str_contains($s10SqlReadme, 'V10.001__public_service_requests.up.sql')
-        && str_contains($s10SqlReadme, 'tablas_v10 = 2'),
-    'Etapa 10: el README de SQL debe documentar V10.001 y su verificación.'
+        && str_contains($s10SqlReadme, 'tablas_v10 = 2')
+        && str_contains($s10SqlReadme, 'V10.002__origen_med_no_superuser.up.sql')
+        && str_contains($s10SqlReadme, 'sin_superuser = t'),
+    'Etapa 10: el README de SQL debe documentar V10.001, V10.002 y sus verificaciones.'
 );
 
 // Resultado.

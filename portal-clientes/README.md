@@ -1,6 +1,6 @@
 # Portal privado de clientes — Etapas 5, 6, 7, 8 y 9
 
-> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 cerrada en prueba: self-service verificado, prueba HTTP real acotada completada y rollback de V8 ensayado. Etapa 9 implementada en local: navegación y secciones nuevas, sin medición de consumo, sin importes propios y sin despliegue. **No desplegado en producción.**
+> **Estado:** Etapas 5, 6 y 7 verificadas en `origen_codes_portal_clientes_test`; Etapa 7 cerrada en prueba con el flujo visual completo y la auditoría `service.%`. Etapa 8 cerrada en prueba: self-service verificado, prueba HTTP real acotada completada y rollback de V8 ensayado. Etapa 9 implementada en local: navegación y secciones nuevas, sin medición de consumo, sin importes propios y sin despliegue. Etapa 10 implementada en local y preparada en base de prueba como **Solicitud de Servicios**, sin navegación pública ni operaciones comerciales reales. **No desplegado en producción.**
 > **Autorizaciones:** `docs/portal-clientes/acta-autorizacion-etapa-5.md`, `acta-autorizacion-etapa-6.md`, `acta-autorizacion-etapa-7.md`, `acta-autorizacion-etapa-8.md` y `acta-autorizacion-etapa-9.md`.
 
 ## 1. Límites
@@ -269,14 +269,24 @@ La URL se lee del entorno del servidor; nunca se deriva del `Host` de la petici�
 - Adenda DENTAR/OFTAR: cuatro archivos `V7.002`, con guarda de base de prueba, verificación de dos filas y rollback sin cascada.
 - Sin llamadas HTTP nuevas a Invoice Ninja y sin acceso a la base de producción.
 
-## 8. Estado de producción
+## 8. Etapa 10 — Solicitud de Servicios
 
-Sin cambios de esquema. No se creó rol ni tabla nueva en producción. Las excepciones autorizadas son el grant operativo a `origen_admin` (punto 4.2 del acta) y las credenciales **de prueba** del sondeo real, que quedaron revocadas (`api_clients` `id=3,4,5` con `is_active = f`; el `id=1` preexistente intacto). El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
+Flujo público sin cuenta en `/{locale}/solicitud`, con las acciones `agregar`, `quitar` y `enviar`. No se llama «cart» ni «carrito» en rutas, código, SQL ni textos. No aparece en nav, footer ni home: solo se alcanza por URL directa hasta nueva autorización.
 
-## 9. Fuera de alcance
+- `V10.001` crea `os_customer.public_service_request` e `..._item`, sin precios, importes, facturas ni pagos. `origen_med` recibe `USAGE` en el esquema y `SELECT, INSERT` solo en esas dos tablas.
+- `V10.002` quita `SUPERUSER` a `origen_med`, autorizado expresamente. Es un cambio cluster-wide que también afecta a `origen_codes`; se ejecuta desde la base de prueba. Sin él, los chequeos de privilegios daban `f` aunque los ACL fueran correctos.
+- Invoice Ninja se consulta solo por `GET`, con token **de prueba** y `INVOICE_NINJA_ALLOW_TEST_CALLS=true`. El navegador envía IDs y cantidades; los precios se validan y recalculan en servidor y no se guardan en PostgreSQL.
+- CSRF, honeypot, tiempo mínimo, `RATE_REQUEST`, deduplicación y escalado a revisión humana. Nunca se crean clientes, presupuestos, facturas, pagos ni credenciales.
+- 55 claves i18n nuevas por idioma en `es-AR`, `en` y `pt-BR`; sin textos hardcodeados. Suite local: `OK: 3924 comprobaciones`.
+
+## 9. Estado de producción
+
+Sin cambios de esquema. No se creó rol ni tabla nueva en producción. Las excepciones autorizadas son el grant operativo a `origen_admin` (punto 4.2 del acta), las credenciales **de prueba** del sondeo real, que quedaron revocadas (`api_clients` `id=3,4,5` con `is_active = f`; el `id=1` preexistente intacto), y el cambio de atributo `NOSUPERUSER` de `origen_med` autorizado en la Etapa 10, que por ser cluster-wide también aplica a `origen_codes`. El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
+
+## 10. Fuera de alcance
 
 - Pantalla de revisión administrativa de la Etapa 6: el backend expone `resolveReview()`, pero no se modificó `/admin` ni se agregaron rutas de interfaz.
-- Consulta de contactos, productos, precios, facturas o pagos.
+- Consulta de contactos, facturas o pagos en este portal privado. La Solicitud de Servicios pública consulta productos y precios de solo lectura desde Invoice Ninja, sin crear ni modificar datos comerciales.
 - Webhooks, conciliación y creación de clientes.
 - Consulta de facturas, comprobantes o pagos dentro de este portal: solo se ofrece un enlace configurable al portal de facturación.
 - Vencimiento automático, suspensión parcial y planes institucionales.

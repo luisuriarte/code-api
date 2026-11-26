@@ -29,6 +29,10 @@
 - `V10.001__public_service_requests.down.sql`: elimina solo esas dos tablas; sin cascada.
 - `V10.001__public_service_requests.verify.sql`: verificación `SELECT`-only de V10.001.
 - `V10.001__public_service_requests.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V10.001.
+- `V10.002__origen_med_no_superuser.up.sql`: retira `SUPERUSER` a `origen_med` para que los ACL por objeto sean efectivos. **Cambio cluster-wide.**
+- `V10.002__origen_med_no_superuser.down.sql`: restaura `SUPERUSER`; solo para deshacer la corrección con autorización.
+- `V10.002__origen_med_no_superuser.verify.sql`: verificación `SELECT`-only de V10.002.
+- `V10.002__origen_med_no_superuser.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V10.002.
 
 ## Autorización
 
@@ -41,8 +45,8 @@
 
 ## Orden de migraciones
 
-Aplicar: `V5.001 up` → `V6.001 up` → `V7.001 up` → `V7.002 up` → `V8.001 up` → `V10.001 up`.  
-Revertir: `V10.001 down` → `V8.001 down` → `V7.002 down` → `V7.001 down` → `V6.001 down` → `V5.001 down`.
+Aplicar: `V5.001 up` → `V6.001 up` → `V7.001 up` → `V7.002 up` → `V8.001 up` → `V10.001 up` → `V10.002 up`.  
+Revertir: `V10.002 down` → `V10.001 down` → `V8.001 down` → `V7.002 down` → `V7.001 down` → `V6.001 down` → `V5.001 down`.
 
 `V6.001` y `V7.001` usan la función `os_customer.touch_updated_at()`, creada por `V5.001`. Por eso sus `down` deben ejecutarse antes que el de V5.
 
@@ -177,7 +181,9 @@ sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
   -f sql/10_portal_clientes/V10.001__public_service_requests.verify.sql
 ```
 
-Esperado: `tablas_v10 = 2`, `columnas_prohibidas = 0`, `servicios_verificados = 15`, `capacidades_inexistentes = 0`, `usa_esquema = t`, `lee_solicitudes = t`, `escribe_solicitudes = t`, `sin_update = t`, `sin_delete = t`, `escribe_items = t`, `secuencia_solicitudes = t`, `sin_insert_en_servicios = t`, `sin_insert_en_habilitaciones = t` y `total_tablas = 23`.
+Esperado después de V10.002: `tablas_v10 = 2`, `columnas_prohibidas = 0`, `servicios_verificados = 15`, `capacidades_inexistentes = 0`, `usa_esquema = t`, `lee_solicitudes = t`, `escribe_solicitudes = t`, `sin_update = t`, `sin_delete = t`, `escribe_items = t`, `secuencia_solicitudes = t`, `sin_insert_en_servicios = t`, `sin_insert_en_habilitaciones = t` y `total_tablas = 23`.
+
+Si `origen_med` todavía tiene `SUPERUSER`, los cuatro valores negativos (`sin_update`, `sin_delete`, `sin_insert_en_servicios`, `sin_insert_en_habilitaciones`) saldrán `f` aunque los ACL sean correctos: un superusuario tiene implícitamente todos los privilegios. Ese fue el resultado observado en la primera verificación. Aplicar V10.002 y volver a verificar.
 
 `origen_med` recibe `USAGE` en `os_customer` y `SELECT, INSERT` solo en las dos tablas nuevas, más `USAGE` en sus secuencias. No recibe `UPDATE`, `DELETE` ni acceso a `service`, `entitlement` ni al resto del esquema. No se usa `ALTER DEFAULT PRIVILEGES`.
 
@@ -191,5 +197,31 @@ sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
 ```
 
 Esperado: `tablas_v10_restantes = 0`, `servicios_verificados = 15` y `total_tablas = 21`. No hay `CASCADE`: si existen filas relacionadas, el `DROP` falla y debe revisarse antes de forzar cualquier acción.
+
+### Corrección de privilegios — V10.002
+
+Se aplica **después** de V10.001, una vez verificadas las tablas. Retira el atributo `SUPERUSER` de `origen_med`, autorizado en el acta de la Etapa 10:
+
+```bash
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.002__origen_med_no_superuser.up.sql
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.002__origen_med_no_superuser.verify.sql
+```
+
+Esperado: `sin_superuser = t`, `usa_esquema = t`, `lee_solicitudes = t`, `escribe_solicitudes = t`, `sin_update = t`, `sin_delete = t`, `sin_insert_en_servicios = t`, `sin_insert_en_habilitaciones = t`, `tablas_v10 = 2` y `total_tablas = 23`.
+
+**`ALTER ROLE` es cluster-wide:** aunque se ejecute con `-d "$TEST_DB"`, el cambio de atributo afecta también a `origen_codes`. Está autorizado para este caso; no repetirlo en otra ocasión sin autorización nueva. Después del cambio conviene repetir las comprobaciones HTTP públicas (`/health`, páginas de catálogo y browse) para confirmar que los `SELECT` existentes siguen alcanzando.
+
+Rollback **antes** del `down` de V10.001, y solo si se decide deshacer la corrección:
+
+```bash
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.002__origen_med_no_superuser.down.sql
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.002__origen_med_no_superuser.verify_rollback.sql
+```
+
+Esperado: `superuser_restorado = t`.
 
 **Prohibido:** ejecutar cualquiera de estos archivos en `origen_codes` productiva.
