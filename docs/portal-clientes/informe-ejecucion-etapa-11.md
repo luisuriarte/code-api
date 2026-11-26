@@ -113,7 +113,25 @@ Quedó registrada para revisión humana. Te vamos a responder al correo indicado
 Número de referencia: SR-20261126-FA328564
 ```
 
-Queda pendiente ejecutar el SQL de verificación y confirmar correo e Invoice Ninja.
+Verificación SQL posterior:
+
+```text
+solicitudes             = 1
+marcadas_duplicadas     = 0
+para_revision           = 0
+status                  = received
+ninja_client_status     = none
+items                   = 1
+solicitudes_con_items   = 1
+solicitudes_sin_items   = 0
+columnas_prohibidas     = 0
+
+SR-20261126-FA328564|received|none|1
+```
+
+El correo llegó a `med@origen.ar` con el detalle de la solicitud, 2 unidades de un servicio y total estimado de `100.000,00`, aclarando que no constituye factura ni presupuesto aceptado. El identificador fiscal quedó vacío, por lo que la deduplicación usará organización + correo.
+
+Queda pendiente confirmar los encabezados `Reply-To`/ausencia de copias ocultas, la ausencia de operaciones en Invoice Ninja y el envío duplicado.
 
 ## 4. Pendiente para cerrar T-08
 
