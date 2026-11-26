@@ -271,7 +271,7 @@ La URL se lee del entorno del servidor; nunca se deriva del `Host` de la petici�
 
 ## 8. Etapa 10 — Solicitud de Servicios
 
-Flujo público sin cuenta en `/{locale}/solicitud`, con las acciones `agregar`, `quitar` y `enviar`. No se llama «cart» ni «carrito» en rutas, código, SQL ni textos. No aparece en nav, footer ni home: solo se alcanza por URL directa hasta nueva autorización.
+Flujo público sin cuenta en `/{locale}/solicitud`, con las acciones `agregar`, `quitar`, `restar` y `enviar`. No se llama «cart» ni «carrito» en rutas, código, SQL ni textos. Hasta la Etapa 12 solo se alcanzaba por URL directa; desde la Etapa 13 el enlace aparece en nav, footer y home solo si `PORTAL_SERVICE_REQUEST_LINK_ENABLED=true`.
 
 - `V10.001` crea `os_customer.public_service_request` e `..._item`, sin precios, importes, facturas ni pagos. `origen_med` recibe `USAGE` en el esquema y `SELECT, INSERT` solo en esas dos tablas.
 - `V10.002` quita `SUPERUSER` a `origen_med`, autorizado expresamente. Es un cambio cluster-wide que también afecta a `origen_codes`; se ejecuta desde la base de prueba. Sin él, los chequeos de privilegios daban `f` aunque los ACL fueran correctos.
@@ -290,7 +290,13 @@ Autorizada por `docs/portal-clientes/acta-autorizacion-etapa-11.md`. Cubre T-01 
 
 ## 10. Estado de producción
 
-Sin cambios de esquema. No se creó rol ni tabla nueva en producción. Las excepciones autorizadas son el grant operativo a `origen_admin` (punto 4.2 del acta), las credenciales **de prueba** del sondeo real, que quedaron revocadas (`api_clients` `id=3,4,5` con `is_active = f`; el `id=1` preexistente intacto), y el cambio de atributo `NOSUPERUSER` de `origen_med` autorizado en la Etapa 10, que por ser cluster-wide también aplica a `origen_codes`. El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
+- Etapa 12: código publicado y verificado; el backup, el saneo de `.env.bak.*` y la rotación de credenciales quedaron documentados. `origen_codes` sigue sin cambios de esquema ni datos.
+- Etapa 13 (autorizada): base operativa separada `origen_codes_portal_clientes`, con V5.001 → V10.001 aplicadas allí. `origen_codes` no se modifica y V10.002 no se reejecuta.
+- El portal privado y la Solicitud de Servicios leen/escriben en la base operativa. `PORTAL_DB_DSN` y `PORTAL_CUSTOMER_CREDENTIAL_DB_DSN` siguen apuntando a `origen_codes` solo para lectura/credenciales operativas.
+- Invoice Ninja pasa a token real de solo lectura con `INVOICE_NINJA_ALLOW_LIVE_CALLS=true` y `INVOICE_NINJA_ALLOW_TEST_CALLS=false`. Si ambos flags están activos, las llamadas se desactivan. El token nunca se escribe en Git, HTML, JS ni logs.
+- Los enlaces públicos a la Solicitud de Servicios dependen de `PORTAL_SERVICE_REQUEST_LINK_ENABLED`; con `false` desaparecen sin tocar código.
+- Excepciones históricas autorizadas: el grant operativo a `origen_admin`, las credenciales de prueba del sondeo real revocadas (`api_clients` `id=3,4,5` con `is_active = f`; `id=1` intacto) y el cambio cluster-wide `NOSUPERUSER` de `origen_med`.
+- El asistente no hizo commit, push ni deploy; el responsable gestionó la versión del código.
 
 ## 11. Fuera de alcance
 

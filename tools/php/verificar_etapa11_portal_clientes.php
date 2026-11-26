@@ -74,9 +74,17 @@ foreach (['solicitud', 'solicitud/agregar', 'solicitud/quitar', 'solicitud/resta
 }
 $check(!str_contains($router, "'/cart'"), 'T-06: no debe reintroducirse la ruta /cart.');
 
-foreach (['header.php', 'footer.php', 'nav-links.php'] as $partial) {
+$check(
+    !str_contains($read('portal/Views/partials/header.php'), '/solicitud'),
+    'T-08: header.php no debe enlazar la Solicitud de Servicios.'
+);
+foreach (['footer.php', 'nav-links.php'] as $partial) {
     $source = $read('portal/Views/partials/' . $partial);
-    $check(!str_contains($source, '/solicitud'), 'T-08: ' . $partial . ' no debe enlazar la Solicitud de Servicios.');
+    $check(
+        str_contains($source, 'Config::serviceRequestLinkEnabled()')
+            && str_contains($source, '/solicitud'),
+        'T-08: ' . $partial . ' solo debe enlazar la Solicitud de Servicios tras opt-in del servidor.'
+    );
 }
 
 $config = $read('portal/Config.php');

@@ -48,6 +48,7 @@ Cada entrega posterior debe distinguir:
 | 10 | Contratación pública | Implementación | Solicitud de Servicios y registro para revisión | **Autorizada en local**; ver `acta-autorizacion-etapa-10.md` |
 | 11 | Pruebas | Verificación | Plan de pruebas ejecutado en entorno de prueba | **Autorizada**; ver `acta-autorizacion-etapa-11.md` |
 | 12 | Despliegue | Producción | Publicación | **Autorizada**; ver `acta-autorizacion-etapa-12.md` |
+| 13 | Producción real | Base operativa nueva y flags | Puesta en producción | **Autorizada**; ver `acta-autorizacion-etapa-13.md` |
 
 ## 4. Etapa 1 — Auditoría técnica
 
@@ -253,6 +254,14 @@ Incluye:
 - Rollback documentado por archivos y `.env`.
 - Verificación post-despliegue de: `/portal`, Browse Codes, DENTAR, OFTAR, Docs, UVR, sitemap, API pública y `/portal-clientes`.
 - El asistente no hace commit, push ni deploy; los ejecuta el responsable.
+
+## 15.1 Etapa 13 — Producción real
+
+**Estado:** autorizada por `acta-autorizacion-etapa-13.md`; pendiente de ejecución por el responsable.
+
+Procedimiento: `plan-etapa-13-produccion.md`. Inventario: `manifiesto-etapa-13-produccion.md`. Registro: `informe-ejecucion-etapa-13.md`.
+
+Crea `origen_codes_portal_clientes`, aplica V5.001 → V10.001, mueve los DSN privados a esa base, habilita el token real de solo lectura y los enlaces mediante flags reversibles. `origen_codes` no se modifica y V10.002 no se reejecuta.
 
 ## 16. Criterios de salida de etapas 1 y 2
 

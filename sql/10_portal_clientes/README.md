@@ -33,6 +33,8 @@
 - `V10.002__origen_med_no_superuser.down.sql`: restaura `SUPERUSER`; solo para deshacer la corrección con autorización.
 - `V10.002__origen_med_no_superuser.verify.sql`: verificación `SELECT`-only de V10.002.
 - `V10.002__origen_med_no_superuser.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V10.002.
+- `ETAPA13__preflight.sql`: comprobación `SELECT`-only previa a la Etapa 13; exige `origen_codes_portal_clientes`.
+- `ETAPA13__verificacion_produccion.sql`: verificación `SELECT`-only de la base operativa; exige `origen_codes_portal_clientes`.
 
 ## Autorización
 
@@ -42,6 +44,7 @@
 - Adenda DENTAR/OFTAR: `docs/portal-clientes/acta-autorizacion-etapa-9.md`.
 - Etapa 8: `docs/portal-clientes/acta-autorizacion-etapa-8.md`.
 - Etapa 10: `docs/portal-clientes/acta-autorizacion-etapa-10.md`.
+- Etapa 13: `docs/portal-clientes/acta-autorizacion-etapa-13.md` (base operativa separada de `origen_codes`).
 
 ## Orden de migraciones
 

@@ -62,16 +62,28 @@ final class Config
     }
 
     /**
+     * Habilita los enlaces públicos a la Solicitud de Servicios (nav, footer y home).
+     * Por defecto el flujo queda accesible solo por URL directa.
+     */
+    public static function serviceRequestLinkEnabled(): bool
+    {
+        return filter_var(env('PORTAL_SERVICE_REQUEST_LINK_ENABLED', false), FILTER_VALIDATE_BOOL);
+    }
+
+    /**
      * Integración de solo lectura con Invoice Ninja para la Solicitud de Servicios.
      *
-     * El token es de prueba, vive solo en el servidor y nunca se expone. Las
-     * llamadas HTTP requieren además el opt-in explícito `INVOICE_NINJA_ALLOW_TEST_CALLS`.
+     * El token vive solo en el servidor y nunca se expone. El modo prueba
+     * requiere `INVOICE_NINJA_ALLOW_TEST_CALLS`; el modo producción requiere
+     * `INVOICE_NINJA_ALLOW_LIVE_CALLS` con el modo prueba desactivado. Si ambos
+     * están activos, las llamadas quedan deshabilitadas (fail closed).
      *
      * @return array{
      *     base_url: string,
      *     api_prefix: string,
      *     token: string,
      *     allow_test_calls: bool,
+     *     allow_live_calls: bool,
      *     timeout: int,
      *     retries: int,
      *     catalog_limit: int
@@ -94,18 +106,37 @@ final class Config
             'api_prefix' => rtrim($prefix, '/'),
             'token' => (string) env('INVOICE_NINJA_API_TOKEN', ''),
             'allow_test_calls' => filter_var(env('INVOICE_NINJA_ALLOW_TEST_CALLS', false), FILTER_VALIDATE_BOOL),
+            'allow_live_calls' => filter_var(env('INVOICE_NINJA_ALLOW_LIVE_CALLS', false), FILTER_VALIDATE_BOOL),
             'timeout' => max(1, min(30, (int) env('INVOICE_NINJA_TIMEOUT', '8'))),
             'retries' => max(0, min(2, (int) env('INVOICE_NINJA_RETRIES', '1'))),
             'catalog_limit' => max(1, min(100, (int) env('INVOICE_NINJA_CATALOG_LIMIT', '100'))),
         ];
     }
 
-    /** Indica si están dadas las condiciones para consultar la instancia de prueba. */
+    /** Indica si están dadas las condiciones para consultar Invoice Ninja. */
     public static function invoiceNinjaHttpEnabled(): bool
     {
         $config = self::invoiceNinja();
 
-        return $config['allow_test_calls'] === true && $config['token'] !== '';
+        if ($config['token'] === '') {
+            return false;
+        }
+
+        if ($config['allow_test_calls'] === true && $config['allow_live_calls'] === true) {
+            return false;
+        }
+
+        return $config['allow_test_calls'] === true || $config['allow_live_calls'] === true;
+    }
+
+    /** Indica si el modo producción está correctamente habilitado. */
+    public static function invoiceNinjaLiveEnabled(): bool
+    {
+        $config = self::invoiceNinja();
+
+        return $config['allow_live_calls'] === true
+            && $config['allow_test_calls'] !== true
+            && $config['token'] !== '';
     }
 
     /** @return array{url: string, key: string, session: string, timeout: int} */

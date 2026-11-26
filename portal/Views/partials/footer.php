@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use OrigenSalud\Portal\Config;
 use OrigenSalud\Web\I18n;
 
 $footerProduct = [
@@ -17,6 +18,12 @@ $footerCompany = [
     ['label' => $t('footer.company_contact'), 'href' => I18n::localizedPath($locale, '/contact')],
     ['label' => $t('nav.services'), 'href' => I18n::localizedPath($locale, '/') . '#plataforma'],
 ];
+if (Config::serviceRequestLinkEnabled()) {
+    $footerCompany[] = [
+        'label' => $t('service_request.title'),
+        'href' => I18n::localizedPath($locale, '/solicitud'),
+    ];
+}
 $footerLink = 'inline-flex text-sm text-muted transition hover:text-teal-dark hover:underline underline-offset-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15';
 ?>
 <footer class="border-t border-line bg-paper">

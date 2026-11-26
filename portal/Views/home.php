@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use OrigenSalud\Portal\Config;
 use OrigenSalud\Web\I18n;
 
 $browseUrl = I18n::localizedPath($locale, '/browse');
@@ -31,6 +32,9 @@ $buttonGhost = 'inline-flex items-center justify-center rounded-full border bord
             <div class="mt-8 flex flex-wrap items-center gap-3">
                 <a class="<?= $button ?>" href="<?= e($docsUrl) ?>"><?= e($t('hero.primary')) ?></a>
                 <a class="<?= $buttonGhost ?>" href="#plataforma"><?= e($t('hero.secondary')) ?></a>
+                <?php if (Config::serviceRequestLinkEnabled()): ?>
+                    <a class="<?= $buttonGhost ?>" href="<?= e(I18n::localizedPath($locale, '/solicitud')) ?>"><?= e($t('service_request.title')) ?></a>
+                <?php endif; ?>
             </div>
             <p class="mt-5 text-xs leading-relaxed text-muted"><?= e($t('hero.note')) ?></p>
         </div>

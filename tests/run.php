@@ -3979,10 +3979,25 @@ $s10Router = (string) file_get_contents($root . '/portal/Router.php');
 foreach (['solicitud', 'solicitud/agregar', 'solicitud/quitar', 'solicitud/restar', 'solicitud/enviar'] as $s10Route) {
     $check(str_contains($s10Router, "'" . $s10Route . "'"), 'Etapa 10: debe existir la ruta ' . $s10Route . '.');
 }
-foreach (['header.php', 'footer.php', 'nav-links.php'] as $s10Partial) {
+$s10HeaderSource = (string) file_get_contents($root . '/portal/Views/partials/header.php');
+$check(
+    !str_contains($s10HeaderSource, '/solicitud'),
+    'Etapa 10: header.php no debe exponer la Solicitud de Servicios.'
+);
+foreach (['footer.php', 'nav-links.php'] as $s10Partial) {
     $s10PartialSource = (string) file_get_contents($root . '/portal/Views/partials/' . $s10Partial);
-    $check(!str_contains($s10PartialSource, '/solicitud'), 'Etapa 10: ' . $s10Partial . ' no debe exponer la Solicitud de Servicios todavía.');
+    $check(
+        str_contains($s10PartialSource, 'Config::serviceRequestLinkEnabled()')
+            && str_contains($s10PartialSource, '/solicitud'),
+        'Etapa 10: ' . $s10Partial . ' solo debe exponer la Solicitud de Servicios tras opt-in del servidor.'
+    );
 }
+$s10HomeSource = (string) file_get_contents($root . '/portal/Views/home.php');
+$check(
+    str_contains($s10HomeSource, 'Config::serviceRequestLinkEnabled()')
+        && str_contains($s10HomeSource, '/solicitud'),
+    'Etapa 10: la home solo debe exponer la Solicitud de Servicios tras opt-in del servidor.'
+);
 
 $s10Config = (string) file_get_contents($root . '/portal/Config.php');
 $s10Env = (string) file_get_contents($root . '/.env.example');
@@ -4277,6 +4292,62 @@ $check(
 $check(
     str_contains($s12Verifier, '.env.bak.*'),
     'Etapa 12: el verificador debe rechazar copias de .env dentro del web root.'
+);
+
+// Etapa 13 — Producción real (autorizada, ejecutada por el responsable).
+$s13Paths = [
+    'acta' => $root . '/docs/portal-clientes/acta-autorizacion-etapa-13.md',
+    'plan' => $root . '/docs/portal-clientes/plan-etapa-13-produccion.md',
+    'manifiesto' => $root . '/docs/portal-clientes/manifiesto-etapa-13-produccion.md',
+    'informe' => $root . '/docs/portal-clientes/informe-ejecucion-etapa-13.md',
+    'preflight' => $root . '/sql/10_portal_clientes/ETAPA13__preflight.sql',
+    'verificacion' => $root . '/sql/10_portal_clientes/ETAPA13__verificacion_produccion.sql',
+    'verificador' => $root . '/tools/php/verificar_etapa13_produccion.php',
+];
+foreach ($s13Paths as $s13Name => $s13Path) {
+    $check(is_file($s13Path), 'Etapa 13: debe existir ' . $s13Name . '.');
+}
+$s13Acta = is_file($s13Paths['acta']) ? (string) file_get_contents($s13Paths['acta']) : '';
+$s13Plan = is_file($s13Paths['plan']) ? (string) file_get_contents($s13Paths['plan']) : '';
+$s13Manifiesto = is_file($s13Paths['manifiesto']) ? (string) file_get_contents($s13Paths['manifiesto']) : '';
+$s13Preflight = is_file($s13Paths['preflight']) ? (string) file_get_contents($s13Paths['preflight']) : '';
+$s13Verifier = is_file($s13Paths['verificador']) ? (string) file_get_contents($s13Paths['verificador']) : '';
+$check(
+    str_contains($s13Acta, '> **Estado:** AUTORIZADA')
+        && str_contains($s13Acta, 'Token real de Invoice Ninja prohibido')
+        && str_contains($s13Acta, '**No recibe cambios de esquema ni datos.**'),
+    'Etapa 13: el acta debe autorizar token real y enlaces, y prohibir cambios en origen_codes.'
+);
+$check(
+    str_contains($s13Plan, 'origen_codes_portal_clientes')
+        && str_contains($s13Plan, 'No ejecutar `V10.002`')
+        && str_contains($s13Plan, '## 9. Rollback'),
+    'Etapa 13: el plan debe cubrir base nueva, V10.002 y rollback.'
+);
+$check(
+    str_contains($s13Manifiesto, 'INVOICE_NINJA_ALLOW_LIVE_CALLS=true')
+        && str_contains($s13Manifiesto, 'PORTAL_SERVICE_REQUEST_LINK_ENABLED=false'),
+    'Etapa 13: el manifiesto debe documentar ambos flags.'
+);
+$check(
+    str_contains($s13Preflight, "current_database() <> 'origen_codes_portal_clientes'")
+        && str_contains((string) file_get_contents($s13Paths['verificacion']), "current_database() <> 'origen_codes_portal_clientes'"),
+    'Etapa 13: el SQL debe exigir la base operativa exacta.'
+);
+$check(
+    str_contains($s10Config, "env('INVOICE_NINJA_ALLOW_LIVE_CALLS', false)")
+        && str_contains($s10Config, 'invoiceNinjaLiveEnabled')
+        && str_contains($s10Config, "env('PORTAL_SERVICE_REQUEST_LINK_ENABLED', false)"),
+    'Etapa 13: la configuración debe soportar modo producción y enlaces por flag.'
+);
+$check(
+    preg_match('/(PORTAL_CUSTOMER_DB_PASS|PORTAL_CUSTOMER_CREDENTIAL_DB_PASS|INVOICE_NINJA_API_TOKEN)=[^\s\#]+/', $s10Env) !== 1,
+    'Etapa 13: .env.example no debe contener secretos.'
+);
+$check(
+    str_contains($s12Verifier, '.env.bak.*')
+        && str_contains($s13Verifier, '--links-enabled'),
+    'Etapa 13: los verificadores deben cubrir secretos y activación de enlaces.'
 );
 
 // Resultado.

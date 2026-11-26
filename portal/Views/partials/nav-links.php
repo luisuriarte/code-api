@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use OrigenSalud\Portal\Config;
 use OrigenSalud\Web\I18n;
 
 /**
@@ -18,6 +19,14 @@ $navItems = [
     ['key' => 'about', 'label' => $t('nav.about'), 'href' => I18n::localizedPath($locale, '/about')],
     ['key' => 'contact', 'label' => $t('nav.contact'), 'href' => I18n::localizedPath($locale, '/contact')],
 ];
+
+if (Config::serviceRequestLinkEnabled()) {
+    $navItems[] = [
+        'key' => 'service_request',
+        'label' => $t('service_request.title'),
+        'href' => I18n::localizedPath($locale, '/solicitud'),
+    ];
+}
 
 $navBase = 'inline-flex w-full items-center justify-start rounded-xl px-3 py-2 text-sm font-medium text-ink-soft transition '
     . 'hover:bg-mint hover:text-teal-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15 '

@@ -10,6 +10,15 @@
 
 BEGIN;
 
+DO $guard$
+BEGIN
+    IF current_database() NOT LIKE 'origen_codes_portal_clientes%' THEN
+        RAISE EXCEPTION 'Base no permitida para V5.001: %', current_database()
+            USING ERRCODE = '42501';
+    END IF;
+END
+$guard$;
+
 DO $revoke$
 DECLARE
     obj text;
