@@ -9,8 +9,10 @@
 
 | Comprobación | Resultado |
 | --- | --- |
-| `git status --short` / commit y push | realizados por el responsable antes de publicar; la transcripción no incluyó la salida |
-| `git rev-parse HEAD` | pendiente de registrar (`git rev-parse HEAD`) |
+| `git status --short` en el PC del responsable | árbol limpio |
+| `git rev-parse HEAD` / `git rev-parse origin/main` | `552903b8121cefe6d2b6a6de7eb2ee5d63c7493c` (ambos) |
+
+Git se gestiona en el PC del responsable, **no en el VPS**. El HEAD se registró desde el repositorio local, sin ejecutar comandos de Git en el servidor.
 | `php tests/run.php` | **OK: 3970 comprobaciones** |
 | `php tools/php/verificar_etapa12_despliegue.php` | **OK: 27 comprobaciones de la Etapa 12** |
 | `php tools/php/verificar_etapa13_produccion.php` | **OK: 29 comprobaciones de la Etapa 13** |
@@ -93,6 +95,5 @@ La Etapa 13 se considera **cerrada en el servidor**: base operativa creada y ver
 
 Datos de registro que faltan en la transcripción, sin impacto en el cierre técnico:
 
-1. `git rev-parse HEAD` del commit de la Etapa 13.
-2. Hash SHA-256 de `origen_codes_portal_clientes_test_20261126_163857.dump`.
-3. Salida del `grep` de DSNs de `.env` que confirme `PORTAL_DB_DSN` y `PORTAL_CUSTOMER_CREDENTIAL_DB_DSN` en `origen_codes`.
+1. Hash SHA-256 de `origen_codes_portal_clientes_test_20261126_163857.dump`.
+2. Salida del `grep` de DSNs de `.env` en el VPS que confirme `PORTAL_DB_DSN` y `PORTAL_CUSTOMER_CREDENTIAL_DB_DSN` en `origen_codes`.
