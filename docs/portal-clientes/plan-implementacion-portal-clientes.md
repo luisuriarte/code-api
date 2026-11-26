@@ -241,7 +241,7 @@ Ver `plan-pruebas-portal-clientes.md`, con la sección 16 para los comandos de e
 
 ## 15. Etapa 12 — Despliegue
 
-**Estado:** autorizada por `acta-autorizacion-etapa-12.md`. Preparada localmente; pendiente de ejecución por el responsable.
+**Estado:** autorizada por `acta-autorizacion-etapa-12.md` y **cerrada**; ver `informe-ejecucion-etapa-12.md`.
 
 Procedimiento: `plan-despliegue-etapa-12.md`. Inventario: `manifiesto-despliegue-etapa-12.md`. Registro: `informe-ejecucion-etapa-12.md`.
 

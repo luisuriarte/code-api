@@ -38,7 +38,7 @@
 | T-07 | I18n y rutas | Funcional | Autorizada en entorno de prueba |
 | T-08 | Solicitud de Servicios | Funcional | Ejecutada con datos ficticios: OK |
 | T-09 | Consumo y métricas | Datos | No aplica: sin medición real |
-| T-10 | Despliegue y rollback | Operación | Autorizada; pendiente de ejecución en Etapa 12 |
+| T-10 | Despliegue y rollback | Operación | Ejecutada en Etapa 12: OK |
 
 ## 4. T-01 — Separación de portales
 

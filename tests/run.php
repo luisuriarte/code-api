@@ -4254,7 +4254,8 @@ $check(
     'Etapa 12: el manifiesto debe fijar el commit y excluir SQL de producción.'
 );
 $check(
-    str_contains($s12Informe, '> **Estado:** en ejecución')
+    (str_contains($s12Informe, '> **Estado:** **cerrada**')
+        || str_contains($s12Informe, '> **Estado:** en ejecución'))
         && str_contains($s12Informe, '## 6. Rollback'),
     'Etapa 12: el informe debe registrar estado y sección de rollback.'
 );

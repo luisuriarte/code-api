@@ -76,7 +76,9 @@ $check(
 
 $informe = $read('docs/portal-clientes/informe-ejecucion-etapa-12.md');
 $check(
-    str_contains($informe, '> **Estado:** en ejecución') && str_contains($informe, '## 6. Rollback'),
+    (str_contains($informe, '> **Estado:** **cerrada**')
+        || str_contains($informe, '> **Estado:** en ejecución'))
+        && str_contains($informe, '## 6. Rollback'),
     'T-10: debe existir el informe de ejecución con estado y rollback.'
 );
 

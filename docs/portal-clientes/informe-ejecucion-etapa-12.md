@@ -2,7 +2,7 @@
 
 > **Fecha:** 2026-11-26.
 > **Autorización:** `acta-autorizacion-etapa-12.md`.
-> **Estado:** en ejecución. Backup, publicación, saneo del archivo expuesto y verificación OK; **pendiente de confirmar rotación de credenciales, Invoice Ninja y el bloque de rollback**.
+> **Estado:** **cerrada**. Publicación verificada; hallazgo de seguridad saneado; sin cambios de esquema en producción.
 > **Ejecutor:** responsable del proyecto. El asistente preparó artefactos; no hizo commit, push ni deploy.
 
 ## 1. Precondiciones
@@ -13,9 +13,9 @@
 | `HEAD` | `21940dd` |
 | `origin/main` | `21940dd` |
 | `git diff --check a184158..HEAD` | sin salida |
-| `php tests/run.php` (VPS) | `OK: 3953 comprobaciones` |
+| `php tests/run.php` (VPS) | `OK: 3955 comprobaciones` |
 | Verificador Etapa 11 (VPS) | `OK: 35 comprobaciones` |
-| Verificador Etapa 12 (VPS) | `OK: 26 comprobaciones` |
+| Verificador Etapa 12 (VPS) | `OK: 60 comprobaciones` con `--site=https://med.origen.ar --post` |
 
 ## 2. Backup previo
 
@@ -34,7 +34,8 @@
 
 | Comprobación | Resultado |
 | --- | --- |
-| Búsqueda de secretos fuera de `.env` | **HALLAZGO**: `.env.bak.20261122154458` dentro del web root con valores reales en `PORTAL_DB_PASS` y `SMTP_PASS`. Pendiente de sanear y rotar. |
+| Búsqueda de secretos fuera de `.env` | Hallazgo saneado: `.env.bak.20261122154458` se movió a `/opt/origen-salud-data/backups/env-history/` con permisos `600`. La URL pública responde `403`. |
+| Rotación | Confirmada por el responsable: rotadas las credenciales de `origen_med` (`PORTAL_DB_PASS`, `SERVICE_REQUEST_DB_PASS`) y `SMTP_PASS`, con `.env` actualizado y `php8.5-fpm` recargado. |
 | `.env.example` | solo valores vacíos; OK |
 | Manifiesto y plan | solo marcadores de ejemplo; OK |
 | `origen_med` (`rolsuper`, `rolconnlimit`) | `f`, `-1` — OK |
@@ -46,49 +47,66 @@
 | Paso | Resultado |
 | --- | --- |
 | Archivos del manifiesto subidos | OK (el VPS ya tenía el runtime de la Etapa 11) |
-| `.env` revisado | OK, sin cambios informados |
+| `.env` revisado | OK; actualizado tras la rotación |
 | `php -l` en `portal/` y `portal-clientes/` | sin errores de sintaxis |
-| Recarga de `php-fpm` | `php8.5-fpm` recargado |
+| Recarga de `php-fpm` | `php8.5-fpm` recargado tras la publicación y tras la rotación |
 | Cambios en Nginx/FreeScout/Invoice Ninja | ninguno |
 
 ## 5. Verificación post-despliegue
 
 | Comprobación | Resultado |
 | --- | --- |
-| `php tests/run.php` en VPS | `OK: 3953 comprobaciones` |
-| `verificar_etapa12_despliegue.php --site=https://med.origen.ar --post` | `FALLOS (1 de 58)`: `/es-AR/docs` no contenía el texto esperado |
-| Causa del fallo | `/es-AR/docs` responde `302` a `/docs?lang=es-AR`; el cliente HTTP no sigue redirecciones. **Falso positivo del verificador**, no defecto del sitio. |
-| Corrección local | usar la URL canónica `/docs?lang=es-AR` para el texto y comprobar por separado que el alias redirige; agregar guarda que rechaza `.env.bak.*` en el web root. |
-| Verificador corregido en local | `OK: 27` sin red, `OK: 60` con `--site=... --post` |
-| Repetición en VPS con el verificador corregido | **pendiente** |
-| Home, DENTAR, OFTAR, UVR, sitemap | sin `5xx` en la corrida anterior |
-| `/portal` y `/portal-clientes` | sin `5xx` en la corrida anterior |
-| Tres locales de `/solicitud` | OK en la corrida anterior |
-| API pública sin `5xx` | OK en la corrida anterior |
-| Sin `/solicitud` en nav, footer ni home | OK en la corrida anterior |
-| Sin secretos en HTML | OK en la corrida anterior |
-| `POST` sin CSRF → `303` | OK en la corrida anterior |
-| Invoice Ninja sin operaciones nuevas | pendiente de confirmación final |
+| `php tests/run.php` en VPS | `OK: 3955 comprobaciones` |
+| `verificar_etapa12_despliegue.php --site=https://med.origen.ar --post` | `OK: 60 comprobaciones` |
+| Home, Docs, DENTAR, OFTAR, UVR, sitemap | sin `5xx`; Docs comprobado en su URL canónica `/docs?lang=es-AR` y el alias `/es-AR/docs` redirige con `302` |
+| `/portal` y `/portal-clientes` | sin `5xx` |
+| Tres locales de `/solicitud` | OK |
+| API pública sin `5xx` | OK |
+| Sin `/solicitud` en nav, footer ni home | OK |
+| Sin secretos en HTML | OK |
+| Sin `.env.bak.*` en el web root | OK |
+| `POST` sin CSRF → `303` | OK |
+| Invoice Ninja sin operaciones nuevas | **confirmado** por el responsable: ningún cliente, presupuesto, factura ni pago |
+
+### Hallazgo cerrado: `/es-AR/docs`
+
+La primera corrida dio `FALLOS (1 de 58)`: `/es-AR/docs` responde `302` a `/docs?lang=es-AR` y el verificador no seguía redirecciones. Era un falso positivo: el contenido sí estaba publicado. Se corrigió el verificador para consultar la URL canónica y validar el alias por separado.
+
+### Hallazgo cerrado: copia de `.env` en el web root
+
+El escaneo encontró `.env.bak.20261122154458` con valores reales en `PORTAL_DB_PASS` y `SMTP_PASS`. Se movió fuera del web root, se dejó con permisos `600`, se confirmó `403` por HTTPS y se rotaron las credenciales. El verificador ahora falla si detecta `.env.bak.*`.
 
 ## 6. Rollback
 
 | Ítem | Resultado |
 | --- | --- |
-| ¿Fue necesario? | No por fallo funcional. Se pegó el bloque del plan con el marcador literal `YYYYMMDD_HHMMSS`, que **no corresponde al backup real** (`20261126_155229`). Confirmar si se ejecutó: de haberse ejecutado, `tar` no encontró el archivo y el sitio sigue con la versión desplegada. |
-| Motivo | Ninguno documentado. |
-| Artefacto restaurado | Ninguno confirmado. |
-| Recarga de `php-fpm` | `php8.5-fpm` recargada tras la publicación. |
+| ¿Fue necesario? | No por fallo funcional. |
+| Intento registrado | Se ejecutó el bloque con el marcador literal `YYYYMMDD_HHMMSS`. Ese archivo no existe: `tar` no pudo abrirlo, por lo que **no hubo restauración de archivos**. Sí se ejecutaron `chown -R www-data:www-data` y la recarga de `php8.5-fpm`. |
+| Estado posterior | Verificado: `OK: 3955 comprobaciones` y `OK: 60 comprobaciones` después del intento, por lo que el sitio quedó en la versión desplegada. |
+| Artefacto restaurado | Ninguno; no fue necesario. |
 | Migraciones ejecutadas en producción | Ninguna. |
 
-## 7. Acciones pendientes para el cierre
+Si en el futuro hiciera falta rollback, usar el nombre real:
 
-1. Sacar `.env.bak.20261122154458` del web root, guardarlo en `/opt/origen-salud-data/backups/` con permisos `600`.
-2. Rotar `PORTAL_DB_PASS` y `SMTP_PASS` (compartían valor) y actualizar `.env`, el rol de PostgreSQL y el usuario SMTP; recargar `php-fpm`.
-3. Confirmar que el archivo ya no es accesible por HTTPS.
-4. Subir `tools/php/verificar_etapa12_despliegue.php` corregido y repetir con `--site=https://med.origen.ar --post`; esperado `OK: 60 comprobaciones`.
-5. Confirmar en Invoice Ninja que no hay clientes, presupuestos, facturas ni pagos nuevos.
-6. Completar este informe con el resultado final.
+```bash
+sudo tar -xzf /opt/origen-salud-data/backups/code-api_20261126_155229.tar.gz \
+  -C /var/www/html/origen.ar
+sudo chown -R www-data:www-data /var/www/html/origen.ar/code-api
+sudo systemctl reload php8.5-fpm
+```
+
+## 7. Acciones pendientes
+
+Ninguna.
 
 ## 8. Cierre
 
-La Etapa 12 **no se considera cerrada** hasta completar las seis acciones anteriores. No se ejecutaron migraciones en `origen_codes` y no se hizo commit, push ni deploy por parte del asistente.
+La **Etapa 12 — Despliegue** queda **cerrada**:
+
+- Backup lógico y de código verificado con hashes.
+- Código publicado y `php -l` sin errores.
+- Verificadores: `OK: 3955`, `OK: 35`, `OK: 60`.
+- Hallazgo de secreto expuesto saneado y credenciales rotadas.
+- Sin cambios de esquema ni datos en `origen_codes`; sin migraciones `V*` en producción.
+- Invoice Ninja sin clientes, presupuestos, facturas ni pagos nuevos.
+- El asistente no hizo commit, push ni deploy.
