@@ -3,7 +3,7 @@
 > **Fecha:** 2026-11-26.
 > **Entorno:** `origen_codes_portal_clientes_test` y sitio público `https://med.origen.ar`.
 > **Autorización:** `acta-autorizacion-etapa-11.md`.
-> **Estado:** en curso. T-01…T-07 y comprobaciones de migración, OK. T-08 pendiente de envío manual.
+> **Estado:** cerrada. T-01…T-08 y comprobaciones de migración, OK. T-09 no aplica. T-10 no autorizado (Etapa 12).
 
 ## 1. Migraciones
 
@@ -131,7 +131,30 @@ SR-20261126-FA328564|received|none|1
 
 El correo llegó a `med@origen.ar` con el detalle de la solicitud, 2 unidades de un servicio y total estimado de `100.000,00`, aclarando que no constituye factura ni presupuesto aceptado. El identificador fiscal quedó vacío, por lo que la deduplicación usará organización + correo.
 
-Queda pendiente confirmar los encabezados `Reply-To`/ausencia de copias ocultas, la ausencia de operaciones en Invoice Ninja y el envío duplicado.
+Encabezados del primer correo: `Return-Path` y `Delivered-To` son `med@origen.ar`, no hay `Cc` ni `Bcc`, y la firma DKIM incluye `reply-to` entre los encabezados firmados. El fragmento pegado no mostró la línea `Reply-To:`; queda confirmarla en el código fuente completo.
+
+Invoice Ninja: verificado por el responsable, **no se creó ningún** cliente, presupuesto, factura ni pago.
+
+Envío duplicado con los mismos datos, referencia `SR-20261126-1B94F9E5`:
+
+```text
+solicitudes             = 2
+marcadas_duplicadas     = 1
+para_revision           = 1
+status                  = received (1), needs_review (1)
+ninja_client_status     = none (2)
+items                   = 2
+solicitudes_con_items   = 2
+solicitudes_sin_items   = 0
+columnas_prohibidas     = 0
+```
+
+El responsable confirmó en el código fuente completo del correo la línea `Reply-To: <etapa11@ejemplo.test>`, sin `Cc` ni `Bcc` expuestos. El vínculo `duplicate_of` de la segunda solicitud quedó verificado:
+
+```text
+SR-20261126-FA328564|received|f|1
+SR-20261126-1B94F9E5|needs_review|t|1
+```
 
 ## 4. Pendiente para cerrar T-08
 
