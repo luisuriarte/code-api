@@ -36,7 +36,7 @@
 | T-05 | Seguridad general | Seguridad | Autorizada en entorno de prueba |
 | T-06 | Regresión | Regresión | Autorizada; sin `/cart` |
 | T-07 | I18n y rutas | Funcional | Autorizada en entorno de prueba |
-| T-08 | Solicitud de Servicios | Funcional | Autorizada con datos ficticios |
+| T-08 | Solicitud de Servicios | Funcional | Ejecutada con datos ficticios: OK |
 | T-09 | Consumo y métricas | Datos | No aplica: sin medición real |
 | T-10 | Despliegue y rollback | Operación | No autorizada; pertenece a Etapa 12 |
 

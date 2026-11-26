@@ -231,4 +231,15 @@ En el VPS, `php tests/run.php` terminó en `OK: 3912 comprobaciones` y el verifi
 
 ## 6. Cierre
 
-La Etapa 11 no se considera cerrada hasta completar el punto 4 y el hallazgo de la sección 5. La Etapa 12 (despliegue) sigue sin autorización.
+La **Etapa 11 — Pruebas** queda cerrada en local y en el entorno de prueba:
+
+- `php tests/run.php` → `OK: 3942 comprobaciones`.
+- Verificador local → `OK: 35 comprobaciones de la Etapa 11`.
+- Verificador en VPS con `--post` → `OK: 45 comprobaciones`.
+- `V10.001` y `V10.002` verificadas en `origen_codes_portal_clientes_test`.
+- DSN dedicado operativo contra la base aislada; `origen_med` con `rolconnlimit = -1`.
+- T-08: dos solicitudes, un duplicado, una en `needs_review`, dos ítems, sin precios guardados y sin operaciones comerciales en Invoice Ninja.
+- Correo con `Reply-To` del solicitante y sin copias ocultas expuestas.
+- T-09 no aplica por falta de medición real; T-10 sigue sin autorización.
+
+No se hizo commit, push ni deploy. La Etapa 12 requiere autorización explícita del responsable.
