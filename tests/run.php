@@ -3883,6 +3883,228 @@ $check(
     'Etapa 9: debe existir el acta de autorización.'
 );
 
+// Adenda autorizada: DENTAR y OFTAR en el catálogo técnico (V7.002).
+$s9AddendaFiles = [
+    'up.sql' => $root . '/sql/10_portal_clientes/V7.002__dentar_oftar_services.up.sql',
+    'down.sql' => $root . '/sql/10_portal_clientes/V7.002__dentar_oftar_services.down.sql',
+    'verify.sql' => $root . '/sql/10_portal_clientes/V7.002__dentar_oftar_services.verify.sql',
+    'verify_rollback.sql' => $root . '/sql/10_portal_clientes/V7.002__dentar_oftar_services.verify_rollback.sql',
+];
+$s9AddendaSql = [];
+foreach ($s9AddendaFiles as $s9AddendaName => $s9AddendaPath) {
+    $check(is_file($s9AddendaPath), 'Etapa 9 adenda: debe existir V7.002 ' . $s9AddendaName);
+    $s9AddendaSql[$s9AddendaName] = is_file($s9AddendaPath) ? (string) file_get_contents($s9AddendaPath) : '';
+}
+foreach ($s9AddendaSql as $s9AddendaName => $s9AddendaContent) {
+    $check(
+        str_contains($s9AddendaContent, "current_database() NOT LIKE 'origen_codes_portal_clientes%'"),
+        'Etapa 9 adenda: V7.002 ' . $s9AddendaName . ' debe rechazar bases que no sean de prueba.'
+    );
+}
+$s9AddendaUp = $s9AddendaSql['up.sql'] ?? '';
+$check(
+    str_contains($s9AddendaUp, "'api.dentar'")
+        && str_contains($s9AddendaUp, "'api.oftar'")
+        && str_contains($s9AddendaUp, "'/v1/odontologia/diagnosticos'")
+        && str_contains($s9AddendaUp, "'/v1/catalogs/{catalog_code}/items'"),
+    'Etapa 9 adenda: V7.002 debe insertar DENTAR y OFTAR con rutas verificadas.'
+);
+$check(
+    str_contains($s9AddendaUp, 'ON CONFLICT (code) DO NOTHING')
+        && !preg_match('/\b(price|amount|invoice_number|payment)\b/i', $s9AddendaUp),
+    'Etapa 9 adenda: V7.002 debe ser idempotente y no duplicar datos comerciales.'
+);
+$check(
+    str_contains($s9AddendaSql['down.sql'] ?? '', 'DELETE FROM os_customer.service')
+        && !str_contains($s9AddendaSql['down.sql'] ?? '', 'CASCADE'),
+    'Etapa 9 adenda: el rollback debe borrar solo las dos filas, sin cascada.'
+);
+$check(
+    str_contains($s9AddendaSql['verify.sql'] ?? '', 'servicios_dentar_oftar')
+        && str_contains($s9AddendaSql['verify.sql'] ?? '', 'columnas_prohibidas'),
+    'Etapa 9 adenda: la verificación debe comprobar las dos filas y la ausencia de precios.'
+);
+$check(
+    str_contains($s9AddendaSql['verify_rollback.sql'] ?? '', 'servicios_dentar_oftar_restantes'),
+    'Etapa 9 adenda: la verificación del rollback debe comprobar que no quedan filas.'
+);
+$s9SqlReadme = (string) file_get_contents($root . '/sql/10_portal_clientes/README.md');
+$s9Acta = (string) file_get_contents($root . '/docs/portal-clientes/acta-autorizacion-etapa-9.md');
+$check(
+    str_contains($s9SqlReadme, 'V7.002__dentar_oftar_services.up.sql')
+        && str_contains($s9SqlReadme, 'servicios_dentar_oftar = 2'),
+    'Etapa 9 adenda: el README de SQL debe documentar V7.002 y su verificación.'
+);
+$check(
+    str_contains($s9Acta, 'Adenda — DENTAR y OFTAR'),
+    'Etapa 9 adenda: el acta debe registrar la autorización de DENTAR y OFTAR.'
+);
+
+// Etapa 10 — Solicitud de Servicios (sin «cart» ni «carrito»).
+$s10Files = [
+    'controller' => $root . '/portal/Controllers/ServiceRequestController.php',
+    'service' => $root . '/portal/Services/ServiceRequestService.php',
+    'catalog' => $root . '/portal/Services/InvoiceNinjaCatalogService.php',
+    'repository' => $root . '/portal/Repositories/PublicServiceRequestRepository.php',
+    'view' => $root . '/portal/Views/service-request.php',
+];
+foreach ($s10Files as $s10Name => $s10Path) {
+    $check(is_file($s10Path), 'Etapa 10: debe existir el archivo ' . $s10Name . ' de la Solicitud de Servicios.');
+}
+$s10SqlFiles = [];
+foreach (['up', 'down', 'verify', 'verify_rollback'] as $s10Step) {
+    $s10Path = $root . '/sql/10_portal_clientes/V10.001__public_service_requests.' . $s10Step . '.sql';
+    $check(is_file($s10Path), 'Etapa 10: debe existir V10.001 ' . $s10Step . '.');
+    $s10SqlFiles[$s10Step] = is_file($s10Path) ? (string) file_get_contents($s10Path) : '';
+}
+$s10ActaPath = $root . '/docs/portal-clientes/acta-autorizacion-etapa-10.md';
+$check(is_file($s10ActaPath), 'Etapa 10: debe existir el acta de autorización.');
+
+$s10Sources = [];
+foreach ($s10Files as $s10Path) {
+    $s10Sources[] = is_file($s10Path) ? (string) file_get_contents($s10Path) : '';
+}
+foreach ($s10SqlFiles as $s10Sql) {
+    $s10Sources[] = $s10Sql;
+}
+foreach ($s10Sources as $s10Source) {
+    $check(
+        preg_match('/\b(cart|carrito)\b/i', $s10Source) !== 1,
+        'Etapa 10: ni el código ni el SQL pueden usar «cart» ni «carrito».'
+    );
+}
+
+$s10Router = (string) file_get_contents($root . '/portal/Router.php');
+foreach (['solicitud', 'solicitud/agregar', 'solicitud/quitar', 'solicitud/enviar'] as $s10Route) {
+    $check(str_contains($s10Router, "'" . $s10Route . "'"), 'Etapa 10: debe existir la ruta ' . $s10Route . '.');
+}
+foreach (['header.php', 'footer.php', 'nav-links.php'] as $s10Partial) {
+    $s10PartialSource = (string) file_get_contents($root . '/portal/Views/partials/' . $s10Partial);
+    $check(!str_contains($s10PartialSource, '/solicitud'), 'Etapa 10: ' . $s10Partial . ' no debe exponer la Solicitud de Servicios todavía.');
+}
+
+$s10Config = (string) file_get_contents($root . '/portal/Config.php');
+$s10Env = (string) file_get_contents($root . '/.env.example');
+$check(
+    str_contains($s10Config, "'request' => (int) env('RATE_REQUEST', '5')")
+        && !str_contains($s10Config, "'cart' =>"),
+    'Etapa 10: el límite debe llamarse request y no cart.'
+);
+$check(
+    str_contains($s10Env, 'RATE_REQUEST=5') && preg_match('/^RATE_CART=/m', $s10Env) !== 1,
+    'Etapa 10: .env.example debe documentar RATE_REQUEST sin RATE_CART activo.'
+);
+$check(
+    str_contains($s10Env, 'INVOICE_NINJA_ALLOW_TEST_CALLS=false')
+        && str_contains($s10Env, 'INVOICE_NINJA_API_PREFIX=/api/v1'),
+    'Etapa 10: .env.example debe documentar el token de prueba y el prefijo de API.'
+);
+
+$s10Catalog = (string) file_get_contents($s10Files['catalog']);
+$check(
+    str_contains($s10Catalog, "HttpClient::request(")
+        && str_contains($s10Catalog, "'GET'")
+        && preg_match('/\b(POST|PUT|PATCH|DELETE)\b/', $s10Catalog) !== 1,
+    'Etapa 10: Invoice Ninja debe consultarse solo con GET.'
+);
+$check(
+    str_contains($s10Catalog, "'X-Api-Token: '")
+        && str_contains($s10Catalog, "'/products'")
+        && str_contains($s10Catalog, "'/clients'"),
+    'Etapa 10: el token viaja en cabecera y solo se consultan productos y clientes.'
+);
+$s10Repository = (string) file_get_contents($s10Files['repository']);
+$check(
+    str_contains($s10Repository, 'INSERT INTO os_customer.public_service_request')
+        && str_contains($s10Repository, 'INSERT INTO os_customer.public_service_request_item')
+        && preg_match('/\b(UPDATE|DELETE\s+FROM)\b/i', $s10Repository) !== 1,
+    'Etapa 10: el repositorio solo inserta y consulta solicitudes.'
+);
+$s10Service = (string) file_get_contents($s10Files['service']);
+$check(
+    str_contains($s10Service, "RateLimiter::hit('request'")
+        && str_contains($s10Service, "hash('sha256'")
+        && str_contains($s10Service, 'Csrf::rotate()'),
+    'Etapa 10: el envío usa rate limiting, deduplicación y rotación de CSRF.'
+);
+$s10View = (string) file_get_contents($s10Files['view']);
+$check(
+    str_contains($s10View, "e(\$t('service_request.title'))")
+        && str_contains($s10View, 'Csrf::FIELD')
+        && !str_contains($s10View, '/cart'),
+    'Etapa 10: la vista usa i18n, CSRF y ninguna ruta retirada.'
+);
+
+$s10Locales = ['es-AR', 'en', 'pt-BR'];
+$s10KeySets = [];
+foreach ($s10Locales as $s10Locale) {
+    $s10Messages = Yaml::parseFile($root . '/portal/translations/messages.' . $s10Locale . '.yaml');
+    $s10Section = is_array($s10Messages['service_request'] ?? null) ? $s10Messages['service_request'] : [];
+    $s10KeySets[$s10Locale] = array_keys($s10Section);
+    $check(count($s10KeySets[$s10Locale]) >= 50, 'Etapa 10: ' . $s10Locale . ' debe incluir las claves de la Solicitud de Servicios.');
+}
+foreach (['en', 'pt-BR'] as $s10Locale) {
+    $check(
+        $s10KeySets[$s10Locale] === $s10KeySets['es-AR'],
+        'Etapa 10: paridad de claves service_request entre es-AR y ' . $s10Locale . '.'
+    );
+}
+
+foreach ($s10SqlFiles as $s10Step => $s10Sql) {
+    $check(
+        str_contains($s10Sql, "current_database() NOT LIKE 'origen_codes_portal_clientes%'"),
+        'Etapa 10: V10.001 ' . $s10Step . ' debe rechazar bases que no sean de prueba.'
+    );
+}
+$s10Up = $s10SqlFiles['up'] ?? '';
+$check(
+    str_contains($s10Up, 'CREATE TABLE os_customer.public_service_request')
+        && str_contains($s10Up, 'CREATE TABLE os_customer.public_service_request_item'),
+    'Etapa 10: V10.001 debe crear solo las dos tablas de la solicitud.'
+);
+$check(
+    str_contains($s10Up, 'GRANT SELECT, INSERT ON TABLE os_customer.public_service_request TO origen_med')
+        && !str_contains($s10Up, 'ALTER DEFAULT PRIVILEGES'),
+    'Etapa 10: los privilegios son por objeto y no predeterminados.'
+);
+$check(
+    !preg_match('/\b(price|amount|total|invoice_number|payment|currency)\b/i', $s10Up),
+    'Etapa 10: V10.001 no puede duplicar importes ni datos comerciales.'
+);
+$check(
+    str_contains($s10SqlFiles['down'] ?? '', 'DROP TABLE IF EXISTS')
+        && !str_contains($s10SqlFiles['down'] ?? '', 'CASCADE'),
+    'Etapa 10: el rollback elimina las tablas sin cascada.'
+);
+$check(
+    str_contains($s10SqlFiles['verify'] ?? '', 'columnas_prohibidas')
+        && str_contains($s10SqlFiles['verify'] ?? '', 'sin_insert_en_habilitaciones'),
+    'Etapa 10: la verificación comprueba ausencia de precios y de privilegios extra.'
+);
+$check(
+    str_contains($s10SqlFiles['verify_rollback'] ?? '', 'tablas_v10_restantes'),
+    'Etapa 10: la verificación del rollback comprueba que no quedan tablas.'
+);
+
+$s10Acta = is_file($s10ActaPath) ? (string) file_get_contents($s10ActaPath) : '';
+$s10Plan = (string) file_get_contents($root . '/docs/portal-clientes/plan-implementacion-portal-clientes.md');
+$s10SqlReadme = (string) file_get_contents($root . '/sql/10_portal_clientes/README.md');
+$check(
+    str_contains($s10Acta, 'Solicitud de Servicios')
+        && str_contains($s10Acta, 'token de prueba')
+        && str_contains($s10Acta, 'Sin** enlaces en nav'),
+    'Etapa 10: el acta debe registrar nombre, token de prueba y sin navegación.'
+);
+$check(
+    str_contains($s10Plan, 'Solicitud de Servicios sin exigir cuenta.'),
+    'Etapa 10: el plan debe usar el nombre aprobado.'
+);
+$check(
+    str_contains($s10SqlReadme, 'V10.001__public_service_requests.up.sql')
+        && str_contains($s10SqlReadme, 'tablas_v10 = 2'),
+    'Etapa 10: el README de SQL debe documentar V10.001 y su verificación.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

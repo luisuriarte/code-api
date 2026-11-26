@@ -229,7 +229,7 @@ Esperado: `200` en `/health` y `/v1/domains` antes de revocar; después de revoc
 
 ## 7. Etapa 9 — Interfaz del portal
 
-Sin migración SQL: solo controladores, vistas, traducciones y rutas `GET`.
+Sin migración SQL de estructura: solo controladores, vistas, traducciones y rutas `GET`. La adenda autorizada DENTAR/OFTAR agrega dos filas al catálogo técnico con `V7.002`; no crea tablas ni columnas.
 
 ### Rutas nuevas
 
@@ -266,6 +266,7 @@ La URL se lee del entorno del servidor; nunca se deriva del `Host` de la petici�
 - `php -l` en todos los archivos PHP del portal de clientes: sin errores.
 - `php tests/run.php`: comprobaciones de rutas, controladores, vistas, claves i18n en los tres idiomas, ausencia de ruta de consumo y ausencia de importes en las vistas.
 - 39 claves i18n nuevas; las mismas en `es-AR`, `en` y `pt-BR`.
+- Adenda DENTAR/OFTAR: cuatro archivos `V7.002`, con guarda de base de prueba, verificación de dos filas y rollback sin cascada.
 - Sin llamadas HTTP nuevas a Invoice Ninja y sin acceso a la base de producción.
 
 ## 8. Estado de producción

@@ -45,7 +45,7 @@ Cada entrega posterior debe distinguir:
 | 7 | Servicios y habilitaciones | Implementación | Entitlements administrados | **Requerida** |
 | 8 | Credenciales API | Implementación | Gestión según mecanismo real | **Requerida, específica** |
 | 9 | Interfaz del portal | Implementación | Secciones y i18n | **Requerida** |
-| 10 | Contratación pública | Implementación | Carrito y solicitud comercial | **Requerida** |
+| 10 | Contratación pública | Implementación | Solicitud de Servicios y registro para revisión | **Autorizada en local**; ver `acta-autorizacion-etapa-10.md` |
 | 11 | Pruebas | Verificación | Plan de pruebas ejecutado | Parte de cada etapa |
 | 12 | Despliegue | Producción | Publicación | **Requerida, explícita** |
 
@@ -220,9 +220,11 @@ Cualquier cambio que afecte:
 
 ## 13. Etapa 10 — Contratación pública
 
+> Estado: autorizada en local por `acta-autorizacion-etapa-10.md`. Sin publicación en navegación ni operaciones comerciales reales.
+
 **Propuesta:**
 
-- Carrito sin exigir cuenta.
+- Solicitud de Servicios sin exigir cuenta.
 - Formulario con datos mínimos de organización y contacto.
 - Validación backend de productos y precios contra Invoice Ninja.
 - CSRF, rate limiting y protección anti-spam.

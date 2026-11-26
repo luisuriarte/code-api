@@ -17,22 +17,32 @@
 - `V7.001__services_entitlements.down.sql`: revierte solo la Etapa 7; conserva V5, V6 y la auditoría.
 - `V7.001__services_entitlements.verify.sql`: verificación `SELECT`-only de la Etapa 7.
 - `V7.001__services_entitlements.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V7.
+- `V7.002__dentar_oftar_services.up.sql`: agrega DENTAR y OFTAR al catálogo técnico; dos filas, sin precios ni UVR.
+- `V7.002__dentar_oftar_services.down.sql`: elimina solo esas dos filas; no toca V7.001 ni las habilitaciones.
+- `V7.002__dentar_oftar_services.verify.sql`: verificación `SELECT`-only de V7.002.
+- `V7.002__dentar_oftar_services.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V7.002.
 - `V8.001__api_credentials.up.sql`: metadatos de credenciales de la API propia. No modifica `public.api_clients` ni guarda claves.
 - `V8.001__api_credentials.down.sql`: revierte solo la Etapa 8; conserva V5, V6, V7 y la auditoría.
 - `V8.001__api_credentials.verify.sql`: verificación `SELECT`-only de la Etapa 8.
 - `V8.001__api_credentials.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V8.
+- `V10.001__public_service_requests.up.sql`: dos tablas para la Solicitud de Servicios pública; sin precios ni importes.
+- `V10.001__public_service_requests.down.sql`: elimina solo esas dos tablas; sin cascada.
+- `V10.001__public_service_requests.verify.sql`: verificación `SELECT`-only de V10.001.
+- `V10.001__public_service_requests.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V10.001.
 
 ## Autorización
 
 - Etapa 5: `docs/portal-clientes/acta-autorizacion-etapa-5.md`.
 - Etapa 6: `docs/portal-clientes/acta-autorizacion-etapa-6.md`.
 - Etapa 7: `docs/portal-clientes/acta-autorizacion-etapa-7.md`.
+- Adenda DENTAR/OFTAR: `docs/portal-clientes/acta-autorizacion-etapa-9.md`.
 - Etapa 8: `docs/portal-clientes/acta-autorizacion-etapa-8.md`.
+- Etapa 10: `docs/portal-clientes/acta-autorizacion-etapa-10.md`.
 
 ## Orden de migraciones
 
-Aplicar: `V5.001 up` → `V6.001 up` → `V7.001 up` → `V8.001 up`.  
-Revertir: `V8.001 down` → `V7.001 down` → `V6.001 down` → `V5.001 down`.
+Aplicar: `V5.001 up` → `V6.001 up` → `V7.001 up` → `V7.002 up` → `V8.001 up` → `V10.001 up`.  
+Revertir: `V10.001 down` → `V8.001 down` → `V7.002 down` → `V7.001 down` → `V6.001 down` → `V5.001 down`.
 
 `V6.001` y `V7.001` usan la función `os_customer.touch_updated_at()`, creada por `V5.001`. Por eso sus `down` deben ejecutarse antes que el de V5.
 
@@ -131,5 +141,55 @@ VALUES (<id de app_user de prueba>, <id de app_user de prueba>);
 Si se ejecuta el `down`, esa fila se elimina con la tabla y debe aprovisionarse de nuevo tras reaplicar `up`. Sin ese paso, ningún usuario puede verificar pagos ni habilitar servicios.
 
 Los cuatro archivos de V7 llevan una guarda: se niegan a ejecutarse si `current_database()` no empieza con `origen_codes_portal_clientes`. Esto evita accidentes con variables de shell vacías.
+
+### Adenda DENTAR y OFTAR (V7.002)
+
+Autorizada en `docs/portal-clientes/acta-autorizacion-etapa-9.md`. Se aplica **después** de V7.001 y antes de V8.001:
+
+```bash
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V7.002__dentar_oftar_services.up.sql
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V7.002__dentar_oftar_services.verify.sql
+```
+
+La verificación debe devolver `servicios_dentar_oftar = 2`, `servicios_verificados = 15`, `capacidades_inexistentes = 0`, `columnas_prohibidas = 0` y `catalogo_solo_lectura = t`. No se crean tablas, columnas, grants ni precios; solo dos filas en `os_customer.service`.
+
+Rollback antes del `down` de V7.001:
+
+```bash
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V7.002__dentar_oftar_services.down.sql
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V7.002__dentar_oftar_services.verify_rollback.sql
+```
+
+El rollback debe devolver `servicios_dentar_oftar_restantes = 0` y `servicios_verificados = 13`. Si ya existen habilitaciones o relaciones de servicio para DENTAR/OFTAR, el `DELETE` falla por la restricción de integridad: no se borra en cascada.
+
+### Etapa 10 — Solicitud de Servicios (V10.001)
+
+Se aplica **después** de V8.001. No modifica V5, V6, V7, V7.002 ni V8:
+
+```bash
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.001__public_service_requests.up.sql
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.001__public_service_requests.verify.sql
+```
+
+Esperado: `tablas_v10 = 2`, `columnas_prohibidas = 0`, `servicios_verificados = 15`, `capacidades_inexistentes = 0`, `usa_esquema = t`, `lee_solicitudes = t`, `escribe_solicitudes = t`, `sin_update = t`, `sin_delete = t`, `escribe_items = t`, `secuencia_solicitudes = t`, `sin_insert_en_servicios = t`, `sin_insert_en_habilitaciones = t` y `total_tablas = 23`.
+
+`origen_med` recibe `USAGE` en `os_customer` y `SELECT, INSERT` solo en las dos tablas nuevas, más `USAGE` en sus secuencias. No recibe `UPDATE`, `DELETE` ni acceso a `service`, `entitlement` ni al resto del esquema. No se usa `ALTER DEFAULT PRIVILEGES`.
+
+Rollback **antes** del `down` de V8.001:
+
+```bash
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.001__public_service_requests.down.sql
+sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
+  -f sql/10_portal_clientes/V10.001__public_service_requests.verify_rollback.sql
+```
+
+Esperado: `tablas_v10_restantes = 0`, `servicios_verificados = 15` y `total_tablas = 21`. No hay `CASCADE`: si existen filas relacionadas, el `DROP` falla y debe revisarse antes de forzar cualquier acción.
 
 **Prohibido:** ejecutar cualquiera de estos archivos en `origen_codes` productiva.

@@ -41,14 +41,51 @@ final class Config
         ];
     }
 
-    /** @return array{base_url: string, token: string, timeout: int} */
+    /**
+     * Integración de solo lectura con Invoice Ninja para la Solicitud de Servicios.
+     *
+     * El token es de prueba, vive solo en el servidor y nunca se expone. Las
+     * llamadas HTTP requieren además el opt-in explícito `INVOICE_NINJA_ALLOW_TEST_CALLS`.
+     *
+     * @return array{
+     *     base_url: string,
+     *     api_prefix: string,
+     *     token: string,
+     *     allow_test_calls: bool,
+     *     timeout: int,
+     *     retries: int,
+     *     catalog_limit: int
+     * }
+     */
     public static function invoiceNinja(): array
     {
+        $baseUrl = rtrim(trim((string) env('INVOICE_NINJA_BASE_URL', 'https://gestion.uriarte.ar')), '/');
+        if ($baseUrl === '' || !str_starts_with($baseUrl, 'https://')) {
+            $baseUrl = 'https://gestion.uriarte.ar';
+        }
+
+        $prefix = trim((string) env('INVOICE_NINJA_API_PREFIX', '/api/v1'));
+        if ($prefix === '' || !str_starts_with($prefix, '/')) {
+            $prefix = '/api/v1';
+        }
+
         return [
-            'base_url' => rtrim(trim((string) env('INVOICE_NINJA_BASE_URL', 'https://gestion.uriarte.ar')), '/'),
+            'base_url' => $baseUrl,
+            'api_prefix' => rtrim($prefix, '/'),
             'token' => (string) env('INVOICE_NINJA_API_TOKEN', ''),
-            'timeout' => (int) env('INVOICE_NINJA_TIMEOUT', '8'),
+            'allow_test_calls' => filter_var(env('INVOICE_NINJA_ALLOW_TEST_CALLS', false), FILTER_VALIDATE_BOOL),
+            'timeout' => max(1, min(30, (int) env('INVOICE_NINJA_TIMEOUT', '8'))),
+            'retries' => max(0, min(2, (int) env('INVOICE_NINJA_RETRIES', '1'))),
+            'catalog_limit' => max(1, min(100, (int) env('INVOICE_NINJA_CATALOG_LIMIT', '100'))),
         ];
+    }
+
+    /** Indica si están dadas las condiciones para consultar la instancia de prueba. */
+    public static function invoiceNinjaHttpEnabled(): bool
+    {
+        $config = self::invoiceNinja();
+
+        return $config['allow_test_calls'] === true && $config['token'] !== '';
     }
 
     /** @return array{url: string, key: string, session: string, timeout: int} */
@@ -131,12 +168,12 @@ final class Config
         return $emails;
     }
 
-    /** @return array{contact: int, cart: int, browse: int, window: int} */
+    /** @return array{contact: int, request: int, browse: int, window: int} */
     public static function rateLimits(): array
     {
         return [
             'contact' => (int) env('RATE_CONTACT', '5'),
-            'cart' => (int) env('RATE_CART', '5'),
+            'request' => (int) env('RATE_REQUEST', '5'),
             'browse' => (int) env('RATE_BROWSE', '120'),
             'window' => (int) env('RATE_WINDOW', '3600'),
         ];

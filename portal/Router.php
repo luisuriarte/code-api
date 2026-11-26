@@ -19,6 +19,7 @@ use OrigenSalud\Portal\Controllers\ContactController;
 use OrigenSalud\Portal\Controllers\DentarController;
 use OrigenSalud\Portal\Controllers\HomeController;
 use OrigenSalud\Portal\Controllers\OftarController;
+use OrigenSalud\Portal\Controllers\ServiceRequestController;
 use OrigenSalud\Web\I18n;
 
 /**
@@ -144,6 +145,29 @@ final class Router
             }
 
             ContactController::submit($locale);
+
+            return;
+        }
+
+        if ($section === 'solicitud') {
+            ServiceRequestController::index($locale, $currentPath);
+
+            return;
+        }
+
+        $postActions = [
+            'solicitud/agregar' => 'add',
+            'solicitud/quitar' => 'remove',
+            'solicitud/enviar' => 'send',
+        ];
+        if (isset($postActions[$section])) {
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+                $this->notFound($locale, $currentPath);
+
+                return;
+            }
+
+            ServiceRequestController::{$postActions[$section]}($locale);
 
             return;
         }
