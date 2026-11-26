@@ -76,7 +76,7 @@ $check(
 
 $informe = $read('docs/portal-clientes/informe-ejecucion-etapa-12.md');
 $check(
-    str_contains($informe, 'pendiente de ejecución') && str_contains($informe, 'Rollback'),
+    str_contains($informe, '> **Estado:** en ejecución') && str_contains($informe, '## 6. Rollback'),
     'T-10: debe existir el informe de ejecución con estado y rollback.'
 );
 
@@ -165,6 +165,11 @@ $check(
     preg_match('/(INVOICE_NINJA_API_TOKEN|SMTP_PASS|PORTAL_DB_PASS|SERVICE_REQUEST_DB_PASS)=[^\s\#]+/', $runtimeSources) !== 1,
     'T-10: no debe haber secretos con valor en el código de ejecución.'
 );
+$envBackups = glob($root . '/.env.bak.*') ?: [];
+$check(
+    $envBackups === [],
+    'T-10: no debe haber copias de .env con secretos dentro del web root.'
+);
 
 // ---------------------------------------------------------------------------
 // Modo HTTP opcional, de solo lectura salvo el caso --post.
@@ -188,7 +193,7 @@ if ($site !== null) {
     if (str_starts_with($site, 'https://')) {
         $pages = [
             ['/es-AR', 'Origen Salud'],
-            ['/es-AR/docs', 'Documentaci'],
+            ['/docs?lang=es-AR', 'Documentaci'],
             ['/es-AR/dentar', 'DENTAR'],
             ['/es-AR/oftar', 'OFTAR'],
             ['/es-AR/sitemap', ''],
@@ -221,6 +226,12 @@ if ($site !== null) {
                 );
             }
         }
+
+        $docsAlias = HttpClient::request('GET', $site . '/es-AR/docs', ['Accept: text/html'], null, 10);
+        $check(
+            $docsAlias['status'] === 302,
+            'T-10: /es-AR/docs debe redirigir al centro de documentación canónico.'
+        );
 
         $api = HttpClient::request('GET', $site . '/v1', ['Accept: application/json'], null, 10);
         $check($api['status'] < 500, 'T-10: la API pública no debe responder 5xx.');

@@ -81,9 +81,11 @@ git diff --check a184158..HEAD
 grep -RIn --exclude-dir=.git --exclude=.env \
   -E 'INVOICE_NINJA_API_TOKEN=.+|SMTP_PASS=.+|PORTAL_DB_PASS=.+' . \
   | head -20
+
+ls -la .env.bak.* 2>/dev/null || true
 ```
 
-La última búsqueda no debe mostrar valores reales. Si aparece algo, detener y corregir antes de publicar.
+La última búsqueda no debe mostrar valores reales. Si aparece algo, detener y corregir antes de publicar. En particular, **ningún `.env.bak.*` debe quedar dentro del web root**: moverlo a `/opt/origen-salud-data/backups/`,chmod `600` y rotar las credenciales expuestas (`PORTAL_DB_PASS`, `SMTP_PASS`) antes de dar por cerrada la etapa. El verificador de despliegue falla si detecta esos archivos.
 
 Verificación de rol y base, solo lectura:
 
@@ -116,7 +118,7 @@ find portal portal-clientes -name '*.php' -print0 \
 4. Recargar el `php-fpm` instalado:
 
 ```bash
-sudo systemctl reload php8.2-fpm   # ajustar versión si corresponde
+sudo systemctl reload php8.5-fpm   # versión verificada en el VPS; ajustar si corresponde
 ```
 
 5. No recargar Nginx: las rutas ya pasan por el front controller existente.
@@ -175,7 +177,7 @@ backup=/opt/origen-salud-data/backups/code-api_YYYYMMDD_HHMMSS.tar.gz
 
 sudo tar -xzf "$backup" -C /var/www/html/origen.ar
 sudo chown -R www-data:www-data /var/www/html/origen.ar/code-api
-sudo systemctl reload php8.2-fpm
+sudo systemctl reload php8.5-fpm
 ```
 
 El tar incluye el `.env` previo, por lo que también se revierte la configuración. Ajustar usuario/grupo según el VPS.

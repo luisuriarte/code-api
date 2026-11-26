@@ -4254,9 +4254,9 @@ $check(
     'Etapa 12: el manifiesto debe fijar el commit y excluir SQL de producción.'
 );
 $check(
-    str_contains($s12Informe, 'pendiente de ejecución')
-        && str_contains($s12Informe, 'Rollback'),
-    'Etapa 12: el informe debe registrar estado pendiente y rollback.'
+    str_contains($s12Informe, '> **Estado:** en ejecución')
+        && str_contains($s12Informe, '## 6. Rollback'),
+    'Etapa 12: el informe debe registrar estado y sección de rollback.'
 );
 $check(
     !preg_match('/\bcarrito\b/i', $s12Documents) && !str_contains($s12Documents, '/cart'),
@@ -4267,6 +4267,15 @@ $check(
         && str_contains($s12Verifier, '--post')
         && str_contains($s12Verifier, 'OK: '),
     'Etapa 12: el verificador debe incluir HTTP de solo lectura y CSRF opt-in.'
+);
+$check(
+    str_contains($s12Verifier, "'/docs?lang=es-AR'")
+        && str_contains($s12Verifier, "'/es-AR/docs'"),
+    'Etapa 12: el verificador debe usar la URL canónica de Docs y comprobar el alias localizado.'
+);
+$check(
+    str_contains($s12Verifier, '.env.bak.*'),
+    'Etapa 12: el verificador debe rechazar copias de .env dentro del web root.'
 );
 
 // Resultado.
