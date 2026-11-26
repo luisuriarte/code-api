@@ -257,7 +257,7 @@ Incluye:
 
 ## 15.1 Etapa 13 — Producción real
 
-**Estado:** autorizada por `acta-autorizacion-etapa-13.md`; pendiente de ejecución por el responsable.
+**Estado:** autorizada por `acta-autorizacion-etapa-13.md` y cerrada en el servidor; ver `informe-ejecucion-etapa-13.md`.
 
 Procedimiento: `plan-etapa-13-produccion.md`. Inventario: `manifiesto-etapa-13-produccion.md`. Registro: `informe-ejecucion-etapa-13.md`.
 

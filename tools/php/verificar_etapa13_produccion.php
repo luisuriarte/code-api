@@ -77,7 +77,8 @@ $check(
 
 $informe = $read('docs/portal-clientes/informe-ejecucion-etapa-13.md');
 $check(
-    str_contains($informe, '> **Estado:** pendiente de ejecución')
+    (str_contains($informe, '> **Estado:** pendiente de ejecución')
+        || str_contains($informe, '> **Estado:** cerrada'))
         && str_contains($informe, '## 6. Rollback'),
     'T-13: debe existir el informe con estado y rollback.'
 );

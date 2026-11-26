@@ -291,7 +291,7 @@ Autorizada por `docs/portal-clientes/acta-autorizacion-etapa-11.md`. Cubre T-01 
 ## 10. Estado de producción
 
 - Etapa 12: código publicado y verificado; el backup, el saneo de `.env.bak.*` y la rotación de credenciales quedaron documentados. `origen_codes` sigue sin cambios de esquema ni datos.
-- Etapa 13 (autorizada): base operativa separada `origen_codes_portal_clientes`, con V5.001 → V10.001 aplicadas allí. `origen_codes` no se modifica y V10.002 no se reejecuta.
+- Etapa 13 (ejecutada y cerrada): base operativa separada `origen_codes_portal_clientes`, con V5.001 → V10.001 aplicadas allí. `origen_codes` no se modifica y V10.002 no se reejecuta.
 - El portal privado y la Solicitud de Servicios leen/escriben en la base operativa. `PORTAL_DB_DSN` y `PORTAL_CUSTOMER_CREDENTIAL_DB_DSN` siguen apuntando a `origen_codes` solo para lectura/credenciales operativas.
 - Invoice Ninja pasa a token real de solo lectura con `INVOICE_NINJA_ALLOW_LIVE_CALLS=true` y `INVOICE_NINJA_ALLOW_TEST_CALLS=false`. Si ambos flags están activos, las llamadas se desactivan. El token nunca se escribe en Git, HTML, JS ni logs.
 - Los enlaces públicos a la Solicitud de Servicios dependen de `PORTAL_SERVICE_REQUEST_LINK_ENABLED`; con `false` desaparecen sin tocar código.
