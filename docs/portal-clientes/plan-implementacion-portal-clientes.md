@@ -47,7 +47,7 @@ Cada entrega posterior debe distinguir:
 | 9 | Interfaz del portal | Implementación | Secciones y i18n | **Requerida** |
 | 10 | Contratación pública | Implementación | Solicitud de Servicios y registro para revisión | **Autorizada en local**; ver `acta-autorizacion-etapa-10.md` |
 | 11 | Pruebas | Verificación | Plan de pruebas ejecutado en entorno de prueba | **Autorizada**; ver `acta-autorizacion-etapa-11.md` |
-| 12 | Despliegue | Producción | Publicación | **Requerida, explícita** |
+| 12 | Despliegue | Producción | Publicación | **Autorizada**; ver `acta-autorizacion-etapa-12.md` |
 
 ## 4. Etapa 1 — Auditoría técnica
 
@@ -241,13 +241,18 @@ Ver `plan-pruebas-portal-clientes.md`, con la sección 16 para los comandos de e
 
 ## 15. Etapa 12 — Despliegue
 
-**Propuesta:**
+**Estado:** autorizada por `acta-autorizacion-etapa-12.md`. Preparada localmente; pendiente de ejecución por el responsable.
 
-- Pipeline con revisión de diff.
-- Backup previo.
-- Rollback documentado y ensayado.
-- Verificación post-despliegue de: `/portal`, Browse Codes, DENTAR, Docs, API pública y `/portal-clientes`.
-- Sin commit, push ni deploy sin autorización expresa.
+Procedimiento: `plan-despliegue-etapa-12.md`. Inventario: `manifiesto-despliegue-etapa-12.md`. Registro: `informe-ejecucion-etapa-12.md`.
+
+Incluye:
+
+- Revisión de diff y secretos.
+- Backup previo verificado.
+- Publicación controlada de código, sin migraciones en `origen_codes`.
+- Rollback documentado por archivos y `.env`.
+- Verificación post-despliegue de: `/portal`, Browse Codes, DENTAR, OFTAR, Docs, UVR, sitemap, API pública y `/portal-clientes`.
+- El asistente no hace commit, push ni deploy; los ejecuta el responsable.
 
 ## 16. Criterios de salida de etapas 1 y 2
 

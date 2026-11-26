@@ -4219,6 +4219,56 @@ $check(
     'Etapa 11: el SQL debe ser SELECT-only, acotado y sin datos personales.'
 );
 
+// Etapa 12 — Despliegue (autorizado, ejecutado por el responsable).
+$s12Paths = [
+    'acta' => $root . '/docs/portal-clientes/acta-autorizacion-etapa-12.md',
+    'plan' => $root . '/docs/portal-clientes/plan-despliegue-etapa-12.md',
+    'manifiesto' => $root . '/docs/portal-clientes/manifiesto-despliegue-etapa-12.md',
+    'informe' => $root . '/docs/portal-clientes/informe-ejecucion-etapa-12.md',
+    'verificador' => $root . '/tools/php/verificar_etapa12_despliegue.php',
+];
+foreach ($s12Paths as $s12Name => $s12Path) {
+    $check(is_file($s12Path), 'Etapa 12: debe existir ' . $s12Name . '.');
+}
+$s12Acta = is_file($s12Paths['acta']) ? (string) file_get_contents($s12Paths['acta']) : '';
+$s12Plan = is_file($s12Paths['plan']) ? (string) file_get_contents($s12Paths['plan']) : '';
+$s12Manifiesto = is_file($s12Paths['manifiesto']) ? (string) file_get_contents($s12Paths['manifiesto']) : '';
+$s12Informe = is_file($s12Paths['informe']) ? (string) file_get_contents($s12Paths['informe']) : '';
+$s12Verifier = is_file($s12Paths['verificador']) ? (string) file_get_contents($s12Paths['verificador']) : '';
+$s12Documents = $s12Acta . $s12Plan . $s12Manifiesto . $s12Informe;
+$check(
+    str_contains($s12Acta, 'Estado:** AUTORIZADA')
+        && str_contains($s12Acta, 'no hace commit, push ni deploy')
+        && str_contains($s12Acta, 'no recibe cambios de esquema ni datos'),
+    'Etapa 12: el acta debe autorizar el despliegue sin commit/deploy del asistente ni cambios en producción.'
+);
+$check(
+    str_contains($s12Plan, 'Backup previo')
+        && str_contains($s12Plan, 'Rollback')
+        && str_contains($s12Plan, 'No se ejecuta ninguna migración `V*` contra `origen_codes`'),
+    'Etapa 12: el plan debe cubrir backup, rollback y prohibición de migraciones en producción.'
+);
+$check(
+    str_contains($s12Manifiesto, '21940dd')
+        && str_contains($s12Manifiesto, 'No ejecutar ninguno contra `origen_codes`'),
+    'Etapa 12: el manifiesto debe fijar el commit y excluir SQL de producción.'
+);
+$check(
+    str_contains($s12Informe, 'pendiente de ejecución')
+        && str_contains($s12Informe, 'Rollback'),
+    'Etapa 12: el informe debe registrar estado pendiente y rollback.'
+);
+$check(
+    !preg_match('/\bcarrito\b/i', $s12Documents) && !str_contains($s12Documents, '/cart'),
+    'Etapa 12: la documentación no debe usar «cart» ni «carrito».'
+);
+$check(
+    str_contains($s12Verifier, 'HttpClient::request')
+        && str_contains($s12Verifier, '--post')
+        && str_contains($s12Verifier, 'OK: '),
+    'Etapa 12: el verificador debe incluir HTTP de solo lectura y CSRF opt-in.'
+);
+
 // Resultado.
 if ($failures !== []) {
     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

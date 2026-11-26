@@ -242,4 +242,4 @@ La **Etapa 11 — Pruebas** queda cerrada en local y en el entorno de prueba:
 - Correo con `Reply-To` del solicitante y sin copias ocultas expuestas.
 - T-09 no aplica por falta de medición real; T-10 sigue sin autorización.
 
-No se hizo commit, push ni deploy. La Etapa 12 requiere autorización explícita del responsable.
+No se hizo commit, push ni deploy. La Etapa 12 fue autorizada posteriormente; ver `acta-autorizacion-etapa-12.md`.

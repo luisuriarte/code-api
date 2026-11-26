@@ -38,7 +38,7 @@
 | T-07 | I18n y rutas | Funcional | Autorizada en entorno de prueba |
 | T-08 | Solicitud de Servicios | Funcional | Ejecutada con datos ficticios: OK |
 | T-09 | Consumo y métricas | Datos | No aplica: sin medición real |
-| T-10 | Despliegue y rollback | Operación | No autorizada; pertenece a Etapa 12 |
+| T-10 | Despliegue y rollback | Operación | Autorizada; pendiente de ejecución en Etapa 12 |
 
 ## 4. T-01 — Separación de portales
 
@@ -199,7 +199,7 @@ Casos propuestos:
 
 ## 15. Autorización
 
-Ninguna prueba de este plan faculta por sí sola a ejecutar cambios. La ejecución de pruebas con datos reales, creación de clientes, modificación de infraestructura o despliegue requiere autorización expresa del propietario del proyecto. La autorización vigente para la Etapa 11 está en `acta-autorizacion-etapa-11.md`.
+Ninguna prueba de este plan faculta por sí sola a ejecutar cambios. La ejecución de pruebas con datos reales, creación de clientes, modificación de infraestructura o despliegue requiere autorización expresa del propietario del proyecto. La Etapa 11 se ejecutó bajo `acta-autorizacion-etapa-11.md`; T-10 queda habilitado por `acta-autorizacion-etapa-12.md`.
 
 ## 16. Ejecución de la Etapa 11
 
