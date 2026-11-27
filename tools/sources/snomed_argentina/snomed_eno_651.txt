@@ -1,0 +1,205 @@
+id	effectiveTime	active	moduleId	refsetId	refsetId_term	referencedComponentId	referencedComponentId_term
+003e9c70-192a-9d34-3dbb-e0f9c46f8ddf	20211130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	895448002	síndrome multisistémico inflamatorio pediátrico
+00a16722-aa03-28c9-3de2-eac536adcbdf	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	15927301000119109	portador de virus linfotrópico de células T humano tipo 1
+01fa21ce-cf41-44df-0718-70cbf6a41b0a	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	240658000	enfermedad de Chagas crónica
+02c59f36-d549-a79c-950e-03e5e8bac54a	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	240637006	leishmaniasis cutánea
+03b4ba79-b31c-a74c-a0ef-c8a54f4771c8	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	741000221102	síndrome congénito con sospecha de asociación con zikv
+050df1f2-8e2b-adfd-f222-d89c0bdfa839	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	761000221103	enfermedad febril exantemática
+07bcd9f1-125f-7bf5-b922-f60d0a58c435	20211130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	1119306006	síndrome inflamatorio multisistémico en adultos
+08cd8cbf-c922-a150-c737-6f84b2854c38	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350111000221100	hantavirus en estudio de contactos estrechos
+092de0d8-b10b-ba3b-69b4-9e118c3249e8	20211130	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	67181005	efecto tóxico del metal
+096baec6-c7d7-6b4a-666c-68eeb5400b9b	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	190905008	fibrosis quística
+0e5cdbfc-b1dc-1031-c032-3a57c007d8b2	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	26726000	legionelosis
+12ac9c68-275f-e5ff-0aa5-184f94858368	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	312155003	infección genital
+132a706c-ebb4-b030-399d-d0423d4ff63f	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	217666004	envenenamiento debido a picadura de araña viuda negra
+1369c674-b241-f7fd-bff9-dc947d04657f	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349971000221103	toxoplasmosis en el embarazo
+18ec4169-a590-254e-8534-d645690d9c0d	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	63650001	cólera
+19f0e3ab-0921-4c90-8d74-c9eb7119a760	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	60826002	coccidioidomicosis
+1a82d660-516a-89dc-65aa-72b94d522ce8	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349941000221108	chagas crónico en estudios poblacionales
+1da68e14-1052-1cc6-af6c-d5b4d634a12f	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	721813000	infección mucocutánea causada por Leishmania
+1e8497fd-03cb-4f8e-31d5-ceee6f125dd4	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	691000221104	enfermedad de chagas en el embarazo
+203fdc0d-d6cb-1d01-65b2-f14599ae9832	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	417192005	infección por virus de la encefalitis de San Luis
+22c6e913-b71e-a9cb-17db-c78b7b9af0c2	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	58868000	fiebre hemorrágica argentina
+23d3c0a6-7dff-209b-c88c-72585ef0c06a	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	72880002	enfermedad por el virus Oropouche
+251630bb-a206-190c-b091-cbf5e12f0555	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	733171006	aspergilosis pulmonar crónica
+2626a9b5-002e-7ca2-4cdf-1416d98f71fb	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	811000221107	encefalopatía espongiforme transmisible en humanos
+26415f6e-d02a-cff1-4ccd-24be65ce566d	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	671000221100	aborto asociado a la infección por zikv
+29eda069-d751-31e9-fe0f-f38fec9229e8	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	2576002	tracoma
+2ce8488e-4513-99f3-37b5-0a739dafb9a3	20200531	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	423997002	tuberculosis extrapulmonar
+2d4c3d0d-8dda-8c3e-ff7a-846667d86042	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	2131000221102	envenenamiento causado por veneno de serpiente yarará
+2e542d7e-b822-e2f9-f6bc-37b004f6c5ac	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	27836007	tos ferina
+2ec70965-0f9c-99a7-b972-c3f5c1cd959f	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	190745006	galactosemia
+2ecf7fcd-2637-4155-b2be-b673ede64fe6	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	722545003	sospecha de rabia
+2f598593-a4a9-ace0-3732-3103be4c4d95	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	66071002	hepatitis viral tipo B
+33dbaa8e-975d-d2c3-0bdb-907713fcc4c3	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	406619001	infección causada por Toxocara
+36d536b6-f7dc-45df-754f-3a8ab768b904	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	43213000	granuloma por tatuaje
+399a6514-b29d-7ff2-4ea9-da577778c186	20200531	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	397428000	difteria
+3aefdf37-a94d-5022-0baa-f14f7729bb68	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349991000221102	hidroarsenicismo crónico regional endémico
+3bf0c291-c5ef-d79e-b06b-176d6f12cd62	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349911000221109	HTLV en bancos de sangre
+3d530d25-78bf-460f-62d2-d7275eff0b9f	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	186788009	fiebre Q
+3eae4367-6e3b-2d30-a210-493b854a6699	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	312133006	infección viral del aparato respiratorio
+3f760941-44cb-fe3e-068a-7177c2f4f66a	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	312117008	infección bacteriana respiratoria
+3fe9f161-ee75-ac16-274b-b7d711208e2c	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350181000221109	leishmaniasis visceral canina
+40ae4268-ca8a-5eb6-7eb7-9bf4fd9e38c9	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	398446008	rabia humana
+425d5780-aaf5-b581-4cc6-78984d53ab07	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	217670007	envenenamiento debido a picadura de escorpión
+44b65a3f-495a-33dc-995e-886308a9ecca	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	840544004	sospecha de COVID-19
+479cee20-318a-7373-c1ac-b052ce13dddc	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	7125002	meningoencefalitis
+4819fb9c-9468-aac3-6c93-bec99684b411	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	56454009	pitiriasis versicolor
+4857d339-aaf7-4563-1158-5aadcd436b46	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	63171007	enfermedad infecciosa aguda
+4893890e-d4ca-92db-16c0-74156ea8dd85	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	359761005	enfermedad causada por Hantavirus
+48ab47d0-36d3-d936-f09e-5160574d7eb4	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	816135009	trastorno causado por vapeo
+498c1fef-c13b-64c7-54ff-be79a0958ef8	20230531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	199154009	sífilis materna durante el embarazo, parto y puerperio
+49cb2f30-70c7-07bc-0805-c87c0e4e111b	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	15628003	gonorrea
+4a3df799-6fa2-a878-204a-94eace51d673	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	661000221109	VIH expuesto perinatal
+4ac3328f-e209-a460-4cef-99eaf0df23a2	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	2291000221109	fiebre amarilla sospecha de epizootia
+4ba75424-f073-fadb-091b-60e2c776f81e	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	42386007	criptococosis
+4dbbb1b8-9847-ac6c-4b29-f1a50971fcbd	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	75116005	ornitosis
+4e93751f-8621-2e75-7d66-b3b78ae22727	20211130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	1155644000	intoxicación causada por metal y/o compuesto metálico
+4f8764e9-e3a8-ddb0-261a-f4369330a0e9	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	235871004	portador de hepatitis B
+4fb6a438-d9b0-3fd6-b134-38ade3c4a5be	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349921000221104	hepatitis B en bancos de sangre
+4fb95d87-05c4-05db-53cf-64042e3b5ccb	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	37131007	intoxicación por plaguicida
+53ab9f33-2f65-e968-8519-a957e9134097	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	771000221107	poliomielitis en menores de 15 años
+54323477-6f28-2b29-96c5-c644451e8f0f	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	446913004	cálculo del cociente de velocidad máxima de reabsorción tubular de fosfato con respecto a la tasa de filtración glomerular
+5500ea0b-1062-c435-e1c7-25cf70fe06c0	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	39111003	tifo transmitido por piojos
+586c31a4-6d97-dfa3-bd24-1afe8d8c0fa5	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	240704003	candidiasis faríngea
+5c4c5878-6d64-bb95-9095-555bb1f6d201	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	111864006	fiebre de Chikungunya
+5d8ee0f1-86f1-c260-7899-b9087533fc04	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	1961000221101	botulismo del lactante
+5f553cb9-8d1d-fc59-b746-03d40ef4e377	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	186946009	linfogranuloma venéreo
+60547256-2c4f-7959-a12c-634e46aaf563	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	4120002	bronquiolitis
+61ae2ccd-e3fc-feee-8432-adc14e49d0e3	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350031000221107	micosis ocular por hongos miceliales
+623fe72d-1b6c-a7dc-76c0-439884a08724	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	721798004	aspergilosis invasiva
+6311eabb-62f3-d2a2-8465-cc051a88203f	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	20639004	candidiasis de esófago
+65818dc1-5ebc-18b1-842c-f3191daaa4ba	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	47158003	infección por hongos dematiáceos
+65985717-c916-d557-ad12-f1e6aa555fc0	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	40119006	envenenamiento debido a picadura de araña reclusa parda
+65d7e55c-1c90-aeb5-9972-80436cba3486	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349901000221106	hepatitis C en banco de sangre
+68a4dd9f-55b3-94ba-e6e9-d4d121ce8792	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	240765004	cromoblastomicosis cutánea
+6b0539d1-6180-fd05-6fd8-7db8d23be250	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	410038006	micetoma eumicótico
+6d2b2895-8870-b4bb-9d51-0b2c9ed31eaa	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349871000221106	hepatitis B en embarazo
+6e7c621a-ccf5-3d2a-067f-3a9f49f8b0c1	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	49883006	candidiasis de piel
+6ea9b804-031c-0439-8005-726c0f81ede8	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	67924001	viruela
+6ec7ba9f-c500-9b6e-17fa-383007112936	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350101000221103	seguimiento de paciente con VIH
+6ed7fc3b-b722-710c-2938-9000ae861ea7	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350081000221108	envenenamiento causado por veneno de lepidóptero
+71eeeb04-8e2a-0562-42d2-a842eea0b799	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	37109004	enfermedad por virus Ébola
+7219f2f9-d25c-7339-412f-b8534849c0ca	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	190268003	hipotiroidismo congénito
+7266735e-0d2c-ba2c-6d04-f827eeff4648	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	3928002	enfermedad por virus Zika
+7488e43b-c0eb-303c-0c95-efdc6b64cd7a	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	243579005	citomegalovirus humano beta 5
+7570a858-b54b-15dc-40ad-7ce8d8944269	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	59051007	cisticercosis
+75c4ff3d-3b80-8774-f4d3-40cb8e0352dc	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	10087007	infección causada por Schistosoma
+7654b0a2-cdf1-fa48-5d14-bad3c814e03d	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	17383000	efecto tóxico del monóxido de carbono
+776f4fc6-222b-7d3f-4185-6f98678274bb	20200531	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	19030005	virus de la inmunodeficiencia humana
+77903bcb-65c8-8e2d-79d3-f0a51748c6f3	20200531	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	4241002	listeriosis
+77cb8c17-1b3d-4c35-d7ae-6b80838c728b	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	217659000	envenenamiento causado por veneno de serpiente de cascabel
+796eb834-53f4-55f6-8662-c7316d088aee	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	7573000	fenilcetonuria clásica
+7aa401b2-9dd3-2aeb-673f-86b3649104d7	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349861000221102	hepatitis C expuesto perinatal
+7c3e4f7b-e69b-d332-f1c8-d64127ff6886	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	2111000221105	envenenamiento por phoneutria
+7d4d942c-7850-9fa3-ed7e-19283dae32e3	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	105706003	enfermedad causada por Filarioidea
+7e4b5803-772f-6936-d656-58423a6ee73b	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	186803007	leishmaniasis visceral
+7ffc80cd-8b63-a2d1-24aa-c9f51a0c83a3	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	10756101000119107	infección por estreptococo del grupo B en la madre que complica el nacimiento
+820af5aa-09e8-e6a3-9213-faaf8c8c3988	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	721794002	infección causada por Malassezia
+830cdbb0-800e-8e7b-f01a-84a5f324fd5c	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350071000221105	brucelosis durante el embarazo
+838800d3-8c79-ae13-f030-8b60572bedcf	20200531	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	186090001	fiebres tifoidea y paratifoidea
+84f20d18-5e67-4805-bd95-5c2e1844a1e2	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	681000221102	infección por virus zika en el embarazo
+85fd2d62-66d1-d4e3-2f53-e6418f68e696	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	35742006	sífilis congénita
+8aad8edb-b1f1-5e2a-039a-18dd58fda5f0	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	2161000221108	enfermedad de chagas aguda por otras vías de transmisión
+8c5954ce-3529-79b1-8ee7-18828e3aaf05	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	240668005	borreliosis
+8ee99e45-2d23-5f5a-0946-82ab32eb5925	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	751000221100	sgb u otros síndromes neurológicos con sospecha de asociación de zikv
+8f444745-3324-c8f9-828b-489cc12e3e0e	20191130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349731000221103	lesión pulmonar asociada al uso cigarrillo electrónico
+8fdc465a-02e7-dec5-1e7c-a9846c5ca539	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	217653004	envenenamiento por veneno de serpiente de coral
+9059c745-e330-4201-d6de-61d735e53826	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	59925007	paracoccidioidomicosis
+911e1bea-8e3d-fe24-3b75-47e665888047	20260520	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	75549005	infección causada por Pneumocystis jirovecii
+92bf98d2-4afa-9fa4-f4a9-45ca379aa93e	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	84980006	carbunco cutáneo
+92d527a6-ae3a-ca8e-3156-0afde67ac78d	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	6142004	gripe
+96cedcc7-b3dd-0fdb-91b5-80d4e7b2b300	20231130	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	441952005	intoxicación causada por sustancia química
+9877e300-6456-28ff-165d-f5166a180cf9	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	73211009	diabetes mellitus
+9957b604-888f-a8f0-07fd-9417714a4ca9	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	397430003	difteria causada por Corynebacterium diphtheriae
+99932212-f2b8-c771-5e64-6c39cee13e1f	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	4834000	fiebre tifoidea
+9bcb54ee-081d-d05d-ac0b-4f73261d4f90	20231130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	1149322001	intoxicación
+9e76939c-3b6b-1caf-1bb3-91847512ce07	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349951000221105	recitación por problemas técnicos de pesquisa neonatal
+9ef1701b-176d-d652-26b4-c5109d0ac6ae	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	187089001	micetoma actinomicótico
+a04d6aa7-9156-7a3c-de09-6648e841f820	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	266123003	bartonelosis
+a056ec04-8316-5a91-849d-d1ce98b74231	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	398565003	infección causada por Clostridium botulinum
+a1ea0746-8e23-bc5e-eca0-f1de024dcbfb	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	721000221106	fiebre del nilo occidental
+a2023541-f94a-88ab-84f7-2306447670df	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349891000221107	chagas crónico en banco de sangre
+a3437026-e8cd-79e3-3a30-41eed67ecb06	20260520	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	88860002	neumocistosis
+a4067317-6aaa-87a5-beb9-e6b198045ca3	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	76272004	sífilis
+a58af2ad-2fee-e91b-0a47-62f62c8b287d	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	709018004	infección causada por larvas de Trichinella
+a5b1c7a8-91ea-cbf0-185f-376b072668da	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	59527008	infección por citomegalovirus congénita
+a674e6ae-46a0-2f6d-cf09-2f792aca196d	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350011000221104	infección superficial causada por levadura diferente de candida spp. y malassezia spp
+a6a4a876-eca4-0e62-e355-c11a408e439b	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	266169003	amebiasis de vida libre
+a7dc2ac1-0900-e5ae-2c1d-e31b8bd8d30f	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	396331005	enfermedad celíaca
+a8fd2a88-6866-7708-0be5-571158903734	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	7895008	intoxicación causada por fármaco Y/O sustancia medicinal
+ab91e36a-a198-d36f-8088-0f6334ae008b	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	76902006	tétanos
+ab9e3b14-d7a1-1696-c36e-921e6e97178e	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350051000221103	micosis sistémica causada por hongos miceliales
+ada9d6be-2030-7926-0bad-9eeb4b910b7c	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	791000221108	intoxicación por hidrocarburos aromáticos volátiles
+add4ef7c-877e-7cb4-2a3d-54d384677c8c	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	12962009	histoplasmosis
+ae02ed15-75bf-5796-5444-32487ab5a76a	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	86406008	infección por virus de la inmunodeficiencia humana
+ae3784bd-d96b-6692-f937-661bf470591d	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	111407006	síndrome urémico hemolítico
+aee5d5cc-00b4-b039-c1a4-f04fd8eaa592	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	731000221109	transmisión vertical de virus zika sin síndrome congénito
+b27eb2ea-b85a-836f-ab84-5ae114c40df6	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349961000221107	control de chagas
+b352fb45-ce86-36e4-1717-1d1e593e96f2	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	1857005	síndrome de rubéola congénita
+b391e560-0b54-93d4-6882-d0e1b8bcc078	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	237751000	hiperplasia suprarrenal congénita
+b7739dde-5d9a-4402-33fd-3393a976e355	20211130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	414051000221108	SARS-COV-2 en puntos de entrada y casos relacionados con importación
+b9ba07d9-952e-4b04-ddec-420e64bdea61	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	36989005	parotiditis
+be875280-5ca7-d700-a9ae-fbd799cea7a3	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	711000221101	carbunco extracutáneo
+befb139f-604e-a7c0-5818-46835881d091	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	37246009	enfermedad causada por ricketsias
+bf184578-95a9-fd1d-116b-627cde156151	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350021000221109	micosis de los senos paranasales
+bfb87d8c-cc4e-f916-9d30-c59df793ae19	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	701000221104	enfermedad de chagas aguda congénita
+bfd7b09a-4224-2f02-3e19-8c7cfa87da7a	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	402248004	reacción liquenoide alérgica de contacto causada por tinta de tatuaje
+c158f679-51bc-ec68-0538-4a0fd75d1069	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	73893000	toxoplasmosis congénita
+c160c4fe-cb2a-7bcf-ff5f-330773e8dada	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	443759003	cálculo del índice de volumen cuantitativo de la filtración glomerular basado en la concentración de analito en espécimen de suero o plasma
+c318947b-3290-153d-3d57-9947815d92ed	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	409966000	diarrea aguda
+c3e1db39-1f49-a9c1-10b0-9a7f28b336c9	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	703970007	control de enfermedad celíaca
+c4215358-6a7c-d93c-e6a1-7079671db6ab	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	85904008	fiebre paratifoidea
+c5767abe-f0a3-5efc-3fce-04fd909913f1	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	43424001	tétanos neonatal
+c6471b03-7bbb-c8d5-47f1-274e6ca235f7	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349981000221100	enfermedad del tabaco verde
+c7098a4a-2f0e-7cfd-e8fc-e7e4aed1a0dd	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	38959009	metahemoglobinemia
+ccf3e966-56ea-5d92-a977-eb933b829b0c	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	16541001	fiebre amarilla
+cede5408-984a-97d8-3ee9-4e5fed4aeefe	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	50711007	hepatitis viral tipo C
+cf53470d-0d98-2d5f-1c73-f942977c644c	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	8808004	deficiencia de biotinidasa
+cff28767-b271-07de-78b6-2f7983991277	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	38362002	dengue
+d0405656-ed01-f9af-54d0-73a12446fba0	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	61288004	envenenamiento por serpiente venenosa
+d0f10ce9-ae99-6fde-0754-f7accf2f727b	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	75258004	intoxicación por alimentos
+d2062fd8-9482-fe26-bd33-a0a276791d3c	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	58750007	peste
+d4f845b9-3579-b346-b9c3-9f8cc542ee6d	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	707341005	hepatitis viral, tipo D
+d7367493-5cdf-d08c-3f09-9d965e16dfe9	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	432261003	candidemia
+d73e0f49-cfab-4723-ef2b-cd96ba44e3d6	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	12341000	estudio con isótopos para la determinación de la tasa de filtración glomerular
+d7680f8d-a26d-b7a4-37b4-cbe1132b398e	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	706951006	estudio radioisotópico renal sin imágenes para calcular la tasa de filtración glomerular
+d82021cf-1405-8ac1-03d7-2d45d11bc1d3	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	70572005	candidiasis diseminada
+daac13e1-a3d6-caa9-a279-4c99bccf903b	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	47382004	dermatofitosis
+dc3fc436-f60d-c7e6-cb52-5e36e99acf41	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	240775001	hialohifomicosis diseminada
+de50a8b5-6313-4c9c-1ca8-9e88ebb55e04	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350091000221106	diarrea causada por escherichia coli
+df9965f3-3623-facc-828c-0fa0503f4ea5	20211130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	414041000221106	vigilancia genómica de SARS-CoV-2
+e08898d5-661e-63c5-f315-8f734b5915e8	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	109249009	inflamación relacionada con el tatuaje deliberado de alguna parte del cuerpo
+e16d6451-32c9-c663-aba8-51ccd6d732c0	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	781000221105	chagas agudo vectorial
+e1b2ee1b-8a53-84a0-51ed-e07e99edde79	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	77377001	leptospirosis
+e2694f5b-aa76-c905-fa3e-2422478975e4	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	91948008	infección asintomática por virus de la inmunodeficiencia humana durante el embarazo
+e3375ef8-e2c6-b21c-2292-5fa55f8850f1	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	76627001	mucormicosis
+e3d48a68-93af-2d2f-4086-376998b19155	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	398136003	meningitis causada por virus de coriomeningitis linfocítica
+e61ec735-e9bc-8c30-6a00-b4f6b29119e2	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	7111000119109	hepatitis viral, tipo E
+e8a84a61-f27b-d763-8297-8e44c5b21e24	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	801000221109	rabia animal
+e9ef63b6-135a-4f70-0811-ec003f2c87d3	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	707224005	infección respiratoria aguda severa
+ec3b938e-516c-e3df-22ab-4371f7d279ed	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	217665000	envenenamiento debido a picadura de araña venenosa
+ed2c8803-f7db-3e20-be90-09216edc6207	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	38918003	envenenamiento por oruga
+ee3654c2-7136-e491-b00c-15ce9c6f6222	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349881000221109	hepatitis C en embarazo
+ee487191-9fb1-4762-3af6-0339457e1c94	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	444004001	trastorno de piel causado por tinta de tatuaje
+ef583eb6-e2fa-aef6-0be9-8ef6b655feb6	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	40733004	enfermedad infecciosa
+efe91e23-cd4b-39c9-5cd5-38667d930fba	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	42094007	esporotricosis
+f1aacbc9-2c2e-659f-d141-a1af07541778	20211130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	414031000221104	estudio de SARS-COV-2 en situaciones especiales
+f3414d63-7444-3ed8-be61-2910ed4c87e9	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	216763006	intoxicación accidental por moluscos
+f45b6bac-56cf-c46e-62c7-8e1375ab1f47	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	432989008	reacción alérgica causada por tinta de tatuaje
+f527ea88-1feb-56e6-4bdf-751795f2a593	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350001000221102	infección superficial causada por hongos miceliales
+f608aad6-3533-c57b-2e4d-290a387d39ce	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	840546002	exposición a SARS-CoV-2
+f698345f-f884-c862-8e7f-86e6a304e627	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350061000221101	micosis por levaduras no cándida y cryptococcus
+f6cd38c7-02a8-74b0-6710-39d6d1044f58	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349851000221104	hepatitis B expuesto perinatal
+f7b1836b-132c-3dae-c66c-7e1927619b4b	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	74942003	enfermedad hidatídica
+f7bc015b-2c3d-b8ed-77c8-62d0a15ed2c1	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	312148000	infección ótica por hongos
+f7c13114-cf18-fe86-94da-da1ea73a872a	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	40468003	hepatitis viral, tipo A
+f94ad6d8-e8f4-c0f6-87bc-a8bfbd536f3a	20230531	0	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	199158007	sífilis materna durante el embarazo - feto no nacido aún
+f98843fb-a8e7-7f9e-4e8c-8e55890ff1fe	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	75702008	brucelosis
+f9a1d301-2e5c-cd9a-4c4f-2336ca69e280	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	81004002	lepra
+f9ff90a3-479f-656f-1b99-38bf86653251	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	61462000	paludismo
+fada0bc5-0564-4ebf-69e9-da3272f05d06	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	425418002	infección generalizada por Histoplasma capsulatum
+fb38de13-c8b6-898d-b5d6-555388bc6fe3	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	349931000221101	sífilis en bancos de sangre
+fe43ade2-beed-0ada-84a5-1f85f0d356f7	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	235872006	portador de hepatitis C
+ff3c2441-e885-e06c-865c-9261a84eee4d	20200531	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	350041000221100	micosis ocular por levaduras
+ff6fc5a3-9f24-59e4-231c-462130aa5c90	20181130	1	11000221109	651000221107	conjunto de referencias simples de enfermedades de notificación obligatoria	154283005	tuberculosis pulmonar
