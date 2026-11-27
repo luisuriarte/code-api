@@ -82,15 +82,22 @@ ALTER TABLE map_snomed_cie10
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'map_snomed_cie10' AND column_name = 'map_group'
-          AND column_default IS NOT NULL
+        SELECT 1
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name
+           AND tc.table_name = kcu.table_name
+        WHERE tc.table_name    = 'map_snomed_cie10'
+          AND tc.constraint_type = 'PRIMARY KEY'
+          AND kcu.column_name  = 'map_group'
     ) THEN
-        -- Solo recrea el PK si aún no incluye map_group
         ALTER TABLE map_snomed_cie10 DROP CONSTRAINT IF EXISTS map_snomed_cie10_pkey;
         ALTER TABLE map_snomed_cie10
             ADD CONSTRAINT map_snomed_cie10_pkey
             PRIMARY KEY (snomed_concept_id, cie10_id, map_group);
+        RAISE NOTICE 'PK actualizado para incluir map_group.';
+    ELSE
+        RAISE NOTICE 'PK ya incluye map_group, sin cambios.';
     END IF;
 END$$;
 
@@ -125,7 +132,6 @@ ON CONFLICT (snomed_concept_id, cie10_id, map_group) DO UPDATE SET
     map_advice      = EXCLUDED.map_advice,
     map_category_id = EXCLUDED.map_category_id,
     effective_date  = EXCLUDED.effective_date;
-
 -- =============================================================================
 -- 6. Índice adicional para búsqueda por código CIE-10
 -- =============================================================================
@@ -166,4 +172,4 @@ LIMIT 5;
 DROP TABLE IF EXISTS _staging_ext_map;
 
 ANALYZE map_snomed_cie10;
-RAISE NOTICE 'Carga map_snomed_cie10 finalizada.';
+DO $$ BEGIN RAISE NOTICE 'Carga map_snomed_cie10 finalizada.'; END $$;
