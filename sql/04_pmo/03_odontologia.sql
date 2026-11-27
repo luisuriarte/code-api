@@ -2,112 +2,84 @@
 -- Origen Salud · PMO · Odontología
 -- sql/04_pmo/03_odontologia.sql
 -- =============================================================================
--- Identificación y separación de prácticas odontológicas del PMO
--- (Res. 201/2002 + Actualización 1/2002).
--- El Programa Médico Obligatorio histórico incluye algunas prestaciones dentales.
--- Este script las identifica y opcionalmente las aísla para trabajo específico.
+-- Identificación y etiquetado de prácticas odontológicas del PMO.
+-- Los catálogos PMO históricos incluyen algunas prestaciones dentales.
+-- Este script las identifica dentro del catálogo nn-pmo mediante una
+-- categoría dedicada, sin crear tablas paralelas.
 -- Idempotente: seguro reejecutarse sin duplicar registros.
 -- =============================================================================
 
 SET client_encoding = 'UTF8';
 
 -- =============================================================================
--- 1. Verificar que el catálogo nn-pmo existe
+-- 1. Verificar que el catálogo nn-pmo y sus prácticas existen
 -- =============================================================================
 DO $$
 BEGIN
-    IF to_regclass('public.os_catalog') IS NULL THEN
-        RAISE EXCEPTION 'Tabla os_catalog no existe. Ejecutar sql/01_schema/design.sql y sql/02_catalogs/origen_catalog_engine.sql primero.';
-    END IF;
-
     IF NOT EXISTS (SELECT 1 FROM os_catalog WHERE code = 'nn-pmo') THEN
-        RAISE EXCEPTION 'El catálogo nn-pmo no existe en os_catalog.';
+        RAISE EXCEPTION 'El catálogo nn-pmo no existe. Ejecutar 02_pmo_practicas.sql primero.';
     END IF;
 END$$;
 
 -- =============================================================================
--- 2. Identificar prácticas potencialmente odontológicas
+-- 2. Crear categoría "Odontología PMO" si no existe
 -- =============================================================================
---
--- Reglas para identificar prácticas odontológicas:
--- - Códigos que empiezan con '13' o '14' suelen ser estomatología/odontología
--- - O prácticas con 'dental', 'pieza', 'sencillez' en observation/descripción
--- - Revisar el archivo pmo_2002.sql para mapeo exacto
---
--- Para este script, identificamos prácticas por patrón de código o descripción.
---
-
--- Seleccionar prácticas por patrón de código (ej: códigos 13xx, 14xx)
--- Nota: En el conjunto actual (010101-010607) son todas neurocirugía.
--- Para odontología real, procesar el archivo pmo_2002.sql completo.
---
+INSERT INTO os_catalog_category (catalog_id, code, name)
 SELECT
-    'Prácticas por patrón de código' AS descripcion,
+    (SELECT id FROM os_catalog WHERE code = 'nn-pmo'),
+    'ODON',
+    'Odontología'
+WHERE NOT EXISTS (
+    SELECT 1 FROM os_catalog_category
+    WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
+      AND code = 'ODON'
+);
+
+-- =============================================================================
+-- 3. Identificar prácticas odontológicas por patrón de código (13xx, 14xx)
+--    y actualizar su categoría en os_catalog_item_version
+-- =============================================================================
+UPDATE os_catalog_item_version ver
+SET category_id = (
+    SELECT id FROM os_catalog_category
+    WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
+      AND code = 'ODON'
+)
+FROM os_catalog_item i
+WHERE ver.item_id = i.id
+  AND i.catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
+  AND (
+      i.permanent_code ~ '^13'
+      OR i.permanent_code ~ '^14'
+      OR ver.preferred_term ILIKE '%dental%'
+      OR ver.preferred_term ILIKE '%odont%'
+      OR ver.preferred_term ILIKE '%estom%'
+  );
+
+-- =============================================================================
+-- 4. Validación
+-- =============================================================================
+SELECT
+    'Prácticas identificadas como odontológicas' AS descripcion,
+    COUNT(*) AS total
+FROM os_catalog_item_version ver
+JOIN os_catalog_item i ON i.id = ver.item_id
+JOIN os_catalog_category cat ON cat.id = ver.category_id
+WHERE i.catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
+  AND cat.code = 'ODON';
+
+SELECT
+    'Prácticas por patrón de código 13xx/14xx' AS descripcion,
     COUNT(*) AS total
 FROM os_catalog_item
 WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
-  AND permanent_code ~ '^13|^14';  -- patrón odontológico
-
--- Alternativa: buscar por descripción en observation/preferred_term
-SELECT
-    'Prácticas por descripción' AS descripcion,
-    COUNT(*) AS total
-FROM os_catalog_item_version
-WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
-  AND preferred_term ILIKE '%dental%'
-     OR preferred_term ILIKE '%odont%'
-     OR preferred_term ILIKE '%estom%';
-
--- =============================================================================
--- 3. Marcar prácticas odontológicas en el observation
--- =============================================================================
---
--- Etiquetar las prácticas identificadas como odontológicas en el campo observation
--- Esto permite filtrado posterior sin crear tablas paralelas.
---
-UPDATE os_catalog_item
-SET observation = CASE
-    WHEN permanent_code ~ '^13|^14' THEN observation || ';ODONTOLOGICO'
-    ELSE observation
-END,
-    status = 'active'
-WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
-  AND (permanent_code ~ '^13|^14'
-       OR permanent_code IN (
-         SELECT permanent_code FROM os_catalog_item_version
-         WHERE preferred_term ILIKE '%dental%'
-            OR preferred_term ILIKE '%odont%'
-            OR preferred_term ILIKE '%estom%'
-       ))
-ON CONFLICT DO NOTHING;
-
--- =============================================================================
--- 4. Validación de identificación odontológica
--- =============================================================================
---
-SELECT
-    'Prácticas marcadas odontológicas' AS descripcion,
-    COUNT(*) AS total
-FROM os_catalog_item
-WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
-  AND observation LIKE '%ODONTOLOGICO%';
-
--- Listar las prácticas identificadas
-SELECT
-    permanent_code,
-    observation
-FROM os_catalog_item
-WHERE catalog_id = (SELECT id FROM os_catalog WHERE code = 'nn-pmo')
-  AND observation LIKE '%ODONTOLOGICO%';
+  AND (permanent_code ~ '^13' OR permanent_code ~ '^14');
 
 -- =============================================================================
 -- Nota final
 -- =============================================================================
---
--- Hallazgos:
--- - El conjunto actual (010101-010607) corresponde a neurocirugía (sistema nervioso)
--- - Prácticas odontológicas reales requerirían procesar el archivo pmo_2002.sql completo
--- - Códigos 13xx y 14xx suelen ser estomatología/patología bucal en catálogos CIE
-- Esta separación es lógica/identificatoria; no crea tablas paralelas
-- Para trabajo odontológico específico, procesar pmo_2002.sql con filtro --origen=odontologia
-- Idempotente: seguro reejecutarse
+-- - El conjunto actual (010101-010607) es neurocirugía; los 13xx/14xx son
+--   estomatología/patología bucal cuando el archivo pmo_2002.sql completo
+--   esté cargado.
+-- - Esta separación usa categorías del catálogo, sin tablas paralelas.
+-- - Idempotente: seguro reejecutarse.
