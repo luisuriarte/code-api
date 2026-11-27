@@ -159,14 +159,18 @@ final class RelatedCodesResolver
 
         if ($this->hasTable('public.map_snomed_nbu')) {
             $stmt = $this->db->prepare(
-                'SELECT codigo_nbu, determinacion
-                   FROM map_snomed_nbu
-                  WHERE snomed_concept_id = :sctid AND activo = TRUE
+                'SELECT m2.snomed_concept_id, m2.codigo_nbu, m2.determinacion
+                   FROM map_snomed_nbu m1
+                   JOIN map_snomed_nbu m2 ON m2.codigo_nbu = m1.codigo_nbu
+                  WHERE m1.snomed_concept_id = :sctid AND m2.activo = TRUE
                   LIMIT 15'
             );
             $stmt->execute([':sctid' => $snomedId]);
             foreach ($stmt->fetchAll() as $row) {
                 $add('NBU', (string) $row['codigo_nbu'], (string) $row['determinacion'], 'mapped');
+                if ((int) $row['snomed_concept_id'] !== $snomedId) {
+                    $add('SNOMED-CT', (string) $row['snomed_concept_id'], (string) $row['determinacion'], 'related_snomed');
+                }
             }
         }
 
