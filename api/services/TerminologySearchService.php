@@ -1902,17 +1902,18 @@ final class TerminologySearchService
 
         if ($query !== '') {
             $escaped = '%' . $this->escapeLike($query) . '%';
-            // unaccent() normaliza tildes en ambos lados: "cirugia" encuentra "cirugía"
+            // f_unaccent() es IMMUTABLE (wrapper de unaccent) para soportar búsqueda accent-insensitive
+            // y usar los índices GIN funcionales: idx_pmo_practica_unaccent, idx_pmo_capitulo_unaccent
             $where[] = '(codigo ILIKE :exact OR codigo ILIKE :prefix'
-                     . ' OR unaccent(practica) ILIKE unaccent(:term)'
-                     . ' OR unaccent(capitulo) ILIKE unaccent(:term))';
+                     . ' OR f_unaccent(practica) ILIKE f_unaccent(:term)'
+                     . ' OR f_unaccent(capitulo) ILIKE f_unaccent(:term))';
             $params[':exact'] = $query;
             $params[':prefix'] = $this->escapeLike($query) . '%';
             $params[':term'] = $escaped;
         }
 
         if ($capitulo !== '') {
-            $where[] = '(cap_cod = :cap_cod OR unaccent(capitulo) ILIKE unaccent(:cap_term))';
+            $where[] = '(cap_cod = :cap_cod OR f_unaccent(capitulo) ILIKE f_unaccent(:cap_term))';
             $params[':cap_cod'] = $capitulo;
             $params[':cap_term'] = '%' . $this->escapeLike($capitulo) . '%';
         }
@@ -1928,7 +1929,7 @@ final class TerminologySearchService
 
         if ($query !== '') {
             $sql .= ' ORDER BY (codigo = :exact_order) DESC, (codigo ILIKE :prefix_order) DESC,'
-                  . ' similarity(unaccent(practica), unaccent(:sim_order)) DESC, id ASC';
+                  . ' similarity(f_unaccent(practica), f_unaccent(:sim_order)) DESC, id ASC';
             $params[':exact_order'] = $query;
             $params[':prefix_order'] = $this->escapeLike($query) . '%';
             $params[':sim_order'] = $query;

@@ -12,14 +12,21 @@ SET client_encoding = 'UTF8';
 -- 1. Extensión unaccent
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
--- 2. Índices funcionales unaccent en pmo_practicas
+-- 2. Función wrapper IMMUTABLE para unaccent (requerido para índices)
+--    unaccent() por defecto es STABLE; esta envoltura permite usarla en expresiones de índice.
+CREATE OR REPLACE FUNCTION f_unaccent(text)
+    RETURNS text
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT
+AS $$ SELECT public.unaccent('public.unaccent', $1) $$;
+
+-- 3. Índices funcionales accent-insensitive en pmo_practicas
 CREATE INDEX IF NOT EXISTS idx_pmo_practica_unaccent
-    ON pmo_practicas USING gin (unaccent(practica) gin_trgm_ops);
+    ON pmo_practicas USING gin (f_unaccent(practica) gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS idx_pmo_capitulo_unaccent
-    ON pmo_practicas USING gin (unaccent(capitulo) gin_trgm_ops);
+    ON pmo_practicas USING gin (f_unaccent(capitulo) gin_trgm_ops);
 
--- 3. Índice funcional en pmo_odontologia (si ya existe como tabla)
+-- 4. Índice funcional en pmo_odontologia (solo si ya es tabla, no vista)
 DO $$
 BEGIN
     IF EXISTS (
@@ -27,10 +34,10 @@ BEGIN
         JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE c.relname = 'pmo_odontologia'
           AND n.nspname = 'public'
-          AND c.relkind = 'r'  -- solo tabla, no vista
+          AND c.relkind = 'r'
     ) THEN
-        CREATE INDEX IF NOT EXISTS idx_pmo_odonto_unaccent
-            ON pmo_odontologia USING gin (unaccent(practica) gin_trgm_ops);
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_pmo_odonto_unaccent
+                     ON pmo_odontologia USING gin (f_unaccent(practica) gin_trgm_ops)';
     END IF;
 END$$;
 
