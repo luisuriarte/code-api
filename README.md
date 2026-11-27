@@ -60,11 +60,13 @@ El **Nomenclador Odontológico Nacional** fue desplegado el 2026-11-19 con autor
 │   ├── 02_catalogs/           # origen_catalog_engine.sql (motor canónico os_*)
 │   ├── 03_dentar/             # artefactos de carga (no ejecutados); catálogos ya cargados en origen_codes
 │   ├── 03_oftar/              # familia OFTAR y nomencladores oftalmológicos
-│   ├── 04_pmo/                # Programa Médico Obligatorio
+│   ├── 04_pmo/                # Programa Médico Obligatorio (pmo_practicas, unaccent, normativa)
 │   ├── 05_loinc/              # esquema, importador y nombres de consumidor (NO existe 05_loinc.sql/)
-│   ├── 06_nomencladores/      # Legacy
+│   ├── 05_maps/               # Mapeos SNOMED -> CIE-10 (01_map_snomed_cie10.sql) y GTIN -> RPCD (02_map_gtin.sql)
+│   ├── 06_nomencladores/      # NN 2025, NBU+SNOMED, Imágenes DICOM, sync os_catalog/os_prestacion y categorías clínicas
+│   ├── 06_programas/          # SUMAR, REMEDIAR, ENO, Vacunas, Dispositivos médicos, Genéricos y Vademécum SNOMED
 │   ├── 07_multilingue/        # capa i18n 01..18
-│   ├── 08_arquitectura/       # fase1..fase6: propuestas NO ejecutadas
+│   ├── 08_arquitectura/       # fase1..fase3, U0-U7 aplicadas en origen_codes; fases pendientes según README interno
 │   ├── 09_admin/              # os_admin: Fase 1/M1 y Fase 2/M2 aplicadas y verificadas
 │   ├── 10_portal_clientes/    # migraciones V5.001..V11.001 del portal privado
 │   └── portal/                # roles y GRANTs
@@ -102,7 +104,9 @@ El **Nomenclador Odontológico Nacional** fue desplegado el 2026-11-19 con autor
 │   ├── controllers/
 │   │   └── ConceptController.php
 │   ├── services/
-│   │   └── TerminologySearchService.php  # Búsqueda unificada multimodelo
+│   │   ├── TerminologySearchService.php  # Búsqueda unificada multimodelo
+│   │   ├── CatalogEngineService.php      # Motor de catálogos os_* (versiones, mapeos, i18n)
+│   │   └── RelatedCodesResolver.php      # Resolución transversal de códigos relacionados y UVR
 │   ├── http/
 │   │   ├── ApiException.php
 │   │   ├── ApiKeyAuthenticator.php

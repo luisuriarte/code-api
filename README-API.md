@@ -90,14 +90,14 @@ externos y no copiarse como contrato de Origen Salud.
   presenta como `es-AR` sin evidencia regional (`dialect_determined=false`).
 - `GET /v1/nomenclador` consulta únicamente `nomencladores_argentina`, el único
   conjunto con `entity_type='nomenclador'`. No sirve CDT.
-- NN 2025 permanece en `nomenclador_2025`, sin endpoint propio y sin mapeo a
-  `os_*`. Su exposición futura sigue pendiente de decisión editorial.
+- NN 2025 ya fue integrado en `nomencladores_argentina` (`NN_PMO`, 3.264 códigos
+  únicos, sin precios desactualizados) y sincronizado con `nn-pmo` y `os_prestacion`.
 
 ---
 
 ## 2. Autenticación y Seguridad
 
-Todas las peticiones a la superficie `/v1/*` requieren una API Key B2B válida.
+Todas las peticiones a la superficie `/v1/*` requieren una API Key B2B válida (`api_clients` o `API_INTERNAL_KEY` en `.env` para uso interno server-to-server).
 
 ### Ejemplo de autenticación con `curl`
 
@@ -190,7 +190,7 @@ La forma real de cada dominio es `id`, `label` y `description` como objetos
     }
   ],
   "meta": {
-    "domains": ["snomed", "cie10", "anmat", "laboratorio", "vacunas", "odontologia", "prestaciones", "programas", "imagenes", "nomenclador", "vademecum", "loinc", "oftar"],
+    "domains": ["snomed", "cie10", "anmat", "laboratorio", "vacunas", "odontologia", "prestaciones", "programas", "imagenes", "nomenclador", "vademecum", "genericos", "dispositivos", "loinc", "oftar"],
     "default_domains": ["snomed", "cie10", "anmat"]
   },
   "request_id": "7f3c9a1e8b2d4f60"
@@ -214,7 +214,9 @@ Origen Salud implementa el **Origen Catalog Engine 1.0**, una arquitectura desac
 | **Argentina** | `andis` | Nomenclador de Prestaciones Básicas para Personas con Discapacidad (rehabilitación/módulos). |
 | **Argentina** | `kinesiologia`| Nomenclador de Fisioterapia y Kinesiología (motriz, respiratoria, sesiones). |
 | **Argentina** | `salud-mental`| Nomenclador de Psicología y Salud Mental (psicoterapia, psicodiagnóstico). |
-| **Farmacia** | `vademecum` | Vademécum farmacéutico multicapa con Troquel, AlfaBeta, Kairos y GTIN. |
+| **Argentina** | `imagenes-ar` | Prácticas prescribibles de Diagnóstico por Imágenes (SNOMED CT AR / modalidad DICOM). |
+| **Argentina** | `pmo-ar`      | Programa Médico Obligatorio (PMO — Res. MSAL 201/2002). |
+| **Farmacia** | `vademecum` | Vademécum farmacéutico multicapa con Troquel, AlfaBeta, Kairos, GTIN y SNOMED CT. |
 
 ### 3.1. Listar Catálogos Registrados
 #### `GET /v1/catalogs`
@@ -259,7 +261,7 @@ curl -s -X GET "https://api.origen.ar/v1/catalogs/dentar-dx/items?q=caries" \
 
 ### 3.3. Ficha Técnica de la Prestación con Aranceles y Mapeos
 #### `GET /v1/catalogs/{catalog_code}/items/{item}`
-Devuelve la identidad permanente, aranceles vigentes (UB, Galenos, Módulos o Pesos) y mapeos cruzados a **SNOMED-CT**, **CIE-10** y **LOINC**.
+Devuelve la identidad permanente, categoría clínica (`clinical_category`, `clinical_category_code`), aranceles vigentes (UB, Galenos, Módulos o Pesos), mapeos cruzados a **SNOMED-CT**, **CIE-10** y **LOINC**, además de `related_codes` (códigos relacionados en `os_prestacion_codigo`, NBU, CIE-10, programas SUMAR/REMEDIAR/ENO, GTIN) y `uvr` (valoración UVR publicada en `v_os_uvr_prestacion_public`).
 Si el catálogo o el ítem no existe, la respuesta es `404` con `ErrorEnvelope`
 (`error.code=not_found`); no se devuelve `200` con `data: []`.
 
