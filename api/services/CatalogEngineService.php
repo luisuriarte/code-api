@@ -545,6 +545,22 @@ final class CatalogEngineService
         $mappingReader = new MappingReviewReader($this->db, $catalog);
         $mappingResolution = $mappingReader->resolve($mappings, $requestedLanguage);
 
+        // Resolver códigos relacionados transversales y valoración UVR
+        $snomedConceptId = null;
+        foreach ($mappings as $m) {
+            if (stripos((string) $m['system_code'], 'SNOMED') !== false && ctype_digit((string) $m['external_code'])) {
+                $snomedConceptId = (int) $m['external_code'];
+                break;
+            }
+        }
+        $related = (new RelatedCodesResolver($this->db))->resolve(
+            $snomedConceptId,
+            (string) $preferred['catalog_code'],
+            $itemId,
+            $preferred['official_code'] !== null ? (string) $preferred['official_code'] : null,
+            $requestedLanguage
+        );
+
         $headers = ['Vary' => 'Accept-Language'];
 
         if ($meta['effective_language'] !== null && $meta['effective_language'] !== '') {
@@ -602,6 +618,8 @@ final class CatalogEngineService
                     },
                     $mappings
                 ),
+                'related_codes' => $related['codes'],
+                'uvr' => $related['uvr'],
             ],
             'meta' => $meta + [
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),

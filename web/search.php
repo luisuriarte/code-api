@@ -276,7 +276,19 @@ foreach ($fields as $field) {
                                     <?php if ($language !== null): ?>
                                         <span><?= e($t('search.language')) ?>: <code><?= e($language) ?></code></span>
                                     <?php endif; ?>
+                                    <?php $snomedMeta = is_array($item['metadata'] ?? null) ? ($item['metadata']['snomed_concept_id'] ?? null) : null; ?>
+                                    <?php if ($snomedMeta !== null && $snomedMeta !== ''): ?>
+                                        <span>SNOMED: <code><?= e((string) $snomedMeta) ?></code></span>
+                                    <?php endif; ?>
                                 </div>
+                                <?php if (!empty($item['related_codes']) && is_array($item['related_codes'])): ?>
+                                    <div class="search-result-meta">
+                                        <?php foreach (array_slice($item['related_codes'], 0, 5) as $rel): ?>
+                                            <?php if (!is_array($rel)) { continue; } ?>
+                                            <span><code><?= e((string) ($rel['system'] ?? '')) ?>: <?= e((string) ($rel['code'] ?? '')) ?></code></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                             </li>
                         <?php endforeach; ?>
                     </ul>

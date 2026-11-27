@@ -616,6 +616,16 @@ final class TerminologySearchService
             ]
             : null;
 
+        $related = (new RelatedCodesResolver($this->db))->resolve(
+            $snomedId !== null ? (int) $snomedId : null,
+            $domain,
+            null,
+            isset($data['code']) ? (string) $data['code'] : null,
+            $language
+        );
+        $data['related_codes'] = $related['codes'];
+        $data['uvr'] = $related['uvr'];
+
         unset($data['score']);
 
         return [
