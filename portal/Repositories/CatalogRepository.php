@@ -54,6 +54,14 @@ final class CatalogRepository
     private const SNOMED_FSN = '900000000000003001';
     private const SNOMED_SYNONYM = '900000000000013009';
     private const MAX_OFFSET = 5000;
+    private const MAX_PAGE_SIZE = 100;
+    /**
+     * "Todos" consulta todas las fuentes. Un único UNION con las 13 ramas
+     * supera el statement_timeout de 3 s del portal con términos frecuentes
+     * ("caries", "otitis"). Se divide en lotes y se fusiona en PHP; cada
+     * consulta individual conserva su límite y su timeout.
+     */
+    private const SEARCH_DOMAIN_CHUNK = 3;
 
     /**
      * Las secciones Relaciones y Valores consultan os_concept_mapping,
@@ -616,6 +624,60 @@ final class CatalogRepository
             return ['items' => [], 'total' => 0, 'has_more' => false];
         }
 
+        // Modo "Todos": ni dominio, ni catálogo, ni filtros. Se consulta por
+        // lotes para que ninguna sentencia supere el statement_timeout; la
+        // fusión conserva el mismo orden que el UNION original.
+        $allSources = $requestedDomains === [] && $catalogs === [] && $filters === [];
+        if ($allSources && count($domains) > self::SEARCH_DOMAIN_CHUNK
+            && $offset + $limit + 1 <= self::MAX_PAGE_SIZE) {
+            return self::searchByDomainChunks(
+                $pdo,
+                $domains,
+                $term,
+                $language,
+                $limit,
+                $offset,
+                $requestedLanguage
+            );
+        }
+
+        return self::searchResolved(
+            $pdo,
+            $domains,
+            $term,
+            $language,
+            $limit,
+            $offset,
+            $requestedLanguage,
+            $catalogs,
+            $filters
+        );
+    }
+
+    /**
+     * Ejecuta el UNION completo de una sola vez. Se usa cuando el usuario
+     * eligió fuentes, catálogo o filtros, o cuando la paginación profunda no
+     * cabe en el buffer por lote.
+     *
+     * @param list<string> $domains
+     * @param list<string> $catalogs
+     * @param array<string, string> $filters
+     *
+     * @return array{items: list<array<string, mixed>>, total: int, has_more: bool}
+     *
+     * @throws RepositoryException
+     */
+    private static function searchResolved(
+        PDO $pdo,
+        array $domains,
+        string $term,
+        string $language,
+        int $limit,
+        int $offset,
+        string $requestedLanguage,
+        array $catalogs,
+        array $filters
+    ): array {
         [$union, $parameters] = self::buildUnion(
             $pdo,
             $domains,
@@ -651,6 +713,95 @@ final class CatalogRepository
         $total = $exactTotal >= 0
             ? $exactTotal
             : $offset + count($items) + ($hasMore ? 1 : 0);
+
+        return [
+            'items' => $items,
+            'total' => $total,
+            'has_more' => $hasMore,
+        ];
+    }
+
+    /**
+     * "Todos" sin filtros: divide las fuentes en lotes, fusiona las filas con
+     * el mismo criterio del ORDER BY de SQL y aplica la paginación en PHP.
+     *
+     * @param list<string> $domains
+     *
+     * @return array{items: list<array<string, mixed>>, total: int, has_more: bool}
+     *
+     * @throws RepositoryException
+     */
+    private static function searchByDomainChunks(
+        PDO $pdo,
+        array $domains,
+        string $term,
+        string $language,
+        int $limit,
+        int $offset,
+        string $requestedLanguage
+    ): array {
+        $fetch = min(self::MAX_PAGE_SIZE, $offset + $limit + 1);
+        $rows = [];
+        $total = 0;
+        $countFailed = false;
+
+        foreach (array_chunk($domains, self::SEARCH_DOMAIN_CHUNK) as $chunk) {
+            [$union, $parameters] = self::buildUnion(
+                $pdo,
+                $chunk,
+                $term,
+                $language,
+                false,
+                null,
+                $requestedLanguage,
+                [],
+                []
+            );
+            if ($union === '') {
+                continue;
+            }
+
+            $chunkTotal = self::countRows($pdo, $union, $parameters);
+            if ($chunkTotal < 0) {
+                $countFailed = true;
+            } else {
+                $total += $chunkTotal;
+            }
+
+            $sql = "SELECT * FROM (\n{$union}\n) AS candidates\n"
+                . " ORDER BY score DESC, length(term) ASC, term ASC\n"
+                . ' LIMIT :page_limit';
+            $statement = self::prepare($sql, $parameters + [':page_limit' => $fetch]);
+            foreach ($statement->fetchAll() as $row) {
+                $rows[] = $row;
+            }
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            $byScore = (float) ($b['score'] ?? 0) <=> (float) ($a['score'] ?? 0);
+            if ($byScore !== 0) {
+                return $byScore;
+            }
+            $aTerm = (string) ($a['term'] ?? '');
+            $bTerm = (string) ($b['term'] ?? '');
+            $byLength = mb_strlen($aTerm, 'UTF-8') <=> mb_strlen($bTerm, 'UTF-8');
+            if ($byLength !== 0) {
+                return $byLength;
+            }
+
+            return strcmp($aTerm, $bTerm);
+        });
+
+        $pageRows = array_slice($rows, $offset, $limit + 1);
+        $hasMore = count($pageRows) > $limit;
+        if ($hasMore) {
+            array_pop($pageRows);
+        }
+
+        $items = self::hydrateAll($pdo, $pageRows, $requestedLanguage, $language);
+        $total = $countFailed
+            ? $offset + count($items) + ($hasMore ? 1 : 0)
+            : $total;
 
         return [
             'items' => $items,

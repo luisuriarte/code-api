@@ -4657,6 +4657,13 @@ $check(
     'El facet de categoría debe usar la taxonomía global con compatibilidad del facet histórico.'
 );
 $check(
+    str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'private const MAX_PAGE_SIZE = 100;')
+        && str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'SEARCH_DOMAIN_CHUNK')
+        && str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'searchByDomainChunks')
+        && str_contains($auditRead('portal/Repositories/CatalogRepository.php'), '$offset + $limit + 1 <= self::MAX_PAGE_SIZE'),
+    '«Todos» debe buscar por lotes para no superar el statement_timeout del portal.'
+);
+$check(
     str_contains($auditRead('api/services/CatalogEngineService.php'), 'private function clinicalTablesAvailable(): bool')
         && str_contains($auditRead('api/services/CatalogEngineService.php'), "'clinical_category_code' =>"),
     'La API debe exponer la nueva dimensión sin romper el contrato `category` existente.'

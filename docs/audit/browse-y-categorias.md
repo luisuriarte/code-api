@@ -103,3 +103,44 @@ En el portal: abrir `/es-AR/browse`, confirmar que «Todos» lista resultados, q
 | Familias visible en el selector | `dentar`, `oftar`, `nomenclador` |
 
 Pendiente de verificación en producción (requiere despliegue y datos reales): que existan criterios clínicos aprobados en la fuente y que los facets de `type`/`category` tengan datos. En el entorno local aparecían vacíos porque la base de prueba no tiene filas para esos campos; no se agregaron datos ficticios.
+
+---
+
+## 6. Incidencia posterior: «Todos» devolvía `error_query`
+
+### Diagnóstico en producción (2026-11-27)
+
+Con `PORTAL_DB_STATEMENT_TIMEOUT=3`, la consulta para `Caries` devolvió:
+
+| Caso | Resultado |
+|---|---|
+| Todos | `ok=f error=error_query total=0` |
+| CIE-10 | `ok=t total=23` |
+| SNOMED | `ok=t total=359` |
+| DENTAR-PR | `ok=t total=7` |
+| OFTAR-PR | `ok=t total=0` |
+
+No era un problema de permisos ni de taxonomía: un `UNION ALL` con las 13 fuentes superaba los 3 s de `statement_timeout`. Cualquier dominio por separado respondía correctamente.
+
+### Corrección preparada
+
+`CatalogRepository::search()` conserva su firma y su contrato. Cuando no hay dominio, catálogo ni filtros (modo «Todos»), divide las fuentes en lotes de 3 (`SEARCH_DOMAIN_CHUNK`), ejecuta cada `UNION` por separado y fusiona las filas en PHP con el mismo orden SQL (`score DESC, length(term) ASC, term ASC`) antes de paginar. Si la paginación profunda no cabe en el buffer por lote (`offset + limit + 1 > MAX_PAGE_SIZE`), se mantiene la consulta única original.
+
+No se cambió `PORTAL_DB_STATEMENT_TIMEOUT`: la corrección evita depender de aumentarlo. Igualmente, si se quiere margen adicional, el responsable puede subirlo en `.env` a `10` y reiniciar PHP-FPM; es una mitigación, no el arreglo.
+
+### Verificación esperada tras desplegar
+
+```bash
+cd /var/www/html/origen.ar/code-api
+php <<'PHP'
+<?php
+require 'portal/bootstrap.php';
+foreach (['', 'cie10', 'snomed'] as $domain) {
+    $r = \OrigenSalud\Portal\Services\BrowseService::search('Caries', $domain, 'es', 1, 5, null, []);
+    echo ($domain === '' ? 'Todos' : $domain) . ' ok=' . ($r['ok'] ? 't' : 'f')
+        . ' error=' . ($r['error'] ?? '-') . ' total=' . $r['total'] . PHP_EOL;
+}
+PHP
+```
+
+Esperado: `Todos ok=t error=- total>=389` (23 + 359 + 7, más las demás fuentes). Si «Todos» sigue dando `error_query`, el despliegue no incluyó este último cambio.
