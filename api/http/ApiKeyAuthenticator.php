@@ -16,6 +16,12 @@ use PDO;
  * Las claves nuevas se verifican contra SHA-256(clave + NUL + pepper) en
  * `key_hash` (migración V11.001). Las antiguas se leen por compatibilidad desde
  * `api_key` en texto plano, sin exponer cuál de los dos caminos autenticó.
+ *
+ * También soporta una clave interna definida en la variable de entorno
+ * API_INTERNAL_KEY (solo en .env del servidor, nunca versionada). Cuando la
+ * clave recibida coincide byte a byte con esa variable, se devuelve un cliente
+ * sintético id=0 "Internal / Diagnóstico" sin consultar la base de datos.
+ * Útil para healthchecks, scripts de carga y diagnóstico en el VPS.
  */
 final class ApiKeyAuthenticator
 {
@@ -42,6 +48,17 @@ final class ApiKeyAuthenticator
 
         if (strlen($apiKey) > 128 || preg_match('/^[\x21-\x7E]+$/', $apiKey) !== 1) {
             throw ApiException::unauthorized('La API Key tiene un formato inválido.');
+        }
+
+        // Clave interna desde .env (API_INTERNAL_KEY). Se verifica antes de la BD.
+        // Solo en entornos donde la variable está definida y no vacía.
+        $internalKey = trim((string) env('API_INTERNAL_KEY', ''));
+        if ($internalKey !== '' && hash_equals($internalKey, $apiKey)) {
+            return [
+                'id'                    => 0,
+                'institution_name'      => 'Internal / Diagnóstico',
+                'rate_limit_per_second' => 100,
+            ];
         }
 
         $client = false;
