@@ -36,7 +36,9 @@ if ($baseUrl === '') {
 
 $domains = [
     'snomed', 'cie10', 'odontologia', 'anmat', 'laboratorio',
-    'vacunas', 'prestaciones', 'programas', 'imagenes', 'loinc', 'oftar',
+    'vacunas', 'prestaciones', 'programas', 'imagenes',
+    'nomenclador', 'vademecum', 'genericos', 'dispositivos',
+    'loinc', 'oftar',
 ];
 $requestedDomains = isset($_GET['domains']) && is_string($_GET['domains'])
     ? array_values(array_filter(array_map('trim', explode(',', $_GET['domains'])), static fn (string $item): bool => in_array($item, $domains, true)))

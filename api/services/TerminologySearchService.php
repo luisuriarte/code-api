@@ -43,6 +43,8 @@ final class TerminologySearchService
     public const DOMAIN_IMAGENES = 'imagenes';
     public const DOMAIN_NOMENCLADOR = 'nomenclador';
     public const DOMAIN_VADEMECUM = 'vademecum';
+    public const DOMAIN_GENERICOS = 'genericos';
+    public const DOMAIN_DISPOSITIVOS = 'dispositivos';
     public const DOMAIN_LOINC = 'loinc';
     public const DOMAIN_OFTAR = 'oftar';
 
@@ -59,6 +61,8 @@ final class TerminologySearchService
         self::DOMAIN_IMAGENES,
         self::DOMAIN_NOMENCLADOR,
         self::DOMAIN_VADEMECUM,
+        self::DOMAIN_GENERICOS,
+        self::DOMAIN_DISPOSITIVOS,
         self::DOMAIN_LOINC,
         self::DOMAIN_OFTAR,
     ];
@@ -221,6 +225,24 @@ final class TerminologySearchService
             'source' => 'oftar',
             'mode' => 'catalog',
         ],
+        self::DOMAIN_GENERICOS => [
+            'label' => ['es' => 'Fármacos Genéricos', 'en' => 'Generic Drugs'],
+            'description' => [
+                'es' => 'Fármacos genéricos de uso clínico (con y sin presentación definida) vinculados a SNOMED-CT.',
+                'en' => 'Clinical generic drugs (with and without defined unit presentation) linked to SNOMED-CT.',
+            ],
+            'source' => 'genericos',
+            'mode' => 'catalog',
+        ],
+        self::DOMAIN_DISPOSITIVOS => [
+            'label' => ['es' => 'Dispositivos Médicos', 'en' => 'Medical Devices'],
+            'description' => [
+                'es' => 'Dispositivos médicos prescribibles de la Edición Argentina SNOMED-CT.',
+                'en' => 'Prescribable medical devices from SNOMED-CT Argentine Edition.',
+            ],
+            'source' => 'dispositivos',
+            'mode' => 'catalog',
+        ],
     ];
 
     /**
@@ -349,11 +371,11 @@ final class TerminologySearchService
         ],
         self::DOMAIN_VADEMECUM => [
             'table' => 'vademecum_comercial',
-            'code' => 't.numero_troquel',
+            'code' => 'COALESCE(t.numero_troquel, CAST(t.snomed_concept_id AS text))',
             'term' => 't.nombre_comercial',
             'subtitle' => 't.monodroga || \' · \' || coalesce(t.presentacion, \'\')',
             'kind' => 'commercial_drug',
-            'filters' => ['t.nombre_comercial', 't.monodroga', 't.numero_troquel', 'coalesce(t.codigo_alfabeta, \'\')', 'coalesce(t.codigo_kairos, \'\')', 'coalesce(t.codigo_barras_gtin, \'\')', 'CAST(t.snomed_concept_id AS text)'],
+            'filters' => ['t.nombre_comercial', 't.monodroga', 'coalesce(t.numero_troquel, \'\')', 'coalesce(t.codigo_alfabeta, \'\')', 'coalesce(t.codigo_kairos, \'\')', 'coalesce(t.codigo_barras_gtin, \'\')', 'CAST(t.snomed_concept_id AS text)'],
             'metadata' => [
                 'troquel_number' => 't.numero_troquel',
                 'alfabeta_code' => 't.codigo_alfabeta',
@@ -366,6 +388,30 @@ final class TerminologySearchService
                 'pharmacological_action' => 't.accion_farmacologica',
                 'sale_type' => 't.tipo_venta',
                 'anmat_certificate' => 't.anmat_certificado',
+            ],
+        ],
+        self::DOMAIN_GENERICOS => [
+            'table' => 'generic_drug',
+            'active_col' => 't.active',
+            'code' => 'CAST(t.snomed_concept_id AS text)',
+            'term' => 't.termino',
+            'subtitle' => 't.tipo_generico',
+            'kind' => 'generic_drug',
+            'filters' => ['t.termino', 't.tipo_generico', 'CAST(t.snomed_concept_id AS text)'],
+            'metadata' => [
+                'generic_type' => 't.tipo_generico',
+                'has_presentation' => 't.con_presentacion',
+            ],
+        ],
+        self::DOMAIN_DISPOSITIVOS => [
+            'table' => 'dispositivos_medicos',
+            'code' => 'CAST(t.snomed_concept_id AS text)',
+            'term' => 't.termino',
+            'subtitle' => 'CAST(t.refset_id AS text)',
+            'kind' => 'medical_device',
+            'filters' => ['t.termino', 'CAST(t.snomed_concept_id AS text)'],
+            'metadata' => [
+                'refset_id' => 't.refset_id',
             ],
         ],
         self::DOMAIN_OFTAR => [
@@ -585,11 +631,13 @@ final class TerminologySearchService
         $p = 'detail';
         $select = $this->catalogSelect($domain, $p, 'CAST(1.0 AS float8)');
 
+        $activeCol = $config['active_col'] ?? 't.activo';
+
         $statement = $this->db->prepare(
             "SELECT {$select}\n"
             . "  FROM {$config['table']} t\n"
             . " WHERE t.id = :{$p}_id\n"
-            . "   AND t.activo = TRUE\n"
+            . "   AND {$activeCol} = TRUE\n"
             . ' LIMIT 1'
         );
         $statement->execute([
@@ -2664,12 +2712,13 @@ final class TerminologySearchService
 
         $filterClause = implode("\n                 OR ", $filterSql);
         $table = $config['table'];
+        $activeCol = $config['active_col'] ?? 't.activo';
 
         $sql = <<<SQL
             SELECT
                 {$select}
             FROM {$table} t
-            WHERE t.activo = TRUE
+            WHERE {$activeCol} = TRUE
               AND (
                     {$filterClause}
                  {$trigramSql}
