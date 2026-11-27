@@ -7,6 +7,13 @@ $page = (int) ($result['page'] ?? 1);
 $pages = max(1, (int) ($result['pages'] ?? 1));
 $hasMore = !empty($result['has_more']);
 $error = is_string($result['error'] ?? null) ? (string) $result['error'] : '';
+$errorKey = $error !== '' ? $error : 'error_query';
+if ($error === 'invalid_catalog' && ($domain ?? '') !== '' && ($catalog ?? '') !== '') {
+    $errorKey = 'invalid_combination';
+}
+$resultLimit = (int) ($state['limit'] ?? ($_GET['limit'] ?? 20));
+$resultLimit = min(100, max(1, $resultLimit));
+$offsetLimitNotice = $hasMore && (($page - 1) * $resultLimit) >= 5000;
 $countLabel = $result['total'] === 1
     ? $t('browse.result_count_one')
     : $t('browse.result_count', ['%count%' => $result['total']]);
@@ -19,15 +26,32 @@ $countLabel = $result['total'] === 1
         <?php endif; ?>
     </div>
 
+    <div class="mb-4 rounded-2xl border border-line bg-paper px-4 py-3 text-sm leading-6 text-ink-soft"
+         data-fetch-error role="alert" hidden>
+        <p><?= e($t('browse.fetch_error')) ?></p>
+        <button type="button" class="button button-small button-ghost mt-2" data-fetch-retry>
+            <?= e($t('browse.retry')) ?>
+        </button>
+    </div>
+    <p class="mb-4 text-xs font-semibold text-muted" data-stale-notice hidden>
+        <?= e($t('browse.stale_results')) ?>
+    </p>
+
     <p class="mb-4 text-sm text-muted browse-results-panel__state" data-results-state>
         <?php if (!$result['ok']): ?>
-            <?= e($t('browse.' . ($error !== '' ? $error : 'error_query'))) ?>
+            <?= e($t('browse.' . $errorKey)) ?>
         <?php elseif ($query === ''): ?>
             <?= e($t('browse.empty_query')) ?>
         <?php else: ?>
             <?= e($t('browse.state_query', ['%query%' => $query])) ?>
         <?php endif; ?>
     </p>
+
+    <?php if ($result['ok'] && $query !== '' && $items !== []): ?>
+        <p class="mb-4 text-[11px] leading-5 text-muted" data-match-semantics>
+            <?= e($t('browse.match_semantics')) ?>
+        </p>
+    <?php endif; ?>
 
     <?php if (!$result['ok'] || $query === '' || $items === []): ?>
         <div class="rounded-2xl border border-dashed border-line bg-paper px-4 py-10 text-center" role="status">
@@ -36,7 +60,7 @@ $countLabel = $result['total'] === 1
             </svg>
             <p class="mt-3 text-sm font-medium text-ink-soft">
                 <?= e(!$result['ok']
-                    ? $t('browse.' . ($error !== '' ? $error : 'error_query'))
+                    ? $t('browse.' . $errorKey)
                     : ($query === '' ? $t('browse.empty_query') : $t('browse.no_results'))) ?>
             </p>
         </div>
@@ -141,6 +165,12 @@ $countLabel = $result['total'] === 1
                 </li>
             <?php endforeach; ?>
         </ul>
+
+        <?php if ($offsetLimitNotice): ?>
+            <p class="mt-4 rounded-xl border border-line bg-paper px-3 py-2 text-xs leading-5 text-muted" role="status">
+                <?= e($t('browse.offset_limit_notice')) ?>
+            </p>
+        <?php endif; ?>
 
         <div class="browse-results-foot mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line px-0 pt-4 pb-0 text-xs text-muted">
             <?php if ($pages > 1): ?>

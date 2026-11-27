@@ -19,6 +19,7 @@ use OrigenSalud\Api\Config\Database;
 use OrigenSalud\Api\Controllers\ConceptController;
 use OrigenSalud\Api\Http\ApiException;
 use OrigenSalud\Api\Http\ApiKeyAuthenticator;
+use OrigenSalud\Api\Http\ApiRateLimiter;
 use OrigenSalud\Api\Http\Cors;
 use OrigenSalud\Api\Http\Request;
 use OrigenSalud\Api\Http\Response;
@@ -223,7 +224,18 @@ try {
     // Toda la superficie /v1 requiere API Key y, por lo tanto, base de datos.
     if (str_starts_with($path, '/v1/')) {
         $db = api_database($request);
-        (new ApiKeyAuthenticator($db))->authenticate($request);
+        $client = (new ApiKeyAuthenticator($db))->authenticate($request);
+
+        // El tope configurado por cliente se aplica después de autenticar:
+        // subject = id de cliente + IP de servidor (nunca X-Forwarded-For).
+        $limit = ApiRateLimiter::hit((int) $client['id'], (int) $client['rate_limit_per_second']);
+
+        if (!$limit['allowed']) {
+            throw ApiException::tooManyRequests($limit['retry_after'], [
+                'limit' => $limit['limit'],
+                'window_seconds' => 1,
+            ]);
+        }
     }
 
     // Catálogo de dominios clínicos disponibles.
@@ -647,6 +659,10 @@ try {
 
     if (isset($exception->details['allow']) && !headers_sent()) {
         header('Allow: ' . $exception->details['allow']);
+    }
+
+    if ($exception->status === 429 && !headers_sent()) {
+        header('Retry-After: ' . max(1, (int) ($exception->details['retry_after'] ?? 1)));
     }
 
     Response::error(

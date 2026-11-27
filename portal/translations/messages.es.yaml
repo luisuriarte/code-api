@@ -1,3 +1,6 @@
+# Histórico: catálogo legacy no cargado por I18n. Conserva textos anteriores,
+# incluidas referencias FHIR obsoletas. No copiar claves sin revisión; la fuente
+# activa es messages.es-AR.yaml (con paridad en messages.en.yaml y messages.pt-BR.yaml).
 meta:
     title: "Origen Salud | Terminología clínica interoperable"
     description: "Plataforma B2B de Terminología-as-a-Service: SNOMED-CT bilingüe, CIE-10, ANMAT y catálogos de laboratorio, vacunas, odontología, prestaciones, programas e imágenes."
@@ -659,6 +662,7 @@ admin:
     login:
         title: "Acceso al panel"
         lead: "Acceso restringido a colaboradores autorizados. Las acciones quedan registradas en auditoría."
+        email_placeholder: "name@example.com"
         submit: "Ingresar"
         back_site: "Ir al Origen Salud"
         logged_out: "La sesión se cerró correctamente."

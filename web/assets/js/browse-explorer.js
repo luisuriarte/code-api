@@ -430,6 +430,83 @@
         return root.getAttribute('data-msg-' + key) || fallback;
     }
 
+    function clearFetchError(pane) {
+        if (!pane) {
+            return;
+        }
+
+        var alertBox = pane.querySelector('[data-fetch-error]');
+        var stale = pane.querySelector('[data-stale-notice]');
+
+        pane.removeAttribute('data-stale');
+        pane.removeAttribute('data-fetch-retry-attempted');
+        if (alertBox) {
+            alertBox.hidden = true;
+        }
+        if (stale) {
+            stale.hidden = true;
+        }
+    }
+
+    // UX-02: un único punto para avisar del fallo, conservar los resultados
+    // anteriores como "última actualización exitosa" y ofrecer reintento.
+    function handleFetchError(root, settings) {
+        var config = settings || {};
+        var pane = root.querySelector('[data-pane="results"]');
+        var alertBox;
+        var stale;
+        var retry;
+        var fallback;
+
+        if (!pane) {
+            return;
+        }
+
+        pane.removeAttribute('aria-busy');
+        alertBox = pane.querySelector('[data-fetch-error]');
+        stale = pane.querySelector('[data-stale-notice]');
+
+        if (!alertBox) {
+            alertBox = document.createElement('div');
+            alertBox.setAttribute('data-fetch-error', '');
+            alertBox.setAttribute('role', 'alert');
+            alertBox.className = 'mb-4 rounded-2xl border border-line bg-paper px-4 py-3 text-sm leading-6 text-ink-soft';
+            alertBox.innerHTML = '<p></p><button type="button" class="button button-small button-ghost mt-2" data-fetch-retry></button>';
+            pane.insertBefore(alertBox, pane.firstChild);
+        }
+
+        alertBox.hidden = false;
+        alertBox.setAttribute('role', 'alert');
+        alertBox.querySelector('p').textContent = message(root, 'fetch-error', 'No se pudieron actualizar los resultados.');
+        if (stale) {
+            stale.textContent = message(root, 'stale-results', 'Los resultados visibles pueden estar desactualizados.');
+            stale.hidden = false;
+        }
+        pane.setAttribute('data-stale', 'true');
+        announce(root, message(root, 'fetch-error', 'No se pudieron actualizar los resultados.'));
+
+        retry = alertBox.querySelector('[data-fetch-retry]');
+        if (retry) {
+            retry.textContent = message(root, 'retry', 'Reintentar');
+            fallback = config.url || window.location.href;
+            retry.onclick = function () {
+                var attempted = pane.getAttribute('data-fetch-retry-attempted') === '1';
+
+                if (typeof config.retry !== 'function' || attempted) {
+                    window.location.assign(fallback);
+                    return;
+                }
+
+                alertBox.hidden = true;
+                if (stale) {
+                    stale.hidden = true;
+                }
+                pane.setAttribute('data-fetch-retry-attempted', '1');
+                config.retry();
+            };
+        }
+    }
+
     function focusPane(root) {
         var pane = root.querySelector('[data-pane="detail"]');
 
@@ -823,22 +900,49 @@
             }
         });
 
-        // Las whitelists vienen del servidor (mismo conjunto que el backend).
-        // Evita que un código publicado sea descartado por una lista fija.
+        // Canonicalización antes de validar: dedupe + whitelist + orden estable
+        // y una sola familia. Las whitelists vienen del servidor.
+        var familySelect = form.querySelector('select[name="family"]');
+        var family = familySelect ? familySelect.value : '';
+        var codeSelect = form.querySelector('[data-code-select]');
+        var catalogFamilies = Object.create(null);
         var allowed = (form.getAttribute('data-catalogs') || 'dentar-pr,dentar-dx,nomenclador-odontologico-ar,oftar-pr,oftar-dx,nomenclador-oftalmologico-cao-ar,nomenclador-oftalmologico-regional-ar')
             .split(',').map(function (code) { return code.trim(); }).filter(Boolean);
-        var catalogs = dedupe(catalogValues).filter(function (code) {
-            return allowed.indexOf(code) !== -1;
-        }).sort();
-        if (catalogs.length > 0) {
-            params.set('catalog', catalogs.join(','));
-        }
-
         var allowedDomains = (form.getAttribute('data-domains') || '')
             .split(',').map(function (code) { return code.trim(); }).filter(Boolean);
+        var root = form.closest ? form.closest('[data-browse-explorer]') : null;
+
+        if (codeSelect) {
+            Array.prototype.forEach.call(codeSelect.options, function (option) {
+                if (option.getAttribute('data-code-kind') === 'catalog') {
+                    catalogFamilies[option.value] = (option.getAttribute('data-families') || '').split(',');
+                }
+            });
+        }
+
+        var catalogs = dedupe(catalogValues).filter(function (code) {
+            return allowed.indexOf(code) !== -1
+                && family !== ''
+                && (!catalogFamilies[code] || catalogFamilies[code].indexOf(family) !== -1);
+        }).sort();
         var domains = dedupe(domainValues).filter(function (code) {
             return allowedDomains.indexOf(code) !== -1;
         }).sort();
+
+        var hadBoth = catalogs.length > 0 && domains.length > 0;
+
+        if (family !== '') {
+            domains = [];
+        } else if (hadBoth) {
+            catalogs = [];
+        }
+
+        if (hadBoth && root) {
+            announce(root, message(root, 'invalid-combination', 'Elegí una sola familia.'));
+        }
+        if (catalogs.length > 0) {
+            params.set('catalog', catalogs.join(','));
+        }
         if (domains.length > 0) {
             params.set('domain', domains.join(','));
         }
@@ -880,8 +984,10 @@
         if (kind === 'domain') {
             return family === '';
         }
+        // Los catálogos solo son seleccionables dentro de su familia: dominio
+        // terminológico y catálogo DENTAR/OFTAR nunca se envían juntos.
         var optionFamilies = (option.getAttribute('data-families') || '').split(',');
-        return family === '' || optionFamilies.indexOf(family) !== -1;
+        return family !== '' && optionFamilies.indexOf(family) !== -1;
     }
 
     function updateCodeHidden(form, select) {
@@ -890,6 +996,8 @@
         }
         var domains = [];
         var catalogs = [];
+        var familySelect = form.querySelector('select[name="family"]');
+        var family = familySelect ? familySelect.value : '';
         Array.prototype.forEach.call(select.options, function (option) {
             if (!option.selected || option.disabled) {
                 return;
@@ -901,6 +1009,14 @@
                 catalogs.push(option.value);
             }
         });
+
+        // Regla única de la interfaz: dominios sin familia, catálogos con
+        // familia. Nunca se publican ambos campos en la misma consulta.
+        if (family !== '') {
+            domains = [];
+        } else {
+            catalogs = [];
+        }
 
         var hiddenDomain = form.querySelector('[data-code-hidden-domain]');
         var hiddenCatalog = form.querySelector('[data-code-hidden-catalog]');
@@ -1011,6 +1127,7 @@
             }
             resultsPane.innerHTML = html;
             resultsPane.removeAttribute('aria-busy');
+            clearFetchError(resultsPane);
             updateSelection(root, root.dataset.focus);
             if (push && stableUrl) {
                 window.history.pushState({}, '', stableUrl);
@@ -1020,10 +1137,12 @@
                 : resultsSignature();
             announce(root, message(root, 'results-updated', 'Resultados actualizados.'));
         }).catch(function () {
-            if (pane) {
-                pane.removeAttribute('aria-busy');
-            }
-            // Sin resultados nuevos: se conserva el listado anterior.
+            handleFetchError(root, {
+                url: stableUrl || window.location.href,
+                retry: function () {
+                    fetchResults(root, fragmentUrl, stableUrl, push);
+                }
+            });
         });
     }
 
@@ -1079,6 +1198,7 @@
             }
 
             pane.removeAttribute('aria-busy');
+            clearFetchError(pane);
             updateSelection(root, root.dataset.focus);
             if (typeof window.history.pushState === 'function') {
                 window.history.pushState({}, '', stableUrl);
@@ -1092,7 +1212,12 @@
                 }
             }
         }).catch(function () {
-            pane.removeAttribute('aria-busy');
+            handleFetchError(root, {
+                url: stableUrl,
+                retry: function () {
+                    appendResults(root, fragmentUrl, link);
+                }
+            });
         });
     }
 
@@ -1141,6 +1266,9 @@
                     controller = new window.AbortController();
                     options.signal = controller.signal;
                 }
+                if (root.querySelector('[data-pane="results"]')) {
+                    root.querySelector('[data-pane="results"]').setAttribute('aria-busy', 'true');
+                }
                 fetchHtml(urls.fragment, options).then(function (html) {
                     var pane = root.querySelector('[data-pane="results"]');
                     if (!pane) {
@@ -1156,6 +1284,8 @@
                         });
                     }
                     pane.innerHTML = html;
+                    pane.removeAttribute('aria-busy');
+                    clearFetchError(pane);
                     updateSelection(root, root.dataset.focus);
                     window.history.pushState({}, '', urls.stable);
                     root.__browseResultsSignature = urls.signature;
@@ -1164,6 +1294,12 @@
                 }).catch(function (error) {
                     if (!error || error.name !== 'AbortError') {
                         controller = null;
+                        handleFetchError(root, {
+                            url: urls.stable,
+                            retry: function () {
+                                fetchResults(root, urls.fragment, urls.stable, true);
+                            }
+                        });
                     }
                 });
             }, 350);

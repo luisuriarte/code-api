@@ -5,17 +5,18 @@
 -- A diferencia de V5.001__...down.sql, SÍ elimina os_customer.audit_log.
 -- No es una migración versionada: no debe ser ejecutada por un runner.
 --
--- Protección mínima: se niega a correr en la base productiva conocida.
--- El responsable debe confirmar además que current_database() es una base
--- de prueba antes de ejecutar.
+-- Whitelist estricta: SOLO se permite la base de prueba exacta
+-- `origen_codes_portal_clientes_test`. Cualquier otra base —incluidas
+-- `origen_codes` y la productiva `origen_codes_portal_clientes`— se rechaza.
 -- ===========================================================================
 
 BEGIN;
 
 DO $guard$
 BEGIN
-    IF current_database() = 'origen_codes' THEN
-        RAISE EXCEPTION 'DEV_ONLY: se rechaza la ejecución sobre origen_codes';
+    IF current_database() <> 'origen_codes_portal_clientes_test' THEN
+        RAISE EXCEPTION 'DEV_ONLY: solo se permite origen_codes_portal_clientes_test; base actual: %', current_database()
+            USING ERRCODE = '42501';
     END IF;
 END
 $guard$;

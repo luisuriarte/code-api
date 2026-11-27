@@ -31,6 +31,7 @@ if ($baseUrl === '') {
 }
 
 $canonical = $baseUrl . '/uvr?lang=' . rawurlencode($locale);
+$xDefault = $baseUrl . '/uvr?lang=' . rawurlencode(I18n::DEFAULT_LOCALE);
 $metadata = I18n::metadata($locale);
 $year = date('Y');
 
@@ -58,8 +59,8 @@ $homePath = I18n::localizedPath($locale, '/');
 $docsPath = '/docs?lang=' . rawurlencode($locale);
 $contactPath = I18n::localizedPath($locale, '/contact');
 $contactMailto = 'mailto:contacto@origen.ar';
-$legalMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal'));
-$privacyMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal_privacy'));
+$termsPath = I18n::localizedPath($locale, '/terminos');
+$privacyPath = I18n::localizedPath($locale, '/privacidad');
 
 $articles = [
     ['id' => 'status', 'key' => 'status', 'group' => 'foundation'],
@@ -199,6 +200,7 @@ $renderArticleNav = static function (string $id) use ($articles, $articleIndex, 
     <?php foreach ($alternates as $alternate): ?>
         <link rel="alternate" hreflang="<?= $esc($alternate['hreflang']) ?>" href="<?= $esc($alternate['href']) ?>">
     <?php endforeach; ?>
+    <link rel="alternate" hreflang="x-default" href="<?= $esc($xDefault) ?>">
     <link rel="stylesheet" href="/assets/css/public.css?v=uvr-v2">
     <style>
         .uvr-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr) 190px; gap: 32px; align-items: start; padding: 32px 0 72px; }
@@ -660,9 +662,9 @@ $renderArticleNav = static function (string $id) use ($articles, $articleIndex, 
     <div class="mx-auto w-full max-w-[1500px] px-4 py-10 sm:px-6">
         <div class="flex flex-wrap gap-x-6 gap-y-2">
             <a class="inline-flex text-sm text-muted transition hover:text-teal-dark hover:underline underline-offset-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15"
-               href="<?= $esc($legalMailto) ?>"><?= $esc($t('footer.legal')) ?></a>
+               href="<?= $esc($termsPath) ?>"><?= $esc($t('footer.legal_terms')) ?></a>
             <a class="inline-flex text-sm text-muted transition hover:text-teal-dark hover:underline underline-offset-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15"
-               href="<?= $esc($privacyMailto) ?>"><?= $esc($t('footer.legal_privacy')) ?></a>
+               href="<?= $esc($privacyPath) ?>"><?= $esc($t('footer.legal_privacy')) ?></a>
         </div>
         <div class="mt-6 flex flex-col gap-2 border-t border-line pt-6 text-xs leading-relaxed text-muted sm:flex-row sm:items-center sm:justify-between">
             <p><?= $esc(str_replace('%year%', (string) $year, $t('footer.rights'))) ?></p>

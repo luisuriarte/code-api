@@ -63,8 +63,8 @@ $footerLink = 'inline-flex text-sm text-muted transition hover:text-teal-dark ho
             <div>
                 <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-ink"><?= e($t('footer.legal')) ?></h3>
                 <ul class="mt-4 flex flex-col gap-2.5">
-                    <li><a class="<?= $footerLink ?>" href="<?= e($legalMailto) ?>"><?= e($t('footer.legal_terms')) ?></a></li>
-                    <li><a class="<?= $footerLink ?>" href="<?= e($legalMailto) ?>"><?= e($t('footer.legal_privacy')) ?></a></li>
+                    <li><a class="<?= $footerLink ?>" href="<?= e(I18n::localizedPath($locale, '/terminos')) ?>"><?= e($t('footer.legal_terms')) ?></a></li>
+                    <li><a class="<?= $footerLink ?>" href="<?= e(I18n::localizedPath($locale, '/privacidad')) ?>"><?= e($t('footer.legal_privacy')) ?></a></li>
                 </ul>
             </div>
         </div>

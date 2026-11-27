@@ -82,6 +82,10 @@ final class ServiceRequestService
                 'label' => (string) $products[$id]['label'],
                 'quantity' => $quantity,
                 'price' => $products[$id]['price'],
+                'currency' => $products[$id]['currency'] ?? null,
+                'periodicity' => $products[$id]['periodicity'] ?? null,
+                'tax' => $products[$id]['tax'] ?? null,
+                'billing' => $products[$id]['billing'] ?? null,
             ];
             if (count($items) > self::MAX_ITEMS) {
                 return self::failure('invalid_selection', $fields);
@@ -105,8 +109,10 @@ final class ServiceRequestService
         $clientMatch = $catalogService->findClients($taxId, $organization, $email);
         $ninjaStatus = (string) $clientMatch['status'];
 
+        // Sin matching validado contra la versión instalada, ninguna
+        // clasificación automática puede considerarse confiable.
         $status = 'received';
-        if ($duplicate !== null || $ninjaStatus === 'ambiguous' || $ninjaStatus === 'unavailable') {
+        if ($duplicate !== null || $ninjaStatus !== 'exact') {
             $status = 'needs_review';
         }
 
@@ -138,8 +144,20 @@ final class ServiceRequestService
             return self::failure('database_unavailable', $fields);
         }
 
-        self::notify($locale, $reference, $organization, $contactName, $email, $country, $taxId, $note, $items);
+        $notification = self::notify(
+            $locale,
+            $reference,
+            $organization,
+            $contactName,
+            $email,
+            $country,
+            $taxId,
+            $note,
+            $items
+        );
 
+        // La solicitud ya quedó registrada: se limpia la selección y se rota el
+        // token para evitar reenvíos duplicados, informando el estado real.
         self::clearSelection();
         Csrf::rotate();
 
@@ -148,7 +166,7 @@ final class ServiceRequestService
             'error' => null,
             'reference' => $reference,
             'fields' => [],
-            'notification' => null,
+            'notification' => $notification,
         ];
     }
 
@@ -190,8 +208,6 @@ final class ServiceRequestService
         $selection[$id] = max(1, min(self::MAX_QUANTITY, $current + $quantity));
 
         Session::set(self::SELECTION_KEY, $selection);
-
-        Session::set(self::SELECTION_KEY, $selection);
     }
 
     public static function removeFromSelection(string $id): void
@@ -227,7 +243,8 @@ final class ServiceRequestService
     }
 
     /**
-     * @param list<array{id: string, label: string, quantity: int, price: ?float}> $items
+     * @param list<array<string, mixed>> $items
+     * @return string `sent`, `partial` o `failed`
      */
     private static function notify(
         string $locale,
@@ -239,9 +256,15 @@ final class ServiceRequestService
         string $taxId,
         string $note,
         array $items
-    ): void {
+    ): string {
         $t = static fn (string $key): string => trans('service_request.email_' . $key, [], $locale);
         $subject = $t('subject') . ' — ' . $reference . ' (' . $locale . ')';
+
+        $currencies = array_values(array_unique(array_filter(
+            array_column($items, 'currency'),
+            static fn (mixed $value): bool => is_string($value) && $value !== ''
+        )));
+        $currency = count($currencies) === 1 ? (string) $currencies[0] : null;
 
         $lines = [
             $t('reference') . ': ' . $reference,
@@ -258,20 +281,38 @@ final class ServiceRequestService
             $price = $item['price'];
             $priceText = $price === null
                 ? $t('quote_only')
-                : number_format($price, 2, ',', '.');
+                : number_format((float) $price, 2, ',', '.') . ($currency !== null ? ' ' . $currency : '');
             if ($price !== null) {
-                $total += $price * (int) $item['quantity'];
+                $total += (float) $price * (int) $item['quantity'];
             }
-            $lines[] = '- ' . (string) $item['quantity'] . ' × ' . (string) $item['label'] . ' — ' . $priceText;
+
+            $line = '- ' . (string) $item['quantity'] . ' × ' . (string) $item['label'] . ' — ' . $priceText;
+            $details = [];
+            $billing = $item['billing'] ?? null;
+            if ($billing === 'one_time' || $billing === 'recurring') {
+                $details[] = trans('service_request.billing_' . $billing, [], $locale);
+            }
+            foreach (['periodicity', 'tax'] as $key) {
+                $value = $item[$key] ?? null;
+                if (is_string($value) && $value !== '') {
+                    $details[] = $value;
+                }
+            }
+            if ($details !== []) {
+                $line .= ' (' . implode('; ', $details) . ')';
+            }
+            $lines[] = $line;
         }
-        $lines[] = $t('estimated_total') . ': ' . number_format($total, 2, ',', '.');
+        $lines[] = $t('estimated_total') . ': ' . number_format($total, 2, ',', '.')
+            . ($currency !== null ? ' ' . $currency : '');
         $lines[] = $t('total_note');
         $lines[] = '';
         $lines[] = $t('notes') . ': ' . ($note !== '' ? $note : '-');
 
         $textBody = implode("\n", $lines);
         $htmlBody = nl2br(e($textBody), false);
-        $mail = SmtpMailer::send(
+
+        $internal = SmtpMailer::send(
             Config::contactEmail(),
             $subject,
             $textBody,
@@ -280,10 +321,23 @@ final class ServiceRequestService
             Config::contactBcc()
         );
 
-        if (!$mail['ok']) {
-            $reason = is_string($mail['error'] ?? null) ? $mail['error'] : 'mail_failed';
-            error_log('service request mail failed: ' . $reason);
+        $confirmationText = trans('service_request.email_confirmation_text', ['%reference%' => $reference], $locale);
+        $confirmation = SmtpMailer::send(
+            $email,
+            trans('service_request.email_confirmation_subject', ['%reference%' => $reference], $locale),
+            $confirmationText,
+            nl2br(e($confirmationText), false)
+        );
+
+        if ($internal['ok'] && $confirmation['ok']) {
+            return 'sent';
         }
+
+        $reason = $internal['ok'] ? 'confirmation' : 'internal';
+        error_log('service request mail failed (' . $reason . '): reference=' . $reference
+            . ' error=' . (string) ($internal['ok'] ? ($confirmation['error'] ?? 'unknown') : ($internal['error'] ?? 'unknown')));
+
+        return $internal['ok'] || $confirmation['ok'] ? 'partial' : 'failed';
     }
 
     /**

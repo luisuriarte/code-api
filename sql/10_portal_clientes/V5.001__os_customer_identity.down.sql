@@ -12,7 +12,7 @@ BEGIN;
 
 DO $guard$
 BEGIN
-    IF current_database() NOT LIKE 'origen_codes_portal_clientes%' THEN
+    IF current_database() <> 'origen_codes_portal_clientes_test' THEN
         RAISE EXCEPTION 'Base no permitida para V5.001: %', current_database()
             USING ERRCODE = '42501';
     END IF;
@@ -73,6 +73,10 @@ DROP TABLE IF EXISTS os_customer.organization;
 DROP FUNCTION IF EXISTS os_customer.touch_updated_at();
 
 -- El esquema y audit_log permanecen; solo se quita el rol de aplicación.
+-- ATENCIÓN: DROP ROLE es CLUSTER-WIDE y afecta también a las demás bases.
+-- Este `down` solo se ejecuta en la base de prueba exacta
+-- `origen_codes_portal_clientes_test`. Revertir el rol en producción es un
+-- procedimiento manual auditado, con acta nueva: NO se hace con este down.
 DROP ROLE IF EXISTS origen_customer;
 
 COMMIT;

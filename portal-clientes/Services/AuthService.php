@@ -74,6 +74,8 @@ final class AuthService
         $organizationId = isset($organizations[0]['id']) ? (int) $organizations[0]['id'] : null;
         $fingerprints = self::fingerprints();
 
+        self::regenerateSession();
+
         $sessionId = SessionRepository::create(
             (int) $user['id'],
             Token::hash($raw),
@@ -122,27 +124,35 @@ final class AuthService
         CustomerSession::clear();
     }
 
-    /** @return array{key: string, link: string|null} */
+    /**
+     * @return array{key: string, delivered: bool}
+     */
     public static function requestReset(string $email): array
     {
         $config = Config::auth();
         $email = trim($email);
         $subject = Token::fingerprint(mb_strtolower($email), $config['token_pepper']);
 
-        AuthThrottleRepository::hit(
-            'reset',
+        $throttle = AuthThrottleRepository::hit(
+            'reset_request',
             $subject,
             $config['login_window'],
             $config['login_limit'],
             $config['lock_minutes']
         );
 
+        if (self::isBlocked($throttle)) {
+            AuditRepository::record(null, null, 'password_reset.throttled', 'app_user', null, 'denied');
+
+            return ['key' => 'customer.forgot.sent', 'delivered' => false];
+        }
+
         $user = UserRepository::findByEmail($email);
 
         if ($user === null || ($user['status'] ?? '') !== 'active') {
             AuditRepository::record(null, null, 'password_reset.requested_unknown', 'app_user', null, 'failure');
 
-            return ['key' => 'customer.forgot.sent', 'link' => null];
+            return ['key' => 'customer.forgot.sent', 'delivered' => false];
         }
 
         $raw = Token::random();
@@ -156,17 +166,43 @@ final class AuthService
             $fingerprints['ua']
         );
 
+        $notification = CustomerNotification::passwordReset((string) $user['email'], $raw);
+
+        if (!$notification['ok']) {
+            PasswordResetRepository::revokeAllForUser((int) $user['id']);
+            AuditRepository::record(
+                (int) $user['id'],
+                null,
+                'password_reset.mail_failed',
+                'app_user',
+                (string) $user['id'],
+                'failure'
+            );
+
+            // Respuesta idéntica a la de cuenta inexistente: el fallo SMTP se
+            // audita, pero no se revela si el correo pertenece a un usuario.
+            return ['key' => 'customer.forgot.sent', 'delivered' => false];
+        }
+
+        AuthThrottleRepository::clear('reset_request', $subject);
         AuditRepository::record((int) $user['id'], null, 'password_reset.requested', 'app_user', (string) $user['id'], 'success');
 
-        return [
-            'key' => 'customer.forgot.sent',
-            'link' => TestNotification::prepare('reset', $raw)['link'],
-        ];
+        return ['key' => 'customer.forgot.sent', 'delivered' => true];
     }
 
     public static function resetPassword(string $rawToken, string $password): bool
     {
-        if (!Token::isValidHex($rawToken)) {
+        $config = Config::auth();
+        $subject = Token::fingerprint($rawToken, $config['token_pepper']);
+        $throttle = AuthThrottleRepository::hit(
+            'reset_submit',
+            $subject,
+            $config['login_window'],
+            $config['login_limit'],
+            $config['lock_minutes']
+        );
+
+        if (self::isBlocked($throttle) || !Token::isValidHex($rawToken)) {
             return false;
         }
 
@@ -194,7 +230,17 @@ final class AuthService
     /** @return array{ok: bool, error_key?: string, user_id?: int} */
     public static function acceptInvitation(string $rawToken, string $fullName, string $password): array
     {
-        if (!Token::isValidHex($rawToken)) {
+        $config = Config::auth();
+        $subject = Token::fingerprint($rawToken, $config['token_pepper']);
+        $throttle = AuthThrottleRepository::hit(
+            'invitation_accept',
+            $subject,
+            $config['login_window'],
+            $config['login_limit'],
+            $config['lock_minutes']
+        );
+
+        if (self::isBlocked($throttle) || !Token::isValidHex($rawToken)) {
             return ['ok' => false, 'error_key' => 'customer.invitation.invalid'];
         }
 
@@ -244,6 +290,14 @@ final class AuthService
         );
 
         return ['ok' => true, 'user_id' => $userId];
+    }
+
+    /** Evita session fixation: el ID cambia antes de escribir datos autenticados. */
+    private static function regenerateSession(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
     }
 
     /** @param array{attempts: int, blocked_until: string|null, blocked: bool} $throttle */

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 $uvrPublished = is_array($sections['uvr'] ?? null) ? $sections['uvr'] : [];
-$uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2, ',', '.');
 ?>
 <div class="browse-subsection browse-uvr-published">
     <h3 class="browse-subsection__title"><?= e($t('browse.uvr_published_title')) ?></h3>
@@ -53,17 +52,17 @@ $uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2
                     </td>
                     <td>
                         <span class="block text-xs">
-                            <?= e($t('browse.uvr_work')) ?>: <?= e($uvrNumber($valuation['work_uvr'] ?? 0)) ?>
-                            · <?= e($t('browse.uvr_practice')) ?>: <?= e($uvrNumber($valuation['practice_expense_uvr'] ?? 0)) ?>
-                            · <?= e($t('browse.uvr_liability')) ?>: <?= e($uvrNumber($valuation['professional_liability_uvr'] ?? 0)) ?>
+                            <?= e($t('browse.uvr_work')) ?>: <?= e($formatNumber($valuation['work_uvr'] ?? 0)) ?>
+                            · <?= e($t('browse.uvr_practice')) ?>: <?= e($formatNumber($valuation['practice_expense_uvr'] ?? 0)) ?>
+                            · <?= e($t('browse.uvr_liability')) ?>: <?= e($formatNumber($valuation['professional_liability_uvr'] ?? 0)) ?>
                         </span>
                     </td>
-                    <td><strong><?= e($uvrNumber($valuation['total_uvr'] ?? 0)) ?></strong></td>
+                    <td><strong><?= e($formatNumber($valuation['total_uvr'] ?? 0)) ?></strong></td>
                     <td>
                         <?php if ($importe === null || $importe === ''): ?>
                             <span class="text-muted"><?= e($t('browse.uvr_published_no_conversion')) ?></span>
                         <?php else: ?>
-                            <span><?= e($uvrNumber($importe) . ($currency !== '' ? ' ' . $currency : '')) ?></span>
+                            <span><?= e($formatNumber($importe) . ($currency !== '' ? ' ' . $currency : '')) ?></span>
                         <?php endif; ?>
                     </td>
                     <td><?= e(trim($validFrom . ' — ' . $validTo)) ?></td>

@@ -1,5 +1,7 @@
 # REORGANIZACIÓN INTEGRAL ORIGEN SALUD - FASE 1: AUDITORÍA
 
+> **Histórico — superado por Etapas 12-13 / auditoría 2026-11-26:** el estado vigente está en el [informe final](docs/audit/informe-final.md). El contenido histórico se conserva sin modificarlo.
+
 ## ESTRUCTURA ACTUAL IDENTIFICADA
 
 ### Archivos SQL (sql/):

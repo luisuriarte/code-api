@@ -1,11 +1,12 @@
 # Origen Salud
 
-Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la misma base de código:
+Plataforma B2B de **Terminología-as-a-Service (TaaS)** con tres frentes sobre la misma base de código:
 
 | Frente | Dominio | Contenido |
 | --- | --- | --- |
 | Portal institucional | `med.origen.ar` | Sitio trilingüe con locales canónicos `es-AR`, `en` y `pt-BR` (alias de entrada `es` y `pt`), selector persistente y URLs `/{locale}/...`. |
 | API REST | `api.origen.ar` | Búsqueda unificada de terminología clínica y catálogos: SNOMED-CT, CIE-10, ANMAT, laboratorio, vacunas, familia odontológica DENTAR (PR/DX públicos; AN/CL sin exposición pública; ADA CDT 2025), prestaciones, programas e imágenes. |
+| Portal privado de clientes | Ruta `/portal-clientes` (frente web; front controller `web/portal-clientes/index.php`) | Acceso institucional con sesión, identidad y roles propios; usa la base operativa separada `origen_codes_portal_clientes`. No expone precios ni realiza cobros. |
 
 ### Documentación de Acceso e Interoperabilidad
 - 📖 [Documentación de la API REST (v1)](README-API.md) — Autenticación, endpoints unificados, catálogos nacionales y familia odontológica DENTAR (CDT / CIE-10 / SNOMED AR). Especificación: [`docs/api/openapi-3.1.yaml`](docs/api/openapi-3.1.yaml).
@@ -19,6 +20,12 @@ Plataforma B2B de **Terminología-as-a-Service (TaaS)** con dos frentes sobre la
 
 Verificado el 2026-11-19 con consultas de solo lectura (PostgreSQL 18.6). Detalle
 y metodología en el [§1.6 de la propuesta arquitectónica](docs/architecture/propuesta-arquitectura-catalogos-sanitarios.md).
+
+**Artefacto propuesto vs. catálogo cargado:** los scripts, importadores y CSV de
+`sql/03_dentar/` y `docs/dentar/` son **artefactos propuestos/no ejecutados en
+esta auditoría**; en cambio, los ítems, versiones y relaciones de la tabla
+siguiente **ya están cargados y verificados** en `origen_codes`. Este README no
+genera ni ordena ninguna carga nueva.
 
 | Catálogo | Ítems | Observaciones |
 | --- | ---: | --- |
@@ -48,15 +55,18 @@ El **Nomenclador Odontológico Nacional** fue desplegado el 2026-11-19 con autor
 ├── bootstrap.php              # Autoload, .env, errores y helpers globales
 ├── composer.json
 ├── .env.example
-├── sql/                       # 44 archivos .sql en 9 subdirectorios
+├── sql/                       # 142 archivos .sql en 12 directorios (140 versionados + V11.001 up/down preparados)
 │   ├── 01_schema/             # design.sql y README de convenciones
 │   ├── 02_catalogs/           # origen_catalog_engine.sql (motor canónico os_*)
-│   ├── 03_dentar/             # familia, núcleo editorial, sync y nomenclador (no ejecutado)
+│   ├── 03_dentar/             # artefactos de carga (no ejecutados); catálogos ya cargados en origen_codes
+│   ├── 03_oftar/              # familia OFTAR y nomencladores oftalmológicos
 │   ├── 04_pmo/                # Programa Médico Obligatorio
-│   ├── 05_loinc.sql/          # esquema, importador y nombres de consumidor
+│   ├── 05_loinc/              # esquema, importador y nombres de consumidor (NO existe 05_loinc.sql/)
 │   ├── 06_nomencladores/      # Legacy
 │   ├── 07_multilingue/        # capa i18n 01..18
 │   ├── 08_arquitectura/       # fase1..fase6: propuestas NO ejecutadas
+│   ├── 09_admin/              # os_admin: Fase 1/M1 y Fase 2/M2 aplicadas y verificadas
+│   ├── 10_portal_clientes/    # migraciones V5.001..V11.001 del portal privado
 │   └── portal/                # roles y GRANTs
 ├── docs/
 │   ├── dentar/                # Familia DENTAR: formato CSV, plantillas e importación
@@ -718,7 +728,7 @@ server {
         include fastcgi_params;
         fastcgi_param HTTP_PROXY "";
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.5-fpm.sock;
     }
 }
 
@@ -740,7 +750,7 @@ server {
         include fastcgi_params;
         fastcgi_param HTTP_PROXY "";
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.5-fpm.sock;
     }
 }
 ```

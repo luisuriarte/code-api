@@ -64,6 +64,14 @@ final class AdminAuthController
 
     public static function logout(): void
     {
+        $token = isset($_POST[Csrf::FIELD]) && is_string($_POST[Csrf::FIELD]) ? $_POST[Csrf::FIELD] : null;
+
+        if (!Csrf::valid($token)) {
+            http_response_code(400);
+            header('Location: /admin/login?logged_out=0', true, 303);
+            exit;
+        }
+
         AdminGuard::auth()->logout();
         header('Location: /admin/login?logged_out=1', true, 303);
         exit;
@@ -108,6 +116,8 @@ final class AdminAuthController
 
     public static function reset(): void
     {
+        header('Referrer-Policy: no-referrer');
+
         $token = isset($_GET['token']) && is_string($_GET['token']) ? $_GET['token'] : '';
         $flash = Session::pull('admin.flash');
 
@@ -136,8 +146,10 @@ final class AdminAuthController
         $csrf = isset($_POST[Csrf::FIELD]) && is_string($_POST[Csrf::FIELD]) ? $_POST[Csrf::FIELD] : null;
 
         if (!Csrf::valid($csrf)) {
-            Session::set('admin.flash', ['ok' => false, 'error' => 'csrf', 'token' => $token]);
-            header('Location: /admin/reset?token=' . rawurlencode($token), true, 303);
+            // El token nunca vuelve a la URL ni al flash: se reinicia el flujo
+            // desde el correo para evitar fugas por historial, logs o Referer.
+            Session::set('admin.flash', ['ok' => false, 'error' => 'csrf']);
+            header('Location: /admin/reset', true, 303);
             exit;
         }
 

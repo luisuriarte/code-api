@@ -31,6 +31,56 @@ final class Config
     }
 
     /**
+     * Indica si la petición llegó por TLS. `X-Forwarded-Proto` solo se acepta
+     * cuando REMOTE_ADDR figura en la lista explícita de proxies de confianza;
+     * una cabecera enviada por un cliente nunca puede activar la guardia.
+     */
+    public static function isSecureRequest(): bool
+    {
+        $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
+        if ($https !== '' && $https !== 'off') {
+            return true;
+        }
+
+        if (strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) !== 'https') {
+            return false;
+        }
+
+        $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        if ($remote === '') {
+            return false;
+        }
+
+        $trusted = array_filter(array_map(
+            'trim',
+            explode(',', (string) env('PORTAL_CUSTOMER_TRUSTED_PROXY_IPS', ''))
+        ), static fn (string $value): bool => $value !== '');
+
+        foreach ($trusted as $candidate) {
+            if ($candidate === $remote
+                || (str_contains($candidate, '/') && self::ipInCidr($remote, $candidate))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Comparación IPv4 simple para listas de proxy en CIDR. */
+    private static function ipInCidr(string $ip, string $cidr): bool
+    {
+        [$network, $bits] = array_pad(explode('/', $cidr, 2), 2, '32');
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false
+            || filter_var($network, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+            return false;
+        }
+
+        $mask = 0xFFFFFFFF << (32 - max(0, min(32, (int) $bits)));
+
+        return (ip2long($ip) & $mask) === (ip2long($network) & $mask);
+    }
+
+    /**
      * @return array{
      *     password_pepper: string,
      *     token_pepper: string,

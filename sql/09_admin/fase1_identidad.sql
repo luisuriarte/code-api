@@ -1,8 +1,10 @@
 -- =====================================================================
 -- M1 / Fase 1 — Identidad, autenticación, RBAC y auditoría de acceso
 -- =====================================================================
--- ARTEFACTO PROPUESTO — NO EJECUTAR SIN APROBACIÓN EXPLÍCITA.
--- Aprobado como diseño por Acta M0 (2026-11-19). NO aplicado a origen_codes.
+-- Histórico: ARTEFACTO PROPUESTO, aprobado como diseño por Acta M0 (2026-11-19).
+-- Estado real: APLICADO Y VERIFICADO en `origen_codes` el 2026-11-19, con Acta M0 y autorización expresa del responsable para Fase 1 / M1.
+-- Verificador: comprobación `SELECT`-only que confirmó 11 tablas, el rol `origen_admin`, el trigger append-only y los roles/permisos base (ver `sql/09_admin/README.md`).
+-- No reejecutar sin autorización nueva. El SQL histórico se conserva sin reescritura.
 -- Aditivo, transaccional y aislado en el esquema os_admin.
 -- No modifica public, os_catalog_*, importadores ni la API pública.
 -- =====================================================================
@@ -277,4 +279,4 @@ ON CONFLICT (role_code, permission_code) DO NOTHING;
 
 COMMIT;
 
--- Fin del artefacto M1. No se ha ejecutado.
+-- Fin del artefacto M1. Estado: aplicado y verificado en `origen_codes` (2026-11-19).

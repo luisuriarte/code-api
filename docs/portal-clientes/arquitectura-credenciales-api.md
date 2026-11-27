@@ -178,3 +178,5 @@ Solo después de autorización expresa:
 ## 11. Requisito de autorización
 
 No crear tablas de metadatos, modificar `api_clients`, crear roles, ampliar grants, cambiar autenticación ni publicar gestión self-service sin aprobación explícita del propietario.
+
+**Estado vigente (2026-11-26):** la aprobación de la Etapa 8 autorizó el self-service en entorno de prueba y la excepción de escritura en `public.api_clients` (`origen_codes`). La activación en producción y la migración V11.001 de hash con pepper siguen pendientes de acta; el código implementa la doble lectura para no romper credenciales legacy.

@@ -232,7 +232,7 @@ docs:
         warning_title: 'Não exponha a credencial'
         warning_text: 'A API Key deve permanecer em um backend seguro. Não a inclua em HTML público, aplicações SPA, bundles JavaScript, repositórios nem aplicativos móveis sem uma camada intermediária.'
         management_title: 'Gerenciamento de credenciais'
-        management_text: 'Atualmente não há registro self-service, emissão, rotação, expiração nem revogação por API. A tabela api_clients dispõe apenas de is_active. O registro e a rotação continuam pendentes.'
+        management_text: 'O portal de clientes implementa criar, rotacionar e revogar credenciais da API própria, protegido por permissões e desativado por padrão: exige a DSN de credenciais configurada. `api_clients` ainda não tem escopos nem expiração; a emissão não cria clientes nem faturas.'
         format_title: 'Formato e validação'
         format_text: 'A chave aceita até 128 caracteres ASCII imprimíveis. Uma credencial ausente, vazia, mal formatada, inativa ou inexistente retorna 401 com error.code = unauthorized.'
         header: Cabeçalho
@@ -248,7 +248,7 @@ docs:
         pagination_title: 'Paginação e limites'
         pagination_text: 'Em /v1/search, limit tem por padrão 20 e o máximo efetivo é 50, salvo configuração explícita de API_PAGE_LIMIT_MAX (limite 100). offset varia de 0 a 5000. Outros endpoints têm limites próprios: /v1/catalogs/*/items usa 1–100 fixo, /v1/mappings retorna até 50 sem paginação e /v1/odontologia/diagnosticos não é paginado.'
         methods_title: 'Métodos e CORS'
-        methods_text: 'Não existem operações de escrita. Os métodos suportados são GET e um OPTIONS global que responde 204 antes da autenticação. O CORS emite cabeçalhos apenas se API_CORS_ORIGINS estiver configurado; por padrão, https://med.origen.ar é permitido.'
+        methods_text: 'Não existem operações de escrita. Os métodos suportados são GET e um OPTIONS global que responde 204 antes da autenticação. O CORS emite cabeçalhos apenas se API_CORS_ORIGINS estiver configurado; sem configuração não há cabeçalhos (same-origin). O exemplo inclui https://med.origen.ar.'
         headers_title: 'Cabeçalhos de resposta'
         headers_text: 'Além de Content-Type e X-Request-Id, a API envia Cache-Control: no-store, X-Content-Type-Options: nosniff, Referrer-Policy: no-referrer e, quando aplicável, Content-Language, Vary e WWW-Authenticate.'
         codes_col: HTTP
@@ -377,17 +377,17 @@ docs:
         fhir_title: 'HL7 FHIR R4'
         fhir_text: 'Não existe nenhuma rota /fhir em api/index.php. README-FHIR.md descreve um contrato proposto. A proteção de autenticação atual cobre apenas /v1/, portanto qualquer implementação futura deve revisar esse escopo antes da publicação.'
         uvr_title: UVR
-        uvr_text: 'As tabelas UVR estão propostas e vazias. Nenhum endpoint consulta valores UVR, componentes, conversões ou índices geográficos.'
+        uvr_text: "A API pública não expõe valores UVR. O repositório documenta a metodologia e contém um exemplo verificável de 33,00 UVR para uma prestação OFTAR-PR; não são apresentadas tabelas de honorários nem índices geográficos publicados."
         oauth_title: 'OAuth, scopes e rate limiting'
         oauth_text: 'Não há OAuth 2.0, JWT, scopes, cotas nem 429. O campo rate_limit_per_second é consultado, mas não aplicado. Também não existe 403 por suspensão ou cota.'
         writes_title: 'Operações de escrita'
         writes_text: 'Não há POST, PUT, PATCH nem DELETE. A API é somente leitura e não gerencia catálogos, credenciais nem traduções.'
         console_title: 'Console de desenvolvedores'
-        console_text: 'Não há registro self-service, painel de API Keys, rotação automática nem expiração/revogação por endpoint. As chaves são armazenadas em texto simples atualmente, e seu hash é uma tarefa pendente.'
+        console_text: 'O painel de credenciais existe em `/portal-clientes` e está desativado por padrão; V8.001 foi aplicado apenas no ambiente de teste. O hash com pepper está preparado no código, mas a migração V11.001 exige autorização e não foi executada. Não há OAuth/JWT nem escopos.'
         catalogs_title: 'Catálogos reservados'
         catalogs_text: 'dentar-an, dentar-cl, dentar-in, dentar-pd e dentar-eq estão reservados sem dados públicos. Também não são expostas relações os_catalog_relation pela API, nem conteúdo PHI como imagens PACS.'
         alignment_title: 'Alinhamento da especificação'
-        alignment_text: 'A OpenAPI vigente tem desvios conhecidos em relação ao código: request_id declarado como UUID, /health com request_id no body, q.maxLength=200, lang padrão es-AR e parâmetros ausentes em vários endpoints. Corrigir a spec é uma tarefa pendente.'
+        alignment_text: 'Histórico: os desvios conhecidos da OpenAPI foram corrigidos na Fase 2. A spec vigente é a fonte do contrato; a tabela abaixo é a lista de verificação.'
     openapi:
         title: '11. OpenAPI e geração de clientes'
         lead: 'A especificação existente é a referência para client generation, mas deve ser confrontada com o código até que o alinhamento seja concluído.'
@@ -581,7 +581,7 @@ browse:
     detail_title: "Detalhe do código"
     back_results: "Voltar aos resultados"
     code: "Código"
-    code_multi_hint: "Todos = sem filtro. Clique para marcar vários."
+    code_multi_hint: "Todos = sem filtro. Escolha fontes ou catálogos de uma única família."
     term: "Termo"
     description: "Descrição"
     domain: "Catálogo"
@@ -600,8 +600,9 @@ browse:
     dialect_determined: "Dialeto determinado"
     translation_notice: "Este campo é servido por fallback ou não está traduzido. Revise o detalhe por campo antes de usar o texto."
     approved_note: "Apenas textos aprovados pelo modelo editorial vigente são exibidos."
-    invalid_domain: "O catálogo selecionado não é válido."
-    invalid_catalog: "O catálogo DENTAR selecionado não é válido."
+    invalid_domain: "A fonte selecionada não é válida."
+    invalid_catalog: "O catálogo odontológico ou oftalmológico selecionado não é válido."
+    invalid_combination: "Fontes terminológicas e catálogos DENTAR/OFTAR não podem ser combinados. Escolha uma única família."
     catalog: "Catálogo DENTAR"
     catalog_all: "Sem filtro de produto"
     dentar_badge: "DENTAR"
@@ -774,8 +775,8 @@ browse:
     validity: "Vigência"
     validity_all: "Todas"
     validity_current: "Vigente"
-    match_exact: "Correspondência exata"
-    match_partial: "Correspondência parcial"
+    match_exact: "Correspondência textual exata"
+    match_partial: "Aproximação textual"
     relations_count: "%count% relações"
     relations_count_one: "1 relação"
     load_more: "Carregar mais resultados"
@@ -799,13 +800,13 @@ browse:
     tag_national: "Nacional"
     tag_unpublished: "Não publicado"
     tag_proposed: "Proposto"
-    reserved_note: "Somente os catálogos acima podem ser consultados. Os rótulos DENTAR-*/OS-* estão em preparação e não retornam resultados. OFTAR-DX não tem UVR: a valoração pertence a OFTAR-PR."
+    reserved_note: "Somente os catálogos acima podem ser consultados. DENTAR-AN/CL e os códigos OS-* permanecem não publicados. OFTAR-DX não tem UVR: a valoração documentada pertence a OFTAR-PR."
     reset_filters: "Limpar filtros"
     scope_title: "Limite de alcance:"
     scope_notice: "Este registro descreve o conceito clínico. Não inclui requisitos de operadoras, autorizações, honorários, copagamentos nem limites de frequência."
     tab_versions: "Versões"
     tab_trace_sources: "Fontes e rastreabilidade"
-    uvr_formula: "Quando publicada pela fonte, a valoração UVR é derivada como trabalho profissional + despesas da prestação + responsabilidade profissional. A conversão monetária é apresentada separadamente e somente com taxas verificáveis."
+    uvr_formula: "Quando a fonte publica UVR, o total é derivado de trabalho profissional + despesas da prestação + responsabilidade profissional. A conversão monetária é mostrada separadamente e somente com taxas verificáveis."
     uvr_empty: "Não há valores UVR verificados carregados para este conceito. Não são exibidos valores estimados."
     uvr_scope_title: "Não é uma tabela de honorários:"
     uvr_scope_notice: "UVR é uma valoração relativa. Valores, copagamentos e condições dependem de contratos de operadoras e são consultados em um módulo independente."
@@ -825,6 +826,12 @@ browse:
     relation_filter_system: "Filtrar por sistema"
     relation_literal_note: "Os tipos são exibidos literalmente como declarados pela fonte. Não se assume equivalência semântica entre sistemas."
     relations_limited: "Diagrama limitado a 5 nós e profundidade 1. Relações declaradas não são inferências semânticas."
+
+    fetch_error: "Não foi possível atualizar os resultados. Os dados exibidos vêm da última consulta bem-sucedida."
+    stale_results: "Última atualização bem-sucedida. Os resultados visíveis podem estar desatualizados."
+    retry: "Tentar novamente"
+    offset_limit_notice: "A ordem é fixa. A navegação para após 5000 registros deslocados; refine os filtros para ver mais resultados."
+    match_semantics: "Estes rótulos descrevem correspondência de texto, não equivalência clínica. Nenhuma equivalência é afirmada salvo declaração explícita da fonte."
 
 dentar:
     meta_title: "DENTAR | Catálogo Argentino de Procedimentos Odontológicos"
@@ -1113,7 +1120,7 @@ uvr:
         lead: 'Uma metodologia transparente, reproduzível e adaptável para comparar os recursos relativos exigidos por cada prestação de saúde, sem confundir valor relativo com valor monetário.'
         badge: 'UVR · Unidade de Valor Relativo'
         status_title: 'Estado da proposta'
-        status_text: 'Este documento descreve uma metodologia proposta. Não há valores UVR carregados, índices geográficos publicados nem endpoints de valoração na API pública. Os exemplos numéricos são ilustrativos.'
+        status_text: "Este documento descreve uma metodologia documentada, com um exemplo verificável de 33,00 UVR. Não há índices geográficos publicados, taxas monetárias vigentes nem endpoints de valoração na API pública."
     nav:
         index: 'Índice da metodologia'
         search: 'Busca interna'
@@ -1213,7 +1220,7 @@ uvr:
         exists_title: 'O que existe'
         exists_text: 'Uma proposta formal de valoração relativa com três componentes, fórmulas de ajuste geográfico e conversão monetária, critérios de evidência, rastreabilidade e gestão.'
         pending_title: 'O que ainda não existe'
-        pending_text: 'Não há valores UVR aprovados nem carregados, não há índices geográficos publicados, não há conversões monetárias vigentes e nenhum endpoint da API pública consulta essas estruturas. As tabelas SQL correspondentes estão propostas e vazias.'
+        pending_text: "Não há endpoints públicos, índices geográficos publicados nem taxas monetárias vigentes. O exemplo SQL de 33,00 UVR é uma referência verificável, não uma tabela de honorários."
         artifact_title: 'Artefato de referência'
         artifact_text: 'A fonte desta página é README-UVR.md, documentado no repositório como proposta metodológica. Não deve ser interpretado como contrato de API nem como tabela de tarifas.'
     intro:
@@ -1400,6 +1407,7 @@ admin:
     login:
         title: 'Acesso ao painel'
         lead: 'Acesso restrito a colaboradores autorizados. Todas as ações ficam registradas na auditoria.'
+        email_placeholder: "name@example.com"
         submit: 'Entrar'
         back_site: 'Ir para o Origen Salud'
         logged_out: 'A sessão foi encerrada corretamente.'
@@ -1829,6 +1837,8 @@ service_request:
     form_notes_placeholder: "Conte o que você precisa integrar..."
     form_terms: "Aceito que a Origen Salud entre em contato para avaliar esta solicitação."
     privacy_note: "Seus dados são usados apenas para responder esta solicitação. Não criamos clientes, faturas nem pagamentos."
+    terms_link_label: "Termos e condições"
+    privacy_link_label: "Política de privacidade"
     submit: "Enviar solicitação"
     website: "Site"
     success_title: "Solicitação recebida"
@@ -1855,3 +1865,59 @@ service_request:
     email_estimated_total: "Total estimado"
     email_total_note: "Valor indicativo calculado com os preços vigentes do Invoice Ninja. Não constitui fatura nem orçamento aceito."
     email_notes: "Comentários"
+    catalog_limited: "Mostramos até 100 serviços do catálogo. Pode haver mais no Invoice Ninja: fale conosco se não encontrar o que procura."
+    notification_partial: "A solicitação foi registrada com a referência %reference%, mas não foi possível confirmar ambos os e-mails. Entraremos em contato de todo modo."
+    notification_failed: "A solicitação foi registrada com a referência %reference%, mas o envio dos e-mails falhou. Entraremos em contato de todo modo."
+    billing_one_time: "Pagamento único"
+    billing_recurring: "Recorrente"
+    email_confirmation_subject: "Confirmação da solicitação %reference%"
+    email_confirmation_text: "Recebemos sua Solicitação de Serviços com a referência %reference%. Vamos revisá-la e responder por e-mail. Nenhum cliente, fatura ou pagamento foi criado."
+
+errors:
+    not_found:
+        title: "Página não encontrada"
+        description: "A página solicitada não existe."
+legal:
+    breadcrumb_label: "Trilha de navegação"
+    version_label: "Versão"
+    version: "1.0"
+    effective_label: "Vigente desde"
+    effective_date: "2026-11-26"
+    contact_label: "Contato"
+    contact_email: "legal@origen.ar"
+    terms:
+        meta_title: "Termos e condições · Origen Salud"
+        meta_description: "Condições de uso do site público da Origen Salud e da sua documentação."
+        title: "Termos e condições"
+        lead: "Condições aplicáveis ao uso deste site e da documentação pública."
+        sections:
+            scope_title: "1. Abrangência"
+            scope_text: "Este site publica informações institucionais, catálogos clínicos e documentação técnica. A API pública é regida pela sua própria documentação, não por este documento."
+            sources_title: "2. Fontes e conteúdo"
+            sources_text: "Os catálogos e terminologias são exibidos com sua fonte e estado. Quando a fonte não declara uma equivalência, este site não a infere."
+            use_title: "3. Uso permitido"
+            use_text: "As informações públicas podem ser consultadas e citadas com indicação da fonte. Não podem ser apresentadas como orientação clínica nem como valores de tabela de honorários vigentes."
+            availability_title: "4. Disponibilidade"
+            availability_text: "O conteúdo pode mudar sem aviso prévio. Algumas seções podem depender de permissões ou da configuração do ambiente."
+            ip_title: "5. Marcas e propriedade"
+            ip_text: "SNOMED CT® é uma marca registrada da SNOMED International. A Origen Salud não é afiliada nem endossada pela SNOMED International. As demais marcas pertencem aos respectivos titulares."
+            contact_title: "6. Contato"
+            contact_text: "Dúvidas sobre estes termos podem ser enviadas a legal@origen.ar."
+    privacy:
+        meta_title: "Privacidade · Origen Salud"
+        meta_description: "Informações sobre o tratamento de dados no site público da Origen Salud."
+        title: "Política de privacidade"
+        lead: "Como são usados os dados enviados por este site público."
+        sections:
+            scope_title: "1. Abrangência"
+            scope_text: "Esta política se aplica ao site público da Origen Salud. Portais autenticados podem ter condições próprias."
+            data_title: "2. Dados enviados"
+            data_text: "O formulário de contato e a Solicitação de Serviços pedem apenas os dados necessários para responder. Não criam clientes, faturas nem pagamentos automaticamente."
+            language_title: "3. Idioma"
+            language_text: "Este site armazena um cookie com o idioma escolhido para lembrá-lo entre visitas. Ele não é usado para publicidade nem rastreamento."
+            use_title: "4. Uso da informação"
+            use_text: "Os dados são usados para gerenciar a consulta ou solicitação e para as comunicações necessárias sobre ela."
+            retention_title: "5. Conservação"
+            retention_text: "Os registros são mantidos pelo tempo necessário para concluir a solicitação iniciada e cumprir as obrigações aplicáveis."
+            contact_title: "6. Contato"
+            contact_text: "Dúvidas sobre privacidade podem ser enviadas a legal@origen.ar."

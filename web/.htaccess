@@ -13,6 +13,8 @@ Options -Indexes
     RewriteRule ^docs/?$ docs.php [L,QSA]
     RewriteRule ^uvr/?$ uvr.php [L,QSA]
     RewriteRule ^search/?$ search.php [L,QSA]
+    # Archivos estáticos versionados: se sirven directamente desde /web.
+    RewriteRule ^robots\.txt$ - [L]
     RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
 
     # Resto de solicitudes → front controller del portal.

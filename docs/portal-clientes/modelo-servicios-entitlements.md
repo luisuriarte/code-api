@@ -4,6 +4,8 @@
 > **Fecha:** 2026-11-24.
 >
 > Los nombres de tablas y estados son ilustrativos y requieren aprobación.
+>
+> **Estado vigente (2026-11-26, API-18):** `os_customer.service` es un catálogo informativo. El código **no** deriva permisos de esa tabla, no habilita accesos automáticamente y no crea servicios por factura de Invoice Ninja. La política de activación continúa pendiente y no se implementó enforcement.
 
 ## 1. Convenciones de estado
 

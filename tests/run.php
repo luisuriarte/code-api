@@ -1493,13 +1493,68 @@ foreach (['es-AR', 'en', 'pt-BR'] as $homeLocale) {
     }
 }
 
+$homeControllerSource = (string) file_get_contents($root . '/portal/Controllers/HomeController.php');
+$check(
+    str_contains($homeControllerSource, "'items' => [")
+        && str_contains($homeControllerSource, "'provenance' => null")
+        && str_contains($homeControllerSource, "'next_offset' => null"),
+    'API-12: el ejemplo del hero debe reflejar la proyección real de /v1/concepts/search.'
+);
+$check(!str_contains($homeControllerSource, "'approval_state' => 'approved'"), 'API-12: el ejemplo no debe inventar aprobación editorial.');
+
 $check(is_file($root . '/web/sitemap.php'), 'Debe existir web/sitemap.php para ^sitemap\\.xml$.');
 ob_start();
 require $root . '/web/sitemap.php';
 $sitemapXml = (string) ob_get_clean();
 $sitemapDoc = new DOMDocument();
 $check($sitemapDoc->loadXML($sitemapXml), 'El sitemap generado debe ser XML válido.');
-$check($sitemapDoc->getElementsByTagName('url')->length === 21, 'El sitemap debe tener 21 URLs (3 locales × 7 rutas).');
+$check(
+    $sitemapDoc->getElementsByTagName('url')->length === 30,
+    'El sitemap debe tener 30 URLs (3 locales × 10 rutas: 8 con prefijo y 2 con ?lang=).'
+);
+$check(str_contains($sitemapXml, '/terminos') && str_contains($sitemapXml, '/privacidad'), 'El sitemap debe publicar las páginas legales.');
+$check(str_contains($sitemapXml, '/docs?lang=') && str_contains($sitemapXml, '/uvr?lang='), 'El sitemap debe publicar las canónicas reales con ?lang=.');
+$check(substr_count($sitemapXml, 'hreflang="x-default"') === 30, 'Cada URL del sitemap debe declarar x-default.');
+$check(is_file($root . '/web/robots.txt'), 'Debe existir robots.txt versionado.');
+$robotsSource = (string) file_get_contents($root . '/web/robots.txt');
+$check(str_contains($robotsSource, 'Sitemap: https://med.origen.ar/sitemap.xml'), 'robots.txt debe anunciar el sitemap real.');
+$check(str_contains((string) file_get_contents($root . '/web/.htaccess'), '^robots\\.txt$ - [L]'), 'robots.txt no debe caer en el front controller.');
+foreach (['terms', 'privacy'] as $legalDocument) {
+    $check(is_file($root . '/portal/Views/legal/' . $legalDocument . '.php'), 'Falta la vista legal ' . $legalDocument . '.');
+}
+$legalRouteSource = (string) file_get_contents($root . '/portal/Router.php');
+$check(
+    str_contains($legalRouteSource, "\$section === 'terminos'")
+        && str_contains($legalRouteSource, "\$section === 'privacidad'"),
+    'El router debe servir las páginas legales localizadas.'
+);
+$footerSource = (string) file_get_contents($root . '/portal/Views/partials/footer.php');
+$check(
+    str_contains($footerSource, "I18n::localizedPath(\$locale, '/terminos')")
+        && str_contains($footerSource, "I18n::localizedPath(\$locale, '/privacidad')"),
+    'El footer debe enlazar las páginas legales en el idioma activo.'
+);
+foreach (['es-AR', 'en', 'pt-BR'] as $legalLocale) {
+    $legalMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $legalLocale . '.yaml');
+    $check(
+        is_array($legalMessages['legal']['terms'] ?? null)
+            && is_array($legalMessages['legal']['privacy'] ?? null)
+            && trim((string) ($legalMessages['legal']['effective_date'] ?? '')) !== '',
+        'LEG-01: faltan páginas legales o fecha de vigencia (' . $legalLocale . ').'
+    );
+    $serviceMessages = $legalMessages['service_request'] ?? [];
+    foreach ([
+        'catalog_limited', 'notification_partial', 'notification_failed',
+        'billing_one_time', 'billing_recurring',
+        'email_confirmation_subject', 'email_confirmation_text',
+    ] as $commercialKey) {
+        $check(
+            isset($serviceMessages[$commercialKey]) && is_string($serviceMessages[$commercialKey])
+                && trim($serviceMessages[$commercialKey]) !== '',
+            'COM-01/02/03: falta la clave service_request.' . $commercialKey . ' (' . $legalLocale . ').'
+        );
+    }
+}
 $check(str_contains($sitemapXml, '/oftar'), 'El sitemap debe incluir la página de OFTAR.');
 $check(!str_contains($sitemapXml, '/cart'), 'El sitemap no debe incluir /cart.');
 $check(
@@ -1527,6 +1582,12 @@ $check(
 );
 $check(str_contains($docsSource, 'docs-search-input'), 'Docs debe incluir búsqueda interna.');
 $check(str_contains($docsSource, 'docs-toc-list'), 'Docs debe incluir índice contextual por artículo.');
+$check(
+    str_contains($docsSource, '"field_languages": {') && str_contains($docsSource, '"items": {')
+        && str_contains($docsSource, '"effective_language": null'),
+    'API-13: el quickstart debe mostrar el meta real del wrapper común.'
+);
+$check(!str_contains($docsSource, '"fallback_applied": true'), 'API-13: el quickstart no debe inventar fallback.');
 $check(str_contains($docsSource, 'data-breadcrumb-article'), 'Docs debe incluir breadcrumbs dinámicos.');
 $check(!str_contains($docsSource, '{identifier}'), 'Docs debe usar {code} como en la spec y en el enrutador.');
 $check(str_contains($docsSource, 'nomenclador-odontologico-ar'), 'Docs debe documentar el Nomenclador Odontológico Nacional.');
@@ -1703,7 +1764,8 @@ foreach (array_unique(array_merge($uvrUsedKeys[1], $uvrDynamicKeys)) as $uvrKey)
     $check(array_key_exists($uvrKey, $uvrFlat['es-AR']), 'UVR: falta la clave uvr.' . $uvrKey . '.');
 }
 $check(
-    str_contains($uvrFlat['es-AR']['status.pending_text'], 'ningún endpoint de la API pública'),
+    str_contains($uvrFlat['es-AR']['status.pending_text'], 'No hay endpoints públicos')
+        && str_contains($uvrFlat['es-AR']['status.pending_text'], 'no un arancel'),
     'UVR debe declarar que no hay endpoints de valoración.'
 );
 $check(
@@ -4357,6 +4419,197 @@ $check(
     str_contains($s12Verifier, '.env.bak.*')
         && str_contains($s13Verifier, '--links-enabled'),
     'Etapa 13: los verificadores deben cubrir secretos y activación de enlaces.'
+);
+
+// Auditoría de lanzamiento: regresiones de seguridad y flujo comercial.
+$auditRead = static function (string $relative) use ($root): string {
+    $path = $root . '/' . $relative;
+
+    return is_file($path) ? (string) file_get_contents($path) : '';
+};
+
+$authServiceSource = $auditRead('portal-clientes/Services/AuthService.php');
+$authControllerSource = $auditRead('portal-clientes/Controllers/AuthController.php');
+$memberControllerSource = $auditRead('portal-clientes/Controllers/MemberController.php');
+$customerNotificationSource = $auditRead('portal-clientes/Services/CustomerNotification.php');
+$customerConfigSource = $auditRead('portal-clientes/Config.php');
+$customerSessionSource = $auditRead('portal-clientes/Services/CustomerSession.php');
+$portalEntrySource = $auditRead('web/portal-clientes/index.php');
+$apiKeyHashSource = $auditRead('api/http/ApiKeyHash.php');
+$apiKeyAuthSource = $auditRead('api/http/ApiKeyAuthenticator.php');
+$apiCredentialSource = $auditRead('portal-clientes/Services/ApiCredentialService.php');
+$apiRateSource = $auditRead('api/http/ApiRateLimiter.php');
+$apiIndexSource = $auditRead('api/index.php');
+$apiExceptionSource = $auditRead('api/http/ApiException.php');
+$corsSource = $auditRead('api/http/Cors.php');
+$adminAuthSource = $auditRead('portal/Controllers/AdminAuthController.php');
+$roleRepositorySource = $auditRead('portal-clientes/Repositories/RoleRepository.php');
+$ninjaConfigSource = $auditRead('portal/Config.php');
+$ninjaCatalogSource = $auditRead('portal/Services/InvoiceNinjaCatalogService.php');
+$serviceRequestSource = $auditRead('portal/Services/ServiceRequestService.php');
+$serviceRequestControllerSource = $auditRead('portal/Controllers/ServiceRequestController.php');
+$serviceRequestViewSource = $auditRead('portal/Views/service-request.php');
+$envExample = $auditRead('.env.example');
+
+// SEG-01: el token de recuperación nunca se devuelve al navegador.
+$check(
+    str_contains($authServiceSource, 'CustomerNotification::passwordReset')
+        && !str_contains($authServiceSource, 'TestNotification::prepare'),
+    'SEG-01: el reset debe usar SMTP real y no el notificador de prueba.'
+);
+$check(
+    !str_contains($authControllerSource, "\$result['link']")
+        && str_contains($authControllerSource, "'params' => []"),
+    'SEG-01: el flash del reset no debe contener el enlace.'
+);
+$check(
+    str_contains($memberControllerSource, 'CustomerNotification::invitation')
+        && !str_contains($memberControllerSource, 'TestNotification::prepare'),
+    'SEG-01: las invitaciones deben enviarse por correo sin mostrar el enlace.'
+);
+$check(
+    str_contains($customerNotificationSource, 'SmtpMailer::send')
+        && str_contains($customerNotificationSource, 'error_log'),
+    'SEG-01: CustomerNotification debe usar SMTP y registrar solo el fallo.'
+);
+foreach (['es-AR', 'en', 'pt-BR'] as $auditLocale) {
+    $catalogSource = $auditRead('portal-clientes/translations/messages.' . $auditLocale . '.yaml');
+    $check(
+        str_contains($catalogSource, 'customer.forgot.sent:')
+            && !preg_match('/customer\.forgot\.sent:.*%link%/', $catalogSource),
+        'SEG-01: el texto de "correo enviado" no debe incluir %link% (' . $auditLocale . ').'
+    );
+    $check(
+        !preg_match('/(link de teste|link de recuperação de teste|test recovery|Nenhum e-mail real)/i', $catalogSource),
+        'SEG-01: no deben quedar textos de notificaciones de prueba (' . $auditLocale . ').'
+    );
+}
+
+// SEG-04 / SEG-05: regeneración de sesión y guardia HTTPS con proxy de confianza.
+$check(
+    str_contains($authServiceSource, 'session_regenerate_id(true)'),
+    'SEG-04: el login debe regenerar el identificador de sesión.'
+);
+$check(
+    str_contains($customerConfigSource, 'function isSecureRequest')
+        && str_contains($customerConfigSource, 'PORTAL_CUSTOMER_TRUSTED_PROXY_IPS'),
+    'SEG-05: la detección de TLS debe exigir proxy de confianza.'
+);
+$check(
+    str_contains($customerSessionSource, 'Config::isSecureRequest()')
+        && str_contains($portalEntrySource, "Config::auth()['require_https']"),
+    'SEG-05: la cookie y la guardia deben respetar require_https.'
+);
+$check(
+    str_contains($envExample, 'PORTAL_CUSTOMER_REQUIRE_HTTPS')
+        && str_contains($envExample, 'PORTAL_CUSTOMER_TRUSTED_PROXY_IPS'),
+    'SEG-05: .env.example debe documentar HTTPS y proxies.'
+);
+
+// SEG-02: API keys con pepper, doble lectura y migración preparada.
+$check(
+    $apiKeyHashSource !== ''
+        && str_contains($apiKeyHashSource, "hash('sha256'")
+        && str_contains($apiKeyHashSource, 'information_schema.columns'),
+    'SEG-02: debe existir el hash con pepper y detección de columnas.'
+);
+$check(
+    str_contains($apiKeyAuthSource, 'key_hash = :hash')
+        && str_contains($apiKeyAuthSource, 'api_key = :api_key'),
+    'SEG-02: la autenticación debe hacer doble lectura (hash y legacy).'
+);
+$check(
+    str_contains($apiCredentialSource, 'ApiKeyHash::of')
+        && str_contains($apiCredentialSource, 'api_key = NULL'),
+    'SEG-02: la creación/rotación debe persistir solo hash cuando sea posible.'
+);
+$check(
+    is_file($root . '/sql/10_portal_clientes/V11.001__api_key_hash.up.sql')
+        && is_file($root . '/sql/10_portal_clientes/V11.001__api_key_hash.down.sql')
+        && str_contains($auditRead('sql/10_portal_clientes/V11.001__api_key_hash.up.sql'), 'key_hash VARCHAR(64)'),
+    'SEG-02: la migración V11.001 debe estar preparada sin ejecutarse.'
+);
+$check(
+    str_contains($envExample, 'API_KEY_PEPPER='),
+    'SEG-02: .env.example debe documentar API_KEY_PEPPER sin valor real.'
+);
+
+// SEG-03: limitador real con 429 y Retry-After.
+$check(
+    $apiRateSource !== ''
+        && str_contains($apiRateSource, 'flock(')
+        && str_contains($apiIndexSource, 'ApiRateLimiter::hit'),
+    'SEG-03: el limitador debe estar cableado en /v1 y usar bloqueo de archivo.'
+);
+$check(
+    str_contains($apiExceptionSource, 'function tooManyRequests')
+        && str_contains($apiIndexSource, "header('Retry-After:"),
+    'SEG-03: deben existir el 429 y la cabecera Retry-After.'
+);
+$tooMany = ApiException::tooManyRequests(3);
+$check($tooMany->status === 429, 'SEG-03: tooManyRequests() debe devolver 429.');
+$check($tooMany->errorCode === 'rate_limit_exceeded', 'SEG-03: error_code debe ser rate_limit_exceeded.');
+$check(($tooMany->details['retry_after'] ?? null) === 3, 'SEG-03: details debe incluir retry_after.');
+$check(
+    !preg_match('!in_array\(\'\*\', \$configured, true\)!', $corsSource)
+        && str_contains($corsSource, "\$value !== '*'"),
+    'SEG-05: CORS no debe admitir el comodín *.'
+);
+
+// SEG-06 / SEG-12: logout con CSRF y roles asignables restringidos.
+$check(
+    preg_match('/public static function logout\(\): void\s*\{[^}]*Csrf::valid/s', $adminAuthSource) === 1,
+    'SEG-06: /admin/logout debe validar CSRF.'
+);
+$check(
+    str_contains($roleRepositorySource, 'private const CUSTOMER_ASSIGNABLE')
+        && !str_contains($roleRepositorySource, "'origen_superadmin'"),
+    'SEG-12: el superadministrador no debe ser asignable.'
+);
+
+// COM-01 a COM-04 y SQL-08: datos reales, revisión humana y fallo visible.
+$check(
+    str_contains($ninjaConfigSource, 'INVOICE_NINJA_CLIENT_MATCHING'),
+    'SQL-08: el matching automático debe ser opt-in.'
+);
+$check(
+    str_contains($envExample, 'INVOICE_NINJA_CLIENT_MATCHING=false'),
+    'SQL-08: .env.example debe documentar el matching desactivado por defecto.'
+);
+$check(
+    str_contains($ninjaCatalogSource, "'status' => 'not_checked'")
+        && str_contains($serviceRequestSource, "\$ninjaStatus !== 'exact'"),
+    'SQL-08: sin matching validado, toda solicitud debe ir a revisión.'
+);
+$check(
+    preg_match('/Session::set\(self::SELECTION_KEY, \$selection\);\s*\n\s*Session::set\(self::SELECTION_KEY, \$selection\);/', $serviceRequestSource) !== 1,
+    'COM-04: no debe repetirse la escritura de selección.'
+);
+$check(
+    str_contains($serviceRequestSource, 'self::priceDetail')
+        || str_contains($ninjaCatalogSource, 'private static function priceDetail'),
+    'COM-01: solo se pueden mostrar atributos reales de Invoice Ninja.'
+);
+$check(
+    str_contains($ninjaCatalogSource, 'function catalogTruncated')
+        && str_contains($serviceRequestControllerSource, "'catalogTruncated' =>")
+        && str_contains($serviceRequestViewSource, 'service_request.catalog_limited'),
+    'COM-03: el límite del catálogo debe avisarse en la vista.'
+);
+$check(
+    str_contains($serviceRequestSource, "return 'sent';")
+        && str_contains($serviceRequestSource, ": 'failed';")
+        && str_contains($serviceRequestSource, "trans('service_request.email_confirmation_text'"),
+    'COM-02: el resultado SMTP debe propagarse y confirmarse al solicitante.'
+);
+$check(
+    str_contains($serviceRequestViewSource, "service_request.notification_' . \$notification"),
+    'COM-02: la vista debe reflejar el estado real de la notificación.'
+);
+$check(
+    str_contains($serviceRequestViewSource, "require __DIR__ . '/partials/format.php'")
+        && !str_contains($serviceRequestViewSource, "number_format("),
+    'I18-05: la Solicitud de Servicios debe usar el formateador numérico por idioma.'
 );
 
 // Resultado.

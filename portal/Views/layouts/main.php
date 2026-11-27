@@ -4,6 +4,37 @@ declare(strict_types=1);
 
 use OrigenSalud\Web\I18n;
 
+// UX-03: la sección activa se deriva de la ruta canónica cuando el controlador
+// no la informa explícitamente. Así el estado visual y aria-current coinciden
+// en todo el portal sin tocar View.php ni los controladores.
+if (!isset($activeNav) || !is_string($activeNav) || $activeNav === '') {
+    $navPath = (string) ($currentPath ?? '');
+    $navPath = '/' . ltrim((string) parse_url($navPath, PHP_URL_PATH), '/');
+    foreach (I18n::SUPPORTED as $navLocale) {
+        if ($navPath === '/' . $navLocale) {
+            $navPath = '/';
+            break;
+        }
+        if (str_starts_with($navPath, '/' . $navLocale . '/')) {
+            $navPath = substr($navPath, strlen($navLocale) + 2);
+            break;
+        }
+    }
+    $navSection = trim($navPath, '/');
+    if (str_starts_with($navSection, 'browse/')) {
+        $navSection = 'browse';
+    }
+    $navMap = [
+        '' => 'home',
+        'dentar' => 'dentar',
+        'oftar' => 'oftar',
+        'browse' => 'browse',
+        'about' => 'about',
+        'contact' => 'contact',
+        'solicitud' => 'service_request',
+    ];
+    $activeNav = $navMap[$navSection] ?? '';
+}
 ?>
 <!doctype html>
 <html lang="<?= e($locale) ?>">
@@ -16,6 +47,7 @@ use OrigenSalud\Web\I18n;
     <?php foreach (I18n::alternateLinks($currentPath, $baseUrl) as $alternate): ?>
     <link rel="alternate" hreflang="<?= e($alternate['hreflang']) ?>" href="<?= e($alternate['href']) ?>">
     <?php endforeach; ?>
+    <link rel="alternate" hreflang="x-default" href="<?= e($baseUrl . I18n::localizedPath(I18n::DEFAULT_LOCALE, $currentPath)) ?>">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Origen Salud">
     <meta property="og:url" content="<?= e($baseUrl . $currentPath) ?>">

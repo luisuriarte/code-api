@@ -14,7 +14,7 @@ use OrigenSalud\CustomerPortal\Services\AccessControl;
 use OrigenSalud\CustomerPortal\Services\CustomerCsrf;
 use OrigenSalud\CustomerPortal\Services\CustomerSession;
 use OrigenSalud\CustomerPortal\Services\Http;
-use OrigenSalud\CustomerPortal\Services\TestNotification;
+use OrigenSalud\CustomerPortal\Services\CustomerNotification;
 use OrigenSalud\CustomerPortal\Services\Token;
 use OrigenSalud\CustomerPortal\View;
 
@@ -58,7 +58,7 @@ final class MemberController
         $ttl = Config::auth()['invite_ttl'];
         $expiresAt = gmdate('Y-m-d H:i:s', time() + max(3600, $ttl)) . '+00';
 
-        InvitationRepository::create(
+        $invitationId = InvitationRepository::create(
             $context['organization_id'],
             $email,
             $roleCode,
@@ -71,15 +71,30 @@ final class MemberController
             $context['organization_id'],
             'invitation.created',
             'invitation',
-            null,
+            (string) $invitationId,
             'success'
         );
 
-        $notification = TestNotification::prepare('invitation', $raw);
-        CustomerSession::set('flash', [
-            'key' => 'customer.member.invite_created',
-            'params' => ['%link%' => $notification['link']],
-        ]);
+        $organization = (string) ($context['organization']['display_name']
+            ?? $context['organization']['legal_name']
+            ?? 'Origen Salud');
+        $notification = CustomerNotification::invitation($email, $organization, $raw);
+
+        if (!$notification['ok']) {
+            InvitationRepository::markExpired($invitationId);
+            AuditRepository::record(
+                (int) $context['user']['user_id'],
+                $context['organization_id'],
+                'invitation.mail_failed',
+                'invitation',
+                (string) $invitationId,
+                'failure'
+            );
+            CustomerSession::set('flash', ['key' => 'customer.member.invite_error', 'params' => []]);
+            Http::redirect(CustomerI18n::locale() . '/members');
+        }
+
+        CustomerSession::set('flash', ['key' => 'customer.member.invite_created', 'params' => []]);
         Http::redirect(CustomerI18n::locale() . '/members');
     }
 

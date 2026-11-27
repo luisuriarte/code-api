@@ -18,14 +18,25 @@ final class RoleRepository
         return is_array($rows) ? $rows : [];
     }
 
+    /** Roles que un administrador de organización puede asignar a miembros. */
+    private const CUSTOMER_ASSIGNABLE = [
+        'organization_admin',
+        'technical_admin',
+        'developer',
+        'viewer',
+    ];
+
     /** @return list<array<string, mixed>> */
     public static function assignable(): array
     {
-        $rows = CustomerDatabase::connection()->query(
+        $placeholders = implode(', ', array_fill(0, count(self::CUSTOMER_ASSIGNABLE), '?'));
+        $statement = CustomerDatabase::connection()->prepare(
             'SELECT code, label FROM os_customer.role
-              WHERE code <> \'organization_owner\'
+              WHERE code IN (' . $placeholders . ')
               ORDER BY id'
-        )->fetchAll();
+        );
+        $statement->execute(self::CUSTOMER_ASSIGNABLE);
+        $rows = $statement->fetchAll();
 
         return is_array($rows) ? $rows : [];
     }

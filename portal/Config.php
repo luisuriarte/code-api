@@ -110,7 +110,19 @@ final class Config
             'timeout' => max(1, min(30, (int) env('INVOICE_NINJA_TIMEOUT', '8'))),
             'retries' => max(0, min(2, (int) env('INVOICE_NINJA_RETRIES', '1'))),
             'catalog_limit' => max(1, min(100, (int) env('INVOICE_NINJA_CATALOG_LIMIT', '100'))),
+            // El matching por tax_id/legal_name/email no fue validado contra la
+            // versión instalada: queda deshabilitado salvo autorización explícita.
+            'client_matching' => filter_var(env('INVOICE_NINJA_CLIENT_MATCHING', false), FILTER_VALIDATE_BOOL),
         ];
+    }
+
+    /**
+     * Indica si el matching automático de clientes está autorizado.
+     * Por defecto está desactivado y toda solicitud se marca para revisión.
+     */
+    public static function invoiceNinjaClientMatchingEnabled(): bool
+    {
+        return self::invoiceNinja()['client_matching'] === true;
     }
 
     /** Indica si están dadas las condiciones para consultar Invoice Ninja. */

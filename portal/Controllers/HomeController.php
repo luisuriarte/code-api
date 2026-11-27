@@ -31,18 +31,27 @@ final class HomeController
                     'score' => 0.9871,
                 ],
             ],
+            // Ejemplo derivado de la proyección real de /v1/concepts/search:
+            // el wrapper común agrega items con provenance/approval_state null.
             'meta' => [
                 'query' => $t('api.example_query'),
-                'requested_language' => $apiLocale,
-                'effective_language' => $exampleLanguage,
                 'language' => $exampleLanguage,
+                'domains' => ['snomed'],
+                'cie10_type' => null,
+                'refsets' => [],
                 'limit' => 10,
                 'offset' => 0,
                 'returned' => 1,
                 'has_more' => false,
+                'next_offset' => null,
+                'page_counts' => ['snomed' => 1],
                 'took_ms' => 12.4,
+                'requested_language' => $apiLocale,
+                'effective_language' => $exampleLanguage,
+                'source_language' => $exampleLanguage,
                 'fallback_applied' => $exampleFallback,
                 'fallback_reason' => $exampleFallbackReason,
+                'untranslated' => false,
                 'dialect_determined' => $exampleLanguage === 'en',
                 'available_languages' => [
                     ['code' => 'es-AR', 'selectable' => true],
@@ -50,11 +59,11 @@ final class HomeController
                     ['code' => 'pt-BR', 'selectable' => true],
                 ],
                 'field_languages' => [
-                    'term' => [
+                    'items' => [
                         'effective_language' => $exampleLanguage,
                         'source_language' => $exampleLanguage,
-                        'provenance' => 'snomed_rf2',
-                        'approval_state' => 'approved',
+                        'provenance' => null,
+                        'approval_state' => null,
                         'fallback_applied' => $exampleFallback,
                         'fallback_reason' => $exampleFallbackReason,
                         'untranslated' => false,

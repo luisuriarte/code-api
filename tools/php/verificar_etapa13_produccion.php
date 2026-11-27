@@ -172,6 +172,10 @@ $check(
     'T-13: .env.example no debe contener valores secretos.'
 );
 $check(
+    str_contains($envExample, 'APP_DEBUG=false'),
+    'API-19: la verificación debe documentar APP_DEBUG=false para no filtrar trazas.'
+);
+$check(
     str_contains($envExample, 'dbname=origen_codes_portal_clientes_test'),
     'T-13: el ejemplo debe seguir apuntando a la base de prueba, nunca a secretos de producción.'
 );
@@ -207,7 +211,7 @@ if ($site !== null) {
             ['/docs?lang=es-AR', 'Documentaci'],
             ['/dentar?lang=es-AR', ''],
             ['/oftar?lang=es-AR', ''],
-            ['/sitemap?lang=es-AR', ''],
+            ['/sitemap.xml', '<urlset'],
             ['/portal-clientes/es-AR', ''],
             ['/es-AR/solicitud', 'Solicitud de Servicios'],
             ['/en/solicitud', 'Service Request'],
@@ -228,6 +232,10 @@ if ($site !== null) {
                     && !str_contains($response['body'], 'SMTP_PASS')
                     && !str_contains($response['body'], 'X-Api-Token'),
                 'T-13: ' . $path . ' no debe exponer secretos en HTML.'
+            );
+            $check(
+                !preg_match('/(Fatal error|Uncaught|Stack trace|SQLSTATE|#0\s)/i', $response['body']),
+                'API-19: ' . $path . ' no debe filtrar trazas; APP_DEBUG debe ser false.'
             );
         }
 

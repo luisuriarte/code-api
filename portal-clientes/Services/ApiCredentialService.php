@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrigenSalud\CustomerPortal\Services;
 
+use OrigenSalud\Api\Http\ApiKeyHash;
 use OrigenSalud\CustomerPortal\Repositories\ApiCredentialRepository;
 use OrigenSalud\CustomerPortal\Repositories\AuditRepository;
 use PDOException;
@@ -14,7 +15,9 @@ use Throwable;
  *
  * La clave se genera en el servidor, se escribe en public.api_clients mediante
  * una única conexión operativa y se devuelve una sola vez al creador. Nunca se
- * guarda en metadatos, logs, URLs ni sesión. La API sigue sin hash, scopes,
+ * guarda en metadatos, logs, URLs ni sesión. Si el pepper está configurado y la
+ * migración V11.001 ya se aplicó, se persiste solo el hash; en caso contrario
+ * se mantiene el formato legacy por compatibilidad. La API sigue sin scopes,
  * expiración, último uso ni medición: no se ofrecen esas capacidades.
  */
 final class ApiCredentialService
@@ -58,15 +61,33 @@ final class ApiCredentialService
         $secret = bin2hex(random_bytes(self::KEY_BYTES));
 
         try {
-            $statement = CredentialDatabase::connection()->prepare(
-                'INSERT INTO public.api_clients (institution_name, api_key, is_active)
-                 VALUES (:institution_name, :api_key, TRUE)
-                 RETURNING id'
-            );
-            $statement->execute([
-                ':institution_name' => $name,
-                ':api_key' => $secret,
-            ]);
+            $pdo = CredentialDatabase::connection();
+            $hashed = ApiKeyHash::enabled() && ApiKeyHash::columnsAvailable($pdo);
+
+            if ($hashed) {
+                $statement = $pdo->prepare(
+                    'INSERT INTO public.api_clients
+                        (institution_name, api_key, key_prefix, key_hash, is_active)
+                     VALUES (:institution_name, NULL, :prefix, :hash, TRUE)
+                     RETURNING id'
+                );
+                $statement->execute([
+                    ':institution_name' => $name,
+                    ':prefix' => ApiKeyHash::prefix($secret),
+                    ':hash' => ApiKeyHash::of($secret),
+                ]);
+            } else {
+                $statement = $pdo->prepare(
+                    'INSERT INTO public.api_clients (institution_name, api_key, is_active)
+                     VALUES (:institution_name, :api_key, TRUE)
+                     RETURNING id'
+                );
+                $statement->execute([
+                    ':institution_name' => $name,
+                    ':api_key' => $secret,
+                ]);
+            }
+
             $apiClientId = (int) $statement->fetchColumn();
         } catch (PDOException | CustomerRepositoryException) {
             self::audit($userId, $organizationId, 'credential.created', null, 'failure');
@@ -127,15 +148,34 @@ final class ApiCredentialService
         $secret = bin2hex(random_bytes(self::KEY_BYTES));
 
         try {
-            $statement = CredentialDatabase::connection()->prepare(
-                'UPDATE public.api_clients
-                    SET api_key = :api_key
-                  WHERE id = :id AND is_active = TRUE'
-            );
-            $statement->execute([
-                ':api_key' => $secret,
-                ':id' => $apiClientId,
-            ]);
+            $pdo = CredentialDatabase::connection();
+            $hashed = ApiKeyHash::enabled() && ApiKeyHash::columnsAvailable($pdo);
+
+            if ($hashed) {
+                // La rotación descarta el texto plano: la clave anterior deja
+                // de ser válida incluso para la lectura legacy.
+                $statement = $pdo->prepare(
+                    'UPDATE public.api_clients
+                        SET api_key = NULL, key_prefix = :prefix, key_hash = :hash
+                      WHERE id = :id AND is_active = TRUE'
+                );
+                $statement->execute([
+                    ':prefix' => ApiKeyHash::prefix($secret),
+                    ':hash' => ApiKeyHash::of($secret),
+                    ':id' => $apiClientId,
+                ]);
+            } else {
+                $statement = $pdo->prepare(
+                    'UPDATE public.api_clients
+                        SET api_key = :api_key
+                      WHERE id = :id AND is_active = TRUE'
+                );
+                $statement->execute([
+                    ':api_key' => $secret,
+                    ':id' => $apiClientId,
+                ]);
+            }
+
             $affected = $statement->rowCount();
         } catch (PDOException | CustomerRepositoryException) {
             self::audit($userId, $organizationId, 'credential.rotated', (string) $id, 'failure');

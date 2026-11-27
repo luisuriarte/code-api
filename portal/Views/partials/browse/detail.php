@@ -6,7 +6,6 @@ $code = is_array($item) ? (string) ($item['code'] ?? '') : '';
 $term = is_array($item) ? (string) ($item['term'] ?? '') : '';
 $domainLabel = is_array($item) ? (string) ($item['subtitle'] ?? $item['domain'] ?? '') : '';
 $uvrPublished = is_array($sections['uvr'] ?? null) ? $sections['uvr'] : [];
-$uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2, ',', '.');
 ?>
 <div class="browse-detail" data-focus="<?= e($focus) ?>">
     <div class="browse-panel__crumb">
@@ -93,15 +92,15 @@ $uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2
                         <dl class="mt-3 grid grid-cols-3 gap-2 text-center">
                             <div class="rounded-lg bg-paper px-2 py-2">
                                 <dt class="text-[10px] font-medium uppercase tracking-wide text-muted"><?= e($t('browse.uvr_work')) ?></dt>
-                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($uvrNumber($valuation['work_uvr'] ?? 0)) ?></dd>
+                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($formatNumber($valuation['work_uvr'] ?? 0)) ?></dd>
                             </div>
                             <div class="rounded-lg bg-paper px-2 py-2">
                                 <dt class="text-[10px] font-medium uppercase tracking-wide text-muted"><?= e($t('browse.uvr_practice')) ?></dt>
-                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($uvrNumber($valuation['practice_expense_uvr'] ?? 0)) ?></dd>
+                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($formatNumber($valuation['practice_expense_uvr'] ?? 0)) ?></dd>
                             </div>
                             <div class="rounded-lg bg-paper px-2 py-2">
                                 <dt class="text-[10px] font-medium uppercase tracking-wide text-muted"><?= e($t('browse.uvr_liability')) ?></dt>
-                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($uvrNumber($valuation['professional_liability_uvr'] ?? 0)) ?></dd>
+                                <dd class="mt-1 font-mono text-sm font-semibold text-ink"><?= e($formatNumber($valuation['professional_liability_uvr'] ?? 0)) ?></dd>
                             </div>
                         </dl>
 
@@ -111,7 +110,7 @@ $uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2
                                     <?= e($t('browse.uvr_published_total')) ?>
                                 </span>
                                 <strong class="font-mono text-2xl font-semibold tracking-tight text-teal-dark">
-                                    <?= e($uvrNumber($valuation['total_uvr'] ?? 0)) ?>
+                                    <?= e($formatNumber($valuation['total_uvr'] ?? 0)) ?>
                                 </strong>
                             </div>
                             <?php if ($importe !== null && $importe !== ''): ?>
@@ -120,7 +119,7 @@ $uvrNumber = static fn (mixed $value): string => number_format((float) $value, 2
                                         <?= e($t('browse.uvr_published_importe')) ?>
                                     </span>
                                     <span class="font-mono text-sm font-semibold text-ink">
-                                        <?= e($uvrNumber($importe) . ($currency !== '' ? ' ' . $currency : '')) ?>
+                                        <?= e($formatNumber($importe) . ($currency !== '' ? ' ' . $currency : '')) ?>
                                     </span>
                                 </div>
                             <?php endif; ?>

@@ -232,7 +232,7 @@ docs:
         warning_title: 'Do not expose the credential'
         warning_text: 'The API Key must remain in a secure backend. Do not include it in public HTML, SPA applications, JavaScript bundles, repositories, or mobile apps without an intermediary layer.'
         management_title: 'Credential management'
-        management_text: 'There is currently no self-service registration, issuance, rotation, expiration, or revocation via API. The api_clients table only provides is_active. Registration and rotation remain pending.'
+        management_text: 'The customer portal implements creating, rotating and revoking credentials for the own API, protected by permissions and disabled by default: it requires the credential DSN to be configured. `api_clients` still has no scopes or expiration; issuing a key creates no customers or invoices.'
         format_title: 'Format and validation'
         format_text: 'The key accepts up to 128 printable ASCII characters. A missing, empty, malformed, inactive, or non-existent credential returns 401 with error.code = unauthorized.'
         header: Header
@@ -248,7 +248,7 @@ docs:
         pagination_title: 'Pagination and limits'
         pagination_text: 'In /v1/search, limit defaults to 20 and the effective maximum is 50 unless API_PAGE_LIMIT_MAX is explicitly configured (cap 100). offset ranges from 0 to 5000. Other endpoints have their own limits: /v1/catalogs/*/items uses a fixed 1–100 range, /v1/mappings returns up to 50 without pagination, and /v1/odontologia/diagnosticos is not paginated.'
         methods_title: 'Methods and CORS'
-        methods_text: 'There are no write operations. The supported methods are GET and a global OPTIONS that returns 204 before authentication. CORS emits headers only if API_CORS_ORIGINS is configured; by default https://med.origen.ar is allowed.'
+        methods_text: 'There are no write operations. The supported methods are GET and a global OPTIONS that returns 204 before authentication. CORS emits headers only if API_CORS_ORIGINS is configured; without configuration there are no headers (same-origin). The example includes https://med.origen.ar.'
         headers_title: 'Response headers'
         headers_text: 'In addition to Content-Type and X-Request-Id, the API sends Cache-Control: no-store, X-Content-Type-Options: nosniff, Referrer-Policy: no-referrer and, when applicable, Content-Language, Vary, and WWW-Authenticate.'
         codes_col: HTTP
@@ -377,17 +377,17 @@ docs:
         fhir_title: 'HL7 FHIR R4'
         fhir_text: 'There is no /fhir route in api/index.php. README-FHIR.md describes a proposed contract. The current authentication guard covers only /v1/, so any future implementation must review that scope before release.'
         uvr_title: UVR
-        uvr_text: 'The UVR tables are proposed and empty. No endpoint queries UVR values, components, conversions, or geographic indices.'
+        uvr_text: "The public API does not expose UVR values. The repository documents the methodology and includes a verifiable example of 33.00 UVR for an OFTAR-PR service; no fee schedules or published geographic indices are presented."
         oauth_title: 'OAuth, scopes, and rate limiting'
         oauth_text: 'There is no OAuth 2.0, JWT, scopes, quotas, or 429. The rate_limit_per_second field is read but not enforced. There is no 403 for suspension or quota either.'
         writes_title: 'Write operations'
         writes_text: 'There is no POST, PUT, PATCH, or DELETE. The API is read-only and does not manage catalogs, credentials, or translations.'
         console_title: 'Developer console'
-        console_text: 'There is no self-service registration, API Key dashboard, automatic rotation, or per-endpoint expiration/revocation. Keys are currently stored in plain text and hashing them remains a pending task.'
+        console_text: 'The credentials console exists in `/portal-clientes` and is disabled by default; V8.001 was applied only in the test environment. Pepper hashing is prepared in code, but migration V11.001 requires approval and has not been executed. There is no OAuth/JWT or scopes.'
         catalogs_title: 'Reserved catalogs'
         catalogs_text: 'dentar-an, dentar-cl, dentar-in, dentar-pd, and dentar-eq are reserved without public data. os_catalog_relation relationships are not exposed via the API either, nor is PHI content such as PACS images.'
         alignment_title: 'Specification alignment'
-        alignment_text: 'The current OpenAPI has known deviations from the code: request_id declared as UUID, /health with request_id in the body, q.maxLength=200, default lang es-AR, and missing parameters in several endpoints. Fixing the spec is a pending task.'
+        alignment_text: 'History: the known OpenAPI deviations were fixed in Phase 2. The current spec is the source of truth for the contract; the table below is the checklist.'
     openapi:
         title: '11. OpenAPI and client generation'
         lead: 'The existing specification is the reference for client generation, but it must be cross-checked against the code until alignment is complete.'
@@ -581,7 +581,7 @@ browse:
     detail_title: "Code detail"
     back_results: "Back to results"
     code: "Code"
-    code_multi_hint: "All = no filter. Click to select several."
+    code_multi_hint: "All = no filter. Select sources or catalogs from a single family."
     term: "Term"
     description: "Description"
     domain: "Catalog"
@@ -600,8 +600,9 @@ browse:
     dialect_determined: "Dialect determined"
     translation_notice: "This field is served via fallback or is untranslated. Review the per-field detail before using the text."
     approved_note: "Only texts approved by the current editorial model are shown."
-    invalid_domain: "The selected catalog is not valid."
-    invalid_catalog: "The selected DENTAR catalog is not valid."
+    invalid_domain: "The selected source is not valid."
+    invalid_catalog: "The selected dentistry or ophthalmology catalog is not valid."
+    invalid_combination: "Terminology sources and DENTAR/OFTAR catalogs cannot be combined. Select a single family."
     catalog: "DENTAR catalog"
     catalog_all: "No product filter"
     dentar_badge: "DENTAR"
@@ -774,8 +775,8 @@ browse:
     validity: "Validity"
     validity_all: "All"
     validity_current: "Current"
-    match_exact: "Exact match"
-    match_partial: "Partial match"
+    match_exact: "Exact text match"
+    match_partial: "Text approximation"
     relations_count: "%count% relations"
     relations_count_one: "1 relation"
     load_more: "Load more results"
@@ -799,13 +800,13 @@ browse:
     tag_national: "National"
     tag_unpublished: "Unpublished"
     tag_proposed: "Proposed"
-    reserved_note: "Only the catalogs above are searchable. DENTAR-*/OS-* labels are in preparation and return no results. OFTAR-DX has no UVR: valuation belongs to OFTAR-PR."
+    reserved_note: "Only the catalogs above are searchable. DENTAR-AN/CL and OS-* codes remain unpublished. OFTAR-DX has no UVR: the documented valuation belongs to OFTAR-PR."
     reset_filters: "Clear filters"
     scope_title: "Scope boundary:"
     scope_notice: "This record describes the clinical concept. It does not include payer requirements, authorizations, fees, copayments or frequency limits."
     tab_versions: "Versions"
     tab_trace_sources: "Sources and traceability"
-    uvr_formula: "When published by the source, UVR valuation is derived as professional work + practice expenses + professional liability. Monetary conversion is shown separately and only with verifiable rates."
+    uvr_formula: "When the source publishes UVR, the total is derived from professional work + practice expenses + professional liability. Monetary conversion is shown separately and only with verifiable rates."
     uvr_empty: "No verified UVR values are loaded for this concept. No estimated values are shown."
     uvr_scope_title: "Not a fee schedule:"
     uvr_scope_notice: "UVR is a relative valuation. Amounts, copayments and conditions depend on payer contracts and are consulted in a separate module."
@@ -825,6 +826,12 @@ browse:
     relation_filter_system: "Filter by system"
     relation_literal_note: "Types are shown literally as declared by the source. Semantic equivalence between systems is not assumed."
     relations_limited: "Diagram limited to 5 nodes and depth 1. Declared relations are not semantic inferences."
+
+    fetch_error: "The results could not be updated. The data shown comes from the last successful query."
+    stale_results: "Last successful update. The visible results may be out of date."
+    retry: "Retry"
+    offset_limit_notice: "The order is fixed. Navigation stops after 5000 offset records; refine the filters to see more results."
+    match_semantics: "These labels describe text matching, not clinical equivalence. No equivalence is claimed unless the source states it explicitly."
 
 dentar:
     meta_title: "DENTAR | Argentine Catalog of Dental Procedures"
@@ -1113,7 +1120,7 @@ uvr:
         lead: 'A transparent, reproducible, and adaptable methodology for comparing the relative resources required by each healthcare service, without confusing relative value with monetary amount.'
         badge: 'UVR · Relative Value Unit'
         status_title: 'Status of the proposal'
-        status_text: 'This document describes a proposed methodology. No UVR values are loaded, no geographic indices are published, and there are no valuation endpoints in the public API. The numerical examples are illustrative.'
+        status_text: "This document describes a documented methodology with a verifiable example of 33.00 UVR. There are no published geographic indices, current monetary rates or valuation endpoints in the public API."
     nav:
         index: 'Methodology index'
         search: 'Internal search'
@@ -1213,7 +1220,7 @@ uvr:
         exists_title: 'What exists'
         exists_text: 'A formal proposal for relative valuation with three components, formulas for geographic adjustment and monetary conversion, evidence criteria, traceability, and management.'
         pending_title: 'What does not exist yet'
-        pending_text: 'No UVR values are approved or loaded, no geographic indices are published, no monetary conversions are in effect, and no public API endpoint queries these structures. The corresponding SQL tables are proposed and empty.'
+        pending_text: "There are no public endpoints, published geographic indices or current monetary rates. The 33.00 UVR SQL example is a verifiable reference, not a fee schedule."
         artifact_title: 'Reference artifact'
         artifact_text: 'The source of this page is README-UVR.md, documented in the repository as a methodological proposal. It must not be interpreted as an API contract or as a fee schedule.'
     intro:
@@ -1400,6 +1407,7 @@ admin:
     login:
         title: 'Admin sign in'
         lead: 'Restricted access for authorized collaborators. All actions are recorded in the audit log.'
+        email_placeholder: "name@example.com"
         submit: 'Sign in'
         back_site: 'Go to Origen Salud'
         logged_out: 'You have signed out successfully.'
@@ -1829,6 +1837,8 @@ service_request:
     form_notes_placeholder: "Tell us what you need to integrate..."
     form_terms: "I agree that Origen Salud may contact me to assess this request."
     privacy_note: "Your data is used only to answer this request. No clients, invoices or payments are created."
+    terms_link_label: "Terms and conditions"
+    privacy_link_label: "Privacy policy"
     submit: "Send request"
     website: "Website"
     success_title: "Request received"
@@ -1855,3 +1865,59 @@ service_request:
     email_estimated_total: "Estimated total"
     email_total_note: "Indicative amount calculated with current Invoice Ninja prices. It is not an invoice or an accepted quote."
     email_notes: "Comments"
+    catalog_limited: "We show up to 100 services from the catalog. There may be more in Invoice Ninja: contact us if you cannot find what you need."
+    notification_partial: "The request was recorded as %reference%, but we could not confirm both emails. We will contact you anyway."
+    notification_failed: "The request was recorded as %reference%, but sending the emails failed. We will contact you anyway."
+    billing_one_time: "One-time"
+    billing_recurring: "Recurring"
+    email_confirmation_subject: "Request confirmation %reference%"
+    email_confirmation_text: "We received your Service Request with reference %reference%. We will review it and reply by email. No customers, invoices or payments were created."
+
+errors:
+    not_found:
+        title: "Page not found"
+        description: "The requested page does not exist."
+legal:
+    breadcrumb_label: "Breadcrumb"
+    version_label: "Version"
+    version: "1.0"
+    effective_label: "Effective since"
+    effective_date: "2026-11-26"
+    contact_label: "Contact"
+    contact_email: "legal@origen.ar"
+    terms:
+        meta_title: "Terms and conditions · Origen Salud"
+        meta_description: "Terms of use for the Origen Salud public website and its documentation."
+        title: "Terms and conditions"
+        lead: "Terms applicable to the use of this website and public documentation."
+        sections:
+            scope_title: "1. Scope"
+            scope_text: "This website publishes institutional information, clinical catalogs and technical documentation. The public API is governed by its own documentation, not by this document."
+            sources_title: "2. Sources and content"
+            sources_text: "Catalogs and terminologies are shown with their source and status. When a source does not declare an equivalence, this website does not infer one."
+            use_title: "3. Permitted use"
+            use_text: "Public information may be consulted and cited with its source. It may not be presented as clinical advice or as current fee-schedule values."
+            availability_title: "4. Availability"
+            availability_text: "Content may change without prior notice. Some sections may depend on permissions or environment configuration."
+            ip_title: "5. Trademarks and ownership"
+            ip_text: "SNOMED CT® is a registered trademark of SNOMED International. Origen Salud is not affiliated with or endorsed by SNOMED International. Other trademarks belong to their respective owners."
+            contact_title: "6. Contact"
+            contact_text: "Questions about these terms may be sent to legal@origen.ar."
+    privacy:
+        meta_title: "Privacy · Origen Salud"
+        meta_description: "Information about data handling on the Origen Salud public website."
+        title: "Privacy policy"
+        lead: "How data submitted through this public website is used."
+        sections:
+            scope_title: "1. Scope"
+            scope_text: "This policy applies to the Origen Salud public website. Authenticated portals may have their own terms."
+            data_title: "2. Submitted data"
+            data_text: "The contact form and Service Request ask only for the data needed to reply. They do not automatically create clients, invoices or payments."
+            language_title: "3. Language"
+            language_text: "This website stores a cookie with the selected language to remember it between visits. It is not used for advertising or tracking."
+            use_title: "4. Use of information"
+            use_text: "Data is used to handle the inquiry or request and to communicate about it as needed."
+            retention_title: "5. Retention"
+            retention_text: "Records are kept as long as needed to complete the initiated request and meet applicable obligations."
+            contact_title: "6. Contact"
+            contact_text: "Privacy questions may be sent to legal@origen.ar."

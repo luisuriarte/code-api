@@ -6,12 +6,15 @@ use OrigenSalud\Portal\Services\Csrf;
 use OrigenSalud\Web\I18n;
 
 /** @var callable $t */
-/** @var list<array{id: string, key: string, label: string, price: ?float, modality: string}> $products */
+/** @var list<array<string, mixed>> $products */
 /** @var array<string, int> $selection */
 /** @var bool $catalogAvailable */
+/** @var bool $catalogTruncated */
 /** @var array<string, string> $form */
 /** @var array<string, mixed>|null $flash */
 /** @var string $csrfToken */
+
+require __DIR__ . '/partials/format.php';
 
 $value = static fn (string $key): string => isset($form[$key]) && is_string($form[$key]) ? $form[$key] : '';
 $byId = [];
@@ -31,6 +34,14 @@ foreach ($selection as $id => $quantity) {
     }
 }
 $errorKey = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $flash['error'] : '';
+$notification = is_array($flash) && is_string($flash['notification'] ?? null)
+    ? (string) $flash['notification']
+    : '';
+$currencies = array_values(array_unique(array_filter(
+    array_column($products, 'currency'),
+    static fn (mixed $value): bool => is_string($value) && $value !== ''
+)));
+$currency = count($currencies) === 1 ? (string) $currencies[0] : null;
 
 $eyebrow = 'inline-flex items-center gap-2 rounded-full bg-mint px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-teal-dark';
 $card = 'rounded-3xl border border-line bg-white p-5 shadow-card sm:p-6';
@@ -66,6 +77,13 @@ $labelClass = 'mb-1.5 block text-sm font-semibold text-ink-soft';
                     <?php if (is_string($flash['reference'] ?? null) && $flash['reference'] !== ''): ?>
                         <p class="mt-1 text-sm font-mono"><?= e($t('service_request.success_reference')) ?>: <?= e((string) $flash['reference']) ?></p>
                     <?php endif; ?>
+                    <?php if ($notification === 'partial' || $notification === 'failed'): ?>
+                        <p class="mt-2 text-sm font-medium text-amber-700" role="status">
+                            <?= e($t('service_request.notification_' . $notification, [
+                                '%reference%' => is_string($flash['reference'] ?? null) ? (string) $flash['reference'] : '',
+                            ])) ?>
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php elseif ($errorKey !== ''): ?>
@@ -96,6 +114,12 @@ $labelClass = 'mb-1.5 block text-sm font-semibold text-ink-soft';
                     <span class="rounded-full bg-mint px-3 py-1 text-xs font-semibold text-teal-dark"><?= e($t('service_request.catalog_source')) ?></span>
                 </div>
 
+                <?php if ($catalogTruncated): ?>
+                    <p class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
+                        <?= e($t('service_request.catalog_limited')) ?>
+                    </p>
+                <?php endif; ?>
+
                 <?php if (!$catalogAvailable): ?>
                     <div class="mt-5 flex items-start gap-3 rounded-2xl border border-dashed border-line bg-paper p-5">
                         <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-muted shadow-card" aria-hidden="true">
@@ -123,7 +147,7 @@ $labelClass = 'mb-1.5 block text-sm font-semibold text-ink-soft';
                                         <?php if ($product['price'] === null): ?>
                                             <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink-soft"><?= e($t('service_request.quote_only')) ?></span>
                                         <?php else: ?>
-                                            <span class="rounded-full bg-mint px-3 py-1 text-sm font-semibold text-teal-dark"><?= e(number_format((float) $product['price'], 2, ',', '.')) ?></span>
+                                            <span class="rounded-full bg-mint px-3 py-1 text-sm font-semibold text-teal-dark"><?= e($formatNumber($product['price']) . ($currency !== null ? ' ' . $currency : '')) ?></span>
                                         <?php endif; ?>
                                     </div>
                                     <h3 class="mt-4 text-sm font-semibold text-ink"><?= e((string) $product['label']) ?></h3>
@@ -131,6 +155,22 @@ $labelClass = 'mb-1.5 block text-sm font-semibold text-ink-soft';
                                         <p class="mt-1 font-mono text-xs text-muted"><?= e((string) $product['key']) ?></p>
                                     <?php endif; ?>
                                     <p class="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-teal"><?= e($t('service_request.modality_' . (string) $product['modality'])) ?></p>
+                                    <?php
+                                    $details = [];
+                                    $billing = $product['billing'] ?? null;
+                                    if ($billing === 'one_time' || $billing === 'recurring') {
+                                        $details[] = $t('service_request.billing_' . $billing);
+                                    }
+                                    foreach (['periodicity', 'tax'] as $field) {
+                                        $detailValue = $product[$field] ?? null;
+                                        if (is_string($detailValue) && $detailValue !== '') {
+                                            $details[] = $detailValue;
+                                        }
+                                    }
+                                    ?>
+                                    <?php if ($details !== []): ?>
+                                        <p class="mt-2 text-xs leading-relaxed text-muted"><?= e(implode(' · ', $details)) ?></p>
+                                    <?php endif; ?>
                                 </div>
                                 <form method="post" action="<?= e(I18n::localizedPath($locale, '/solicitud/agregar')) ?>" class="flex items-center gap-2 border-t border-line pt-4">
                                     <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e($csrfToken) ?>">
@@ -197,7 +237,7 @@ $labelClass = 'mb-1.5 block text-sm font-semibold text-ink-soft';
                         <?php if ($hasPrices): ?>
                             <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl bg-ink px-4 py-4 shadow-card">
                                 <span class="text-sm font-semibold text-white/80"><?= e($t('service_request.total_label')) ?></span>
-                                <span class="font-mono text-lg font-semibold text-mint"><?= e(number_format($total, 2, ',', '.')) ?></span>
+                                <span class="font-mono text-lg font-semibold text-mint"><?= e($formatNumber($total) . ($currency !== null ? ' ' . $currency : '')) ?></span>
                             </div>
                         <?php endif; ?>
                         <p class="mt-3 text-xs leading-relaxed text-muted"><?= e($t('service_request.total_hint')) ?></p>
@@ -251,7 +291,12 @@ $labelClass = 'mb-1.5 block text-sm font-semibold text-ink-soft';
                             <input class="mt-0.5 size-4 shrink-0 rounded border-line text-teal focus:ring-teal/20" type="checkbox" name="terms" value="1" required>
                             <span><?= e($t('service_request.form_terms')) ?></span>
                         </label>
-                        <p class="text-xs leading-relaxed text-muted"><?= e($t('service_request.privacy_note')) ?></p>
+                        <p class="text-xs leading-relaxed text-muted">
+                            <?= e($t('service_request.privacy_note')) ?>
+                            <a class="underline decoration-teal/40 underline-offset-2 hover:text-teal" href="<?= e(I18n::localizedPath($locale, '/terminos')) ?>"><?= e($t('service_request.terms_link_label')) ?></a>
+                            ·
+                            <a class="underline decoration-teal/40 underline-offset-2 hover:text-teal" href="<?= e(I18n::localizedPath($locale, '/privacidad')) ?>"><?= e($t('service_request.privacy_link_label')) ?></a>
+                        </p>
                         <button class="btn-primary justify-self-start" type="submit">
                             <?= e($t('service_request.submit')) ?>
                             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>

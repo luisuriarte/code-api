@@ -21,5 +21,13 @@ Cubren:
   genera XML válido solo con rutas reales (sin `/cart`, AN/CL ni catálogos
   reservados).
 
+## Dominios cubiertos y ejecución
+
+La suite cubre API/OpenAPI, portal público, portal-clientes, SQL/guardas, i18n,
+SEO/legal y Solicitud de Servicios.
+
+Ejecutar siempre `php tests/run.php` para obtener el recuento vigente; no citar
+cifras fijas de ejecuciones anteriores.
+
 No requieren `psql`, `.env` ni migraciones. Para verificar la base real,
 ejecutar las consultas sugeridas al final de cada artefacto SQL en `origen_codes`.

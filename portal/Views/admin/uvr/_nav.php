@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require dirname(__DIR__, 2) . '/partials/format.php';
+
 /** @var string $section */
 $uvrTabs = [
     'A' => ['/admin/uvr', 'admin.uvr.a', 'table-properties'],

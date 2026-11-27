@@ -39,6 +39,19 @@ final class ApiException extends RuntimeException
         return new self(401, 'unauthorized', $message);
     }
 
+    /**
+     * @param array<string, mixed> $details
+     */
+    public static function tooManyRequests(int $retryAfter, array $details = []): self
+    {
+        return new self(
+            429,
+            'rate_limit_exceeded',
+            'Se superó el límite de solicitudes. Intentá nuevamente en unos instantes.',
+            array_merge(['retry_after' => max(1, $retryAfter)], $details)
+        );
+    }
+
     public static function notFound(string $message = 'El recurso solicitado no existe.'): self
     {
         return new self(404, 'not_found', $message);

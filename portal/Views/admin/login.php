@@ -49,7 +49,7 @@ $error = is_array($flash) && is_string($flash['error'] ?? null) ? (string) $flas
                     <label for="login-email" class="ui-label"><?= e($t('admin.email')) ?></label>
                     <input id="login-email" type="email" name="email" value="<?= e($email) ?>"
                            autocomplete="username" required maxlength="254" class="ui-input"
-                           placeholder="nombre@organizacion.ar">
+                           placeholder="<?= e($t('admin.login.email_placeholder')) ?>">
                 </div>
                 <div>
                     <label for="login-password" class="ui-label"><?= e($t('admin.password')) ?></label>

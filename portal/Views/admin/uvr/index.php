@@ -9,7 +9,6 @@ require __DIR__ . '/_nav.php';
 
 $uvrPermissions = is_array($current['permissions'] ?? null) ? $current['permissions'] : [];
 $uvrCanPublish = \OrigenSalud\Portal\Admin\Rbac::hasPermission($uvrPermissions, 'catalog.publish');
-$uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2, ',', '.');
 ?>
 <article class="ui-card ui-card-pad">
     <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
@@ -59,17 +58,17 @@ $uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2
                         <td class="ui-td"><?= e((string) ($valuation['version_tag'] ?? '')) ?></td>
                         <td class="ui-td">
                             <span class="block text-xs text-muted">
-                                <?= e($t('admin.uvr.work')) ?>: <?= $uvrFormat($valuation['work_uvr'] ?? 0) ?>
-                                · <?= e($t('admin.uvr.practice')) ?>: <?= $uvrFormat($valuation['practice_expense_uvr'] ?? 0) ?>
-                                · <?= e($t('admin.uvr.liability')) ?>: <?= $uvrFormat($valuation['professional_liability_uvr'] ?? 0) ?>
+                                <?= e($t('admin.uvr.work')) ?>: <?= $formatNumber($valuation['work_uvr'] ?? 0) ?>
+                                · <?= e($t('admin.uvr.practice')) ?>: <?= $formatNumber($valuation['practice_expense_uvr'] ?? 0) ?>
+                                · <?= e($t('admin.uvr.liability')) ?>: <?= $formatNumber($valuation['professional_liability_uvr'] ?? 0) ?>
                             </span>
                         </td>
-                        <td class="ui-td font-semibold text-ink"><?= $uvrFormat($valuation['total_uvr'] ?? 0) ?></td>
+                        <td class="ui-td font-semibold text-ink"><?= $formatNumber($valuation['total_uvr'] ?? 0) ?></td>
                         <td class="ui-td">
                             <?php if ($uvrImporte === null): ?>
                                 <span class="text-muted"><?= e($t('admin.uvr.no_conversion')) ?></span>
                             <?php else: ?>
-                                <span class="font-semibold text-ink"><?= e($uvrFormat($uvrImporte['importe_referencial'] ?? 0) . ' ' . (string) ($uvrImporte['currency'] ?? '')) ?></span>
+                                <span class="font-semibold text-ink"><?= e($formatNumber($uvrImporte['importe_referencial'] ?? 0) . ' ' . (string) ($uvrImporte['currency'] ?? '')) ?></span>
                                 <span class="mt-0.5 block text-xs text-muted"><?= e($t('admin.uvr.estimated_note')) ?></span>
                             <?php endif; ?>
                         </td>

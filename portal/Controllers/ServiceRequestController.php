@@ -32,6 +32,7 @@ final class ServiceRequestController
             'csrfToken' => Csrf::token(),
             'products' => array_values($products),
             'catalogAvailable' => $catalogService->available() && $products !== [],
+            'catalogTruncated' => $catalogService->catalogTruncated(),
             'selection' => ServiceRequestService::selection(),
             'form' => is_array($flash) && isset($flash['fields']) && is_array($flash['fields'])
                 ? $flash['fields']

@@ -1,5 +1,7 @@
 # Runbook de preparación — Implementación multilingüe en base independiente de staging
 
+> **Histórico — superado por Etapas 12-13 / auditoría 2026-11-26:** el estado vigente está en el [informe final](../audit/informe-final.md) (`docs/audit/informe-final.md`). El contenido histórico se conserva sin modificarlo.
+>
 > **ESTADO: DOCUMENTO DE PREPARACIÓN. NO AUTORIZA EJECUCIÓN.**
 >
 > Este runbook organiza la implementación futura del diseño aprobado. **No

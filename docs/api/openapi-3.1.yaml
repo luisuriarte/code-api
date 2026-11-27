@@ -13,10 +13,19 @@ info:
     - Los errores 500 no incluyen mensajes internos.
     - `request_id` es hexadecimal de 32 caracteres generado por el servidor, o el
       valor recibido en `X-Request-Id` (8–64 caracteres `[A-Za-z0-9._-]`); no es UUID.
-    - El enrutador responde `OPTIONS` con `204` en rutas conocidas (sin cabecera
-      `Allow`) y `405` con `Allow: GET, OPTIONS` para métodos no soportados.
-      Estas respuestas son transversales y no se repiten en cada operación.
-    - Los catálogos sin ítems devuelven `200` con `data: []` (no `404`).
+    - El enrutador responde `OPTIONS` con `204` para cualquier ruta (incluso
+      inexistente), antes de autenticar y enrutar, sin cabecera `Allow`. Responde
+      `405` con `Allow: GET, OPTIONS` para métodos no soportados en rutas
+      existentes. Estas respuestas son transversales y no se repiten en cada
+      operación.
+    - Los catálogos sin ítems devuelven `200` con `data: []` (no se emite `404`)
+      en los listados y releases; el detalle de un ítem inexistente sí devuelve
+      `404` con `ErrorEnvelope`.
+    - La API propia acepta solo `X-API-Key` o `Authorization: Bearer`; si ambas
+      llegan, prevalece `X-API-Key`. `X-Api-Token` y el prefijo `/api/v1`
+      pertenecen a Invoice Ninja (integración externa), no a esta API.
+    - `error.code` es el contrato estable; `error.message` es informativo, está
+      en español (es-AR) y no se localiza según `lang`/`Accept-Language`.
     - `400` puede emitirse en cualquier operación con parámetros inválidos;
       donde no se documenta explícitamente, aplica `ErrorEnvelope`.
     - `/fhir/*` **no está implementado**; ver `README-FHIR.md`.
@@ -78,6 +87,8 @@ paths:
                         $ref: '#/components/schemas/DomainMeta'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -91,6 +102,8 @@ paths:
           $ref: '#/components/responses/Success'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /v1/search:
     get:
@@ -98,13 +111,13 @@ paths:
       operationId: unifiedSearch
       summary: Búsqueda unificada en uno o varios dominios.
       parameters:
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/SearchQ'
         - $ref: '#/components/parameters/Domains'
         - $ref: '#/components/parameters/DomainQuery'
         - $ref: '#/components/parameters/AllFlag'
         - $ref: '#/components/parameters/Language'
         - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/SearchOffset'
         - $ref: '#/components/parameters/Refsets'
         - $ref: '#/components/parameters/Refset'
         - $ref: '#/components/parameters/Cie10Type'
@@ -128,6 +141,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /v1/search/{domain}:
     get:
@@ -136,10 +151,10 @@ paths:
       summary: Búsqueda restringida a un dominio.
       parameters:
         - $ref: '#/components/parameters/DomainPath'
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/SearchQ'
         - $ref: '#/components/parameters/Language'
         - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/SearchOffset'
         - $ref: '#/components/parameters/Refset'
         - $ref: '#/components/parameters/Cie10Type'
         - $ref: '#/components/parameters/SnomedFilter'
@@ -153,6 +168,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /v1/catalogs:
     get:
@@ -164,6 +181,8 @@ paths:
           $ref: '#/components/responses/Success'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /v1/catalogs/{catalog_code}/releases:
     get:
@@ -182,10 +201,10 @@ paths:
       tags: [Catálogos]
       operationId: listCatalogItems
       summary: Ítems de un catálogo publicado.
-      description: "Un catálogo inexistente o sin ítems devuelve `200` con `data: []`; no se emite `404`."
+      description: "Un catálogo inexistente o sin ítems devuelve `200` con `data: []`; no se emite `404`. El `offset` solo se normaliza con `max(0, offset)`: sin tope de 5000."
       parameters:
         - $ref: '#/components/parameters/CatalogCode'
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/FreeTextQ'
         - name: query
           in: query
           description: Alias de `q` en este endpoint.
@@ -206,7 +225,7 @@ paths:
       tags: [Catálogos]
       operationId: getCatalogItem
       summary: Detalle de un ítem por código permanente, oficial o término.
-      description: "Un catálogo o ítem inexistente devuelve `200` con `data: []`; no se emite `404`."
+      description: "Un catálogo o ítem inexistente devuelve `404` con `ErrorEnvelope` (`error.code=not_found`)."
       parameters:
         - $ref: '#/components/parameters/CatalogCode'
         - name: item
@@ -217,12 +236,15 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /v1/mappings:
     get:
       tags: [Terminologías]
       operationId: listMappings
       summary: Mapeos cruzados entre sistemas terminológicos.
+      description: "Sin paginación: el servicio aplica `LIMIT 50` fijo; `limit` y `offset` no se aplican."
       parameters:
         - name: system
           in: query
@@ -259,7 +281,7 @@ paths:
           schema:
             type: string
             enum: [NN_PMO, NBU, NHPGD, ANDIS, KINESIOLOGIA, SALUD_MENTAL]
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/FreeTextQ'
         - $ref: '#/components/parameters/Tipo'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
@@ -282,7 +304,7 @@ paths:
         - $ref: '#/components/parameters/Kairos'
         - $ref: '#/components/parameters/Gtin'
         - $ref: '#/components/parameters/Atc'
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/FreeTextQ'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
       responses:
@@ -316,12 +338,12 @@ paths:
       operationId: searchLoinc
       summary: Búsqueda en LOINC.
       parameters:
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/FreeTextQ'
         - $ref: '#/components/parameters/Class'
         - $ref: '#/components/parameters/Status'
         - $ref: '#/components/parameters/System'
         - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/SearchOffset'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -347,6 +369,7 @@ paths:
       tags: [Nomencladores]
       operationId: listPmoPractices
       summary: Prácticas del Programa Médico Obligatorio.
+      description: "Esta operación valida `offset` entre 0 y 5000; `q` es texto libre."
       parameters:
         - $ref: '#/components/parameters/Q'
         - $ref: '#/components/parameters/Capitulo'
@@ -379,6 +402,7 @@ paths:
       tags: [Nomencladores]
       operationId: listPmoMedicines
       summary: Medicamentos incluidos en PMO.
+      description: "Esta operación valida `offset` entre 0 y 5000; `q` es texto libre."
       parameters:
         - $ref: '#/components/parameters/Q'
         - $ref: '#/components/parameters/Atc'
@@ -464,10 +488,10 @@ paths:
       summary: Buscador SNOMED CT del contrato anterior.
       description: Delega en el buscador unificado; acepta también `refset(s)` y `cie10_type`.
       parameters:
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/SearchQ'
         - $ref: '#/components/parameters/Language'
         - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/SearchOffset'
         - $ref: '#/components/parameters/Refsets'
         - $ref: '#/components/parameters/Refset'
         - $ref: '#/components/parameters/Cie10Type'
@@ -506,10 +530,10 @@ paths:
       tags: [Odontología]
       operationId: listDentalDiagnoses
       summary: Diagnósticos DENTAR-DX vinculados a CIE-10 y SNOMED CT.
+      description: "Sin paginación: se devuelven todos los diagnósticos coincidentes; `limit` no se aplica."
       parameters:
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/FreeTextQ'
         - $ref: '#/components/parameters/Tipo'
-        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -590,18 +614,28 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-      description: "Authorization: Bearer <API_KEY>"
+      description: "Authorization: Bearer <API_KEY>. Alternativa a X-API-Key; si ambas se envían, prevalece X-API-Key."
     ApiKeyHeader:
       type: apiKey
       in: header
       name: X-API-Key
+      description: "Clave API directa. Si también se envía Authorization: Bearer, prevalece X-API-Key. No confundir con X-Api-Token de Invoice Ninja (externo)."
 
   parameters:
-    Q:
+    SearchQ:
       name: q
       in: query
       schema: { type: string, minLength: 2, maxLength: 80 }
-      description: Texto libre; `/v1/search` valida entre 2 y 80 caracteres UTF-8.
+      description: "Término validado por el buscador unificado (`/v1/search`, `/v1/search/{domain}` y `/v1/concepts/search`): 2–80 caracteres UTF-8, sin caracteres de control."
+    FreeTextQ:
+      name: q
+      in: query
+      schema: { type: string }
+      description: Texto libre en catálogos, nomenclador, vademécum, LOINC, PMO y odontología; esas rutas no aplican la validación de 2–80 caracteres del buscador.
+    Q:
+      # Alias de compatibilidad: equivale a FreeTextQ.
+      $ref: '#/components/parameters/FreeTextQ'
+      description: Alias de `FreeTextQ` conservado para clientes generados.
     Domains:
       name: domains
       in: query
@@ -615,7 +649,7 @@ components:
       required: true
       schema:
         type: string
-        enum: [snomed, cie10, anmat, laboratorio, vacunas, odontologia, prestaciones, programas, imagenes, nomenclador, vademecum, loinc]
+        enum: [snomed, cie10, anmat, laboratorio, vacunas, odontologia, prestaciones, programas, imagenes, nomenclador, vademecum, loinc, oftar]
     Language:
       name: lang
       in: query
@@ -629,11 +663,18 @@ components:
     Offset:
       name: offset
       in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+      description: "Desplazamiento entero. Esta definición no fija tope superior; cada operación indica si aplica uno. En `/v1/catalogs/{catalog_code}/items` solo se aplica `max(0, offset)`."
+    SearchOffset:
+      name: offset
+      in: query
       schema: { type: integer, minimum: 0, maximum: 5000, default: 0 }
+      description: Desplazamiento validado entre 0 y 5000 por el buscador unificado, LOINC y las rutas que lo usan.
     Refsets:
       name: refsets
       in: query
-      schema: { type: string, maxLength: 200 }
+      schema: { type: string }
+      description: "Lista separada por coma de hasta 10 códigos únicos `[A-Z0-9_]{2,24}`; requiere que `domains` incluya `snomed`. El alias es `refset`."
     CatalogCode:
       name: catalog_code
       in: path
@@ -666,7 +707,7 @@ components:
     Refset:
       name: refset
       in: query
-      description: Alias singular de `refsets`.
+      description: "Alias singular de `refsets`: mismas reglas (hasta 10 códigos `[A-Z0-9_]{2,24}`, requiere `snomed` en `domains`)."
       schema: { type: string }
     Cie10Type:
       name: cie10_type
@@ -749,8 +790,8 @@ components:
           type: object
           required: [code, message]
           properties:
-            code: { type: string }
-            message: { type: string }
+            code: { type: string, description: "Código estable del error (`unauthorized`, `not_found`, etc.)." }
+            message: { type: string, description: "Mensaje informativo en español (es-AR); no se localiza según `lang` ni `Accept-Language`. El contrato estable es `error.code`." }
             details: { type: object }
         request_id:
           type: string
@@ -773,11 +814,11 @@ components:
         id: { type: string, example: odontologia }
         label:
           type: object
-          description: Texto por idioma (claves es-AR, en, pt-BR).
+          description: Texto por idioma (claves `es` y `en`; el catálogo estático no publica `pt-BR`).
           additionalProperties: { type: string }
         description:
           type: object
-          description: Texto por idioma (claves es-AR, en, pt-BR).
+          description: Texto por idioma (claves `es` y `en`; el catálogo estático no publica `pt-BR`).
           additionalProperties: { type: string }
         source: { type: string }
         mode: { type: string, enum: [full, catalog] }
@@ -847,7 +888,19 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
     Unauthorized:
-      description: Falta o es inválida la API Key.
+      description: "401 con `error.code=unauthorized`. Tres causas: clave faltante/vacía, formato inválido o inexistente/inactiva (estas dos últimas comparten mensaje). `error.message` es informativo y está en es-AR."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    TooManyRequests:
+      description: Se superó el límite de solicitudes por segundo del cliente.
+      headers:
+        Retry-After:
+          description: Segundos a esperar antes de reintentar.
+          schema:
+            type: integer
+            example: 1
       content:
         application/json:
           schema:

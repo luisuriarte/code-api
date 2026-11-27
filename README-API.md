@@ -28,13 +28,19 @@
 
 | Cabecera | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
-| `Authorization` | Request | **Sí** | Token Bearer con la API Key: `Bearer <TU_API_KEY>` |
-| `X-API-Key` | Request | Alternativo | Clave API enviada directamente: `<TU_API_KEY>` |
+| `Authorization` | Request | **Una de dos** | `Bearer <TU_API_KEY>`. Alternativa a `X-API-Key`; si ambas se envían, prevalece `X-API-Key`. |
+| `X-API-Key` | Request | **Una de dos** | `<TU_API_KEY>`. Alternativa a Bearer; si ambas se envían, prevalece esta cabecera. |
 | `Accept` | Request | Recomendado | `application/json` |
 | `Accept-Language` | Request | Opcional | Negociación por `q`. Seleccionables: `es-AR`, `en`, `pt-BR`. `es` y `pt` son alias de entrada; `es-MX` no es alias. |
 | `X-Request-Id` | Request/Response | Siempre | Trazabilidad. Generado por el servidor como **32 hexadecimales**; si el cliente envía la cabecera, se aceptan 8–64 caracteres `[A-Za-z0-9._-]` (no es UUID). |
 | `Vary` | Response | Siempre | `Accept-Language`. Se agrega sin reemplazar el `Vary: Origin` de CORS. |
 | `Content-Language` | Response | Según respuesta | Idioma efectivo del contenido cuando es único. |
+
+Las dos cabeceras de autenticación son alternativas para la API propia: el
+autenticador lee primero `X-API-Key` y, si no está, el Bearer de
+`Authorization`. `X-Api-Token` y el prefijo `/api/v1` pertenecen a Invoice
+Ninja (integración externa): en ejemplos de esta API deben rotularse como
+externos y no copiarse como contrato de Origen Salud.
 
 ### Negociación de idioma (Fase 9)
 
@@ -108,16 +114,29 @@ curl -s -X GET "https://api.origen.ar/v1/domains" \
 | `200 OK` | Éxito | La solicitud se completó correctamente. |
 | `204 No Content` | Sin contenido | Respuestas pre-flight `OPTIONS` de CORS. |
 | `400 Bad Request` | Petición inválida | Parámetros faltantes, tipos incorrectos o sintaxis errónea. |
-| `401 Unauthorized` | No autenticado | API Key faltante, inactiva o inválida (mensaje idéntico en todos los casos). |
+| `401 Unauthorized` | No autenticado | Clave faltante/vacía, formato inválido o inexistente/inactiva; `error.code=unauthorized` en los tres casos. |
 | `404 Not Found` | No encontrado | El recurso, código o concepto no existe. |
 | `405 Method Not Allowed`| Método no permitido | Se utilizó un método HTTP diferente a `GET` u `OPTIONS`; incluye `Allow: GET, OPTIONS`. |
+| `429 Too Many Requests` | Límite de tasa | Se superó `api_clients.rate_limit_per_second`; incluye `Retry-After: 1`. |
 | `500 Internal Error`| Error interno | Error no recuperable del servidor; mensaje genérico, detalle solo en log. |
 | `503 Service Unavailable`| Mantenimiento | Base de datos o servicio no disponible temporalmente. |
 
-**No se emiten `403` ni `429`.** `api_clients.rate_limit_per_second` se consulta
-pero no se aplica en PHP; no hay suspensión de cuentas ni cuotas ejecutadas.
-Tampoco hay OAuth 2.0, JWT ni scopes, ni operaciones de escritura (`POST`,
-`PUT`, `PATCH`, `DELETE`).
+El límite se aplica por cliente autenticado y dirección IP del servidor, en una
+ventana fija de un segundo. El sujeto usa `REMOTE_ADDR`, nunca
+`X-Forwarded-For`. Si el directorio de estado local (`var/api-rate`) no se puede
+escribir, se registra el evento y la solicitud continúa (fail-open); un valor
+`rate_limit_per_second = 0` deniega siempre. No se emite `403`: no hay
+suspensión de cuentas ni cuotas ejecutadas. Tampoco hay OAuth 2.0, JWT ni
+scopes, ni operaciones de escritura (`POST`, `PUT`, `PATCH`, `DELETE`).
+
+`error.code` es el contrato estable. `error.message` es informativo, está en
+español (es-AR) y no se localiza según `lang` ni `Accept-Language`. Para `401`
+el código emite tres textos distintos:
+
+- Falta la clave o la cabecera está vacía: `Falta la API Key. Enviá el header X-API-Key o Authorization: Bearer <clave>.`
+- Formato inválido: `La API Key tiene un formato inválido.`
+- Clave inexistente o inactiva: `La API Key es inválida o está inactiva.` (mismo
+  mensaje para ambos casos; no se distingue cuál de las dos causas ocurrió).
 
 ---
 
@@ -171,7 +190,7 @@ La forma real de cada dominio es `id`, `label` y `description` como objetos
     }
   ],
   "meta": {
-    "domains": ["snomed", "cie10", "anmat", "laboratorio", "vacunas", "odontologia", "prestaciones", "programas", "imagenes", "nomenclador", "vademecum", "loinc"],
+    "domains": ["snomed", "cie10", "anmat", "laboratorio", "vacunas", "odontologia", "prestaciones", "programas", "imagenes", "nomenclador", "vademecum", "loinc", "oftar"],
     "default_domains": ["snomed", "cie10", "anmat"]
   },
   "request_id": "7f3c9a1e8b2d4f60"
@@ -241,6 +260,8 @@ curl -s -X GET "https://api.origen.ar/v1/catalogs/dentar-dx/items?q=caries" \
 ### 3.3. Ficha Técnica de la Prestación con Aranceles y Mapeos
 #### `GET /v1/catalogs/{catalog_code}/items/{item}`
 Devuelve la identidad permanente, aranceles vigentes (UB, Galenos, Módulos o Pesos) y mapeos cruzados a **SNOMED-CT**, **CIE-10** y **LOINC**.
+Si el catálogo o el ítem no existe, la respuesta es `404` con `ErrorEnvelope`
+(`error.code=not_found`); no se devuelve `200` con `data: []`.
 
 ```bash
 curl -s -X GET "https://api.origen.ar/v1/catalogs/nbu/items/660475" \
@@ -249,7 +270,7 @@ curl -s -X GET "https://api.origen.ar/v1/catalogs/nbu/items/660475" \
 
 ### 3.4. Motor de Mapeos y Equivalencias Semánticas
 #### `GET /v1/mappings?system={system}&code={code}`
-Permite encontrar qué prestaciones nacionales corresponden a un concepto internacional (o viceversa):
+Permite encontrar qué prestaciones nacionales corresponden a un concepto internacional (o viceversa). Sin paginación: el servicio aplica un `LIMIT 50` fijo; `limit` y `offset` no se aplican.
 ```bash
 # ¿Qué prácticas corresponden al código LOINC 58410-2?
 curl -s -X GET "https://api.origen.ar/v1/mappings?system=LOINC&code=58410-2" \
@@ -290,7 +311,7 @@ curl -s -X GET "https://api.origen.ar/v1/medicines/identifiers/gtin/779123456789
 ## 4. Búsqueda Unificada Multimodelo
 
 ### `GET /v1/search`
-Permite buscar simultáneamente a través de múltiples vocabularios clínicos utilizando trigramas (`pg_trgm`), coincidencia fonética y búsqueda exacta con ponderación semántica.
+Permite buscar simultáneamente a través de múltiples vocabularios clínicos utilizando trigramas (`pg_trgm`), coincidencia exacta, por prefijo y por contención, con scoring por similitud. No hay coincidencia fonética implementada.
 
 #### Parámetros de consulta (Query Params)
 
@@ -301,7 +322,7 @@ Permite buscar simultáneamente a través de múltiples vocabularios clínicos u
 | `lang` | `string` | `es` | Idioma de las descripciones: `es`, `es-AR`, `en` o `pt-BR` según el resolvedor. |
 | `limit` | `int` | `20` | Cantidad de resultados por página (máx. `50` por defecto; `API_PAGE_LIMIT_MAX` puede subirlo hasta `100`). |
 | `offset` | `int` | `0` | Desplazamiento para paginación. |
-| `refsets` | `string` | `null` | Filtrado por RefSets de SNOMED CT (separados por coma). El código también acepta el alias `refset`. |
+| `refsets` | `string` | `null` | Filtrado por RefSets de SNOMED CT (separados por coma; alias `refset`). Hasta 10 códigos únicos `[A-Z0-9_]{2,24}` y `domains` debe incluir `snomed`. |
 | `cie10_type`| `string` | `null` | Filtra CIE-10 por tipo: `diagnostico` o `procedimiento`. |
 
 #### Ejemplo de búsqueda
@@ -343,6 +364,9 @@ Permite listar o buscar en el catálogo clínico de diagnósticos DENTAR-DX vinc
 - `q`: Búsqueda de texto libre en nombres de diagnósticos, códigos CIE-10 o SCTID.
 - `snomed`: Filtro exacto por SCTID de SNOMED-CT (ej. `80967001`).
 - `cie10`: Filtro por código CIE-10 (ej. `K02` o `K02.1`).
+
+Esta ruta no pagina: devuelve todos los diagnósticos coincidentes y `limit` no
+se aplica.
 
 ```bash
 curl -s -X GET "https://api.origen.ar/v1/odontologia/diagnosticos?snomed=80967001" \

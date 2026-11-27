@@ -19,6 +19,13 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 // Emitirlo también aquí duplicaría la cabecera en todas las respuestas PHP.
 header('Cache-Control: private, no-store');
 
+// La opción de configuración debe surtir efecto: sin TLS se deniega el acceso
+// en lugar de enviar credenciales o cookies por un canal no cifrado.
+if (OrigenSalud\CustomerPortal\Config::auth()['require_https']
+    && !OrigenSalud\CustomerPortal\Config::isSecureRequest()) {
+    OrigenSalud\CustomerPortal\Services\Http::abort(403, 'errors/denied');
+}
+
 try {
     (new OrigenSalud\CustomerPortal\Router())->dispatch();
 } catch (OrigenSalud\CustomerPortal\Services\CustomerRepositoryException) {

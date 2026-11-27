@@ -3,6 +3,8 @@
 > **Estado:** auditoría de solo lectura sobre el repositorio local. No se consultó la base en vivo, no se modificó código, no se ejecutaron cambios ni se desplegó.
 > **Fecha:** 2026-11-24.
 > **Evidencia:** archivos del repositorio. Se marcan como `[REPO]` las afirmaciones verificadas localmente.
+>
+> **Estado vigente (auditoría integral 2026-11-26):** este documento describe el estado de 2026-11-24 y se conserva como registro histórico. Desde la Etapa 8 existe self-service de crear/rotar/revocar credenciales en `/portal-clientes`, **implementado pero deshabilitado por defecto**: requiere `PORTAL_CUSTOMER_CREDENTIAL_DB_DSN` / `USER` / `PASS` y permisos. La migración V8.001 quedó en entorno de prueba; no se desplegó en producción. La evolución M6 (hash con pepper y `429`) está preparada en código; la migración V11.001 no está ejecutada y necesita acta. Ver `docs/audit/informe-final.md`.
 
 ## 1. Convenciones de estado
 
@@ -193,3 +195,5 @@ Cabeceras comunes: `Content-Type`, `Cache-Control: no-store`, `X-Content-Type-Op
 ## 15. Conclusión
 
 El portal de clientes debe integrarse con el mecanismo real mientras no se autorice su evolución: API Key por cliente, sin scopes ni métricas. Cualquier funcionalidad adicional (hash, rotación self-service, revocación, scopes, rates, consumo) debe figurar como propuesta dependiente de una decisión aprobada por separado.
+
+> **Actualización vigente (2026-11-26):** la rotación y revocación self-service quedaron aprobadas en la Etapa 8 y existen en código, con la DSN de credenciales apuntando a `origen_codes` como excepción autorizada. Sigue sin activarse en producción. El hash con pepper y el limitador `429` son evoluciones preparadas, no cambios del contrato `/v1`.

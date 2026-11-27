@@ -56,7 +56,9 @@ El front controller nuevo es `web/portal-clientes/index.php`, con un `.htaccess`
 | `PORTAL_CUSTOMER_LOCK_MINUTES` | Minutos de bloqueo. |
 | `PORTAL_CUSTOMER_RESET_TTL` | Vigencia del reset. |
 | `PORTAL_CUSTOMER_INVITE_TTL` | Vigencia de invitaciones. |
-| `PORTAL_CUSTOMER_REQUIRE_HTTPS` | Exigencia HTTPS. |
+| `PORTAL_CUSTOMER_REQUIRE_HTTPS` | Exigencia HTTPS (default `true`); la detección de TLS solo acepta `X-Forwarded-Proto` desde los proxy de confianza. |
+| `PORTAL_CUSTOMER_TRUSTED_PROXY_IPS` | IPs o CIDR IPv4 autorizadas a reenviar `X-Forwarded-Proto`; vacío = no confiar. |
+| `PORTAL_CUSTOMER_NOTIFICATION_BCC` | Copias ocultas opcionales de las notificaciones de reset e invitación. |
 | `PORTAL_CUSTOMER_IN_MODE` | `mock` (default) u `http`. |
 | `PORTAL_CUSTOMER_IN_BASE_URL` | Instancia designada como de prueba. Default `https://gestion.uriarte.ar`. |
 | `PORTAL_CUSTOMER_IN_API_PREFIX` | Prefijo de API asumido, `/api/v1`. Sin verificar en la instalación. |
@@ -75,7 +77,9 @@ Para que exista una llamada HTTP deben cumplirse **simultáneamente** las tres c
 
 La cabecera `X-Api-Token` y el prefijo `/api/v1` son suposiciones documentadas: la versión y los endpoints de la instalación siguen sin verificar.
 
-No hay SMTP real en esta etapa. `TestNotification` devuelve el link de invitación o reset al administrador que hace la prueba, sin enviar correo.
+En las pruebas históricas de las Etapas 5 a 11, `TestNotification` devolvía el vínculo de invitación o reset al administrador sin enviar correo. En la configuración actual, `CustomerNotification` envía el reset y las invitaciones **por SMTP real**, reutilizando el transporte del portal público sin iniciar su sesión. El token sin cifrar viaja solo en el correo al destinatario legítimo: nunca se muestra en pantalla, se guarda en flash ni se escribe en logs. Si el envío falla, la invitación se expira y el reset se revoca, se audita la falla y la respuesta al usuario sigue siendo genérica.
+
+La guardia HTTPS del front controller depende de `PORTAL_CUSTOMER_REQUIRE_HTTPS` más `PORTAL_CUSTOMER_TRUSTED_PROXY_IPS`: con `require_https=true` se rechaza la petición si no se detecta TLS, y `X-Forwarded-Proto: https` solo se acepta cuando `REMOTE_ADDR` figura en la lista de proxy de confianza (IP exacta o CIDR IPv4). Con la lista vacía no se confía en esa cabecera, aunque la envíe el cliente.
 
 ## 4. Ejecución por el responsable
 
@@ -145,7 +149,7 @@ El permiso de superadministrador se aprovisiona a mano, nunca por correo ni por 
 - `php -l` en todos los archivos PHP nuevos: sin errores.
 - Carga de las clases por autoloader: correcta.
 - Traducciones: 74 claves en la Etapa 5; 141 claves hasta la Etapa 7; 168 claves con Etapa 8, presentes en `es-AR`, `en` y `pt-BR`; sin faltantes.
-- Suite existente: `php tests/run.php` → `OK: 3695 comprobaciones` (48 comprobaciones nuevas de Etapa 8).
+- Suite existente: verificar con `php tests/run.php` (48 comprobaciones nuevas de Etapa 8; el recuento actual es mayor).
 - Etapa 6: 13 comprobaciones locales del modo `mock`, la clasificación y las guardias HTTP, sin red ni base: sin fallas.
 - Etapa 7: 518 comprobaciones locales de SQL, rutas, permisos, i18n, diseño y resultados de auditoría: sin fallas.
 - Etapa 8: comprobaciones locales de migración, guardas, grants, self-service, secreto de un solo uso, rutas, i18n y sondeo `GET`-only: sin fallas.
@@ -153,7 +157,7 @@ El permiso de superadministrador se aprovisiona a mano, nunca por correo ni por 
 
 ### Verificación en el VPS de prueba
 
-- Con Etapa 7: `OK: 3647 comprobaciones`, sin avisos `Deprecated`. Con Etapa 8, en VPS: `OK: 3695 comprobaciones`, sin avisos `Deprecated`.
+- Con Etapa 7: `OK: 3647 comprobaciones` (registro histórico de la Etapa 7), sin avisos `Deprecated`. Con Etapa 8, en VPS: verificar con `php tests/run.php`, sin avisos `Deprecated`.
 - Cabeceras: `/portal-clientes/es-AR/login` → `X-Frame-Options: DENY`; `/es-AR/` → `SAMEORIGIN`; una sola línea en cada caso.
 - Flujo ejecutado en navegador: solicitud → contrato → pago confirmado verificado → habilitación pendiente → activación → suspensión → revocación.
 - Estado final de la habilitación de prueba: `1|revoked`.
@@ -277,7 +281,7 @@ Flujo público sin cuenta en `/{locale}/solicitud`, con las acciones `agregar`, 
 - `V10.002` quita `SUPERUSER` a `origen_med`, autorizado expresamente. Es un cambio cluster-wide que también afecta a `origen_codes`; se ejecuta desde la base de prueba. Sin él, los chequeos de privilegios daban `f` aunque los ACL fueran correctos.
 - Invoice Ninja se consulta solo por `GET`, con token **de prueba** y `INVOICE_NINJA_ALLOW_TEST_CALLS=true`. El navegador envía IDs y cantidades; los precios se validan y recalculan en servidor y no se guardan en PostgreSQL.
 - CSRF, honeypot, tiempo mínimo, `RATE_REQUEST`, deduplicación y escalado a revisión humana. Nunca se crean clientes, presupuestos, facturas, pagos ni credenciales.
-- 55 claves i18n nuevas por idioma en `es-AR`, `en` y `pt-BR`; sin textos hardcodeados. Suite local: `OK: 3924 comprobaciones`.
+- 55 claves i18n nuevas por idioma en `es-AR`, `en` y `pt-BR`; sin textos hardcodeados. Suite local: verificar con `php tests/run.php`.
 
 ## 9. Etapa 11 — Pruebas
 
@@ -286,7 +290,7 @@ Autorizada por `docs/portal-clientes/acta-autorizacion-etapa-11.md`. Cubre T-01 
 - Plan de pruebas actualizado con el nombre **Solicitud de Servicios** y comandos de ejecución.
 - `php tools/php/verificar_etapa11_portal_clientes.php`: 27 comprobaciones estáticas y HTTP opcional de solo lectura, con `--post` opt-in para el caso negativo de CSRF.
 - `sql/10_portal_clientes/ETAPA11__verificacion_solicitudes.sql`: agregados de solicitudes e ítems, sin correos ni importes.
-- Suite local: `OK: 3932 comprobaciones`.
+- Suite local: verificar con `php tests/run.php`.
 
 ## 10. Estado de producción
 
@@ -305,6 +309,6 @@ Autorizada por `docs/portal-clientes/acta-autorizacion-etapa-11.md`. Cubre T-01 
 - Webhooks, conciliación y creación de clientes.
 - Consulta de facturas, comprobantes o pagos dentro de este portal: solo se ofrece un enlace configurable al portal de facturación.
 - Vencimiento automático, suspensión parcial y planes institucionales.
-- Evolución M6 de la API: hash con pepper, scopes, expiración, último uso, medición y `429`.
+- Evolución M6 de la API: hash con pepper, scopes, expiración, último uso, medición y `429`. De M6 solo hay artefactos SQL preparados (`V11.001`, hash con pepper sin backfill), **no ejecutados** y pendientes de acta de despliegue.
 
 Cada uno requiere autorización específica.

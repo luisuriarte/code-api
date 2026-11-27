@@ -93,6 +93,18 @@ final class Router
             return;
         }
 
+        if ($section === 'terminos') {
+            $this->legal($locale, $currentPath, 'terms');
+
+            return;
+        }
+
+        if ($section === 'privacidad') {
+            $this->legal($locale, $currentPath, 'privacy');
+
+            return;
+        }
+
         if ($section === 'dentar') {
             DentarController::index($locale, $currentPath);
 
@@ -150,7 +162,20 @@ final class Router
         }
 
         if ($section === 'solicitud') {
+            // UX-07: si el flag oculta los enlaces, la ruta tampoco se publica.
+            if (!Config::serviceRequestLinkEnabled()) {
+                $this->notFound($locale, $currentPath);
+
+                return;
+            }
+
             ServiceRequestController::index($locale, $currentPath);
+
+            return;
+        }
+
+        if (str_starts_with($section, 'solicitud/') && !Config::serviceRequestLinkEnabled()) {
+            $this->notFound($locale, $currentPath);
 
             return;
         }
@@ -594,6 +619,18 @@ final class Router
         return false;
     }
 
+    private function legal(string $locale, string $currentPath, string $document): void
+    {
+        $document = $document === 'privacy' ? 'privacy' : 'terms';
+
+        View::render('legal/' . $document, [
+            'locale' => $locale,
+            'currentPath' => $currentPath,
+            'pageTitle' => trans('legal.' . $document . '.meta_title', [], $locale),
+            'pageDescription' => trans('legal.' . $document . '.meta_description', [], $locale),
+        ]);
+    }
+
     private function contact(string $locale, string $currentPath): void
     {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
@@ -623,7 +660,7 @@ final class Router
 
     private function notFound(?string $locale = null, string $currentPath = '/'): void
     {
-        $locale ??= I18n::DEFAULT_LOCALE;
+        $locale = I18n::canonical($locale) ?? I18n::DEFAULT_LOCALE;
 
         if (I18n::locale() !== $locale) {
             I18n::boot($locale);
@@ -633,8 +670,8 @@ final class Router
         View::render('errors/404', [
             'locale' => $locale,
             'currentPath' => $currentPath,
-            'pageTitle' => 'Página no encontrada',
-            'pageDescription' => 'La página solicitada no existe.',
+            'pageTitle' => trans('errors.not_found.title', [], $locale),
+            'pageDescription' => trans('errors.not_found.description', [], $locale),
         ]);
     }
 }

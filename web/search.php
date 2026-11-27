@@ -20,7 +20,7 @@ use OrigenSalud\Web\I18n;
 $locale = I18n::boot();
 
 header('Content-Type: text/html; charset=UTF-8');
-header('Vary: Accept-Language');
+header('Vary: Accept-Language, Cookie');
 header('Content-Language: ' . $locale);
 
 $t = static fn (string $key, array $parameters = []): string => trans($key, $parameters, $locale);
@@ -97,9 +97,8 @@ foreach ($fields as $field) {
     <title><?= e($t('search.title')) ?> | Origen Salud</title>
     <meta name="description" content="<?= e($t('search.lead')) ?>">
     <link rel="canonical" href="<?= e($baseUrl . $currentPath) ?>">
-    <?php foreach (I18n::alternateLinks($currentPath) as $alternate): ?>
-    <link rel="alternate" hreflang="<?= e($alternate['hreflang']) ?>" href="<?= e($baseUrl . $alternate['href']) ?>">
-    <?php endforeach; ?>
+    <!-- SEO-04: /search es una página legacy no indexable; no se publican alternates que resuelvan a rutas inexistentes. -->
+    <meta name="robots" content="noindex,follow">
     <meta property="og:type" content="website">
     <meta property="og:title" content="<?= e($t('search.title')) ?>">
     <meta property="og:description" content="<?= e($t('search.lead')) ?>">

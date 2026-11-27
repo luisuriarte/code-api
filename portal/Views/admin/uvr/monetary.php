@@ -6,9 +6,6 @@ declare(strict_types=1);
 /** @var list<array<string, mixed>> $indexes */
 
 require __DIR__ . '/_nav.php';
-
-$uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2, ',', '.');
-$uvrIndexFormat = static fn (mixed $value): string => number_format((float) $value, 6, ',', '.');
 ?>
 <article class="ui-card ui-card-pad">
     <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
@@ -42,7 +39,7 @@ $uvrIndexFormat = static fn (mixed $value): string => number_format((float) $val
                         <tbody class="divide-y divide-line">
                         <?php foreach ($conversions as $conversion): ?>
                             <tr class="transition hover:bg-paper/60">
-                                <td class="ui-td font-semibold text-ink"><?= $uvrFormat($conversion['uvr_value'] ?? 0) ?></td>
+                                <td class="ui-td font-semibold text-ink"><?= $formatNumber($conversion['uvr_value'] ?? 0) ?></td>
                                 <td class="ui-td"><code class="ui-code"><?= e((string) ($conversion['currency'] ?? '')) ?></code></td>
                                 <td class="ui-td"><?= e((string) ($conversion['jurisdiction'] ?? '')) ?></td>
                                 <td class="ui-td text-xs"><?= e((string) ($conversion['period_start'] ?? '')) ?> — <?= e((string) ($conversion['period_end'] ?? '')) ?></td>
@@ -78,7 +75,7 @@ $uvrIndexFormat = static fn (mixed $value): string => number_format((float) $val
                             <tr class="transition hover:bg-paper/60">
                                 <td class="ui-td"><code class="ui-code"><?= e((string) ($index['component_type'] ?? '')) ?></code></td>
                                 <td class="ui-td"><?= e((string) ($index['jurisdiction'] ?? '')) ?></td>
-                                <td class="ui-td font-mono text-xs text-ink"><?= $uvrIndexFormat($index['index_value'] ?? 0) ?></td>
+                                <td class="ui-td font-mono text-xs text-ink"><?= $formatNumber($index['index_value'] ?? 0, 6) ?></td>
                                 <td class="ui-td text-xs"><?= e((string) ($index['period_start'] ?? '')) ?> — <?= e((string) ($index['period_end'] ?? '')) ?></td>
                                 <td class="ui-td"><?= e((string) ($index['source_reference'] ?? '')) ?></td>
                                 <td class="ui-td"><code class="ui-code"><?= e((string) ($index['review_status'] ?? '')) ?></code></td>

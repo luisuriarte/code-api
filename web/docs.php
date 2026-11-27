@@ -31,6 +31,7 @@ if ($baseUrl === '') {
 
 $apiBase = 'https://api.origen.ar';
 $canonical = $baseUrl . '/docs?lang=' . rawurlencode($locale);
+$xDefault = $baseUrl . '/docs?lang=' . rawurlencode(I18n::DEFAULT_LOCALE);
 $metadata = I18n::metadata($locale);
 $year = date('Y');
 
@@ -56,8 +57,8 @@ $flags = [
 $homePath = I18n::localizedPath($locale, '/');
 $contactPath = I18n::localizedPath($locale, '/contact');
 $contactMailto = 'mailto:contacto@origen.ar';
-$legalMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal'));
-$privacyMailto = 'mailto:legal@origen.ar?subject=' . rawurlencode($t('footer.legal_privacy'));
+$termsPath = I18n::localizedPath($locale, '/terminos');
+$privacyPath = I18n::localizedPath($locale, '/privacidad');
 
 $articles = [
     ['id' => 'overview', 'key' => 'overview', 'group' => 'start'],
@@ -93,10 +94,10 @@ $renderParams = static function (array $rows) use ($t, $esc): void {
         <table class="param-table">
             <thead>
                 <tr>
-                    <th scope="col"><?= $esc($t('search.params_title')) ?></th>
-                    <th scope="col"><?= $esc($t('common.default')) ?></th>
-                    <th scope="col"><?= $esc($t('common.required')) ?></th>
-                    <th scope="col"><?= $esc($t('search.domains_title')) ?></th>
+                    <th scope="col"><?= $esc($t('docs.search.params_title')) ?></th>
+                    <th scope="col"><?= $esc($t('docs.common.default')) ?></th>
+                    <th scope="col"><?= $esc($t('docs.common.required')) ?></th>
+                    <th scope="col"><?= $esc($t('docs.search.domains_title')) ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -115,11 +116,11 @@ $renderParams = static function (array $rows) use ($t, $esc): void {
 };
 
 $renderEndpoint = static function (string $path, string $access = 'authenticated') use ($apiBase, $t, $esc): void {
-    $label = $access === 'public' ? $t('common.public') : $t('common.authenticated');
+    $label = $access === 'public' ? $t('docs.common.public') : $t('docs.common.authenticated');
     $tone = $access === 'public' ? 'ok' : 'key';
     ?>
     <div class="endpoint">
-        <span class="method method--get"><?= $esc($t('common.method_get')) ?></span>
+        <span class="method method--get"><?= $esc($t('docs.common.method_get')) ?></span>
         <code class="endpoint__path"><?= $esc($path) ?></code>
         <span class="badge badge--<?= $tone ?>"><?= $esc($label) ?></span>
         <button type="button" class="copy-endpoint" data-endpoint="<?= $esc($apiBase . $path) ?>"
@@ -146,12 +147,12 @@ $renderCallout = static function (string $tone, string $title, string $text) use
  */
 $renderCode = static function (string $id, array $snippets) use ($t, $esc, $raw): void {
     $labels = [
-        'curl' => $t('code.curl'),
-        'php' => $t('code.php'),
-        'python' => $t('code.python'),
-        'java' => $t('code.java'),
-        'javascript' => $t('code.javascript'),
-        'csharp' => $t('code.csharp'),
+        'curl' => $t('docs.code.curl'),
+        'php' => $t('docs.code.php'),
+        'python' => $t('docs.code.python'),
+        'java' => $t('docs.code.java'),
+        'javascript' => $t('docs.code.javascript'),
+        'csharp' => $t('docs.code.csharp'),
     ];
     ?>
     <div class="code-container" data-code-block="<?= $esc($id) ?>">
@@ -423,11 +424,35 @@ $quickstartResponse = <<<'JSON'
     }
   ],
   "meta": {
+    "catalog": "dentar-pr",
+    "query": "evaluacion",
+    "limit": 5,
+    "offset": 0,
+    "returned": 1,
     "requested_language": "es-AR",
-    "effective_language": "es",
-    "source_language": "es",
-    "fallback_applied": true,
+    "effective_language": null,
+    "source_language": null,
+    "fallback_applied": false,
+    "fallback_reason": null,
+    "untranslated": false,
     "dialect_determined": false,
+    "available_languages": [
+      { "code": "es-AR", "selectable": true },
+      { "code": "en", "selectable": true },
+      { "code": "pt-BR", "selectable": true }
+    ],
+    "field_languages": {
+      "items": {
+        "effective_language": null,
+        "source_language": null,
+        "provenance": null,
+        "approval_state": null,
+        "fallback_applied": false,
+        "fallback_reason": null,
+        "untranslated": false,
+        "dialect_determined": false
+      }
+    },
     "took_ms": 4.12
   },
   "request_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
@@ -489,6 +514,7 @@ JSON;
     <?php foreach ($alternates as $alternate): ?>
         <link rel="alternate" hreflang="<?= $esc($alternate['hreflang']) ?>" href="<?= $esc($alternate['href']) ?>">
     <?php endforeach; ?>
+    <link rel="alternate" hreflang="x-default" href="<?= $esc($xDefault) ?>">
     <link rel="stylesheet" href="/assets/css/public.css?v=docs-v3">
     <style>
         .docs-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr) 190px; gap: 32px; align-items: start; padding: 32px 0 72px; }
@@ -685,8 +711,8 @@ JSON;
 
             <nav class="breadcrumb" aria-label="<?= $esc($t('docs.a11y.breadcrumb_label')) ?>">
                 <ol>
-                    <li><a href="<?= $esc($homePath) ?>"><?= $esc($t('breadcrumb.home')) ?></a></li>
-                    <li><a href="<?= $esc($canonical) ?>"><?= $esc($t('breadcrumb.docs')) ?></a></li>
+                    <li><a href="<?= $esc($homePath) ?>"><?= $esc($t('docs.breadcrumb.home')) ?></a></li>
+                    <li><a href="<?= $esc($canonical) ?>"><?= $esc($t('docs.breadcrumb.docs')) ?></a></li>
                     <li data-breadcrumb-group><?= $esc($t('docs.nav.groups.start')) ?></li>
                     <li aria-current="page" data-breadcrumb-article><?= $esc($t('docs.article.overview.title')) ?></li>
                 </ol>
@@ -701,19 +727,19 @@ JSON;
                     <table class="param-table">
                         <thead><tr><th scope="col"><?= $esc($t('docs.overview.env_col')) ?></th><th scope="col"><?= $esc($t('docs.overview.url_col')) ?></th><th scope="col"><?= $esc($t('docs.overview.access_col')) ?></th></tr></thead>
                         <tbody>
-                            <tr><td><strong><?= $esc($t('common.production')) ?></strong><br><small><?= $esc($t('docs.overview.rest_desc')) ?></small></td><td><code><?= $esc($apiBase) ?></code></td><td><?= $esc($t('common.authenticated')) ?></td></tr>
-                            <tr><td><strong><?= $esc($t('common.public')) ?></strong><br><small><?= $esc($t('docs.overview.health_desc')) ?></small></td><td><code><?= $esc($apiBase) ?>/health</code></td><td><?= $esc($t('common.public')) ?></td></tr>
+                            <tr><td><strong><?= $esc($t('docs.common.production')) ?></strong><br><small><?= $esc($t('docs.overview.rest_desc')) ?></small></td><td><code><?= $esc($apiBase) ?></code></td><td><?= $esc($t('docs.common.authenticated')) ?></td></tr>
+                            <tr><td><strong><?= $esc($t('docs.common.public')) ?></strong><br><small><?= $esc($t('docs.overview.health_desc')) ?></small></td><td><code><?= $esc($apiBase) ?>/health</code></td><td><?= $esc($t('docs.common.public')) ?></td></tr>
                         </tbody>
                     </table>
                 </div>
                 <?php $renderEndpoint('/health', 'public'); ?>
 
                 <?php $renderSubhead('overview-health', $t('docs.overview.health_title')); ?>
-                <?php $renderResponse($t('docs.overview.health_title'), $healthResponse, $t('docs.overview.health_note') . ' ' . $t('common.illustrative')); ?>
+                <?php $renderResponse($t('docs.overview.health_title'), $healthResponse, $t('docs.overview.health_note') . ' ' . $t('docs.common.illustrative')); ?>
 
                 <?php $renderSubhead('overview-format', $t('docs.overview.response_title')); ?>
                 <p><?= $esc($t('docs.overview.response_text')) ?></p>
-                <?php $renderCallout('', $t('common.note'), $t('common.json_only')); ?>
+                <?php $renderCallout('', $t('docs.common.note'), $t('docs.common.json_only')); ?>
                 <?php $renderArticleNav('overview'); ?>
             </section>
 
@@ -725,7 +751,7 @@ JSON;
                 <p><?= $esc($t('docs.auth.header_text')) ?></p>
                 <div class="table-wrap">
                     <table class="param-table">
-                        <thead><tr><th scope="col"><?= $esc($t('auth.header')) ?></th><th scope="col"><?= $esc($t('docs.auth.header_title')) ?></th></tr></thead>
+                        <thead><tr><th scope="col"><?= $esc($t('docs.auth.header')) ?></th><th scope="col"><?= $esc($t('docs.auth.header_title')) ?></th></tr></thead>
                         <tbody>
                             <tr><td><code>X-API-Key</code></td><td><code><?= $esc($t('docs.auth.xapikey')) ?></code></td></tr>
                             <tr><td><code>Authorization</code></td><td><code><?= $esc($t('docs.auth.bearer')) ?></code></td></tr>
@@ -764,7 +790,7 @@ JSON;
                         </tbody>
                     </table>
                 </div>
-                <?php $renderCallout('warning', $t('common.warning'), $t('docs.conventions.no_403')); ?>
+                <?php $renderCallout('warning', $t('docs.common.warning'), $t('docs.conventions.no_403')); ?>
 
                 <?php $renderSubhead('conventions-request-id', $t('docs.conventions.request_id_title')); ?>
                 <p><?= $esc($t('docs.conventions.request_id_text')) ?></p>
@@ -794,7 +820,7 @@ JSON;
                 <?php $renderCode('quickstart', $quickstartSnippets); ?>
 
                 <?php $renderSubhead('quickstart-response', $t('docs.quickstart.response_title')); ?>
-                <?php $renderResponse($t('docs.quickstart.response_title'), $quickstartResponse, $t('docs.quickstart.response_note') . ' ' . $t('common.illustrative')); ?>
+                <?php $renderResponse($t('docs.quickstart.response_title'), $quickstartResponse, $t('docs.quickstart.response_note') . ' ' . $t('docs.common.illustrative')); ?>
                 <?php $renderCallout('danger', $t('docs.auth.warning_title'), $t('docs.quickstart.security_note')); ?>
                 <?php $renderArticleNav('quickstart'); ?>
             </section>
@@ -814,18 +840,18 @@ JSON;
 
                 <?php $renderSubhead('search-params', $t('docs.search.params_title')); ?>
                 <?php $renderParams([
-                    ['name' => 'q', 'type' => 'string', 'default' => '—', 'required' => $t('common.required'), 'text' => $t('docs.search.param_q')],
-                    ['name' => 'domains', 'type' => 'csv', 'default' => 'snomed,cie10,anmat', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_domains')],
-                    ['name' => 'lang', 'type' => 'string', 'default' => 'es', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_lang')],
-                    ['name' => 'limit', 'type' => 'integer', 'default' => '20', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_limit')],
-                    ['name' => 'offset', 'type' => 'integer', 'default' => '0', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_offset')],
-                    ['name' => 'cie10_type', 'type' => 'enum', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_cie10')],
-                    ['name' => 'refset', 'type' => 'csv', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.search.param_refset')],
+                    ['name' => 'q', 'type' => 'string', 'default' => '—', 'required' => $t('docs.common.required'), 'text' => $t('docs.search.param_q')],
+                    ['name' => 'domains', 'type' => 'csv', 'default' => 'snomed,cie10,anmat', 'required' => $t('docs.common.optional'), 'text' => $t('docs.search.param_domains')],
+                    ['name' => 'lang', 'type' => 'string', 'default' => 'es', 'required' => $t('docs.common.optional'), 'text' => $t('docs.search.param_lang')],
+                    ['name' => 'limit', 'type' => 'integer', 'default' => '20', 'required' => $t('docs.common.optional'), 'text' => $t('docs.search.param_limit')],
+                    ['name' => 'offset', 'type' => 'integer', 'default' => '0', 'required' => $t('docs.common.optional'), 'text' => $t('docs.search.param_offset')],
+                    ['name' => 'cie10_type', 'type' => 'enum', 'default' => '—', 'required' => $t('docs.common.optional'), 'text' => $t('docs.search.param_cie10')],
+                    ['name' => 'refset', 'type' => 'csv', 'default' => '—', 'required' => $t('docs.common.optional'), 'text' => $t('docs.search.param_refset')],
                 ]); ?>
 
                 <?php $renderSubhead('search-example', $t('docs.search.example_title')); ?>
                 <?php $renderCode('search', ['curl' => $searchCurl]); ?>
-                <?php $renderResponse($t('docs.quickstart.response_title'), $searchResponse, $t('common.illustrative')); ?>
+                <?php $renderResponse($t('docs.quickstart.response_title'), $searchResponse, $t('docs.common.illustrative')); ?>
 
                 <?php $renderSubhead('search-meta', $t('docs.search.meta_title')); ?>
                 <p><?= $esc($t('docs.search.meta_text')) ?></p>
@@ -859,7 +885,7 @@ JSON;
                 <p><?= $esc($t('docs.catalogs.codes_text')) ?></p>
                 <div class="table-wrap">
                     <table class="param-table">
-                        <thead><tr><th scope="col"><?= $esc($t('table.catalog_code')) ?></th><th scope="col"><?= $esc($t('docs.search.domains_title')) ?></th></tr></thead>
+                        <thead><tr><th scope="col"><?= $esc($t('docs.table.catalog_code')) ?></th><th scope="col"><?= $esc($t('docs.search.domains_title')) ?></th></tr></thead>
                         <tbody>
                             <tr><td><code>dentar-pr</code></td><td><?= $esc($t('docs.catalogs.code_dentar_pr')) ?></td></tr>
                             <tr><td><code>dentar-dx</code></td><td><?= $esc($t('docs.catalogs.code_dentar_dx')) ?></td></tr>
@@ -889,9 +915,9 @@ JSON;
                 <?php $renderEndpoint('/v1/mappings'); ?>
                 <?php $renderCode('mappings', ['curl' => $mappingsCurl]); ?>
                 <?php $renderParams([
-                    ['name' => 'system', 'type' => 'string', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.mappings.param_system')],
-                    ['name' => 'code', 'type' => 'string', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.mappings.param_code')],
-                    ['name' => 'catalog', 'type' => 'string', 'default' => '—', 'required' => $t('common.optional'), 'text' => $t('docs.mappings.param_catalog')],
+                    ['name' => 'system', 'type' => 'string', 'default' => '—', 'required' => $t('docs.common.optional'), 'text' => $t('docs.mappings.param_system')],
+                    ['name' => 'code', 'type' => 'string', 'default' => '—', 'required' => $t('docs.common.optional'), 'text' => $t('docs.mappings.param_code')],
+                    ['name' => 'catalog', 'type' => 'string', 'default' => '—', 'required' => $t('docs.common.optional'), 'text' => $t('docs.mappings.param_catalog')],
                 ]); ?>
 
                 <?php $renderSubhead('mappings-units', $t('docs.mappings.units_title')); ?>
@@ -979,7 +1005,7 @@ JSON;
 
                 <?php $renderSubhead('dental-cdt', $t('docs.dental.cdt_title')); ?>
                 <p><?= $esc($t('docs.dental.cdt_text')) ?></p>
-                <?php $renderCallout('warning', $t('common.warning'), $t('docs.dental.cdt_no_endpoint')); ?>
+                <?php $renderCallout('warning', $t('docs.common.warning'), $t('docs.dental.cdt_no_endpoint')); ?>
                 <p><?= $esc($t('docs.dental.nn_text')) ?></p>
 
                 <?php $renderSubhead('dental-relations', $t('docs.dental.relations_title')); ?>
@@ -990,7 +1016,7 @@ JSON;
             <section id="pending" class="docs-section" data-article="pending">
                 <h2><?= $esc($t('docs.article.pending.title')) ?></h2>
                 <p class="lead"><?= $esc($t('docs.pending.lead')) ?></p>
-                <span class="badge badge--pending"><?= $esc($t('common.not_implemented')) ?></span>
+                <span class="badge badge--pending"><?= $esc($t('docs.common.not_implemented')) ?></span>
 
                 <?php $renderSubhead('pending-fhir', $t('docs.pending.fhir_title')); ?>
                 <p><?= $esc($t('docs.pending.fhir_text')) ?></p>
@@ -1023,7 +1049,7 @@ JSON;
                 <?php $renderSubhead('openapi-spec', $t('docs.openapi.spec_title')); ?>
                 <p><?= $esc($t('docs.openapi.spec_text')) ?></p>
                 <p><strong><?= $esc($t('docs.openapi.spec_link')) ?></strong> <code>docs/api/openapi-3.1.yaml</code></p>
-                <?php $renderCallout('', $t('common.note'), $t('common.see_openapi')); ?>
+                <?php $renderCallout('', $t('docs.common.note'), $t('docs.common.see_openapi')); ?>
 
                 <?php $renderSubhead('openapi-divergences', $t('docs.openapi.divergences_title')); ?>
                 <p><?= $esc($t('docs.openapi.divergences_text')) ?></p>
@@ -1073,9 +1099,9 @@ JSON;
     <div class="mx-auto w-full max-w-[1500px] px-4 py-10 sm:px-6">
         <div class="flex flex-wrap gap-x-6 gap-y-2">
             <a class="inline-flex text-sm text-muted transition hover:text-teal-dark hover:underline underline-offset-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15"
-               href="<?= $esc($legalMailto) ?>"><?= $esc($t('footer.legal')) ?></a>
+               href="<?= $esc($termsPath) ?>"><?= $esc($t('footer.legal_terms')) ?></a>
             <a class="inline-flex text-sm text-muted transition hover:text-teal-dark hover:underline underline-offset-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal/15"
-               href="<?= $esc($privacyMailto) ?>"><?= $esc($t('footer.legal_privacy')) ?></a>
+               href="<?= $esc($privacyPath) ?>"><?= $esc($t('footer.legal_privacy')) ?></a>
         </div>
         <div class="mt-6 flex flex-col gap-2 border-t border-line pt-6 text-xs leading-relaxed text-muted sm:flex-row sm:items-center sm:justify-between">
             <p><?= $esc(str_replace('%year%', (string) $year, $t('footer.rights'))) ?></p>

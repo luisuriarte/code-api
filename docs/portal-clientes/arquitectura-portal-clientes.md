@@ -1,5 +1,7 @@
 # Arquitectura del portal privado de clientes
 
+> **Histórico — superado por Etapas 12-13 / auditoría 2026-11-26:** el estado vigente está en el [informe final](../audit/informe-final.md) (`docs/audit/informe-final.md`). El contenido histórico se conserva sin modificarlo.
+>
 > **Estado:** propuesta arquitectónica para revisión. **No implementado.**
 > **Fecha:** 2026-11-24.
 >

@@ -67,6 +67,7 @@ foreach ($facetGroups as $group) {
 
 // La familia activa decide qué opciones se muestran en "Código": sin familia
 // se listan dominios (SNOMED, CIE-10, LOINC…); con DENTAR/OFTAR, sus catálogos.
+// Los dos tipos son mutuamente excluyentes y nunca se envían juntos.
 $codeFamily = (string) ($filters['family'] ?? '');
 $codeAllSelected = $domainCodes === [] && $catalogs === [];
 $activeFilterCount = count($domainCodes) + count($catalogs) + count($filters);
@@ -121,6 +122,10 @@ foreach ($filters as $key => $code) {
          data-msg-view="<?= e($t('browse.view')) ?>"
          data-msg-restored="<?= e($t('browse.restored')) ?>"
          data-msg-results-updated="<?= e($t('browse.results_updated')) ?>"
+         data-msg-fetch-error="<?= e($t('browse.fetch_error')) ?>"
+         data-msg-stale-results="<?= e($t('browse.stale_results')) ?>"
+         data-msg-retry="<?= e($t('browse.retry')) ?>"
+         data-msg-invalid-combination="<?= e($t('browse.invalid_combination')) ?>"
          data-msg-copied="<?= e($t('browse.copied')) ?>"
          data-msg-copy-error="<?= e($t('browse.copy_error')) ?>">
     <div class="mx-auto w-full max-w-[1700px] px-4 sm:px-6">
@@ -218,7 +223,7 @@ foreach ($filters as $key => $code) {
                                 </option>
                             <?php endforeach; ?>
                             <?php foreach ($publishedCatalogs as $option): ?>
-                                <?php $showCatalog = $codeFamily === '' || in_array($codeFamily, $option['families'], true); ?>
+                                <?php $showCatalog = $codeFamily !== '' && in_array($codeFamily, $option['families'], true); ?>
                                 <option value="<?= e($option['code']) ?>"
                                         data-code-kind="catalog"
                                         data-families="<?= e(implode(',', $option['families'])) ?>"

@@ -73,10 +73,9 @@ final class AuthController
         $post = Http::post();
         $result = AuthService::requestReset((string) ($post['email'] ?? ''));
 
-        CustomerSession::set('flash', [
-            'key' => $result['key'],
-            'params' => $result['link'] === null ? [] : ['%link%' => $result['link']],
-        ]);
+        // Respuesta genérica: ni el enlace ni la existencia de la cuenta se revelan.
+        CustomerSession::set('flash', ['key' => $result['key'], 'params' => []]);
+        CustomerCsrf::rotate();
         Http::redirect(CustomerI18n::locale() . '/forgot');
     }
 

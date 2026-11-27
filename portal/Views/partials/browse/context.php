@@ -5,6 +5,8 @@ declare(strict_types=1);
 use OrigenSalud\Portal\Services\BrowseService;
 use OrigenSalud\Web\I18n;
 
+require __DIR__ . '/../format.php';
+
 $state = is_array($state ?? null) ? $state : [];
 $focus = is_string($focus ?? null) ? $focus : '';
 $tab = is_string($tab ?? null) && $tab !== '' ? $tab : 'concept';

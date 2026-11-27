@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrigenSalud\CustomerPortal\Services;
 
+use OrigenSalud\CustomerPortal\Config;
+
 /**
  * Sesión PHP propia del portal de clientes.
  *
@@ -19,13 +21,12 @@ final class CustomerSession
             return;
         }
 
-        $https = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off'
-            || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+        $secure = Config::isSecureRequest() || Config::auth()['require_https'];
 
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => '/portal-clientes',
-            'secure' => $https,
+            'secure' => $secure,
             'httponly' => true,
             'samesite' => 'Lax',
         ]);

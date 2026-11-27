@@ -1,5 +1,7 @@
 # Plan de implementación — Portal privado de clientes
 
+> **Histórico — superado por Etapas 12-13 / auditoría 2026-11-26:** el estado vigente está en el [informe final](../audit/informe-final.md) (`docs/audit/informe-final.md`). El contenido histórico se conserva sin modificarlo.
+>
 > **Estado:** propuesta para revisión. **No autorizado para implementación.**
 > **Fecha:** 2026-11-24.
 > **Relación:** especificación general del proyecto, etapas 1 y 2.

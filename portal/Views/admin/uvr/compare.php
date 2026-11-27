@@ -5,8 +5,6 @@ declare(strict_types=1);
 /** @var list<array<string, mixed>> $valuations */
 
 require __DIR__ . '/_nav.php';
-
-$uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2, ',', '.');
 ?>
 <article class="ui-card ui-card-pad">
     <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
@@ -42,10 +40,10 @@ $uvrFormat = static fn (mixed $value): string => number_format((float) $value, 2
                             <code class="ui-code"><?= e((string) ($valuation['subject_code'] ?? $valuation['service_item_id'] ?? '')) ?></code>
                         </td>
                         <td class="ui-td"><?= e((string) ($valuation['version_tag'] ?? '')) ?></td>
-                        <td class="ui-td"><?= $uvrFormat($valuation['work_uvr'] ?? 0) ?></td>
-                        <td class="ui-td"><?= $uvrFormat($valuation['practice_expense_uvr'] ?? 0) ?></td>
-                        <td class="ui-td"><?= $uvrFormat($valuation['professional_liability_uvr'] ?? 0) ?></td>
-                        <td class="ui-td font-semibold text-ink"><?= $uvrFormat($valuation['total_uvr'] ?? 0) ?></td>
+                        <td class="ui-td"><?= $formatNumber($valuation['work_uvr'] ?? 0) ?></td>
+                        <td class="ui-td"><?= $formatNumber($valuation['practice_expense_uvr'] ?? 0) ?></td>
+                        <td class="ui-td"><?= $formatNumber($valuation['professional_liability_uvr'] ?? 0) ?></td>
+                        <td class="ui-td font-semibold text-ink"><?= $formatNumber($valuation['total_uvr'] ?? 0) ?></td>
                         <td class="ui-td"><code class="ui-code"><?= e((string) ($valuation['review_status'] ?? '')) ?></code></td>
                     </tr>
                 <?php endforeach; ?>

@@ -1,6 +1,8 @@
 # Migraciones del portal de clientes
 
-> **Estado:** preparadas para entorno de prueba. **No ejecutar en producción.**
+> **Estado — dos rutas, no confundir:**
+> **(a) Entorno de prueba:** V5.001 → V10.001 aplicadas en `origen_codes_portal_clientes_test`; V10.002 aplicada **una sola vez** con efecto cluster-wide (**NO reejecutar**).
+> **(b) Producción (Etapa 13):** V5.001 → V10.001 aplicadas en `origen_codes_portal_clientes`; V10.002 **ya aplicada** en esa oportunidad (**no reejecutar**). V11.001 está preparada para la base exacta `origen_codes`, requiere acta nueva y **no se ejecutó en esta auditoría**.
 
 ## Archivos
 
@@ -30,11 +32,13 @@
 - `V10.001__public_service_requests.verify.sql`: verificación `SELECT`-only de V10.001.
 - `V10.001__public_service_requests.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V10.001.
 - `V10.002__origen_med_no_superuser.up.sql`: retira `SUPERUSER` a `origen_med` para que los ACL por objeto sean efectivos. **Cambio cluster-wide.**
-- `V10.002__origen_med_no_superuser.down.sql`: restaura `SUPERUSER`; solo para deshacer la corrección con autorización.
+- `V10.002__origen_med_no_superuser.down.sql`: restaura `SUPERUSER`; solo en la base de prueba exacta y para deshacer la corrección con autorización; `ALTER ROLE` es cluster-wide.
 - `V10.002__origen_med_no_superuser.verify.sql`: verificación `SELECT`-only de V10.002.
 - `V10.002__origen_med_no_superuser.verify_rollback.sql`: verificación `SELECT`-only tras el `down` de V10.002.
 - `ETAPA13__preflight.sql`: comprobación `SELECT`-only previa a la Etapa 13; exige `origen_codes_portal_clientes`.
 - `ETAPA13__verificacion_produccion.sql`: verificación `SELECT`-only de la base operativa; exige `origen_codes_portal_clientes`.
+- `V11.001__api_key_hash.up.sql`: **preparada, requiere acta de despliegue**. Agrega `key_prefix VARCHAR(12)` y `key_hash VARCHAR(64)`, ambas nullable, y deja `api_key` nullable en `public.api_clients` de la base exacta `origen_codes`. Sin backfill: las claves legacy siguen en `api_key` y se leen por compatibilidad; las nuevas guardan solo `key_prefix`/`key_hash` con `SHA-256(clave + NUL + pepper)` y `api_key = NULL`. No borra ni reescribe filas. Privilegios por objeto, sin `ALTER DEFAULT PRIVILEGES`. **No se ejecuta en esta auditoría.**
+- `V11.001__api_key_hash.down.sql`: reversión preparada; tampoco se ejecuta en esta auditoría. Restaura `NOT NULL` en `api_key` **solo si no quedan filas con `api_key IS NULL`**; con claves nuevas omite la reversión y avisa, sin borrar columnas. Requiere revisión humana antes de revertir.
 
 ## Autorización
 
@@ -45,11 +49,14 @@
 - Etapa 8: `docs/portal-clientes/acta-autorizacion-etapa-8.md`.
 - Etapa 10: `docs/portal-clientes/acta-autorizacion-etapa-10.md`.
 - Etapa 13: `docs/portal-clientes/acta-autorizacion-etapa-13.md` (base operativa separada de `origen_codes`).
+- Evolución M6 (V11.001): **acta de despliegue y rotación pendiente**. El artefacto está preparado, pero no hay autorización para ejecutarlo ni se ejecuta en esta auditoría.
 
 ## Orden de migraciones
 
 Aplicar: `V5.001 up` → `V6.001 up` → `V7.001 up` → `V7.002 up` → `V8.001 up` → `V10.001 up` → `V10.002 up`.  
 Revertir: `V10.002 down` → `V10.001 down` → `V8.001 down` → `V7.002 down` → `V7.001 down` → `V6.001 down` → `V5.001 down`.
+
+`V11.001` **no integra ninguna de estas dos secuencias**: apunta a `origen_codes`, no a la base aislada, y requiere acta de despliegue propia. No se ejecuta en esta auditoría.
 
 `V6.001` y `V7.001` usan la función `os_customer.touch_updated_at()`, creada por `V5.001`. Por eso sus `down` deben ejecutarse antes que el de V5.
 
@@ -85,7 +92,7 @@ sudo -u postgres psql -d origen_codes_portal_clientes_test \
   -f sql/10_portal_clientes/V5.001__os_customer_identity.down.sql
 ```
 
-La migración `down` es re-ejecutable: puede correrse varias veces seguidas sin fallar aunque el rol o las tablas ya no existan. Conserva `os_customer.audit_log`.
+La migración `down` es re-ejecutable: puede correrse varias veces seguidas sin fallar aunque el rol o las tablas ya no existan. Conserva `os_customer.audit_log`. Su guarda exige la base de prueba **exacta** `origen_codes_portal_clientes_test`: `DROP ROLE` es cluster-wide, así que revertir el rol en producción es procedimiento manual auditado con acta nueva, no este `down`.
 
 Para reiniciar por completo una base de desarrollo, incluida la auditoría, usar el script separado:
 
@@ -94,7 +101,9 @@ sudo -u postgres psql -d origen_codes_portal_clientes_test -v ON_ERROR_STOP=1 \
   -f sql/10_portal_clientes/DEV_ONLY__reset_os_customer.sql
 ```
 
-Ese script se niega a ejecutarse si `current_database()` es `origen_codes`. **No es una migración versionada** y nunca debe incluirse en un despliegue.
+Ese script usa una whitelist estricta: **solo se permite la base de prueba exacta `origen_codes_portal_clientes_test`**; se niega en `origen_codes`, en la productiva `origen_codes_portal_clientes` y en cualquier otra base. **No es una migración versionada** y nunca debe incluirse en un despliegue.
+
+**Excepción V11.001 (preparada, no ejecutada):** a diferencia del resto de este directorio, sus guardas exigen la base exacta `origen_codes`, porque `public.api_clients` solo existe allí. Es la excepción autorizada en el acta de la Etapa 8 para los grants operativos sobre esa tabla. No agrega filas ni backfill, no lee secretos y no reescribe claves legacy: solo permite `api_key = NULL` para las claves nuevas. Su `down` exige revisión humana y no toca nada si quedan filas con `api_key IS NULL`. Requiere acta de despliegue antes de cualquier ejecución.
 
 ### Etapa 6
 
@@ -216,6 +225,8 @@ Esperado: `sin_superuser = t`, `usa_esquema = t`, `lee_solicitudes = t`, `escrib
 
 **`ALTER ROLE` es cluster-wide:** aunque se ejecute con `-d "$TEST_DB"`, el cambio de atributo afecta también a `origen_codes`. Está autorizado para este caso; no repetirlo en otra ocasión sin autorización nueva. Después del cambio conviene repetir las comprobaciones HTTP públicas (`/health`, páginas de catálogo y browse) para confirmar que los `SELECT` existentes siguen alcanzando.
 
+El `down` de V10.002 también exige la base de prueba **exacta** `origen_codes_portal_clientes_test`. Restaurar `SUPERUSER` en producción (`origen_codes` o la base operativa) requiere acta nueva y procedimiento manual auditado: no se hace con este archivo. En la Etapa 13 V10.002 ya quedó aplicada una sola vez; **no reejecutar ni su `up` ni su `down`**.
+
 Rollback **antes** del `down` de V10.001, y solo si se decide deshacer la corrección:
 
 ```bash
@@ -227,4 +238,4 @@ sudo -u postgres psql -d "$TEST_DB" -v ON_ERROR_STOP=1 \
 
 Esperado: `superuser_restorado = t`.
 
-**Prohibido:** ejecutar cualquiera de estos archivos en `origen_codes` productiva.
+**Prohibido:** ejecutar cualquiera de los archivos de V5.001 a V10.002 en `origen_codes` productiva. La única excepción preparada es V11.001, que apunta a esa base exacta, requiere acta de despliegue y **no se ejecuta en esta auditoría**.

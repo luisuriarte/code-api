@@ -13,9 +13,9 @@ use PDO;
  *   X-API-Key: <clave>
  *   Authorization: Bearer <clave>
  *
- * Nota de seguridad: el esquema actual (sql/design.sql) almacena la clave en
- * texto plano. Antes de un despliegue con datos reales se recomienda migrar a
- * un hash SHA-256 con "pepper" y comparar con hash_equals().
+ * Las claves nuevas se verifican contra SHA-256(clave + NUL + pepper) en
+ * `key_hash` (migración V11.001). Las antiguas se leen por compatibilidad desde
+ * `api_key` en texto plano, sin exponer cuál de los dos caminos autenticó.
  */
 final class ApiKeyAuthenticator
 {
@@ -44,16 +44,38 @@ final class ApiKeyAuthenticator
             throw ApiException::unauthorized('La API Key tiene un formato inválido.');
         }
 
-        $statement = $this->db->prepare(
-            'SELECT id, institution_name, rate_limit_per_second
-               FROM api_clients
-              WHERE api_key = :api_key
-                AND is_active = TRUE
-              LIMIT 1'
-        );
+        $client = false;
 
-        $statement->execute([':api_key' => $apiKey]);
-        $client = $statement->fetch();
+        // Lectura primaria: clave hasheada. Solo si hay pepper y la migración
+        // V11.001 ya está aplicada; en producción sin migrar se omite.
+        if (ApiKeyHash::enabled() && ApiKeyHash::columnsAvailable($this->db)) {
+            $statement = $this->db->prepare(
+                'SELECT id, institution_name, rate_limit_per_second
+                   FROM api_clients
+                  WHERE key_prefix = :prefix
+                    AND key_hash = :hash
+                    AND is_active = TRUE
+                  LIMIT 1'
+            );
+            $statement->execute([
+                ':prefix' => ApiKeyHash::prefix($apiKey),
+                ':hash' => ApiKeyHash::of($apiKey),
+            ]);
+            $client = $statement->fetch();
+        }
+
+        // Lectura de compatibilidad: claves legacy en texto plano.
+        if ($client === false) {
+            $statement = $this->db->prepare(
+                'SELECT id, institution_name, rate_limit_per_second
+                   FROM api_clients
+                  WHERE api_key = :api_key
+                    AND is_active = TRUE
+                  LIMIT 1'
+            );
+            $statement->execute([':api_key' => $apiKey]);
+            $client = $statement->fetch();
+        }
 
         if ($client === false) {
             // Mismo mensaje para clave inexistente o inactiva: no se filtra

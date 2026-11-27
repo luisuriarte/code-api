@@ -97,3 +97,29 @@ Datos de registro que faltan en la transcripción, sin impacto en el cierre téc
 
 1. Hash SHA-256 de `origen_codes_portal_clientes_test_20261126_163857.dump`.
 2. Salida del `grep` de DSNs de `.env` en el VPS que confirme `PORTAL_DB_DSN` y `PORTAL_CUSTOMER_CREDENTIAL_DB_DSN` en `origen_codes`.
+
+## 8. Anexo de consolidación documental (posterior a la ejecución)
+
+Este anexo no reescribe lo ejecutado: solo deja constancia de la documentación reconciliada con el código vigente. No se inventan los datos de registro enumerados en §7; siguen como **no disponibles** en la transcripción.
+
+| Ítem | Estado documentado |
+| --- | --- |
+| Reset y invitaciones del portal de clientes | Se envían por **SMTP real** mediante `CustomerNotification`, reutilizando el transporte del portal público sin iniciar su sesión. El token sin cifrar viaja solo por correo al destinatario legítimo: nunca se muestra en pantalla, se guarda en flash ni se escribe en logs. Fallo de envío: invitación expirada / reset revocado, con auditoría y respuesta genérica. |
+| Guardia HTTPS del portal de clientes | Depende de `PORTAL_CUSTOMER_REQUIRE_HTTPS` (default `true`) y de `PORTAL_CUSTOMER_TRUSTED_PROXY_IPS`. `X-Forwarded-Proto: https` solo se acepta si `REMOTE_ADDR` está en la lista (IP exacta o CIDR IPv4); lista vacía = no confiar. |
+| Copias ocultas de notificaciones | `PORTAL_CUSTOMER_NOTIFICATION_BCC`, opcional; valores de ejemplo solo en `.env.example`, nunca en Git. |
+| Evolución M6 de credenciales de API | `sql/10_portal_clientes/V11.001__api_key_hash.up.sql` y su `.down.sql` están **preparados, no ejecutados**: requieren acta de despliegue. Agregan `key_prefix`/`key_hash` y permiten `api_key = NULL` sin backfill; el `down` solo restaura `NOT NULL` si no hay filas con `api_key IS NULL` y exige revisión humana. |
+| Ejecución de SQL en esta auditoría | Ninguna. No se aplicaron migraciones, rollback, `psql` ni pruebas de base; las verificaciones fueron de lectura y `grep`. |
+
+La documentación de estado de la Etapa 13 (§7 y `portal-clientes/README.md`) se conserva sin cambios: la base operativa sigue siendo `origen_codes_portal_clientes`, `origen_codes` no recibió cambios de esquema ni datos y V10.002 no se reejecutó.
+
+## 9. Anexo de registro posterior a la auditoría
+
+Este anexo se agrega sin reescribir el cuerpo del informe; solo aclara el estado de registro posterior a la ejecución de la Etapa 13:
+
+| Ítem | Registro |
+| --- | --- |
+| HEAD local y `origin/main` | `61d5073ef984ec74480f2ef9e3a3131cd989e064` (ambos). El hash de §1 corresponde al momento de la ejecución; este es el estado posterior. |
+| Publicación posterior | Rediseño de `/solicitud` publicado con `portal/Views/service-request.php`, `web/assets/css/public.css` y `tests/run.php`. No modifica la base operativa ni el cierre de la Etapa 13. |
+| Entorno real del VPS | PHP 8.5.4 CLI NTS con OPcache 8.5.4 y PostgreSQL 18.6. |
+
+**Este anexo NO es acta de un nuevo deploy**: no autoriza ni registra una ejecución adicional de SQL, migraciones, rollback ni despliegue.

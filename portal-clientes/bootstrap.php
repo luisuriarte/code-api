@@ -13,6 +13,11 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/portal/i18n/I18n.php';
 
+// Transporte SMTP compartido: se carga directamente para no iniciar la sesión
+// del portal público (portal/bootstrap.php llama a Session::start()).
+require_once dirname(__DIR__) . '/portal/Config.php';
+require_once dirname(__DIR__) . '/portal/Services/SmtpMailer.php';
+
 spl_autoload_register(static function (string $class): void {
     $prefix = 'OrigenSalud\\CustomerPortal\\';
 

@@ -1,5 +1,7 @@
 # Fase 1 / M1 — Identidad, autenticación y RBAC del panel de administración
 
+> **Histórico — superado por Etapas 12-13 / auditoría 2026-11-26:** el estado vigente está en el [informe final](../audit/informe-final.md) (`docs/audit/informe-final.md`). El contenido histórico se conserva sin modificarlo.
+
 **Estado del código:** IMPLEMENTADO Y PROBADO EN EL REPOSITORIO.
 **Estado de la base:** M1 **APLICADO Y VERIFICADO** en `origen_codes` el 2026-11-19.
 **Autorización:** Acta M0 (2026-11-19) + autorización expresa del responsable para Fase 1 / M1.

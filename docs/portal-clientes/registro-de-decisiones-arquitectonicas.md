@@ -1,5 +1,7 @@
 # Registro de decisiones arquitectónicas — Portal de clientes
 
+> **Histórico — superado por Etapas 12-13 / auditoría 2026-11-26:** el estado vigente está en el [informe final](../audit/informe-final.md) (`docs/audit/informe-final.md`). El contenido histórico se conserva sin modificarlo.
+>
 > **Estado:** registro aprobado como línea base de diseño mediante
 > `acta-aprobacion-etapas-1-2.md`. **Ninguna decisión ha sido ejecutada.**
 > **Fecha:** 2026-11-24.
