@@ -4657,6 +4657,11 @@ $check(
     'El facet de categoría debe usar la taxonomía global con compatibilidad del facet histórico.'
 );
 $check(
+    str_contains($auditRead('sql/portal/03_origen_med_permisos_restricted_selects.sql'), "'loinc_localized_text'")
+        && str_contains($auditRead('sql/portal/03_origen_med_permisos_restricted_selects.sql'), 'has_table_privilege'),
+    'El rol de solo lectura debe tener SELECT sobre loinc_localized_text para que «Todos» no falle.'
+);
+$check(
     str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'private const MAX_PAGE_SIZE = 100;')
         && str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'SEARCH_DOMAIN_CHUNK')
         && str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'searchByDomainChunks')

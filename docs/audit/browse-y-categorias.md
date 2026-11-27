@@ -120,13 +120,20 @@ Con `PORTAL_DB_STATEMENT_TIMEOUT=3`, la consulta para `Caries` devolvió:
 | DENTAR-PR | `ok=t total=7` |
 | OFTAR-PR | `ok=t total=0` |
 
-No era un problema de permisos ni de taxonomía: un `UNION ALL` con las 13 fuentes superaba los 3 s de `statement_timeout`. Cualquier dominio por separado respondía correctamente.
+El lote que fallaba era `nomenclador,vademecum,loinc`; por separado, `loinc` devolvía `error_query` en **16 ms**, descartando el timeout. Al ejecutar el SQL generado por `loincBranch()` con el rol del portal, PostgreSQL devolvió:
+
+```
+SQLSTATE[42501]: permission denied for table loinc_localized_text
+```
+
+`countRows()` tragaba la excepción y `prepare()` convertía cualquier `PDOException` en `error_query`, por eso la interfaz mostraba “sin resultados” en vez del error real. La tabla `loinc_localized_text` no tenía `GRANT SELECT` a `origen_med` en ningún script del repositorio.
 
 ### Corrección preparada
 
-`CatalogRepository::search()` conserva su firma y su contrato. Cuando no hay dominio, catálogo ni filtros (modo «Todos»), divide las fuentes en lotes de 3 (`SEARCH_DOMAIN_CHUNK`), ejecuta cada `UNION` por separado y fusiona las filas en PHP con el mismo orden SQL (`score DESC, length(term) ASC, term ASC`) antes de paginar. Si la paginación profunda no cabe en el buffer por lote (`offset + limit + 1 > MAX_PAGE_SIZE`), se mantiene la consulta única original.
+1. `sql/portal/03_origen_med_permisos_restricted_selects.sql` concede `SELECT` sobre `public.loinc_localized_text` a `origen_med` (aditivo e idempotente; ya estaba en la lista de verificación).
+2. `CatalogRepository::search()` conserva su firma y su contrato. Cuando no hay dominio, catálogo ni filtros (modo «Todos»), divide las fuentes en lotes de 3 (`SEARCH_DOMAIN_CHUNK`), ejecuta cada `UNION` por separado y fusiona las filas en PHP con el mismo orden SQL (`score DESC, length(term) ASC, term ASC`) antes de paginar. Es una defensa adicional para que una fuente lenta no invalide toda la búsqueda; **no era la causa raíz**. Si la paginación profunda no cabe en el buffer por lote (`offset + limit + 1 > MAX_PAGE_SIZE`), se mantiene la consulta única original.
 
-No se cambió `PORTAL_DB_STATEMENT_TIMEOUT`: la corrección evita depender de aumentarlo. Igualmente, si se quiere margen adicional, el responsable puede subirlo en `.env` a `10` y reiniciar PHP-FPM; es una mitigación, no el arreglo.
+No se cambió `PORTAL_DB_STATEMENT_TIMEOUT`. El índice trigram `idx_llt_value_trgm` ya existía y el plan lo usaba (42 ms), así que no hace falta recrearlo ni subir el timeout.
 
 ### Verificación esperada tras desplegar
 
@@ -143,4 +150,10 @@ foreach (['', 'cie10', 'snomed'] as $domain) {
 PHP
 ```
 
-Esperado: `Todos ok=t error=- total>=389` (23 + 359 + 7, más las demás fuentes). Si «Todos» sigue dando `error_query`, el despliegue no incluyó este último cambio.
+Esperado: `Todos ok=t error=- total>=389` (23 + 359 + 7, más las demás fuentes). Si «Todos» sigue dando `error_query`, primero verificá el permiso:
+
+```bash
+sudo -u postgres psql -d origen_codes -Atc "select has_table_privilege('origen_med','public.loinc_localized_text','SELECT');"
+```
+
+Debe devolver `t`. Si devuelve `f`, volvé a ejecutar `sql/portal/03_origen_med_permisos_restricted_selects.sql` como postgres.

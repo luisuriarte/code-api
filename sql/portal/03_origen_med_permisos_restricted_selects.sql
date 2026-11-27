@@ -38,7 +38,10 @@ BEGIN
         -- cuando el espejo os_catalog_item_version no tiene textos clínicos.
         'dentar_catalog',
         'dentar_concept',
-        'dentar_concept_version'
+        'dentar_concept_version',
+        -- Capas localizadas de LOINC: el branch loincBranch() consulta esta
+        -- tabla directamente. Sin este GRANT, "Todos" devuelve error_query.
+        'loinc_localized_text'
     ]
     LOOP
         IF to_regclass('public.' || t) IS NOT NULL THEN
@@ -61,6 +64,7 @@ SELECT tablename,
        END AS puede_leer
   FROM (VALUES
       ('os_concept_mapping'), ('os_terminology_system'),
-      ('os_fee_item'), ('os_fee_schedule'), ('os_pricing_unit')
+      ('os_fee_item'), ('os_fee_schedule'), ('os_pricing_unit'),
+      ('loinc_localized_text')
   ) AS v(tablename)
  ORDER BY tablename;
