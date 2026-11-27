@@ -210,8 +210,8 @@ $sqlFiles = array_values(array_filter(
         && !str_contains(basename($f), 'correccion_')
 ));
 $check(
-    count($sqlFiles) === 13,
-    'Deben existir trece artefactos SQL propuestos (Fases 3, 8, 10, 11, gestión UVR, gestión de catálogos, U7-B y publicación legacy).'
+    count($sqlFiles) === 14,
+    'Deben existir catorce artefactos SQL propuestos (Fases 3, 8, 10, 11, gestión UVR, gestión de catálogos, categorías clínicas, U7-B y publicación legacy).'
 );
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
@@ -1295,10 +1295,14 @@ $browseView = (string) file_get_contents($root . '/portal/Views/browse.php');
 $check(
     str_contains($browseView, 'browse-filter-bar')
     && str_contains($browseView, 'name="family"')
-    && str_contains($browseView, 'data-code-select')
-    && str_contains($browseView, "name=\"<?= \$codeFamily === '' ? 'domain[]' : 'catalog[]' ?>\"")
+    && str_contains($browseView, 'data-code-dropdown')
+    && str_contains($browseView, 'data-code-trigger')
+    && str_contains($browseView, 'data-code-panel')
+    && str_contains($browseView, 'data-code-input')
     && str_contains($browseView, 'data-code-kind="domain"')
     && str_contains($browseView, 'data-code-kind="catalog"')
+    && str_contains($browseView, 'name="domain[]"')
+    && str_contains($browseView, 'name="catalog[]"')
     && str_contains($browseView, 'data-code-select-all')
     && str_contains($browseView, 'data-code-hidden-domain')
     && str_contains($browseView, 'data-code-hidden-catalog')
@@ -2986,7 +2990,7 @@ $check(
     'El contexto del Browser debe conservar el catálogo al cambiar a oftar y etiquetar sus identificadores.'
 );
 $check(
-    str_contains($browseJsSource, 'function codeOptionMatches(option, family)')
+    str_contains($browseJsSource, 'function codeInputMatches(input, family)')
     && str_contains($browseJsSource, 'oftar-pr,oftar-dx'),
     'Los hooks JS y el fallback de catálogos deben incluir oftar.'
 );
@@ -4611,6 +4615,79 @@ $check(
         && !str_contains($serviceRequestViewSource, "number_format("),
     'I18-05: la Solicitud de Servicios debe usar el formateador numérico por idioma.'
 );
+
+// Browse Code y categoría del concepto (cambios aditivos posteriores a la auditoría).
+$clinicalSql = $auditRead('sql/08_arquitectura/categorias_clinicas.sql');
+$clinicalCodes = ['CLIN-DIAG', 'CLIN-PROC', 'CLIN-PREST', 'CLIN-MED', 'CLIN-EST', 'CLIN-OBS',
+    'CLIN-SINT', 'CLIN-DISP', 'CLIN-ANAT', 'CLIN-MICRO', 'CLIN-ALERG', 'CLIN-HALLAZGO'];
+$clinicalCodesPresent = true;
+foreach ($clinicalCodes as $clinicalCode) {
+    $clinicalCodesPresent = $clinicalCodesPresent && str_contains($clinicalSql, "'" . $clinicalCode . "'");
+}
+$check(
+    $clinicalCodesPresent
+        && str_contains($clinicalSql, 'CREATE TABLE IF NOT EXISTS public.os_clinical_category')
+        && str_contains($clinicalSql, 'CREATE TABLE IF NOT EXISTS public.os_catalog_item_clinical_category')
+        && str_contains($clinicalSql, 'GRANT SELECT ON TABLE')
+        && !preg_match('/\b(DROP|TRUNCATE|DELETE\s+FROM)\b/i', $clinicalSql),
+    'Las doce categorías clínicas deben incorporarse de forma aditiva y con lectura pública.'
+);
+$check(
+    str_contains($auditRead('sql/08_arquitectura/catalogos_gestion_gobernada.sql'), "v_change #>> '{clinical_category,code}'")
+        && str_contains($auditRead('sql/08_arquitectura/catalogos_gestion_gobernada.sql'), 'public.os_catalog_item_clinical_category'),
+    'La publicación gobernada debe grabar la categoría del concepto solo en la tabla transversal.'
+);
+$check(
+    str_contains($auditRead('portal/Admin/CatalogGovernanceService.php'), "'clinical_category_code'")
+        && str_contains($auditRead('portal/Admin/CatalogGovernanceService.php'), "\$change['clinical_category']")
+        && str_contains($auditRead('portal/Controllers/AdminCatalogController.php'), "'clinical_category_code'"),
+    'La administración solo debe proponer la categoría del concepto desde una lista permitida.'
+);
+$check(
+    str_contains($auditRead('portal/Repositories/CatalogGovernanceRepository.php'), 'function clinicalCategories(')
+        && str_contains($auditRead('portal/Repositories/CatalogGovernanceRepository.php'), 'os_catalog_item_clinical_category')
+        && str_contains($auditRead('portal/Views/admin/catalogs/index.php'), 'admin.catalogs.col_clinical_category')
+        && str_contains($auditRead('portal/Views/admin/catalogs/item.php'), 'admin.catalogs.col_clinical_category'),
+    'El listado y la ficha admin deben distinguir categoría del concepto y catálogo.'
+);
+$check(
+    str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'SELECT cc.code, cc.name, cc.sort_order')
+        && str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'os_catalog_category_clinical_map')
+        && str_contains($auditRead('portal/Repositories/CatalogRepository.php'), 'str_starts_with($categoryCode, \'CLIN-\')'),
+    'El facet de categoría debe usar la taxonomía global con compatibilidad del facet histórico.'
+);
+$check(
+    str_contains($auditRead('api/services/CatalogEngineService.php'), 'private function clinicalTablesAvailable(): bool')
+        && str_contains($auditRead('api/services/CatalogEngineService.php'), "'clinical_category_code' =>"),
+    'La API debe exponer la nueva dimensión sin romper el contrato `category` existente.'
+);
+$check(
+    str_contains($auditRead('portal/Controllers/BrowseController.php'), "\$code !== '__all__'")
+        && str_contains($browseJsSource, 'function checkedCodeInputs(')
+        && str_contains($browseJsSource, 'data-code-family')
+        && str_contains($browseJsSource, 'replaceResults('),
+    'Todos debe significar sin filtro y la selección por familia debe sobrevivir a la búsqueda AJAX.'
+);
+$check(
+    str_contains($auditRead('portal/Views/partials/browse/detail.php'), 'id="browse-clinical-criteria"')
+        && str_contains($auditRead('portal/Views/partials/browse/detail/clinical.php'), 'clinical_criteria'),
+    'Los criterios clínicos deben ser localizables dentro de la pestaña Concepto.'
+);
+foreach (['es-AR', 'es', 'en', 'pt-BR'] as $clinicalLocale) {
+    $clinicalMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $clinicalLocale . '.yaml');
+    $clinicalSection = is_array($clinicalMessages['clinical_category'] ?? null) ? $clinicalMessages['clinical_category'] : [];
+    $clinicalLabels = true;
+    foreach ($clinicalCodes as $clinicalCode) {
+        $clinicalLabels = $clinicalLabels && isset($clinicalSection[$clinicalCode]['label'])
+            && trim((string) $clinicalSection[$clinicalCode]['label']) !== '';
+    }
+    $check(
+        $clinicalLabels
+            && isset($clinicalMessages['browse']['code_selected_count'])
+            && isset($clinicalMessages['admin']['catalogs']['col_clinical_category']),
+        $clinicalLocale . ': deben existir las etiquetas de las doce categorías y del browser/admin.'
+    );
+}
 
 // Resultado.
 if ($failures !== []) {

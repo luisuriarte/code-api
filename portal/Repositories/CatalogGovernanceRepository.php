@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrigenSalud\Portal\Repositories;
 
+use PDO;
 use PDOException;
 
 /**
@@ -27,36 +28,94 @@ final class CatalogGovernanceRepository
      */
     public static function items(string $code, string $query): array
     {
+        $clinical = self::clinicalCategoryAvailable();
+        $clinicalColumns = $clinical
+            ? ' COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code) AS clinical_category_code,'
+            . ' catclin.name AS clinical_category_name,'
+            : ' NULL::text AS clinical_category_code, NULL::text AS clinical_category_name,';
+        $clinicalJoins = $clinical
+            ? ' LEFT JOIN public.os_catalog_item_clinical_category icc ON icc.item_id = i.id'
+            . ' LEFT JOIN LATERAL ('
+            . '     SELECT ccm.clinical_category_code'
+            . '       FROM public.os_catalog_item_version cv'
+            . '       JOIN public.os_catalog_category_clinical_map ccm ON ccm.category_id = cv.category_id'
+            . '      WHERE cv.item_id = i.id'
+            . '      ORDER BY cv.id DESC LIMIT 1'
+            . ' ) map ON TRUE'
+            . ' LEFT JOIN public.os_catalog_clinical_default def ON def.catalog_code = c.code'
+            . ' LEFT JOIN public.os_clinical_category catclin'
+            . '   ON catclin.code = COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code)'
+            : '';
+
         return self::publicRows(
-            'SELECT i.id, i.permanent_code, i.status, v.preferred_term
-               FROM public.os_catalog_item i
-               JOIN public.os_catalog c ON c.id = i.catalog_id
-               JOIN LATERAL (
-                    SELECT v2.preferred_term
-                      FROM public.os_catalog_item_version v2
-                     WHERE v2.item_id = i.id
-                     ORDER BY (v2.language_code = \'es-AR\') DESC, v2.id DESC
-                     LIMIT 1
-               ) v ON TRUE
-              WHERE c.code = :code
-                AND (i.permanent_code ILIKE :query
-                     OR i.permanent_code::TEXT ILIKE :query
-                     OR COALESCE(v.preferred_term, \'\') ILIKE :query)
-              ORDER BY i.permanent_code
-              LIMIT 200',
+            'SELECT i.id, i.permanent_code, i.status, v.preferred_term,'
+            . $clinicalColumns . chr(10)
+            . '  FROM public.os_catalog_item i'
+            . '  JOIN public.os_catalog c ON c.id = i.catalog_id'
+            . $clinicalJoins . chr(10)
+            . '  JOIN LATERAL ('
+            . '       SELECT v2.preferred_term'
+            . '         FROM public.os_catalog_item_version v2'
+            . '        WHERE v2.item_id = i.id'
+            . '        ORDER BY (v2.language_code = \'es-AR\') DESC, v2.id DESC'
+            . '        LIMIT 1'
+            . '  ) v ON TRUE'
+            . ' WHERE c.code = :code'
+            . '   AND (i.permanent_code ILIKE :query'
+            . '        OR i.permanent_code::TEXT ILIKE :query'
+            . '        OR COALESCE(v.preferred_term, \'\') ILIKE :query)'
+            . ' ORDER BY i.permanent_code'
+            . ' LIMIT 200',
             [':code' => $code, ':query' => '%' . $query . '%']
+        );
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function clinicalCategories(): array
+    {
+        if (!self::clinicalCategoryAvailable()) {
+            return [];
+        }
+
+        return self::publicRows(
+            'SELECT code, name, definition, examples
+               FROM public.os_clinical_category
+              WHERE status = \'active\'
+              ORDER BY sort_order ASC, code ASC',
+            []
         );
     }
 
     /** @return array<string, mixed>|null */
     public static function item(string $code, int $itemId): ?array
     {
+        $clinical = self::clinicalCategoryAvailable();
+        $clinicalColumns = $clinical
+            ? ' COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code) AS clinical_category_code,'
+            . ' catclin.name AS clinical_category_name,'
+            : ' NULL::text AS clinical_category_code, NULL::text AS clinical_category_name,';
+        $clinicalJoins = $clinical
+            ? ' LEFT JOIN public.os_catalog_item_clinical_category icc ON icc.item_id = i.id'
+            . ' LEFT JOIN LATERAL ('
+            . '     SELECT ccm.clinical_category_code'
+            . '       FROM public.os_catalog_item_version cv'
+            . '       JOIN public.os_catalog_category_clinical_map ccm ON ccm.category_id = cv.category_id'
+            . '      WHERE cv.item_id = i.id'
+            . '      ORDER BY cv.id DESC LIMIT 1'
+            . ' ) map ON TRUE'
+            . ' LEFT JOIN public.os_catalog_clinical_default def ON def.catalog_code = c.code'
+            . ' LEFT JOIN public.os_clinical_category catclin'
+            . '   ON catclin.code = COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code)'
+            : '';
+
         return self::publicRow(
-            'SELECT i.id, i.catalog_id, i.permanent_code, i.status, c.code AS catalog_code, c.name AS catalog_name
-               FROM public.os_catalog_item i
-               JOIN public.os_catalog c ON c.id = i.catalog_id
-              WHERE c.code = :code AND i.id = :id
-              LIMIT 1',
+            'SELECT i.id, i.catalog_id, i.permanent_code, i.status,'
+            . ' c.code AS catalog_code, c.name AS catalog_name,' . $clinicalColumns . chr(10)
+            . '  FROM public.os_catalog_item i'
+            . '  JOIN public.os_catalog c ON c.id = i.catalog_id'
+            . $clinicalJoins . chr(10)
+            . ' WHERE c.code = :code AND i.id = :id'
+            . ' LIMIT 1',
             [':code' => $code, ':id' => $itemId]
         );
     }
@@ -343,6 +402,43 @@ final class CatalogGovernanceRepository
         }
 
         return $codes;
+    }
+
+    private static function clinicalCategoryAvailable(): bool
+    {
+        static $available = null;
+
+        if ($available !== null) {
+            return $available;
+        }
+
+        try {
+            $pdo = PortalDatabase::connection();
+            $available = self::tableExists($pdo, 'os_clinical_category')
+                && self::tableExists($pdo, 'os_catalog_item_clinical_category')
+                && self::tableExists($pdo, 'os_catalog_category_clinical_map')
+                && self::tableExists($pdo, 'os_catalog_clinical_default');
+        } catch (\Throwable) {
+            $available = false;
+        }
+
+        return $available;
+    }
+
+    private static function tableExists(PDO $pdo, string $table): bool
+    {
+        if (preg_match('/^[a-z0-9_]+$/i', $table) !== 1) {
+            return false;
+        }
+
+        try {
+            $statement = $pdo->prepare('SELECT to_regclass(:name) IS NOT NULL');
+            $statement->execute([':name' => 'public.' . $table]);
+
+            return (bool) $statement->fetchColumn();
+        } catch (PDOException) {
+            return false;
+        }
     }
 
     /** @return list<array<string, mixed>> */

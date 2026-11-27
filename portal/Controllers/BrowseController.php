@@ -168,7 +168,10 @@ final class BrowseController
                 }
                 foreach (explode(',', (string) $item) as $value) {
                     $code = Validator::text($value, 64);
-                    if ($code !== '') {
+                    // "Todos" es la ausencia de filtro. Nunca debe llegar como
+                    // código: normalizeDomains() lo descartaría y la búsqueda
+                    // devolvería invalid_domain sin resultados.
+                    if ($code !== '' && $code !== '__all__') {
                         $values[$code] = true;
                     }
                 }

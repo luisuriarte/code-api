@@ -43,6 +43,7 @@ final class AdminCatalogController
             'catalogCode' => '',
             'items' => [],
             'query' => '',
+            'clinicalCategories' => self::clinicalCategories($current),
         ]);
     }
 
@@ -91,6 +92,7 @@ final class AdminCatalogController
             'query' => $query,
             'editItem' => $editItem,
             'editError' => $editError,
+            'clinicalCategories' => self::clinicalCategories($current),
         ]);
     }
 
@@ -112,6 +114,7 @@ final class AdminCatalogController
         self::render('admin/catalogs/item', $current, $detail + [
             'catalogCode' => $code,
             'catalogs' => self::catalogs($current),
+            'clinicalCategories' => self::clinicalCategories($current),
         ]);
     }
 
@@ -302,6 +305,20 @@ final class AdminCatalogController
         }
     }
 
+    /** @param array<string, mixed>|null $current @return list<array<string, mixed>> */
+    private static function clinicalCategories(?array $current): array
+    {
+        if ($current === null) {
+            return [];
+        }
+
+        try {
+            return self::service()->clinicalCategories($current);
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
     /** @return array<string, mixed> */
     private static function values(): array
     {
@@ -309,6 +326,7 @@ final class AdminCatalogController
             'code', 'operation', 'item_id', 'permanent_code', 'status',
             'release_id', 'version_tag', 'valid_from', 'valid_to', 'release_status',
             'preferred_term', 'definition', 'clinical_criteria', 'language_code',
+            'clinical_category_code',
             'source_reference', 'review_role', 'rationale', 'outcome', 'evidence_reference',
         ];
         $values = [];

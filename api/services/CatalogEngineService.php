@@ -104,11 +104,31 @@ final class CatalogEngineService
         $limit = max(1, min(100, (int) ($request->query['limit'] ?? 20)));
         $offset = max(0, (int) ($request->query['offset'] ?? 0));
 
+        $clinicalTables = $this->clinicalTablesAvailable();
+        $clinicalSelect = $clinicalTables
+            ? ', COALESCE(icc.clinical_category_code, ccm.clinical_category_code, ccd.clinical_category_code) AS clinical_category_code,
+                     clin.name AS clinical_category_name'
+            : '';
+        $clinicalJoin = $clinicalTables
+            ? ' LEFT JOIN os_catalog_item_clinical_category icc ON icc.item_id = item.id'
+            . ' LEFT JOIN LATERAL ('
+            . '     SELECT cm.clinical_category_code'
+            . '       FROM os_catalog_item_version cv'
+            . '       JOIN os_catalog_category_clinical_map cm ON cm.category_id = cv.category_id'
+            . '      WHERE cv.item_id = item.id'
+            . '      ORDER BY cv.id DESC LIMIT 1'
+            . ' ) ccm ON TRUE'
+            . ' LEFT JOIN os_catalog_clinical_default ccd ON ccd.catalog_code = cat.code'
+            . ' LEFT JOIN os_clinical_category clin'
+            . '   ON clin.code = COALESCE(icc.clinical_category_code, ccm.clinical_category_code, ccd.clinical_category_code)'
+            : '';
+
         $sql = 'SELECT item.permanent_code,
                        ident.value AS official_code,
                        ver.preferred_term,
                        cat.code AS catalog_code,
-                       categ.name AS category_name,
+                       categ.name AS category_name'
+            . $clinicalSelect . ',
                        p_unit.code AS pricing_unit,
                        fee.units_amount,
                        fee.fixed_price
@@ -116,7 +136,8 @@ final class CatalogEngineService
                   JOIN os_catalog cat ON cat.id = item.catalog_id
                   JOIN os_catalog_release rel ON rel.catalog_id = cat.id AND rel.status = \'published\'
                   JOIN os_catalog_item_version ver ON ver.item_id = item.id AND ver.release_id = rel.id
-                  LEFT JOIN os_catalog_category categ ON categ.id = ver.category_id
+                  LEFT JOIN os_catalog_category categ ON categ.id = ver.category_id'
+            . $clinicalJoin . '
                   LEFT JOIN os_catalog_identifier ident ON ident.item_id = item.id AND ident.is_primary = TRUE
                   LEFT JOIN os_fee_schedule f_sched ON f_sched.catalog_id = cat.id AND CURRENT_DATE BETWEEN f_sched.valid_from AND coalesce(f_sched.valid_to, CURRENT_DATE)
                   LEFT JOIN os_fee_item fee ON fee.item_id = item.id AND fee.fee_schedule_id = f_sched.id
@@ -132,9 +153,26 @@ final class CatalogEngineService
         }
 
         if ($category !== '') {
-            $sql .= ' AND (categ.code = :category OR categ.name ILIKE :category_like)';
-            $params[':category'] = $category;
-            $params[':category_like'] = '%' . $category . '%';
+            if ($clinicalTables && str_starts_with($category, 'CLIN-')) {
+                $explicit = 'SELECT 1 FROM os_catalog_item_clinical_category icc'
+                    . ' WHERE icc.item_id = item.id AND icc.clinical_category_code = :category';
+                $mapped = 'SELECT 1 FROM os_catalog_item_version cv'
+                    . ' JOIN os_catalog_category_clinical_map cm ON cm.category_id = cv.category_id'
+                    . ' WHERE cv.item_id = item.id AND cm.clinical_category_code = :category';
+                $default = 'SELECT 1 FROM os_catalog_clinical_default ccd'
+                    . ' WHERE ccd.catalog_code = cat.code AND ccd.clinical_category_code = :category';
+                $sql .= ' AND (EXISTS (' . $explicit . ') OR EXISTS (' . $mapped . ')'
+                    . ' OR (NOT EXISTS (' . $explicit . ') AND NOT EXISTS (' . $mapped . ')'
+                    . ' AND EXISTS (' . $default . ')))';
+                $params[':category'] = $category;
+            } else {
+                // Contrato histórico: el filtro `category` sigue aceptando el
+                // capítulo fuente. La nueva dimensión se expone como
+                // `clinical_category` sin romper deep links existentes.
+                $sql .= ' AND (categ.code = :category OR categ.name ILIKE :category_like)';
+                $params[':category'] = $category;
+                $params[':category_like'] = '%' . $category . '%';
+            }
         }
 
         $sql .= ' ORDER BY COALESCE(ident.value, item.permanent_code) ASC LIMIT :limit OFFSET :offset';
@@ -149,17 +187,25 @@ final class CatalogEngineService
         $rows = $stmt->fetchAll();
 
         return [
-            'data' => array_map(static fn (array $r): array => [
-                'permanent_code' => (string) $r['permanent_code'],
-                'official_code' => $r['official_code'] !== null ? (string) $r['official_code'] : null,
-                'term' => (string) $r['preferred_term'],
-                'category' => $r['category_name'] !== null ? (string) $r['category_name'] : null,
-                'pricing' => $r['pricing_unit'] !== null ? [
-                    'unit_type' => (string) $r['pricing_unit'],
-                    'units' => $r['units_amount'] !== null ? (float) $r['units_amount'] : null,
-                    'fixed_price' => $r['fixed_price'] !== null ? (float) $r['fixed_price'] : null,
-                ] : null,
-            ], $rows),
+            'data' => array_map(static function (array $r) use ($clinicalTables): array {
+                return [
+                    'permanent_code' => (string) $r['permanent_code'],
+                    'official_code' => $r['official_code'] !== null ? (string) $r['official_code'] : null,
+                    'term' => (string) $r['preferred_term'],
+                    'category' => $r['category_name'] !== null ? (string) $r['category_name'] : null,
+                    'clinical_category' => $clinicalTables && $r['clinical_category_name'] !== null
+                        ? (string) $r['clinical_category_name']
+                        : null,
+                    'clinical_category_code' => $clinicalTables && $r['clinical_category_code'] !== null
+                        ? (string) $r['clinical_category_code']
+                        : null,
+                    'pricing' => $r['pricing_unit'] !== null ? [
+                        'unit_type' => (string) $r['pricing_unit'],
+                        'units' => $r['units_amount'] !== null ? (float) $r['units_amount'] : null,
+                        'fixed_price' => $r['fixed_price'] !== null ? (float) $r['fixed_price'] : null,
+                    ] : null,
+                ];
+            }, $rows),
             'meta' => [
                 'catalog' => $catalogCode,
                 'query' => $query !== '' ? $query : null,
@@ -204,6 +250,25 @@ final class CatalogEngineService
         )->resolve($request);
         $requestedLanguage = $resolution->requestedLanguage;
 
+        $clinicalTables = $this->clinicalTablesAvailable();
+        $clinicalSelect = $clinicalTables
+            ? ', COALESCE(icc.clinical_category_code, ccm.clinical_category_code, ccd.clinical_category_code) AS clinical_category_code,
+                     clin.name AS clinical_category_name'
+            : '';
+        $clinicalJoin = $clinicalTables
+            ? ' LEFT JOIN os_catalog_item_clinical_category icc ON icc.item_id = item.id'
+            . ' LEFT JOIN LATERAL ('
+            . '     SELECT cm.clinical_category_code'
+            . '       FROM os_catalog_item_version cv'
+            . '       JOIN os_catalog_category_clinical_map cm ON cm.category_id = cv.category_id'
+            . '      WHERE cv.item_id = item.id'
+            . '      ORDER BY cv.id DESC LIMIT 1'
+            . ' ) ccm ON TRUE'
+            . ' LEFT JOIN os_catalog_clinical_default ccd ON ccd.catalog_code = cat.code'
+            . ' LEFT JOIN os_clinical_category clin'
+            . '   ON clin.code = COALESCE(icc.clinical_category_code, ccm.clinical_category_code, ccd.clinical_category_code)'
+            : '';
+
         $sql = 'SELECT item.id AS item_id,
                        item.permanent_code,
                        ident.value AS official_code,
@@ -227,7 +292,8 @@ final class CatalogEngineService
                        cat.short_name AS catalog_native_short_name,
                        cat.family_code AS catalog_family_code,
                        categ.id AS category_id,
-                       categ.name AS category_native_name,
+                       categ.name AS category_native_name'
+            . $clinicalSelect . ',
                        p_unit.code AS pricing_unit,
                        p_unit.name AS pricing_unit_name,
                        fee.units_amount,
@@ -237,7 +303,8 @@ final class CatalogEngineService
                   JOIN os_catalog cat ON cat.id = item.catalog_id
                   JOIN os_catalog_release rel ON rel.catalog_id = cat.id AND rel.status = \'published\'
                   JOIN os_catalog_item_version ver ON ver.item_id = item.id AND ver.release_id = rel.id
-                  LEFT JOIN os_catalog_category categ ON categ.id = ver.category_id
+                  LEFT JOIN os_catalog_category categ ON categ.id = ver.category_id'
+            . $clinicalJoin . '
                   LEFT JOIN os_catalog_identifier ident ON ident.item_id = item.id
                   LEFT JOIN os_fee_schedule f_sched ON f_sched.catalog_id = cat.id AND CURRENT_DATE BETWEEN f_sched.valid_from AND coalesce(f_sched.valid_to, CURRENT_DATE)
                   LEFT JOIN os_fee_item fee ON fee.item_id = item.id AND fee.fee_schedule_id = f_sched.id
@@ -502,6 +569,12 @@ final class CatalogEngineService
                 'clinical_scope' => $values['clinical_scope'] ?? null,
                 'synonyms' => $values['synonyms'] ?? [],
                 'category' => $values['category_name'] ?? $preferred['category_native_name'],
+                'clinical_category' => $clinicalTables && $preferred['clinical_category_name'] !== null
+                    ? (string) $preferred['clinical_category_name']
+                    : null,
+                'clinical_category_code' => $clinicalTables && $preferred['clinical_category_code'] !== null
+                    ? (string) $preferred['clinical_category_code']
+                    : null,
                 'pricing' => $preferred['pricing_unit'] !== null ? [
                     'unit_type' => $preferred['pricing_unit'],
                     'unit_name' => $preferred['pricing_unit_name'],
@@ -716,5 +789,40 @@ final class CatalogEngineService
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
             ],
         ];
+    }
+
+    /**
+     * La taxonomía clínica es aditiva: si la migración no fue aplicada, el
+     * contrato histórico sigue funcionando con `category` y sin la nueva
+     * dimensión. La comprobación se hace contra el catálogo del sistema.
+     */
+    private function clinicalTablesAvailable(): bool
+    {
+        static $available = null;
+
+        if ($available !== null) {
+            return $available;
+        }
+
+        $tables = [
+            'os_clinical_category',
+            'os_catalog_category_clinical_map',
+            'os_catalog_clinical_default',
+            'os_catalog_item_clinical_category',
+        ];
+
+        $available = true;
+
+        foreach ($tables as $table) {
+            $statement = $this->db->prepare('SELECT to_regclass(:name) IS NOT NULL');
+            $statement->execute([':name' => 'public.' . $table]);
+
+            if (!(bool) $statement->fetchColumn()) {
+                $available = false;
+                break;
+            }
+        }
+
+        return $available;
     }
 }

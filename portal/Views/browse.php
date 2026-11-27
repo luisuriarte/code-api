@@ -41,6 +41,20 @@ foreach ($domains as $domainOption) {
     $domainLabels[(string) ($domainOption['code'] ?? '')] = (string) ($domainOption['label'] ?? '');
 }
 
+// DENTAR y OFTAR son familias publicadas aunque la base aún no haya cargado
+// sus filas en os_catalog. La interfaz debe poder elegirlas; la búsqueda
+// seguirá devolviendo solo datos reales.
+$familyCodes = array_column($facets['families'] ?? [], 'code');
+foreach ($publishedCatalogs as $catalogOption) {
+    foreach ((array) ($catalogOption['families'] ?? []) as $familyCode) {
+        if ($familyCode === '' || in_array($familyCode, $familyCodes, true)) {
+            continue;
+        }
+        $facets['families'][] = ['code' => $familyCode, 'label' => $familyCode];
+        $familyCodes[] = $familyCode;
+    }
+}
+
 $facetGroups = [
     ['key' => 'family', 'label' => 'browse.family', 'options' => $facets['families']],
     ['key' => 'type', 'label' => 'browse.type', 'options' => $facets['types']],
@@ -60,6 +74,12 @@ foreach ($facetGroups as $group) {
             if ($group['key'] === 'family' && $code === 'oftar') {
                 $label = $t('browse.family_oftar');
             }
+            if ($group['key'] === 'category' && str_starts_with($code, 'CLIN-')) {
+                $translated = $t('clinical_category.' . $code . '.label');
+                if ($translated !== 'clinical_category.' . $code . '.label') {
+                    $label = $translated;
+                }
+            }
             $facetLabels[$group['key']][$code] = $label;
         }
     }
@@ -69,6 +89,18 @@ foreach ($facetGroups as $group) {
 // se listan dominios (SNOMED, CIE-10, LOINC…); con DENTAR/OFTAR, sus catálogos.
 // Los dos tipos son mutuamente excluyentes y nunca se envían juntos.
 $codeFamily = (string) ($filters['family'] ?? '');
+// Los enlaces de DENTAR/OFTAR llegan con `domain` + `catalog` y sin `family`.
+// Inferimos la familia desde el catálogo para que el desplegable no descarte
+// la selección al inicializarse ni al hacer la primera búsqueda reactiva.
+if ($codeFamily === '' && $catalogs !== []) {
+    foreach ($publishedCatalogs as $catalogOption) {
+        if (in_array($catalogs[0], $catalogOption['families'], true)) {
+            $codeFamily = (string) ($catalogOption['families'][0] ?? '');
+            $filters['family'] = $codeFamily;
+            break;
+        }
+    }
+}
 $codeAllSelected = $domainCodes === [] && $catalogs === [];
 $activeFilterCount = count($domainCodes) + count($catalogs) + count($filters);
 
@@ -204,35 +236,73 @@ foreach ($filters as $key => $code) {
 
                     <label class="block min-w-0">
                         <span class="block text-[11px] font-semibold uppercase tracking-wider text-muted"><?= e($t('browse.code')) ?></span>
-                        <select id="browse-code" multiple size="4"
-                                data-code-select
-                                name="<?= $codeFamily === '' ? 'domain[]' : 'catalog[]' ?>"
-                                class="browse-code-select mt-1 w-full rounded-xl border border-line bg-white px-3 py-1 text-sm text-ink outline-none transition focus:border-teal focus:ring-4 focus:ring-teal/15">
-                                            <option value="__all__" data-code-kind="all" data-code-select-all
-                                    <?= $codeAllSelected ? 'selected' : '' ?>>
-                                <?= e($t('browse.filter_all')) ?>
-                            </option>
-                            <?php foreach ($domains as $option): ?>
-                                <?php $code = (string) ($option['code'] ?? ''); ?>
-                                <?php if ($code === '' || ($codeFamily === '' && $code === 'nomenclador')) { continue; } ?>
-                                <option value="<?= e($code) ?>"
-                                        data-code-kind="domain"
-                                        <?= $codeFamily === '' ? '' : 'hidden disabled' ?>
-                                        <?= in_array($code, $domainCodes, true) ? 'selected' : '' ?>>
-                                    <?= e((string) ($option['label'] ?? $code)) ?>
-                                </option>
-                            <?php endforeach; ?>
-                            <?php foreach ($publishedCatalogs as $option): ?>
-                                <?php $showCatalog = $codeFamily !== '' && in_array($codeFamily, $option['families'], true); ?>
-                                <option value="<?= e($option['code']) ?>"
-                                        data-code-kind="catalog"
-                                        data-families="<?= e(implode(',', $option['families'])) ?>"
-                                        <?= $showCatalog ? '' : 'hidden disabled' ?>
-                                        <?= in_array($option['code'], $catalogs, true) ? 'selected' : '' ?>>
-                                    <?= e($option['label']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="browse-code-select mt-1"
+                             data-code-dropdown
+                             data-code-family="<?= e($codeFamily) ?>"
+                             data-msg-all="<?= e($t('browse.filter_all')) ?>"
+                             data-msg-selected="<?= e($t('browse.code_selected_count')) ?>">
+                            <button type="button"
+                                    class="browse-code-select__trigger h-10 w-full rounded-xl border border-line bg-white px-3 text-start text-sm text-ink outline-none transition focus:border-teal focus:ring-4 focus:ring-teal/15"
+                                    aria-expanded="false"
+                                    aria-controls="browse-code-options"
+                                    data-code-trigger>
+                                <span data-code-summary><?= e($codeAllSelected
+                                    ? $t('browse.filter_all')
+                                    : $t('browse.code_selected_count', ['%count%' => count($domainCodes) + count($catalogs)])) ?></span>
+                                <svg class="size-4 shrink-0 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path d="m6 9 6 6 6-6"></path>
+                                </svg>
+                            </button>
+                            <div class="browse-code-select__panel"
+                                 id="browse-code-options"
+                                 data-code-panel
+                                 hidden>
+                                <label class="browse-code-option browse-code-option--all">
+                                    <input type="checkbox" data-code-select-all <?= $codeAllSelected ? 'checked' : '' ?>>
+                                    <span><?= e($t('browse.filter_all')) ?></span>
+                                </label>
+                                <div class="browse-code-select__options" data-code-options>
+                                    <?php foreach ($domains as $option): ?>
+                                        <?php
+                                        $code = (string) ($option['code'] ?? '');
+                                        $showDomain = $codeFamily === '' && $code !== 'nomenclador';
+                                        ?>
+                                        <?php if ($code === '') { continue; } ?>
+                                        <label class="browse-code-option"
+                                               data-code-option
+                                               data-code-kind="domain"
+                                               <?= $showDomain ? '' : 'hidden' ?>>
+                                            <input type="checkbox"
+                                                   name="domain[]"
+                                                   value="<?= e($code) ?>"
+                                                   data-code-input
+                                                   data-code-kind="domain"
+                                                   <?= $showDomain ? '' : 'disabled' ?>
+                                                   <?= in_array($code, $domainCodes, true) ? 'checked' : '' ?>>
+                                            <span><?= e((string) ($option['label'] ?? $code)) ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                    <?php foreach ($publishedCatalogs as $option): ?>
+                                        <?php $showCatalog = $codeFamily !== '' && in_array($codeFamily, $option['families'], true); ?>
+                                        <label class="browse-code-option"
+                                               data-code-option
+                                               data-code-kind="catalog"
+                                               data-families="<?= e(implode(',', $option['families'])) ?>"
+                                               <?= $showCatalog ? '' : 'hidden' ?>>
+                                            <input type="checkbox"
+                                                   name="catalog[]"
+                                                   value="<?= e($option['code']) ?>"
+                                                   data-code-input
+                                                   data-code-kind="catalog"
+                                                   data-families="<?= e(implode(',', $option['families'])) ?>"
+                                                   <?= $showCatalog ? '' : 'disabled' ?>
+                                                   <?= in_array($option['code'], $catalogs, true) ? 'checked' : '' ?>>
+                                            <span><?= e($option['label']) ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
                         <input type="hidden" name="domain" value="<?= e($domain) ?>" data-code-hidden-domain>
                         <input type="hidden" name="catalog" value="<?= e($catalog) ?>" data-code-hidden-catalog>
                         <span class="mt-1 block text-[11px] leading-5 text-muted"><?= e($t('browse.code_multi_hint')) ?></span>

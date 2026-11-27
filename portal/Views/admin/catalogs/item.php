@@ -7,6 +7,7 @@ declare(strict_types=1);
 /** @var list<array<string, mixed>> $relations */
 /** @var list<array<string, mixed>> $releases */
 /** @var list<array<string, mixed>> $languages */
+/** @var list<array<string, mixed>> $clinicalCategories */
 /** @var string $catalogCode */
 
 require __DIR__ . '/_nav.php';
@@ -17,6 +18,24 @@ $catalogBack = '/admin/catalogs/' . rawurlencode($catalogCode);
 $catalogUvrHref = '/admin/uvr/proposals?service_item_id=' . $catalogItemId;
 $catalogLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
 $catalogCoverage = ['original', 'complete', 'partial', 'planned', 'undetermined'];
+$clinicalCategories = is_array($clinicalCategories ?? null) ? $clinicalCategories : [];
+
+$clinicalCategoryLabel = static function (string $code, string $fallback = '') use ($t): string {
+    if ($code === '') {
+        return $t('admin.catalogs.no_category');
+    }
+
+    if (str_starts_with($code, 'CLIN-')) {
+        $key = 'clinical_category.' . $code . '.label';
+        $label = $t($key);
+
+        if ($label !== $key) {
+            return $label;
+        }
+    }
+
+    return $fallback !== '' ? $fallback : $code;
+};
 ?>
 <?php if ($catalogItem === null): ?>
     <p class="ui-empty"><?= e($t('admin.catalogs.item_not_found')) ?></p>
@@ -44,6 +63,11 @@ $catalogCoverage = ['original', 'complete', 'partial', 'planned', 'undetermined'
             <dd class="ui-dd"><code class="ui-code"><?= e((string) ($catalogItem['permanent_code'] ?? '')) ?></code></dd>
             <dt class="ui-dt"><?= e($t('admin.uvr.col_catalog')) ?></dt>
             <dd class="ui-dd"><code class="ui-code"><?= e((string) ($catalogItem['catalog_code'] ?? $catalogCode)) ?></code></dd>
+            <dt class="ui-dt"><?= e($t('admin.catalogs.col_clinical_category')) ?></dt>
+            <dd class="ui-dd"><?= e($clinicalCategoryLabel(
+                (string) ($catalogItem['clinical_category_code'] ?? ''),
+                (string) ($catalogItem['clinical_category_name'] ?? '')
+            )) ?></dd>
             <dt class="ui-dt"><?= e($t('admin.uvr.col_status')) ?></dt>
             <dd class="ui-dd"><code class="ui-code"><?= e((string) ($catalogItem['status'] ?? '')) ?></code></dd>
         </dl>

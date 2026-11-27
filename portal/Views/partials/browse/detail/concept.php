@@ -39,6 +39,17 @@ $definitionStatus = (string) ($concept['definition_review_status'] ?? '');
     <p class="form-note mt-1"><?= e($t('browse.definition_review_note')) ?></p>
 <?php endif; ?>
 
+<?php
+// Los criterios clínicos viven al final de Concepto. El acceso directo evita
+// que parezcan ausentes cuando la ficha es larga.
+$clinicalCriteria = is_array($sections['clinical']['clinical_criteria'] ?? null)
+    ? $sections['clinical']['clinical_criteria']
+    : [];
+?>
+<?php if ($hasValue($clinicalCriteria['value'] ?? null)): ?>
+    <p class="mt-1"><a href="#browse-clinical-criteria"><?= e($t('browse.clinical_criteria')) ?></a></p>
+<?php endif; ?>
+
 <?php if (!empty($concept['synonyms']) && is_array($concept['synonyms'])): ?>
     <div class="browse-subsection">
         <h3><?= e($t('browse.synonyms')) ?></h3>

@@ -232,6 +232,26 @@ BEGIN
                coverage_status = EXCLUDED.coverage_status;
     END IF;
 
+    -- Categoría del concepto: se graba en la tabla transversal, nunca en el
+    -- catálogo de origen. La tabla puede no existir aún si no se aplicó la
+    -- migración de categorías clínicas; en ese caso se omite sin romper la
+    -- publicación gobernada existente.
+    IF NULLIF(v_change #>> '{clinical_category,code}', '') IS NOT NULL
+       AND to_regclass('public.os_catalog_item_clinical_category') IS NOT NULL THEN
+        INSERT INTO public.os_catalog_item_clinical_category
+            (item_id, clinical_category_code, updated_at, source_request_id)
+        VALUES (
+            v_item_id,
+            v_change #>> '{clinical_category,code}',
+            now(),
+            p_request_id
+        )
+        ON CONFLICT (item_id) DO UPDATE SET
+            clinical_category_code = EXCLUDED.clinical_category_code,
+            updated_at = EXCLUDED.updated_at,
+            source_request_id = EXCLUDED.source_request_id;
+    END IF;
+
     INSERT INTO public.os_audit_log
         (entity_type, entity_id, action, actor, actor_user_id, request_id, before_state, after_state)
     VALUES (

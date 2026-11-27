@@ -196,7 +196,7 @@ $uvrPublished = is_array($sections['uvr'] ?? null) ? $sections['uvr'] : [];
                      <?= $isActive ? '' : 'hidden' ?>>
                     <?php require __DIR__ . '/detail/' . $tabKey . '.php'; ?>
                     <?php if ($tabKey === 'concept'): ?>
-                        <div class="browse-clinical">
+                        <div class="browse-clinical" id="browse-clinical-criteria">
                             <?php require __DIR__ . '/detail/clinical.php'; ?>
                         </div>
                     <?php endif; ?>

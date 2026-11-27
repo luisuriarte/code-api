@@ -52,6 +52,20 @@ final class CatalogGovernanceService
     }
 
     /**
+     * Categorías del concepto. Son independientes del catálogo al que pertenece
+     * el código y solo se pueden elegir si la migración fue aplicada.
+     *
+     * @param array<string, mixed> $actor
+     * @return list<array<string, mixed>>
+     */
+    public function clinicalCategories(array $actor): array
+    {
+        $this->require($actor, 'catalog.view', 'view');
+
+        return CatalogGovernanceRepository::clinicalCategories();
+    }
+
+    /**
      * @param array<string, mixed> $actor
      * @return array<string, mixed>
      */
@@ -187,11 +201,26 @@ final class CatalogGovernanceService
             $change['languages'] = $languages;
         }
 
+        $clinicalCategoryCode = $this->text($input['clinical_category_code'] ?? null, 50);
+
+        if ($clinicalCategoryCode !== '') {
+            $allowedCategories = array_column(CatalogGovernanceRepository::clinicalCategories(), 'code');
+
+            if (!in_array($clinicalCategoryCode, $allowedCategories, true)) {
+                throw new UvrGovernanceException('catalog_invalid_change');
+            }
+
+            // Es una dimensión separada: no se graba en os_catalog ni en
+            // os_catalog_category. Solo viaja en la propuesta gobernada.
+            $change['clinical_category'] = ['code' => $clinicalCategoryCode];
+        }
+
         $hasChange = isset($change['item'])
             || isset($change['release'])
             || isset($change['version'])
             || isset($change['relations'])
-            || isset($change['languages']);
+            || isset($change['languages'])
+            || isset($change['clinical_category']);
 
         if (!$hasChange) {
             throw new UvrGovernanceException('catalog_invalid_change');

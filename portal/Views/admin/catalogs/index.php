@@ -9,10 +9,29 @@ declare(strict_types=1);
 /** @var array<string, mixed> $current */
 /** @var array<string, mixed>|null $editItem */
 /** @var bool $editError */
+/** @var list<array<string, mixed>> $clinicalCategories */
 
 require __DIR__ . '/_nav.php';
 
+$clinicalCategories = is_array($clinicalCategories ?? null) ? $clinicalCategories : [];
 $catalogHref = static fn (string $code): string => '/admin/catalogs/' . rawurlencode($code);
+
+$clinicalCategoryLabel = static function (string $code, string $fallback = '') use ($t): string {
+    if ($code === '') {
+        return $t('admin.catalogs.no_category');
+    }
+
+    if (str_starts_with($code, 'CLIN-')) {
+        $key = 'clinical_category.' . $code . '.label';
+        $label = $t($key);
+
+        if ($label !== $key) {
+            return $label;
+        }
+    }
+
+    return $fallback !== '' ? $fallback : $code;
+};
 
 $editDetail = is_array($editItem ?? null) ? $editItem : [];
 $editRecord = is_array($editDetail['item'] ?? null) ? $editDetail['item'] : null;
@@ -47,6 +66,7 @@ if ($editRecord !== null) {
         'definition' => (string) ($editVersion['definition'] ?? ''),
         'clinical_criteria' => (string) ($editVersion['clinical_criteria'] ?? ''),
         'language_code' => (string) ($editVersion['language_code'] ?? 'es-AR'),
+        'clinical_category_code' => (string) ($editRecord['clinical_category_code'] ?? ''),
     ];
 
     foreach ($editReleases as $release) {
@@ -141,6 +161,7 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                                 <th class="ui-th"><?= e($t('admin.catalogs.col_code')) ?></th>
                                 <th class="ui-th"><?= e($t('admin.catalogs.col_term')) ?></th>
                                 <th class="ui-th"><?= e($t('admin.uvr.col_status')) ?></th>
+                                <th class="ui-th"><?= e($t('admin.catalogs.col_clinical_category')) ?></th>
                                 <th class="ui-th"><?= e($t('admin.uvr.title')) ?></th>
                             </tr>
                             </thead>
@@ -171,6 +192,10 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                                     </td>
                                     <td class="ui-td font-medium text-ink"><?= e((string) ($item['preferred_term'] ?? '')) ?></td>
                                     <td class="ui-td"><code class="ui-code"><?= e((string) ($item['status'] ?? '')) ?></code></td>
+                                    <td class="ui-td"><?= e($clinicalCategoryLabel(
+                                        (string) ($item['clinical_category_code'] ?? ''),
+                                        (string) ($item['clinical_category_name'] ?? '')
+                                    )) ?></td>
                                     <td class="ui-td">
                                         <a href="<?= e($uvrHref = '/admin/uvr/proposals?service_item_id=' . $itemId) ?>"
                                            class="ui-btn ui-btn-sm ui-btn-ghost no-underline">
@@ -236,6 +261,24 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="ui-fieldset">
+                        <legend class="ui-legend"><?= e($t('admin.catalogs.group_category')) ?></legend>
+                        <p class="form-note"><?= e($t('admin.catalogs.category_note')) ?></p>
+                        <div>
+                            <label for="edit-clinical-category" class="ui-label"><?= e($t('admin.catalogs.col_clinical_category')) ?></label>
+                            <select id="edit-clinical-category" name="clinical_category_code" class="ui-input">
+                                <option value=""><?= e($t('admin.select')) ?></option>
+                                <?php foreach ($clinicalCategories as $category): ?>
+                                    <?php $categoryCode = (string) ($category['code'] ?? ''); ?>
+                                    <option value="<?= e($categoryCode) ?>"
+                                            <?= $editSelected('clinical_category_code', $categoryCode) ?>>
+                                        <?= e($clinicalCategoryLabel($categoryCode, (string) ($category['name'] ?? ''))) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </fieldset>
 

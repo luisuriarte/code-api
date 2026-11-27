@@ -394,11 +394,23 @@ final class CatalogRepository
                 . ' WHERE is_active = TRUE AND domain_type IS NOT NULL'
                 . ' ORDER BY domain_type ASC'
             )->fetchAll();
-            $categories = $pdo->query(
-                'SELECT DISTINCT c.code, c.name FROM os_catalog_category c'
-                . ' JOIN os_catalog cat ON cat.id = c.catalog_id'
-                . ' WHERE cat.is_active = TRUE ORDER BY c.name ASC, c.code ASC'
-            )->fetchAll();
+            if (self::tableExists($pdo, 'os_clinical_category')) {
+                // La categoría del concepto es transversal: no depende del
+                // catálogo ni del capítulo fuente. Si la migración aún no se
+                // aplicó se conserva el facet histórico por compatibilidad.
+                $categories = $pdo->query(
+                    'SELECT cc.code, cc.name, cc.sort_order'
+                    . ' FROM os_clinical_category cc'
+                    . " WHERE cc.status = 'active'"
+                    . ' ORDER BY cc.sort_order ASC, cc.code ASC'
+                )->fetchAll();
+            } else {
+                $categories = $pdo->query(
+                    'SELECT DISTINCT c.code, c.name FROM os_catalog_category c'
+                    . ' JOIN os_catalog cat ON cat.id = c.catalog_id'
+                    . ' WHERE cat.is_active = TRUE ORDER BY c.name ASC, c.code ASC'
+                )->fetchAll();
+            }
             $versions = $pdo->query(
                 'SELECT DISTINCT r.version_tag FROM os_catalog_release r'
                 . ' JOIN os_catalog cat ON cat.id = r.catalog_id'
@@ -443,6 +455,15 @@ final class CatalogRepository
             if ($label === '') {
                 $label = $code;
             }
+
+            if (str_starts_with($code, 'CLIN-')) {
+                // La taxonomía nueva es global: cada código es una opción
+                // estable y no se agrupa por nombre traducible.
+                $categoryOptions[$code] = ['code' => $code, 'label' => $label];
+                continue;
+            }
+
+            // Compatibilidad con el facet histórico por capítulo.
             if (!isset($categoryOptions[$label])) {
                 $categoryOptions[$label] = [
                     'code' => $code,
@@ -905,15 +926,45 @@ final class CatalogRepository
                 $params[$name] = $filters[$filterKey];
             }
         }
+        $joinLegacyCategory = false;
         if (isset($filters['category'])) {
-            // El facet agrupa por capítulo: el código representante se resuelve
-            // a su nombre para traer todas las prácticas del mismo capítulo.
-            $extraWhere .= "   AND catcat.name = (\n"
-                . "         SELECT cc.name FROM os_catalog_category cc\n"
-                . "          WHERE cc.code = :{$p}_filter_category\n"
-                . "          ORDER BY cc.id ASC LIMIT 1\n"
-                . "       )\n";
-            $params[":{$p}_filter_category"] = $filters['category'];
+            $categoryCode = (string) $filters['category'];
+            $clinicalTables = str_starts_with($categoryCode, 'CLIN-')
+                && self::tableExists(PortalDatabase::connection(), 'os_clinical_category')
+                && self::tableExists(PortalDatabase::connection(), 'os_catalog_item_clinical_category')
+                && self::tableExists(PortalDatabase::connection(), 'os_catalog_category_clinical_map')
+                && self::tableExists(PortalDatabase::connection(), 'os_catalog_clinical_default');
+
+            if ($clinicalTables) {
+                // Categoría del concepto: gobernanza → mapa del capítulo fuente
+                // → valor por catálogo. Nunca modifica el catálogo de origen.
+                $name = ":{$p}_filter_category";
+                $explicit = "SELECT 1 FROM os_catalog_item_clinical_category icc"
+                    . " WHERE icc.item_id = item.id AND icc.clinical_category_code = {$name}";
+                $mapped = "SELECT 1 FROM os_catalog_item_version cv"
+                    . " JOIN os_catalog_category_clinical_map ccm ON ccm.category_id = cv.category_id"
+                    . " WHERE cv.item_id = item.id AND ccm.clinical_category_code = {$name}";
+                $default = "SELECT 1 FROM os_catalog_clinical_default ccd"
+                    . " WHERE ccd.catalog_code = cat.code AND ccd.clinical_category_code = {$name}";
+
+                $extraWhere .= "   AND (\n"
+                    . "         EXISTS ({$explicit})\n"
+                    . "      OR EXISTS ({$mapped})\n"
+                    . "      OR (NOT EXISTS ({$explicit})\n"
+                    . "          AND NOT EXISTS ({$mapped})\n"
+                    . "          AND EXISTS ({$default}))\n"
+                    . "   )\n";
+                $params[$name] = $categoryCode;
+            } else {
+                // Compatibilidad con el facet histórico por capítulo.
+                $joinLegacyCategory = true;
+                $extraWhere .= "   AND catcat.name = (\n"
+                    . "         SELECT cc.name FROM os_catalog_category cc\n"
+                    . "          WHERE cc.code = :{$p}_filter_category\n"
+                    . "          ORDER BY cc.id ASC LIMIT 1\n"
+                    . "       )\n";
+                $params[":{$p}_filter_category"] = $categoryCode;
+            }
         }
         $params[":{$p}_filter_status"] = $filters['status'] ?? 'active';
 
@@ -979,7 +1030,7 @@ final class CatalogRepository
             . "      WHERE i.item_id = item.id\n"
             . "      ORDER BY i.is_primary DESC, i.id ASC LIMIT 1\n"
             . " )\n"
-            . (isset($filters['category'])
+            . ($joinLegacyCategory
                 ? " JOIN os_catalog_category catcat ON catcat.id = ver.category_id\n"
                 : '')
             . " WHERE cat.is_active = TRUE AND item.status = :{$p}_filter_status\n"

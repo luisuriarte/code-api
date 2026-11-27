@@ -581,7 +581,8 @@ browse:
     detail_title: "Code detail"
     back_results: "Back to results"
     code: "Code"
-    code_multi_hint: "All = no filter. Select sources or catalogs from a single family."
+    code_multi_hint: "All = no filter. Open the dropdown and tick sources or catalogs from a single family."
+    code_selected_count: "Selected codes: %count%"
     term: "Term"
     description: "Description"
     domain: "Catalog"
@@ -1793,6 +1794,10 @@ admin:
         group_languages: 'Languages'
         col_definition: 'Definition'
         col_criteria: 'Clinical criteria'
+        col_clinical_category: 'Concept category'
+        group_category: 'Clinical category of the concept'
+        category_note: 'Cross-cutting classification, independent of the catalog the code belongs to.'
+        no_category: 'No category assigned'
         col_source_field: 'Source field'
         col_provenance: 'Provenance'
         col_coverage: 'Coverage'
@@ -1921,3 +1926,53 @@ legal:
             retention_text: "Records are kept as long as needed to complete the initiated request and meet applicable obligations."
             contact_title: "6. Contact"
             contact_text: "Privacy questions may be sent to legal@origen.ar."
+
+clinical_category:
+    CLIN-DIAG:
+        label: "Diagnoses"
+        definition: "Diseases and pathological conditions"
+        examples: "ICD-10, dental diagnoses"
+    CLIN-PROC:
+        label: "Procedures"
+        definition: "Diagnostic and therapeutic interventions"
+        examples: "Surgeries, dental practices"
+    CLIN-PREST:
+        label: "Health services"
+        definition: "Billable or recognized services and practices"
+        examples: "PMO, medical nomenclatures"
+    CLIN-MED:
+        label: "Medicines"
+        definition: "Drugs, active ingredients and presentations"
+        examples: "ANMAT, medicines"
+    CLIN-EST:
+        label: "Studies and diagnostic tests"
+        definition: "Analyses, tests and complementary studies"
+        examples: "LOINC, laboratory"
+    CLIN-OBS:
+        label: "Clinical observations and measurements"
+        definition: "Clinical variables and observable results"
+        examples: "Blood pressure, blood glucose, temperature"
+    CLIN-SINT:
+        label: "Signs and symptoms"
+        definition: "Reported or observed clinical manifestations"
+        examples: "Pain, fever, dyspnea"
+    CLIN-DISP:
+        label: "Medical devices and supplies"
+        definition: "Equipment, prostheses, implants and materials"
+        examples: "Prostheses, catheters, implants"
+    CLIN-ANAT:
+        label: "Anatomy and body structures"
+        definition: "Organs, tissues, regions and anatomical structures"
+        examples: "Teeth, tooth surfaces, organs"
+    CLIN-MICRO:
+        label: "Microorganisms and biological agents"
+        definition: "Bacteria, viruses, fungi and other agents"
+        examples: "SARS-CoV-2, Escherichia coli"
+    CLIN-ALERG:
+        label: "Allergies and intolerances"
+        definition: "Allergic reactions and intolerances"
+        examples: "Penicillin allergy"
+    CLIN-HALLAZGO:
+        label: "Clinical findings"
+        definition: "Findings from examination, imaging and pathology"
+        examples: "Lesions, masses, radiological findings"
