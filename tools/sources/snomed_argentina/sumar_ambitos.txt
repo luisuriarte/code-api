@@ -1,0 +1,64 @@
+id	effectiveTime	active	moduleId	refsetId	refsetId_term	referencedComponentId	referencedComponentId_term
+07481120-45ba-dbe1-cc73-8fb97061257e	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	73588009	laboratorio hospitalario
+08eb1855-9f85-ed68-3db0-152b77636e3a	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	22357001	unidad de enfermería profesional, nivel de cuidado 1
+0c7cc10f-29e6-39fd-8779-10b5fcb4ca4a	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	83891005	consultorio particular
+0ee2a8fc-7bb7-4ab2-0588-6555538fefe4	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	441662001	departamento de diagnóstico por imágenes
+198a2a06-ac68-0a86-442a-db4f20bac951	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	22232009	hospital
+1dac5a82-bfba-d837-4636-0d465ec6ceb1	20210531	0	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	11424001	atención médica en ambulancia
+1f75e52f-583b-39b1-e736-3016da1084eb	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	310390009	consultorio hospitalario
+1fa41067-6c2a-23ae-ea88-37168f344a2d	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	79491001	unidad hospitalaria de radiología
+2272f740-01aa-f1f1-0cce-023a3165f78a	20210531	0	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	52668009	maternidad hospitalaria
+23c71b25-defa-9045-2c62-2ef0f4df2069	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	284548004	servicio hospitalario
+2508ed93-58d8-b44b-b94a-9842ee9e3fd2	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	225728007	servicio de accidentología y urgencias
+2c1465c2-f7b5-a6da-439a-261bfd731d2d	20210531	0	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	702878005	ambulancia de terreno
+318e0f4b-2815-e969-a012-b09973868e93	20210531	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	113173007	domiciliario
+330f5839-5393-fdea-a624-7586d99156e2	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	257688003	hogar residencial
+46114920-338e-3da1-a84b-109365978e8a	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309902002	departamento de oncología clínica
+4a89f8a9-22e0-4603-02a5-b9503c0f2163	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	46224007	vacunatorio
+4d89bb4b-7f71-62ff-87ab-acf94cbd1ad6	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309942007	servicio de obstetricia y ginecología
+557c6378-7dcc-c345-c692-53649666bdaa	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	440655000	ambiente de atención ambulatoria
+59e914b0-b122-b86b-ff99-92ca72193111	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	276339004	medio ambiente
+5d55c6d6-cd96-6d1e-928a-553c0883a123	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	113172002	clínica independiente oncológica
+61b1d8db-b6cd-db69-b939-bf38e651ad6b	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	45618002	unidad de enfermería profesional
+67b89229-4646-54ca-a4db-ed8a7ef7baa0	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309946005	unidad de cuidados especiales para lactantes
+6959c4b4-2004-b87a-1b5c-e96e0cf59642	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	310203004	servicio de emergentología y urgencias pediátricas
+6af23fcb-13cc-227f-c37d-2b0ac226fcb0	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	708183009	servicio de anatomía patológica
+74ffd82a-1468-7444-5a56-97c5107412cc	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	35313001	unidad de enfermería profesional, nivel de cuidado 4
+754f79d4-95d0-d293-cd90-a7c1b613831d	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309945009	departamento de pediatría
+7868391c-333a-4350-7132-3bb8459218bf	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	4931000221105	sala de internación
+7c9f43fc-2216-c30b-e589-232cc1abc6cc	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	66280005	atención médica en domicilio particular
+7e94b6be-60d9-25ea-22bb-36e50c0ce0c3	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	285202004	ambiente comunitario
+81a04ca4-fb73-7878-65d5-abfc99efdeb2	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	81234003	consultorio de demanda espontánea
+81f00d3a-2c84-a62c-5919-df33358b37f2	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	16384001	unidad de enfermería profesional, nivel de cuidado 2
+8792be9c-6c55-f0de-70c5-d1ac755f2087	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309904001	unidad de cuidados intensivos
+899d5037-9e6a-51a7-82ff-51cc54a95267	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	264361005	centro de salud
+8fc5ac77-11ea-346d-5759-12c9ce8652ae	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	419590001	unidad de recuperación
+90cf4ad8-4b7c-309e-d450-6bbfb1d64a18	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	350201000221105	ambulancia de alta complejidad
+92199a60-845b-42b3-f966-2e5ef3e1f989	20210531	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	56109004	hospital de atención intermedia
+99e20458-3ec2-e4da-8ed9-14fe4c816e10	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309964003	departamento de radiología
+9bc0471c-7af0-7e2f-fb1d-83921ea53ddb	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	261904005	laboratorio
+9f649e07-66fb-059e-72dd-43e7bdfa1e11	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	161120002	escuela secundaria
+a1083942-f3d4-6a09-170e-47068757e6f1	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309948006	departamento de oncología pediátrica
+a125458a-11dd-55af-d5fa-7dbd311d3db4	20250531	0	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	285201006	medio ambiente hospitalario
+a5e53334-cb62-ebd3-f005-e58786e3863c	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	48120004	hospital oncológico
+a9b06014-69af-5fe1-4221-5abe9255bc62	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	427695007	unidad neonatal
+aa7d5be4-66d5-7128-4f9b-cc33023887f0	20230531	0	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	108343000	hospital Y/O institución
+b133ae85-068b-abd6-9d79-be4f02e0d32f	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309967005	departamento de cirugía
+baa2d6d5-f06d-e7be-54a0-4963a5966c2f	20210531	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	398156002	piso médico o quirúrgico
+bbebdd3a-96a6-b0ae-915f-7d6926c0b49d	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	350221000221103	ambulancia de mediana complejidad
+c019a39f-8d82-b842-19f5-300d822018a8	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	420223003	departamento de medicina pediátrica
+c06ab16d-48e0-6cb3-4ed9-163e64276827	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309954007	servicio de hematología
+c0a7c954-633b-8008-29aa-cf28a7fd3ec2	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	225746001	sala
+c0ee7448-cc56-430c-bc6e-dad95958f384	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	45131006	hospital de atención primaria
+c4863215-b932-647a-e91a-36addbd52c1d	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	225738002	quirófano
+c486c5e5-f910-6398-3a20-a6ea741f13e4	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	274516006	hospital de día
+c74ac550-078b-8c53-79ad-d3c330ea2a0c	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	309978002	departamento de otorrinolaringología
+cb369020-a59b-1907-9e2b-d08ba986c692	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	257585005	consultorio especializado
+d13c54ec-3677-d7c1-d70f-35267594dddd	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	702905008	consultorio especializado en hematología pediátrica
+dfddbbc3-dc6d-a785-ed78-2ff9c86850e7	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	350211000221108	ambulancia de baja complejidad
+e83b5471-dc70-5fa4-b0b4-c9a2fb146506	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	405269005	unidad neonatal de cuidados intensivos
+eb6a5d59-db96-0b63-16e8-252e5cf8f802	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	440654001	ambiente del paciente internado
+ec63235b-147e-d7b3-94e9-504b1cf25d50	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	288568004	consultorio de medicina general
+ecd195f5-803d-c424-c9a6-f22c924f3e4a	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	702846002	consultorio especializado en odontología
+f5012642-d357-ff80-6214-0c0b3c683b7f	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	63997002	unidad de enfermería profesional, nivel de cuidado 3
+f587bb60-e8fc-cc30-7ee4-72799ce730fd	20201130	1	11000221109	371221000221107	conjunto de referencias simples de ámbitos de atención vinculados al Programa SUMAR	310391008	consultorio comunitario

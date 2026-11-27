@@ -1,0 +1,126 @@
+id	effectiveTime	active	moduleId	refsetId	refsetId_term	referencedComponentId	referencedComponentId_term
+002b4f15-9c50-e152-9906-dce7d6d34e44	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	158965000	profesional que ejerce la medicina
+01f2e626-a5c8-1015-8cab-820ef0340c01	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	40204001	hematólogo
+03b138be-f24e-8fc1-831d-747c9bb8f343	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	37504001	ortodoncista
+0445afb0-2f34-9152-23c9-735b4ab4e231	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	80124005	asistente social
+05c64b43-fdfe-b640-0d21-2259c547e256	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1951000221103	licenciado en enfermería
+073c37fc-dff2-a4cd-0ec1-3da879a5ebb4	20210531	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	878787005	técnico en anestesia
+0fd93e70-d755-3e99-8f73-999aa841a925	20210531	0	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	331091000221101	técnico en anestesia
+15bc38f8-7c2f-7eaf-0602-aed3b63e67cc	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1651000221108	auxiliar agente sanitario
+196ce9a3-3b17-a9f4-1ccb-fd37f12444ce	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1831000221100	técnico en fonoaudiología
+19f697d3-b122-d3c8-5dc1-5f7791c49c91	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309330006	cardiólogo pediátrico
+1c3cbe57-39a1-790f-fe04-7777c587d494	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	321021000221100	neumonólogo pediátrico
+1e3aeac7-0bbd-3cbe-9758-f416f466eec2	20251120	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	159026005	fonoaudiólogo
+20b8d5b4-797e-e55f-4b9c-b5992c64e0ff	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	322801000221109	especialista en medicina general y/o medicina de familia
+2d52277c-6334-7b4c-dd9f-b515093a17d0	20210531	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	159016003	radiólogo clínico
+311ccc0d-73d0-51db-0294-a9a280e6cfa5	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	82296001	pediatra
+31c655b8-262a-8f85-5f16-7d0f5f546788	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1461000221108	técnico en rehabilitación
+33d8a70f-e343-e2b9-3ab5-6c0e7d965dc1	20210531	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	320941000221100	hepatólogo
+3522144e-ef76-c24c-06bc-934b65692d19	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	59058001	médico general
+358ca1eb-8638-9432-9d4d-8ade972c25cd	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	4921000221107	mastólogo
+35a6d6ec-d38f-8f15-d354-29164635c140	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1641000221106	auxiliar de radiología
+393128e9-7b62-b156-d9bf-e91c994a1a83	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	224549000	enfermera neonatal
+39409d24-849c-0247-da75-a79ff7f79882	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	61894003	endocrinólogo
+3aa9bcf0-41b7-cb68-27fa-1ca3d8bb315b	20231130	0	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1221000221104	kinesiólogo
+3b162f1e-0b5e-17a7-5de0-be1b3948c919	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	83685006	ginecólogo
+3e0f87fb-8f8c-0bf7-a8ec-d72931a94c65	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1481000221101	técnico en trabajo social
+40de7a75-fa66-da69-5781-24e1b77de1ae	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	17242000	asistente contable
+4182dfaf-dd6d-e407-a17f-53f2b3a77524	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	321681000221107	especialista nutrición y análisis de los alimentos
+424bbd3f-416a-fed4-1021-40c3ebb29123	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	28411006	neonatólogo
+432a35d9-f894-b752-5065-44752e235546	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	4891000221104	infectólogo pediátrico
+43520621-acb4-ba64-16cd-2a52d22243ae	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	321061000221108	especialista en nutrición
+479ff657-e019-d76b-bda7-bac083a6cba9	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	320531000221103	especialista en diagnóstico por imagenes pediátrico
+48a9253e-c359-057d-612f-ec3c3c9d934b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	159141008	genetista
+4b471438-e482-e12f-a751-162af2714cf2	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	76899008	infectólogo
+4d581538-c54f-07f9-a901-756f6adf8e0c	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	50835006	antropólogo
+4dcc300d-b12d-94f1-e58f-6adfecc16244	20230531	0	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	106291005	dietista Y/O nutricionista
+501cef5e-3d9d-cdce-c37f-88bb1360e5c0	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1431000221102	técnico óptico
+512eea39-764e-fb61-d853-628cacfd58a6	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	71838004	gastroenterólogo
+52d0020a-5af2-e8fa-8018-e6f1b2778273	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	405623001	médico general asignado
+52e743a7-e8e9-956d-5dd5-b2321544a5e7	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	83273008	anatomopatólogo
+53e5aae2-5741-6a74-6373-a40fd68e32fb	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	66862007	radiólogo
+5d0c25ee-b2f3-a9ed-9538-57e6f39cc065	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	14679004	ocupación
+5d374dec-57b4-c52c-e2dd-2f737581f729	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309326008	médico general suplente
+608d456c-b2f9-b31d-bd58-e7a6875f6843	20241130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	67811000052107	hemato-oncólogo pediátrico
+664f55e8-b744-0b8b-4d3c-f509088c9478	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	4911000221102	traumatólogo
+6891294f-ed7e-d9fa-a6d8-bd081dd24c2b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1601000221109	auxiliar de anestesia
+68afcab2-693f-a826-d3a6-830c067da987	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	28544002	bioquímico clínico
+6d5c041d-0839-3733-052c-9af730dc7b2f	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	310191001	psicólogo clínico
+6d91743e-983d-9a9b-87e5-bc1ac2e36cb6	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1211000221109	psicopedagogo
+6e7cdafa-fdbc-9591-50b7-5338f038a538	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309361002	psiquiatra de adolescentes y niños
+72881007-7904-6df3-ab7c-5dbd06c8e53f	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309333008	nefrólogo pediátrico
+72a1ed59-d6bb-01d0-c987-c199ce30d86c	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	4941000221103	comité de auditoría de muerte
+740bae13-bcfd-b16a-fe36-003f720e8b1d	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	49993003	cirujano oral
+74d0531a-7605-e210-9ca8-66cf21898758	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	322271000221102	especialista en ortopedia y traumatología infantil
+756ff695-4297-20d8-2d66-c813683e213c	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	322221000221103	especialista en mastología
+77c12694-5aa8-517a-cf11-357ae7610a05	20251120	0	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1251000221105	fonoaudiólogo
+7857d9ac-e346-58b8-46c7-3bdfd546e600	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309334002	neurólogo pediátrico
+7a9ba17a-7e4b-b9b3-adc0-21d0ac7fac9c	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	61246008	especialista de laboratorio
+809e2bae-5b3f-1bae-1339-b1e498098a3c	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	90981000221101	médico endoscopista
+84692595-15f7-054b-0209-2a854af78a1d	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1261000221107	licenciado en obstetricia
+85b9b5ac-3396-03f5-47c3-397187d87005	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309383003	cirujano pediátrico
+88fd571c-e20d-438e-de0c-fc097ec0b537	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	61345009	otorrinolaringólogo
+90264436-0438-118b-8936-2aabb25cc1ee	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	422234006	oftalmólogo
+919eaeae-f1a8-b61b-aa9d-228297c0bd69	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309295000	oncólogo clínico
+9699f4d4-ec5b-fd4a-9ced-93e94e9d099f	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	17561000	cardiólogo
+97be43ad-37e6-573d-889a-760b9f1188b4	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	75271001	obstétrica profesional
+98c60fd1-5f17-7660-81b4-e4260c328819	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1491000221103	agente sanitario
+9b5c012d-b2e9-8d19-f017-b6dc713b0082	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1271000221103	licenciado en producción de bioimágenes
+9b8eefac-3d8f-68f3-7eb8-6514844af070	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	159033005	dietista
+a0339bea-9533-e056-7c4c-0ddfd47b90cc	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	88189002	anestesiólogo
+a13396cb-af1e-b410-c583-4316d283796a	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	5275007	auxiliar de enfermería
+a21d325c-40e5-517f-2811-2f11b879746c	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	159282002	técnico de laboratorio
+a434aa0a-894a-6119-1490-dbc301baf17b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309336000	oncólogo pediátrico
+a6d1464c-bb1b-18a2-287a-3b6e3be46daf	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	59944000	psicólogo
+a8573f1f-b43a-484c-09e3-773cb199f73a	20210531	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	389671000221102	técnico en control de vectores
+a91c5842-b645-5dd9-9dbc-1a74457db687	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	320931000221107	hematólogo pediátrico
+aa4bc8ac-234a-2a7c-74ad-0b10c1955310	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	62247001	médico especialista en medicina familiar
+aabd303f-faad-d1e5-7163-9d99fea93ca8	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	223366009	profesional de la salud
+abadcd82-db0a-42df-1604-ef7d97dc3f9b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309331005	endocrinólogo pediátrico
+ac45e0c9-ca37-08a3-44e8-c0249926a63b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	321081000221101	especialista en ortopedia y traumatología
+ae0653ce-34c2-256c-7539-3482a4c2ba85	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	36682004	fisioterapeuta
+af681d1c-8fbb-e737-a0d5-555da17ce9ba	20240531	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	45191000087109	otorrinolaringólogo pediátrico
+af9e2a4f-9396-e254-2499-3c87658f973a	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	320881000221104	especialista enfermería en la atención del paciente crítico: neonatal, pediátrico y adulto
+b1ab6ac6-592b-660f-ab72-3ec9b509b13b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309322005	médico general asociado
+b768066e-8306-1db5-a00f-dc2e0d04ea67	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309338004	especialista en terapia intensiva
+b96afb45-c948-4edf-30c8-08e2b9d4b790	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	35513000	bioquímico
+bac22a45-0ff8-e23e-9d5e-f0bf85300461	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	106328005	trabajador social
+bb3127d0-0bb6-cf10-3b2d-40549d4c7048	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	310512001	médico oncólogo
+bbf3b1fa-d253-4f34-9d20-160423794133	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	158950001	trabajador social médico
+bee2a287-3ad8-bf15-b6c8-db79cfb6703d	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	80546007	terapeuta ocupacional
+c0bf65da-0e6d-d70b-7b76-34b41c5ec188	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	321091000221103	especialista en salud mental
+c4135dc3-9bc4-55b1-a790-e5eb6f05b616	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309343006	médico
+c864e78e-be34-81aa-80eb-8dde53fc1bdf	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	4162009	auxiliar de odontología
+c89b7a16-22c4-4db8-4a69-e5185c5674a5	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	41904004	técnico radiólogo
+c8e23cd9-3344-2a8c-5f36-c8ffeb1a941c	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	4901000221100	médico clínico
+cc4107f5-8dca-20f9-1046-fb1f064512fc	20210531	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	321041000221109	neurocirujano pediátrico
+cc4d1f5f-740e-0d25-3bae-1310b3a8287c	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	4951000221101	médico especialista en diagnóstico por imágenes
+cf042e5d-2cdf-4fed-305d-002a9b8e9813	20231130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1032781000168105	kinesiólogo
+d1ce16e5-3378-3b43-087f-bcac24f8b1c9	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1731000221105	auxiliar de fonoaudiología
+d900e4d7-1dfd-9c9e-c420-ac1a25ced17a	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	80584001	psiquiatra
+da19f0c8-777c-196f-11d0-010549bf1a3f	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	90201008	odontólogo pediátrico
+db53d69a-e3c3-4833-2bae-f69de0293775	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	321761000221106	especialista en enfermería UTI neonatal
+dbbd2277-43c3-b1fd-be11-e47c6463190b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	304292004	cirujano
+dd5a90a7-cfb4-8d2a-761b-bf44294f0be1	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	45544007	neurocirujano
+dfc9bdaa-bd2b-633a-ea9e-dca42af5b40b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309332003	gastroenterólogo pediátrico
+e6a2e8e0-138d-5031-ff65-0b68a2ee2077	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309367003	especialista en obstetricia y ginecología
+e8b8f8ea-51da-675d-0fcd-d96ddd1d4316	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	158979008	odontólogo
+ea78ac3b-f90a-5d6d-cf9b-615e066fbe77	20210531	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	78703002	cirujano general
+ecea16c0-34ec-fd1a-3773-9b2766e3da9d	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	265937000	enfermería
+ed22ecf8-cd2a-29ef-7b95-e7fcebe45fb8	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1411000221105	técnico en prótesis dental
+ee27d825-83aa-3bed-893f-9acd2ee69389	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1451000221106	técnico nutricionista
+f1949017-daf6-2ec6-fab4-cd35acab45a6	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	308211001	enfermero
+f26f9b75-489f-cac7-b2ef-e43f4f2a3d9a	20210531	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309350005	especialista en diabetes
+f2aa9f53-4dff-a84a-7d97-01855608748f	20241130	0	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	320921000221109	hemato-oncólogo pediátrico
+f3237412-f4cf-908a-0a2c-434c77b2115a	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	11911009	nefrólogo
+f4317932-f164-4e7c-e3ff-275f81406cd7	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	321641000221104	especialista en nutrición y alimentación clinica del adulto
+f5c88423-1ffb-a692-400d-c9e53b16feef	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309355000	genetista clínico
+f67f325e-2c4d-7ffd-5352-39531e1926b5	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	1471000221104	técnico en obstetricia
+f96035f5-6876-3ba8-c79d-ffad6b00dcb4	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	386629007	auxiliar de laboratorio
+f98b9e93-6352-7520-51cb-54578b9cec40	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	4881000221102	estimulador temprano
+fa745374-99e4-aef7-6f34-ea7fe4b82281	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309372007	cirujano especialista en otorrinolaringología
+fa838c00-0a70-4e6f-693f-29cc59376c98	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	309345004	médico neumonólogo
+fc218362-17a5-ed58-4e18-8cf8c6e01e4b	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	8724009	cirujano plástico
+fc4cf45a-1165-a196-2d78-30fad0974ff0	20240531	0	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	322461000221107	otorrinolaringólogo pediátrico
+fcda6a90-9c40-71bb-9a7a-2d9bbcf45f53	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	11935004	obstetra
+ff83afe2-bc0d-3465-d21c-45388e4068ee	20201130	1	11000221109	371211000221102	conjunto de referencias simples de profesionales de la salud vinculados al Programa SUMAR	39677007	especialista en medicina interna

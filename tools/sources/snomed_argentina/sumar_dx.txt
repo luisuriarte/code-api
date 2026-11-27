@@ -1,0 +1,370 @@
+id	effectiveTime	active	moduleId	refsetId	refsetId_term	referencedComponentId	referencedComponentId_term
+003654cd-3a79-22a2-6139-a4618d341262	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	40609001	enfermedad infecciosa en la madre que complica el embarazo, el nacimiento Y/O el puerperio
+004383a5-7ad2-33ca-4143-b9d2dc5b6dc0	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	12063002	proctorragia
+00989b15-9b14-1a7e-0176-73b61416e9fc	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	233604007	neumonía
+00e6d772-31d0-2465-d826-a2c2c6b53015	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	10750801000119102	APP - amenaza de parto prematuro
+00fbe377-6291-861c-c2cf-e3b23f8468dd	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	2435008	ascariasis
+0166caf1-ae67-0862-43e5-ec5b0001bb65	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	68284008	talipes equinovalgo
+01d6de08-8a34-8b24-0cab-281420e88cc2	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	365866002	hallazgo relacionado con el estado para el VIH
+01fcfcd1-1c82-9cf6-6f96-729db63a9d48	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	237279007	hipertensión transitoria durante el embarazo
+031d3217-67ae-29a9-44bc-353e26dd2eb5	20260520	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	16538005	puerperio inmediato
+0337ff69-6aeb-d433-3e06-9cac690b1429	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	195967001	asma
+035071d9-6309-8469-f3e8-3b2efb8c9463	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	2556008	enfermedad periodontal
+03d2db7a-b359-7b5d-175f-9028d5a30369	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	237240001	embarazo adolescente
+04603c5f-d473-2a12-e696-4b2ac84b9a6b	20231130	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	161885008	síntoma de hematoma
+073529d9-6ff4-8db9-15f0-9c80af3551a9	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	57797005	interrupción inducida del embarazo
+07605f6a-535b-6f41-c62f-141f99c307b6	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	405150005	conducta relacionada con control del riesgo: cáncer
+08cf5d2c-2c22-0da8-2a37-e1b43db96993	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	57630001	primer trimestre del embarazo
+096beb57-df00-42fb-6a10-6c29becad9af	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	62479008	SIDA
+0aaaabb9-49da-d013-2384-59f00894b69a	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	199161008	gonorrea materna durante el embarazo, parto y puerperio
+0af2c1f8-7365-6a87-9638-4db103d8617f	20251120	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	310530008	recién nacido prematuro: 36 semanas
+0c719865-a2fb-b407-2372-06378e94331e	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	33839006	herpes simple genital
+0cdc6870-ad9c-739f-d325-28c6ed439ce3	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	25064002	cefalea
+0cf9a7eb-c848-dc73-ef68-35acd29b8c52	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762403002	fisura de paladar duro con fisura labial izquierda
+0d87fb04-29d9-a312-b991-4598d3fb3da6	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	404684003	hallazgo clínico
+0d8c5139-a6b1-4e36-f322-9f402c004562	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	363406005	neoplasia maligna de colon
+0dc1e8e8-d186-6be5-2935-9b2cce819745	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	25702006	intoxicación alcohólica
+0eb009a7-d5cc-ba22-7c3f-43b88d1800c2	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	13197004	utiliza anticonceptivo
+0ed79417-1109-8586-0e4e-baa28f076085	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	772170009	sospecha de tuberculosis
+0ef63228-6504-6418-e10f-0f58ef16ebd0	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	249808002	deformidad en equinovaro del pie
+0f555339-5e6a-d234-5538-c6d949317303	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	235006007	lesión periodóncica y endodóncica
+102307d7-276e-2e1a-fcb7-c3f715518aab	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	764091001	fisura de labio derecha
+111f2e69-4957-a8d8-d1b1-800f5ea9643c	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	235872006	portador de hepatitis C
+1209d8ca-b65a-3ce0-4a67-06a57c0a5ef9	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	373643003	labio leporino y fisura alveolar
+12e8cbc5-b181-b0a3-99e7-cf6a6698d923	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	399505005	pólipo de intestino grueso
+134c11ac-9095-9e17-d1c1-0619f4789266	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	92102001	neoplasia benigna de la mama femenina
+147c2afb-c5bf-7232-e43d-954b72fe2eb8	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	183667003	alta de internación
+1499468d-3fe2-1669-2956-c2253af16d08	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	373572006	hallazgo clínico ausente
+159f0c60-3c08-917c-1e7a-4d08d37c6543	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	162849005	al examen: baja talla
+160aaf57-c445-a9f4-15e3-3d4a4f4dd6d8	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1010217004	subluxación congénita de cadera derecha
+1694b78c-9bad-b3a7-3ebc-10259526179b	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	91388009	patrón de uso nocivo de sustancia psicoactiva
+16acd65e-d93e-f7a2-431b-8aea17fbca1e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	47821001	hemorragia postparto
+19cf74c5-ee64-8901-8691-3e1295e4be73	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	15635371000119105	bebé prematuro, 33 semanas
+1a704d65-3c03-e4d3-a296-22e60c44ae48	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	68653001	dolor anal
+1a8d5f9f-1cd7-9c89-bc52-586a2d3f0db5	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	700038005	mastitis asociada con la lactancia
+1be27b5c-58ea-d5a9-93e2-1466dec02c30	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1119391009	fisura de paladar duro izquierdo
+1c54143f-e517-fdcb-e8d5-8e9b600792d4	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	276506001	muerte de recién nacido
+1e1f833d-0de0-ffa7-bf93-71fedcad2ce2	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	413116005	utiliza anticoncepción transdérmica
+1ebf7386-92d5-8dd1-01a5-0a110bfc8d73	20251120	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	710068006	bebé prematuro, 32-36 semanas
+1eed8d52-5a3b-1a22-818c-3406a0190ce8	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	15938005	eclampsia
+204d8ab9-c850-33d0-c2ff-9ad4e0b13769	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	430881000	sangrado del segundo trimestre del embarazo
+216e11ae-7f8c-bcc9-8572-b3294c223106	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	247252006	dispositivo para ventilación timpánica en conducto auditivo externo
+226ede38-e926-e695-f177-3db646edfcb6	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	427898007	infección dental
+25328f1c-d20b-0c0d-0990-3b62e7f1deff	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	718062006	periodontitis crónica moderada generalizada
+2657e1c8-26fc-739b-2d5e-f95b23afc8fa	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	840539006	COVID-19
+26841ff0-4faa-8584-23bb-1ee887708992	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	67359005	preeclampsia sobreagregada a hipertensión preexistente
+26883405-0c24-37c8-a2e7-f2667e30cb09	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	249828003	piernas en botella de champán invertida
+26f99775-a1ae-fff8-20c3-e26a12f2e2c9	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	735724006	anomalía del desarrollo de raíz de diente
+2814467d-4ee7-8f08-45aa-da81d9915f61	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	86569001	puerperio
+28151d60-c5ec-0748-5755-8291b276061b	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	366364004	hallazgo relacionado con el estado nutricional
+28bb3c20-dde9-6feb-5ef0-59926ac5abaf	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	205052001	subluxación congénita de la cadera, bilateral
+28d39c04-7854-504b-ab0b-c8fe65cf5244	20220531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	204712000	atresia anal
+2a9a265d-1894-521e-e949-623b3f2ccaa5	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	45384004	nacimiento múltiple
+2ad55bbc-c762-b873-a5e8-43dd4f0cc0f1	20241130	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	8943002	aumento de peso
+2b721fab-699c-6dec-b9aa-6aa822ec2e8f	20211130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	253818009	malformación congénita de la pared abdominal anterior
+2c52ffae-e33c-af54-a6df-4be1e587bfe3	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	198992004	eclampsia durante el embarazo
+2c652919-1a79-062b-6054-396cbf82cbfa	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	448915004	fisura de paladar duro
+2c7469ba-1478-04aa-053e-617866067452	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	90446007	prurito anal
+2c9c217a-11f0-2025-efe1-c945d3549147	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	698463001	con mayor riesgo de enfermedad renal crónica
+2ce57209-3ed6-7882-3f3c-0a0ecbaabefd	20230531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	199049003	amenaza de parto prematuro - no nacido
+2d1bd379-fb58-9d96-b6a9-ea4f21aab762	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	76272004	sífilis
+2dca9904-f18b-3d0e-b2ed-cac55b2b6f18	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	473382005	administración de profilaxis con tratamiento antiviral luego de posible exposición sexual a virus del SIDA
+2ee9e803-4690-5691-8188-582e37763968	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	473189005	en tratamiento con insulina subcutánea para diabetes mellitus
+2f237a03-5f08-1853-5f7d-dedd804ca470	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	17190001	hernia diafragmática congénita
+2f6ddfeb-547e-ada4-c67b-fcdd71aed48c	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	92103006	neoplasia benigna de los órganos genitales femeninos
+301d2a0e-9ed0-a6a6-5cbe-1fda7acc59af	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	5505005	bronquiolitis aguda
+30c72716-c413-bfa7-67d3-985662d35bbd	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	276611006	recién nacido de muy bajo peso al nacer
+319becc6-9023-c166-dcad-194e6f512494	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	443859009	hallazgo clínico posible
+31bb1025-35f1-d475-2ad6-e323e981e2f0	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	204716002	atresia de ano con fístula
+31ea5c14-d04f-61f0-9e56-0fbf6a74a954	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	30746006	linfadenopatía
+31ee8d5e-ffc9-33de-3c9d-115125998cc4	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	89164003	tumoración mamaria
+333a3d4a-7416-a973-0c6a-5ad2e7c57381	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	161641009	con mayor riesgo de diabetes mellitus
+33cd39b7-9510-d6f5-6305-e608ce4a2211	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	301360004	dolor de ganglio linfático
+345a8821-22c1-c649-bf09-371625b08c80	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	82313006	intento de suicidio
+34f9441d-bd06-23d5-2127-d50687362490	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	11687002	diabetes mellitus gestacional
+360064fb-2bdc-fad2-44df-bf6e98442915	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	87522002	anemia ferropénica
+369ce71a-66d5-47f7-04f1-7a9c39dfd467	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	271813007	petequias
+375add72-7881-fe23-2627-290957309e8e	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	305876009	visto por el servicio de obstetricia
+37917ea7-0974-12b9-a8a5-dc0c19502b94	20250531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1306692000	patrón de uso nocivo de sustancia
+37bb15a7-ef27-9d6c-50dc-6918dba82da3	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	38341003	hipertensión arterial
+382945f3-54ef-26f2-3adb-54daaa4a3ff9	20251120	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1371412002	recién nacido prematuro moderado de entre 32 semanas y 33 semanas y 6 días de gestación
+3919297a-6294-9559-e28b-a05674bcf446	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	29962006	impedimento
+39b55311-6acc-9699-bae2-a9de1861cd46	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	709051008	con mayor riesgo de neoplasia maligna
+3a253cb4-e18f-23c6-1527-52b6f7ceba6e	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	15635411000119106	bebé prematuro, 32 semanas
+3abea800-cb17-79ee-97d1-cdc030eeb0df	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	721177006	lesión traumática que complica el embarazo
+3b3291c6-13a4-ed21-8bc1-6a9b9fd614ab	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	281583001	emaciación de causa nutricional
+3bdabcc7-55d7-ac69-12c6-5813bed74324	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	93032003	atresia del tracto intestinal
+3c4ee650-2ab0-18f8-59ae-f937e5295026	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	240532009	infección por papilomavirus humano
+3c602279-5609-ff94-5a3c-1906f9c036f4	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	63567004	fisura de paladar duro y blando
+3d9eea22-3fdf-f762-ef02-859219b6069b	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	371271000221108	hemorragia durante el primer trimestre del embarazo
+3e096161-51e6-b0f7-c708-2a121044be35	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	124111000119102	retinopatía de la prematurez, estadio 0
+3f38ff1a-d689-3a94-49a5-2682d7b5547e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	68566005	infección urinaria
+3ff6da9f-fea7-5315-5cdf-14a80380eb50	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	199008003	hipertensión secundaria preexistente que complica embarazo, parto y puerperio
+40182ee5-6e04-1c03-3e10-98986624eda0	20251120	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1371409000	recién nacido prematuro de menos de 37 semanas de gestación completas
+40629fa4-51b0-d2f7-a059-49e87e89294d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	444862003	obesidad de la infancia
+4074cd6d-8719-df05-b893-40b805babf9a	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	246915008	hallazgo relacionado con el globo ocular
+429de122-52ec-b4ee-db2d-8d489ff548f2	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	289794001	lesión del cuello uterino
+43546711-0f63-0cc6-ef17-64a5f3905d26	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	59283008	muerte materna
+43ab57d1-e190-3d7f-2218-7818ada7d765	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	362972006	trastorno del trabajo de parto/parto
+4463472e-2a4d-905d-a6b6-8a66b0fb0dfd	20251120	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1373210003	bebé prematuro de 32 semanas a 35 semanas y 6 días
+44781926-58a7-503d-f13e-2b566565ee23	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	44216000	productos de la concepción retenidos, luego de parto con hemorragia
+448d2c5d-8eb3-a616-04c5-a28f5f081b17	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	309657003	al examen: cavidad bucal, estructuras dentales y salivales
+457e4232-fc2c-45ea-b5ea-08c729869e21	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	243796009	situación con contexto explícito
+45830130-523c-eb8d-847c-a4b5a89cca45	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	304068004	labio leporino bilateral
+45ca69e4-9515-7c3d-ecac-e17c9f775fad	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	73030000	nefropatía hipertensiva en el contexto obstétrico
+461274c8-0c47-d095-6454-c5df35661ba1	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	160303001	antecedente familiar de diabetes mellitus
+46a255a7-c720-99be-25e8-92985c48143c	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	409693000	anticuerpo anti-dengue inmunoglobulina M detectado
+46b88107-2375-45ea-0b8f-ece5d93a226d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762497007	desnutrición aguda en la infancia
+4728433e-b886-468f-123f-2ff5a171b116	20231130	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	423902002	púrpura
+4877d1b4-017f-071f-5127-486c7d0664ad	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	204717006	atresia de recto con fístula
+49c2236f-92ba-8ad3-b1c5-a7f5f2babc8d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	35742006	sífilis congénita
+4a788063-6b0f-9318-75bb-0f0c860c386d	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	9904008	anomalía congénita del aparato cardiovascular
+4af3d5d7-8981-77e5-c1cd-e1ad29dfd8ce	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	6738008	infertilidad femenina
+4b7ab4ac-2e33-09ba-96d7-df340ad20598	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	22396007	adolescencia
+4be87fc7-c312-574b-162b-c541ee6aebdd	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	385494008	hematoma
+4c7fa454-9089-5b4b-c512-fffe2a600b60	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	79031000119101	dependencia de respirador
+4c92aeb7-5a03-c614-6ebb-4931bcbaabc1	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	160592001	ingesta de alcohol por encima de los límites recomendados
+4cd323ea-fcdc-deaa-3288-5fa82f6a4902	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	240542006	condiloma acuminado de la región anogenital
+4d0870b6-aa5c-fc51-dec3-6e21b099be77	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	386702006	víctima de maltrato
+4d25fb38-74d1-c637-6f71-726fc1f987c0	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	409966000	diarrea aguda
+4db63d53-9bae-8a94-a356-91077c163978	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	8098009	enfermedad infecciosa transmitida por vía sexual
+4dc49bd3-d124-b4b8-0c51-d8f2b1fa95ba	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	131148009	hemorragia
+4ffa04c2-bb49-5a12-9799-7b006b31ddfb	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	276445008	factores de riesgo prenatal
+50d292c4-56d0-9711-ebd1-dae3e1d7990c	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	733132008	condilomas acuminados extragenitales
+5199ba02-b3cd-2504-4faa-696a2a901fc7	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	10725009	hipertensión arterial benigna
+528799f1-4a8f-a358-1a41-386686e1c6b2	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	87282003	parasitismo intestinal
+52da4b18-d928-afea-293d-8bc27c5383c4	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	723620004	requiere vacunación
+537846e7-61f0-4429-37c5-3613e86edeb7	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	225826001	víctima de abuso sexual
+53ffb977-0196-90a8-e34e-2b8b33e8cc71	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	276610007	bajo peso al nacer
+551ba53b-a6ac-8449-4a10-3ec58c43321d	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	360419005	infección causada por Enterobius vermicularis
+55c368fa-70a2-7a2c-ff67-fba5ded21209	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	308923001	síntoma ocular
+560f611f-4bdb-371e-edcc-e87922106f90	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	417163006	lesión traumática o no traumática
+5768174f-55cf-5e57-8023-30aed41d6ac7	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	36925002	obstrucción de bronquio
+58ffd644-3380-e25f-d4d8-de75a75d4b8b	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	3845008	duplicación congénita del intestino
+594e96f2-3af8-afb8-0e07-da625fdac78a	20260220	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	426634003	convulsión eclámptica
+595ecae2-4f48-c679-8a18-d40cab8093a8	20241130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	262286000	peso aumentado
+595f59ec-cdb4-36d7-8567-8c967f48e77e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	34842007	hemorragia preparto
+5ca0dab6-1318-4aff-cf8d-b49358b66767	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	305795007	visto por el servicio de planificación familiar
+5f4aa3d5-12cf-9c30-db5b-4cf2850c1a47	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	397144001	evaluación mamográfica (categoría 4) - anormalidad sospechosa, debe considerarse la realización de una biopsia
+64b7f37d-abff-a2d0-d764-2d83645f5e25	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	302869005	retraso de crecimiento de causa nutricional
+65fca4e5-3555-faa8-ef43-bd83f74c6d8a	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	419100001	infección de pie debida a diabetes mellitus
+6866edac-8f4d-0662-70c6-8530d9971ee4	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1855002	trastorno del desarrollo académico
+6946c47d-e1bd-eb7c-548e-d2821111828d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	444356002	exposición a virus de la inmunodeficiencia humana
+6a3f0642-f525-c6d7-af08-6265c6d324e7	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	6142004	gripe
+6a7a0b77-10aa-8d2f-1cd2-dc7b559144da	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	370841000221108	anemia ferropénica grave del embarazo
+6cb29274-0d49-7925-731f-281cfb739367	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	409692005	inmunoglobulina M contra dengue negativa
+6d0e9c08-697a-649e-ce08-b11b9d32df65	20230531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	200146002	parto por cesárea - nacido
+6d299191-1e37-a95e-526f-09bfd55431a4	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	64613007	inflamación del intestino delgado
+6e9fcea8-c616-0396-1119-9fd089bece5b	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	118599009	enfermedad de Hodgkin
+6f173a7b-0aa6-ed4d-a55f-bc914b47a44d	20260220	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1363497003	crisis convulsiva epiléptica sintomática aguda debida a eclampsia
+713a44bd-e03e-b58a-3556-6fefa6f01de6	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	367390009	hipertensión en el contexto obstétrico
+73ce0130-c53d-d0c2-f1d4-e4faa3318a68	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	271860004	masa abdominal
+762bcafa-9a31-36e2-ec29-14bc1f3614eb	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	10509002	bronquitis aguda
+766646bf-5bbb-6649-a3db-e63eb3e33fec	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	88610006	soplo cardíaco
+76a87a63-b06d-c102-b4df-6a456c295081	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	67531005	espina bífida
+79130673-6369-cac0-adcd-f9e2a57de940	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	111438007	hipertensión secundaria a nefropatía en el contexto obstétrico
+7960712a-498d-4a5a-e29d-484a4a8ad5da	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	161806007	antecedente de embarazo con eclampsia
+7993d597-7eeb-e20a-671e-abd20222b3e2	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	249341006	labio leporino con deformidad nasal
+79d31251-8fcf-9b37-72a5-491da665f04b	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	108369006	neoplasia
+7c2e3cb4-a43b-fdb1-3c6e-ed6b7e06efba	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	771299009	prematurez del lactante
+7c77197c-2623-7334-8483-45dbb3edcec4	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	105995000	trastorno de los dientes Y/O estructuras de sostén
+7cf64e49-dc02-5231-c3ff-3080e99117e3	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762406005	fisura de paladar blando con fisura labial derecha
+7dbe3f1e-67bc-4d97-3d28-aa774b23d44b	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	59621000	hipertensión arterial esencial
+7de5124c-4a79-e3bc-749c-7f8a973efbf5	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	38362002	dengue
+7e52acde-02eb-0ebc-771f-40bb6f8ca02c	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	26179002	atresia del esófago
+7e6c1c08-4ece-c304-a88c-8ba73f962051	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	237364002	mortinato
+7f0ee7a6-8a59-80ba-a520-377dc2c8147a	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	661000221109	VIH expuesto perinatal
+7f35698b-3dc8-11a3-41cd-8949e58ffec5	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	132721000119104	emergencia hipertensiva
+7f9b5de8-e18f-7428-e5b3-bf7227ea43e1	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	40775003	hernia intestinal
+81ad1e7f-f13b-f599-aa0f-78da9706a3f5	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	23171006	hemorragia postparto retardada Y/O secundaria
+8265b3e2-dbd3-c3ba-60e7-ebbb289946bb	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	363681007	embarazo con aborto como desenlace
+83148218-ec5a-0a8a-525d-1880a426d9d1	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	417430008	adulto vulnerable
+83622703-56c1-65e6-0f39-73fcaebed424	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	249037004	membrana amniótica sobre la cabeza del bebé en el momento del parto
+84efb5b0-10c5-5322-5799-2a120437aa26	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	86406008	infección por virus de la inmunodeficiencia humana
+85ce8501-6112-179b-dab9-1e6089eabc13	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	59466002	segundo trimestre del embarazo
+86a47bc1-d885-637b-4cd7-99b9babe1de0	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	365982000	tabaquismo - hallazgo
+86ddd717-4ae1-479e-f4a3-d7c8199d9f5e	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	13213009	cardiopatía congénita
+87bc80a3-35bc-9fff-df6f-c80461e97eef	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	77386006	embarazada
+88b3a338-adef-985a-d6c3-c53078dcaaf0	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	289908002	embarazo
+89dfc015-4bc3-71ec-0446-d02f13a5506f	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	62315008	diarrea
+8a2e5978-879f-e72e-6f47-cf2253345c65	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	162572001	sospecha de neoplasia maligna
+8acba971-ce81-e93c-fe90-9b699670faf2	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	280137006	pie diabético
+8afad519-64fe-2ce8-de0b-9487d0ac1128	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	64766004	colitis ulcerosa
+8b3a1436-7bf6-603e-5838-a72d4a17ca4c	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	77880009	dolor rectal
+8b552349-b09d-96f5-f6e6-c9188068b448	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	409695007	anticuerpo anti-dengue inmunoglobulina G detectado
+8ba321aa-0178-3fe9-cbdd-983ca1c9f7e0	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	118215003	hallazgo relacionado con el parto
+8bb34dbb-2b87-b9ef-5fae-32269ae9f21e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	429487005	dependencia de ventilación con presión positiva continua en la vía aérea
+8cc4895a-5242-ea17-9e52-98410de95a77	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	35919005	trastorno del espectro autista
+8e793761-135f-6f08-06ab-30063cad18eb	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	237281009	preeclampsia moderada
+90198883-258b-648f-3185-020120d245d8	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	7895008	intoxicación causada por fármaco Y/O sustancia medicinal
+9118005b-8db0-d5e6-30ee-9fc5c57b76a5	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	5964004	trastorno del recto
+915aa3b8-7b59-c245-cb8d-7d00deef0738	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1119392002	fisura completa del paladar duro y paladar blando derecho
+918afd78-6506-6615-4894-0b5cbe5cf321	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	39406005	interrupción legal del embarazo
+924aea96-b747-7019-36c7-f4fa431e5c7f	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	430560006	antecedente familiar de enfermedad renal crónica
+92855c84-37f4-6f41-ed91-765627e7975d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	276707008	niño en mal estado general al nacer
+92b87a8f-de08-c580-951c-ef16aed32fc6	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	91948008	infección asintomática por virus de la inmunodeficiencia humana durante el embarazo
+93358e9a-1ea0-b53e-db55-341cb68b7bc3	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	198941007	hipertensión que complica el embarazo, parto y puerperio
+948fd9d3-a2a1-4c35-63c6-a36d0fe974a7	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	29980002	rotación anómala congénita de intestino
+9621d3c1-e494-6bb0-5394-2a9e0cdce448	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	401200002	con mayor riesgo de enfermedad pulmonar obstructiva crónica
+96b6cd2c-2983-8a59-3579-70e4a9c5f8fc	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	15635331000119107	bebé prematuro, 34 semanas
+979d2265-bb8d-2c68-24bf-1f7048ef35aa	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	22725004	lesión intraepitelial escamosa de alto potencial maligno
+97a85611-8a83-bcef-7068-a26bad6b8b4d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	66383009	gingivitis
+97f388ad-b38d-fc24-a50b-c59af704add3	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	48782003	parto normal
+98d4200c-b501-aaf5-163b-468afb696f82	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	405729008	hematoquecia
+98d830f1-187c-2710-5d4b-cbe9fdb54496	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	363351006	neoplasia maligna de recto
+9ac0937c-6b8e-3d79-c3b8-cb1a8e0840c0	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	367494004	nacimiento prematuro
+9bacbae6-14d5-ac8c-1f1a-60def3c2dc27	20220531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	204731006	ano imperforado
+9bf21eff-f93f-aa96-be0d-d612a7560306	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	418429061000132101	sospecha de dengue
+9c7a9230-ad76-d13d-2985-b41882b06c7b	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	170747006	diabético que utiliza insulina
+9e401ae0-13e3-2f6e-7b2a-0eacf4e72065	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	54398005	infección aguda de vías respiratorias superiores
+9ec2446b-bd83-781b-a89d-39e5122d46c0	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	134405005	sospecha de neoplasia maligna de mama
+9efc8685-6fea-c511-8d2e-0c7c0a624b06	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	371409005	trastorno de la región ocular
+9fcc94c9-44e0-c081-43be-f5b94174487f	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	399599006	condiloma acuminado de vagina
+a0260260-0634-39f7-c1aa-2bfac40363a0	20241130	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	372064008	neoplasia maligna de mama femenina
+a05046e3-b827-0896-371e-4d20584823eb	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	80515008	hepatomegalia
+a1efc1d2-3735-5909-16a0-35b5d5250194	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	47032000	hidrocefalia congénita
+a23ff7b6-5a62-da6c-7e3d-f1f70d4d7f2e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	409694006	anticuerpo anti-dengue inmunoglobulina G no detectado
+a269a90f-1948-0c3d-7393-c4b748eb2d70	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	715286003	periodontitis crónica moderada localizada
+a2bed1da-21da-d6fb-62a7-ed42fb523fdc	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	91375006	atresia del recto
+a398e460-145d-96c7-4895-1b0e76dedbad	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	69840006	lactancia materna normal
+a3db596b-c0d4-97ef-3e64-cc9cc1930021	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	3738000	hepatitis viral
+a42b8150-d944-de9b-671c-54d5df16095a	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	198942000	hipertensión esencial benigna que complica el embarazo, el nacimiento y el puerperio
+a49a69bc-875d-70d5-6415-74b93440dde9	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	237110007	condiloma acuminado vulvar
+a64ed648-3025-4aa2-2a36-6f60f2fcb3ff	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	21243004	nacimiento de término
+a6cd7aa0-e1a4-e494-5681-a12b1fc58f19	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	415297005	retinopatía de la prematurez
+a770d05a-71e5-803f-1c9a-9a0eb60b62a7	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	14760008	estreñimiento
+a81c2e33-b4c5-f49a-abf2-b57871d63a2d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	13645005	enfermedad pulmonar obstructiva crónica
+a8955bfa-4eed-5afe-784f-53198b7349b5	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	15635291000119101	bebé prematuro, 35 semanas
+aa440e86-4548-e2d3-b69a-5c22a412f077	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	428015005	infección de estructura genital por Chlamydia trachomatis
+aaa4202f-7ce5-4c58-5d69-10a3cce19b34	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	249807007	deformidad de la flexión plantar
+aae58c66-d7b3-f2a0-4903-9f8a427bda76	20241130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	254837009	neoplasia maligna de mama
+abb94dcd-6944-4da1-1402-a3d879aae90a	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	118600007	linfoma maligno
+ac51091d-5b27-ff13-a189-b180c6c93a8f	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	41587001	tercer trimestre del embarazo
+ac80e997-135b-ccf2-e244-de44e409a73e	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1119390005	fisura de paladar duro derecho
+ad268429-d3fc-2e85-ada7-a4b147ba4311	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	370851000221105	anemia ferropénica leve del embarazo
+add29e56-a802-f32e-f458-51cbfcba414a	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	70153002	hemorroides
+b0516341-41b0-9b76-6986-ab0cf53d4c4a	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	272379006	evento
+b0608903-669c-6798-77f0-9826135c7e60	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	200144004	partos por cesárea
+b2818a2a-0611-fd73-d715-8bbddbf8ce57	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762586009	uranoestafilosquisis con labio leporino bilateral y fisura alveolar bilateral
+b39dbc2e-fb81-dbba-1b6d-8524ef99c70b	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	267258002	feto pequeño para la edad gestacional
+b3aba948-a90c-2154-9ba4-7cf2ea56ce5a	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	44054006	diabetes mellitus tipo 2
+b4bf80a1-805c-5742-5a2d-df3a0b345b1d	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	85649008	anemia megaloblástica por deficiencia de ácido fólico
+b4de7827-f34a-a7f9-4746-5a9902644936	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	401303003	infarto agudo de miocardio con elevación del segmento ST
+b5066209-12e6-2f19-8212-436f3364e8ed	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	2858002	sepsis puerperal
+b55e5343-26a4-49e3-95a1-14031ce655ea	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	118188004	hallazgo neonatal
+b5cea884-5fce-e5e5-5e53-227ed0fb9262	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	56717001	tuberculosis
+b6b30b48-d98c-1588-0a0a-9d0106fbe707	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	384821006	estado mental, conducta y/o función psicosocial - hallazgo
+b6e8745f-78a4-0161-bba9-7241e9e15a78	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	8517006	ex-fumador
+b707af25-f026-6955-3765-abac315b393f	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	91352004	insulinopatía
+b7c00cb8-1ab4-6032-6c1b-352d24f42c18	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	70241007	trastorno por deficiencia nutricional
+b7f4f093-a915-529d-d5c1-1ce663c24157	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	204620007	paladar duro hendido con labio leporino, bilateral
+b82a0356-e47b-aabc-a85e-2897080398cb	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	310660006	peso al nacer de 999 g o menos
+b897c909-378f-0248-8cac-cb79e8b1b32e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	371481006	neoplasia de región ocular
+b9c3d40d-dbc1-6592-b162-928c655307ab	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	16331000	pirosis
+ba10439f-2146-f882-3c17-39ecc542c2a6	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	10155006	luxación congénita bilateral de la cadera
+ba7e0192-88b4-2287-dcb7-744dd58eec56	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	89765005	síndrome de dependencia de tabaco
+bae84041-c017-0000-0ac1-620b52b50357	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	237599002	diabetes mellitus tipo 2 tratada con insulina
+bb977d5b-b586-9e76-8bf6-8e32788c9aa2	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	739682007	hijo de paciente fallecido en la lactancia
+bbaf2988-f2dc-4227-71ac-4f24f98e952e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	173300003	trastorno del embarazo
+bbe9c206-0dcb-84f5-1984-bd71fea666fd	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	427578006	herpes simple de genitales femeninos
+bc8c5b67-9859-2618-533a-0083fd2f6311	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	30846001	soplo arterial
+bd06ed22-c3ab-b4b6-3b03-4cd9fba06125	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	65404009	desnutrición
+bd99049e-0288-92ae-fdcd-6dbf7ece7c11	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	368009	valvulopatía
+bed20fe2-bd4c-1b6c-e62b-7abce5db84e9	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	397932003	pie equinovaro
+c0633a9a-95ab-fbc2-73ad-fece5db4d532	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	22033007	retardo de crecimiento fetal
+c459b70b-446f-dbf1-31b2-cd3a117aacc0	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	419188005	cantidad de leucocitos por debajo del rango de referencia
+c4a1aee2-1995-f465-9013-bbdce1f9cd13	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	127034005	pancitopenia
+c4d27ed1-348b-5766-d661-fc89c409d3a6	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	310491007	peso al nacer inferior a 751 g
+c4fa1449-e91d-4da5-f473-ebd5cc3ed040	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	38911009	anemia hemolítica hereditaria
+c6271ed8-f494-9b4f-410b-44922f3f162d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	390798007	asma - hallazgo
+c74bcbbe-f377-0e74-c7c9-94da9277dce2	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	310492000	peso al nacer entre 751 g-1 kg
+c755fbf9-b50c-9d4c-c21a-af6ca27c0989	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	15628003	gonorrea
+c768d8ae-d8a1-f120-67ea-5c050b6a3056	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	225953001	evaluación de la respuesta al tratamiento
+c7b61d0b-c7eb-2be9-d38b-289b70d08e25	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	395112001	con mayor riesgo de evento cardiovascular
+c81ec62f-b16b-035b-fffc-552ed7c69e3e	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	788875002	fisura bilateral de labio y fisura bilateral de proceso alveolar de maxilar superior
+c9763b22-7965-3ed7-901e-0dfa29429eb3	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	36172001	subluxación congénita de la cadera
+c9b72a9a-77f5-3adb-3a7e-395cdef7a017	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	363354003	neoplasia maligna de cuello uterino
+c9d99ed3-02b3-b039-fa3d-afee2914b67e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	397940009	víctima de maltrato infantil
+cab4a2e4-8ebe-8ca0-beac-19dda035afa1	20251120	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	395507008	lactante prematuro
+cbd165e5-56b6-9eaa-e699-40e7e0c987ec	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	427139004	sangrado del tercer trimestre
+ce282ea7-adb0-4b2e-5dc9-ffa977fd651a	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	276654001	malformación congénita
+ce3150a0-9052-914b-7065-c8e11a606a0e	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	38822007	cistitis
+ce667c10-f8c5-361e-55ed-7e3980d57657	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	93143009	leucemia
+cfd6cad3-51ab-41aa-8df3-839751c2f596	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	80281008	labio leporino
+d0193657-3a78-8218-c78c-9cb513e6582b	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	50711007	hepatitis viral tipo C
+d0974475-e960-3d8f-b2b5-6b27347ad1a1	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	48194001	hipertensión gestacional
+d0a61346-7b49-6fc4-d519-3a8950f274b7	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	48334007	luxación congénita de la cadera
+d0abdaac-1fff-cd19-c842-a901e1a48be9	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	840544004	sospecha de COVID-19
+d108b53b-e67f-ffd5-b431-bf76188ee06b	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	238131007	sobrepeso
+d1a78cc5-248d-81dc-f1e8-69cf56f59b46	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	271887000	examen obstétrico
+d3508c13-7f83-aee7-9dc6-f9598081e332	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	366321006	embarazo - hallazgo
+d35f2f40-7d9e-7ec9-b721-2736bcbe8b10	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	409968004	medicina preventiva
+d3f87f7d-2659-6a52-a9e4-e5ed3bf8d659	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	414916001	obesidad
+d40a0a6d-9bd3-aeed-ea0e-82819bb3e3a5	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762405009	fisura de paladar blando con fisura labial izquierda
+d487ba97-7a45-d52a-3cd9-d8422c27d2f9	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	199223000	diabetes mellitus durante el embarazo, el parto y el puerperio
+d49aa4bd-d7e0-1370-4f36-398d9f0c32c4	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	118185001	hallazgo relacionado con el embarazo
+d4a7237f-1ca9-2d7e-d38d-d44a0d5fbbbd	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	840546002	exposición a SARS-CoV-2
+d4f49a89-6560-68f7-9884-b9ee0067036d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	271737000	anemia
+d6498069-fb95-bce8-55ca-6426f7819047	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	271558008	mononucleosis infecciosa
+d77cfebf-acea-529c-bfc3-cf70a9e89b84	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	414915002	obeso
+d8739c64-3055-dc04-eb31-166850b57dc9	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	15188001	pérdida de audición
+d89be4a0-6579-c3ee-a021-fdbc43f49da5	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	46764007	preeclampsia severa
+d93a40b2-c6e8-38ef-9412-1d67f2cbaff7	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	248982007	hallazgo relacionado con el embarazo, parto y puerperio
+d94c4f29-b3f3-51e9-4fa1-60e2967df54a	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762228008	trastorno cardiovascular congénito
+da4fda3e-4baa-a976-6826-e16458a5f968	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	281050002	parto de feto vivo
+db08e029-6b85-2806-0b34-54d3419f7c53	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	419266001	condiloma acuminado del cuello uterino
+db5d1b7a-3fcd-1927-3710-e6a0569720e2	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	428017002	condiloma acuminado de vulva durante el embarazo
+dc97591f-86a2-044a-ca88-968754ac7d66	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	706882009	crisis hipertensiva
+dcb8e20a-2ff6-1a7d-29cc-7e75488a7b78	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	418362005	muerte - muerte súbita
+dcd2653d-adcb-4ba0-8856-1b4821c4ccd4	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	709044004	enfermedad renal crónica
+dd58af56-f420-4ae2-ab5a-fa707a6e49e1	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	609415007	sospecha de trastorno fetal
+e0dc8a2f-370f-6a38-850b-c002294e0905	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	178280004	infección postnatal
+e1597f02-fd75-56af-9879-e9bc0bcfef11	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	161445009	antecedente de: diabetes mellitus
+e1738599-ccbc-5db0-25dd-1d23640726d7	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	47200007	embarazo de alto riesgo
+e24d944e-91d0-cc84-9bc5-0d1bac2533e5	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762407001	fisura de paladar blando y duro con fisura izquierda de labio
+e4004893-70e9-eb40-9b87-45ac86cf6491	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	34014006	enfermedad viral
+e5749fb1-1f33-cc07-ed2b-676a7f911b88	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	417312002	sospecha de hipertensión
+e641b17c-0f8f-8f8e-a73a-08d9883896b9	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	763108005	fisura submucosa de paladar
+e69629f8-b81e-951c-7564-05055b6e6bdc	20250531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	26416006	abuso de drogas
+e69d3e1c-7db7-9885-1ebf-eaefa0fb094d	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	16294009	esplenomegalia
+e6c71730-be93-dd74-b4ae-cf9d6266d0a9	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	290122005	hallazgo relacionado con la lactancia
+e73c5e73-4b4f-1e12-e586-56165ddf3b7a	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	73211009	diabetes mellitus
+ec46ebd0-9008-85bc-72d3-e2d1b6f79fe9	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	253997002	hendidura del paladar blando
+ecad73dd-c63e-44f9-850a-f177fa084ba3	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	701000221104	enfermedad de chagas aguda congénita
+ecb30223-1b5b-0d36-cb46-09eaf2f8d7d4	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	783407004	fisura de paladar incompleta
+edb84054-8965-ec09-ac34-7716c61d5afc	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	240581006	infección gonocócica pélvica en la mujer
+edc2c13b-f977-e89d-42fe-80534fd4bfdd	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	86041002	hipertensión preexistente en el contexto obstétrico
+edfd6307-fe8c-ed49-89aa-0c02db425c5e	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	315215002	trastorno, excluido
+ee38cf26-d760-054c-4843-fab34806d149	20251120	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1371413007	recién nacido prematuro tardío de edad gestacional 34 a 36 semanas y 6 días de gestación
+ef5edd37-4e5a-a235-b709-7b6fa1728750	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	430909002	trastorno de conducta
+efb5fe07-7999-087b-d28a-3f611e65c4e4	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	721166000	virus de la inmunodeficiencia humana que complica el embarazo, parto y puerperio
+efeef075-1630-e791-af56-47ad73396cc8	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	371374003	productos de la concepción retenidos
+f1a27e50-50df-730f-c860-f837100474a2	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	9707006	vólvulo intestinal
+f1cd8fa5-5c0f-f506-e432-6e26213afb5f	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	609520005	trastorno de estructura fetal
+f1dc8377-41bd-f27e-51d3-7158d4f414d3	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	171434007	promoción de la salud
+f2a3ee10-4dca-b0e3-e67a-78627aa6b290	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	46635009	diabetes mellitus tipo 1
+f2b989e2-c0e2-73d5-9d27-0c587d504164	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	128524007	trastorno del colon
+f3db0894-2c75-2f72-ab4f-76120ce599a1	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	27624003	enfermedad crónica
+f494014e-a67d-2bd2-1599-10bfb6a8a4fb	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	84027009	anemia perniciosa
+f58b6b4d-9d67-dd4e-9ab1-2754f59fc6df	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	450451007	sobrepeso en la infancia
+f607d985-5589-46ab-4938-adbe490021e2	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	82991003	dolores corporales generalizados
+f62ea581-bb25-2239-33d7-a696656b408b	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	111583006	leucocitosis
+f655650a-0af3-371c-a5ad-dba4f2a7b945	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1010215007	subluxación congénita de cadera izquierda
+f6ff1f97-771c-7cd1-a1ba-b1a9ba39efa5	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	109546001	fisura de paladar primario
+f7c56151-33bf-c0ac-66ec-549361bc5183	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	204608004	labio leporino central
+f7d35399-f3bd-5085-4edf-316eba8378dd	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	305830005	atendido por el servicio de neonatología
+f7d7441a-7fcc-d944-c5d1-3d93e04369d1	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762408006	fisura de paladar blando y duro con fisura de labio en el lado derecho
+f9589108-fc41-4862-ef80-7af4479d9e60	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	371087003	úlcera de pie debida a diabetes mellitus
+fa08445d-ce8b-d635-ce9e-ffe7fa043d99	20211130	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	81336004	anomalía congénita de la pared abdominal
+fa95fe81-4666-3a41-3b9f-e14f990f8488	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	276658003	inmadurez extrema
+fb35563e-8a5b-e68f-b19f-ad552df78d49	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	373784005	entrega de medicación
+fb960f25-73fe-c782-cd48-1708bea5dd32	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	80967001	caries dental
+fbbe2723-a811-997b-09ee-00495e95dd0c	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	386661006	fiebre
+fc0db06c-3b13-c6a1-4aaa-9bf45e897662	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	370486009	compresión intestinal
+fcd97f24-8369-aa40-4afa-637122613e5c	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	764092008	fisura de labio izquierda
+fd2e1dbb-81bb-ce01-415a-6077833e3c34	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	52781008	displasia congénita de cadera
+fd4a359e-b457-402f-ab25-9cb193dc14d0	20210531	0	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	762404008	fisura de paladar duro con fisura labial derecha
+fd56b494-1ecc-80e3-f705-c3c78bf7203b	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	289257009	madre sin parir
+fe854799-ff92-8435-38ce-8fa50b16013a	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	710168009	peso de nacimiento menor de 500 g
+ff0938b5-0b16-97ac-9842-35ca6dfd27fe	20201130	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	274708000	esputo anormal
+ffcebbce-4134-6dfd-47eb-0288369c06ee	20210531	1	11000221109	371191000221103	conjunto de referencias simples de diagnósticos vinculados al Programa SUMAR	1119393007	fisura completa de paladar duro y paladar blando izquierdo
