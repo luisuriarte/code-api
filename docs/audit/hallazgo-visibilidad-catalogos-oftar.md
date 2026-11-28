@@ -1,16 +1,18 @@
 # Hallazgo — visibilidad de los nomencladores oftalmológicos y sus relaciones
 
-**Fecha:** 2026-11-28 · **Entorno:** producción `origen_codes` · **Estado:** diagnóstico preparado, pendiente de ejecución por el responsable.
+**Fecha:** 2026-11-28 · **Entorno:** producción `origen_codes` · **Estado:** diagnóstico ejecutado por el responsable; salida `/tmp/visibilidad_catalogos_oftar.log`.
 
-**Convención:** `[H]` verificado en repositorio/documentación · `[I]` inferencia · `[P]` propuesta.
+**Convención:** `[H]` verificado en repositorio/documentación o en la salida del responsable · `[I]` inferencia · `[P]` propuesta.
 
 ---
 
 ## 1. Lo que el código ya permite
 
-`[H]` Ambos nomencladores están en la whitelist del explorador (`portal/Repositories/CatalogRepository.php:42-52`) y en la lista de opciones de `browse.php:18-19`, con familias `oftar` y `nomenclador`. No hace falta agregarlos al código.
+`[H]` Ambos nomencladores están en la whitelist del explorador (`portal/Repositories/CatalogRepository.php:42-52`) y en la lista de opciones de `browse.php:18-19`, con familias `oftar` y `nomenclador`. El `grep` en el VPS confirma que esas dos líneas están desplegadas. No hace falta agregarlos al código.
 
-`[H]` `GET /v1/catalogs` (`api/services/CatalogEngineService.php:27-58`) devuelve **todos** los catálogos con `is_active = TRUE`; no aplica whitelist de familia. Si no aparecen en ese endpoint, la causa está en los datos (`is_active`, carga del SQL o versión desplegada), no en el filtro de la API.
+`[H]` En Browse Codes las opciones de catálogo se ocultan hasta que se elige una familia (`browse.php:88-103`, `web/assets/js/browse-explorer.js:980-986`). Para ver CAO y Regional hay que seleccionar familia **`oftar`** o **`nomenclador`** en el filtro `family`. Sin familia, el desplegable muestra dominios (SNOMED, CIE-10…), no catálogos.
+
+`[H]` `GET /v1/catalogs` (`api/services/CatalogEngineService.php:27-58`) devuelve **todos** los catálogos con `is_active = TRUE`; no aplica whitelist de familia. Requiere API Key (`X-API-Key` o `Authorization: Bearer`).
 
 `[H]` `GET /v1/catalogs/{code}/items` exige release `status='published'` y versión vigente (`:137-146`). `/v1/search?domains=oftar` usa `v_oftar_search_catalog`, que exige `cat.family_code='oftar'`, `cat.product_role='catalog'`, `cat.is_active=TRUE`, `item.status='active'` y `ver.review_status='approved'` (`sql/03_oftar/oftar_domain_search.sql:45-80`). El dominio `oftar` **no** está en `DEFAULT_DOMAINS`; hay que pedirlo explícitamente.
 
@@ -18,50 +20,74 @@
 
 ---
 
-## 2. Lo que falta en datos/gobernanza
+## 2. Resultado observado en producción
 
-`[H]` `sql/03_oftar/aprobar_mapeo_nomencladores_oftar.sql` es el único script que publica identificadores secundarios y relaciones `referencia_literal` entre OFT-PR y los nomencladores. Solo actúa sobre filas de `os_oftar_nomenclador_match` con `review_status='approved'` (`:167-171`, `:237-257`). No hay acta registrada de ejecución: el acta de ejecución de relaciones transversales cubre DDL y semillas de `os_relation_type`, no la aprobación de estos pares.
+| Capa | Resultado | Conclusión |
+|---|---|---|
+| `os_catalog` | 4 filas activas: CAO 143, Regional 136, `oftar-pr` 154, `oftar-dx` 2678 ítems activos. | Los catálogos existen y están activos. |
+| Releases | `NOM-CAO-AR-v1` y `NOM-OFTAL-REG-v1`, ambas `published`, `valid_from=2026-11-23`. | Publicación de origen conforme. |
+| Versiones y `preferred_term` | 143 y 136 en `approved`. | La aprobación de texto ya se ejecutó. |
+| `v_oftar_search_catalog` | 4 catálogos con filas (143 / 136 / 154 / 2678). | La visibilidad de datos está resuelta. |
+| Permisos de la vista | `SELECT` para `origen_api`, `origen_admin` y `origen_med`. | No hay problema de GRANT. |
+| `os_oftar_nomenclador_match` | CAO: 1 `approved`, 90 `proposed`. Regional: 0. | No hay masa crítica de pares aprobados. |
+| H-02 | 91 `target_no_resuelve`, 0 `target_resuelve`. | Ningún `target_code` coincide con `permanent_code` de `oftar-pr`. |
+| `os_catalog_relation` | 0 filas entre `oftar-pr` y los nomencladores, en ambos sentidos. | No hay relaciones publicadas. |
+| `os_concept_mapping` | 0 filas para `NOMENCLADOR-CAO-AR` / `NOMENCLADOR-OFTAL-REG-AR`. | No hay mapeos terminológicos publicados. |
+| curl sin credenciales | `401 unauthorized` en `/v1/catalogs` y `/v1/search`. | Falló la autenticación, no la consulta. |
+| `git log` en el VPS | `not a git repository`. | El VPS no tiene `.git`; no afecta a `git apply`, sí a `git log`. |
 
-`[H]` El propio verificador del script indica el estado esperado: `=== 5. Enlaces publicados (0 hasta aprobar pares del mapeo) ===` y `=== 6. Mapeo gobernado (91 proposed en CAO, 0 en Regional) ===` (`verificacion_post_aprobacion_nomencladores_oftar.sql:56-65`). Con 91 propuestas y 0 aprobadas, el script no crea ninguna relación. Regional no tiene propuestas: no puede haber relaciones sin una fuente revisada nueva.
-
-`[H]` H-02 (`docs/audit/auditoria-oftar-actual.md:75-85`): `os_oftar_nomenclador_match.target_code` contiene códigos de 6 dígitos del Nomenclador Nacional, pero la unión a OFT-PR exige `permanent_code = target_code` y los códigos permanentes son `OFT-PR-NNNNNN`. Aun aprobando los 91 pares CAO, el `JOIN` no resolvería el destino y la publicación sería silenciosamente 0. La corrección propuesta es resolver el destino por `os_catalog_identifier` (`system_name='NOMENCLADOR-AR'`) y no reutilizar retirados.
+`[H]` El único par aprobado no resuelve destino por `permanent_code`; H-02 está confirmado con datos reales. Por eso `aprobar_mapeo_nomencladores_oftar.sql`, aun ejecutado ahora, insertaría **0 relaciones**: la fila aprobada se descarta en el `JOIN` de `aprobar_mapeo_nomencladores_oftar.sql:163-165`.
 
 `[H]` Las matrices clínicas `matriz-conciliacion-clinica-oftar-pr.csv` y `matriz-equivalencias-oftar-pr.csv` están íntegramente como `propuesta_no_publicada` (`verificacion-oftar-pr.md:14`). Publicar equivalencias clínicas por coincidencia textual está prohibido por el acta de ejecución.
 
-`[I]` La ausencia simultánea en API y browser es compatible con cualquiera de estos estados, que el diagnóstico distingue: (a) los catálogos no se cargaron o están inactivos; (b) están cargados pero las versiones siguen sin aprobación, por lo que no hay ítems en la vista de búsqueda; (c) el VPS ejecuta una versión del portal anterior a la inclusión de los catálogos; (d) hay pares propuestos pero ninguno aprobado, por lo que no hay relaciones.
+---
+
+## 3. Causa raíz
+
+`[H]` **Browser:** no es falta de datos ni de código; es el comportamiento del filtro. Sin familia seleccionada, las opciones de catálogo están ocultas por diseño.
+
+`[H]` **API:** las consultas se hicieron sin API Key. La respuesta `401` impide evaluar el contenido; hay que repetir con `Authorization: Bearer $API_KEY`.
+
+`[H]` **Relaciones:** hay 1 par aprobado y 90 propuestos en CAO, 0 en Regional; el par aprobado no resuelve a `OFT-PR-NNNNNN` (H-02). El script de aprobación filtra `review_status='approved'` y hace `JOIN` por `permanent_code`, así que no genera enlaces. No hay equivalencias clínicas ratificadas que publicar.
 
 ---
 
-## 3. Verificación a ejecutar en el VPS
+## 4. Verificación complementaria en el VPS
 
 ```bash
 cd /var/www/html/origen.ar/code-api
 
 sudo -u postgres psql -X -v ON_ERROR_STOP=1 -P pager=off -d origen_codes \
   -f sql/03_oftar/verificacion_visibilidad_catalogos_oftar.sql \
-  2>&1 | tee /tmp/visibilidad_catalogos_oftar.log
+  2>&1 | tee /tmp/visibilidad_catalogos_oftar_v2.log
 
-curl -s https://api.origen.ar/v1/catalogs | grep -o 'nomenclador-oftalmologico-[a-z-]*' | sort -u
-curl -s 'https://api.origen.ar/v1/search?domains=oftar&q=OFT' | head -c 2000
-curl -s 'https://api.origen.ar/v1/catalogs/nomenclador-oftalmologico-cao-ar/items?limit=1'
+read -rsp 'API_KEY: ' API_KEY; export API_KEY; echo
+BASE='https://api.origen.ar/v1'
 
-git log -1 --format='%h %s' -- portal/Views/browse.php
-grep -n "nomenclador-oftalmologico" portal/Views/browse.php
+curl -s -H "Authorization: Bearer $API_KEY" "$BASE/catalogs" \
+  | grep -o 'nomenclador-oftalmologico-[a-z-]*' | sort -u
+
+curl -s -H "Authorization: Bearer $API_KEY" \
+  "$BASE/search?domains=oftar&q=OFT" | head -c 2000
+
+curl -s -H "Authorization: Bearer $API_KEY" \
+  "$BASE/catalogs/nomenclador-oftalmologico-cao-ar/items?limit=1"
 ```
 
-Salida: `/tmp/visibilidad_catalogos_oftar.log`.
+En el browser: elegir familia **`oftar`** y luego marcar los catálogos `NOM-CAO-AR` y `NOM-OFTAL-REG` en el desplegable «Código».
 
 ---
 
-## 4. Criterio de cierre
+## 5. Criterio de cierre
 
-| Resultado del diagnóstico | Acción |
+| Condición confirmada | Acción |
 |---|---|
-| Catálogos inactivos o ausentes en `os_catalog` | `[P]` Acta separada para cargar/activar los dos catálogos; no tocar family_code ni product_role. |
-| Catálogos activos pero versiones `unknown` | `[P]` Acta para ejecutar `aprobar_mapeo_nomencladores_oftar.sql` (solo `preferred_term`); sin inventar definiciones. |
-| 91 pares `proposed` y 0 `approved` | `[P]` Revisión humana gobernada antes de aprobar; el agente no aprueba correspondencias. |
-| H-02 confirmado | `[P]` Corregir la resolución de destino por identificador secundario antes de publicar enlaces; repetir verificación. |
-| Relaciones 0 en ambos sentidos | Conforme al estado actual: no se publican relaciones sin pares aprobados. No marcar `PASS`. |
-| Código del VPS anterior | `[P]` Despliegue autorizado de la rama; el agente no hace deploy. |
+| Catálogos activos, versiones aprobadas, vista con filas | **[H] Cerrado**: no requiere carga ni aprobación de texto. |
+| Filtro `family` sin seleccionar | **[H] Cerrado**: es comportamiento de UI; seleccionar `oftar` o `nomenclador`. |
+| curl sin API Key | **[H] Cerrado**: repetir con credencial; no es fallo de datos. |
+| 1 par `approved`, 90 `proposed`, 0 en Regional | **[P]** Revisión humana gobernada antes de aprobar más pares; el agente no aprueba correspondencias. |
+| H-02 confirmado (91/91 sin resolver) | **[P]** Corregir la resolución de destino por `os_catalog_identifier` (`system_name='NOMENCLADOR-AR'`) antes de publicar enlaces; repetir verificación. |
+| Relaciones 0 en ambos sentidos | Conforme al estado actual: no se publican relaciones sin pares aprobados resolubles. No marcar `PASS`. |
+| Equivalencias clínicas de las matrices | **[P]** Permanecen `propuesta_no_publicada` hasta acta clínica firmada. |
 
-`[P]` Ninguna de estas acciones se ejecutó. La decisión de publicación gobernada sigue limitada al sostén técnico registrado en `docs/audit/acta-publicacion-relaciones-transversales.md`.
+`[P]` Ninguna acción de escritura se ejecutó. La decisión de publicación gobernada sigue limitada al sostén técnico registrado en `docs/audit/acta-publicacion-relaciones-transversales.md`.

@@ -112,4 +112,37 @@ SELECT grantee, privilege_type
  WHERE table_name = 'v_oftar_search_catalog'
  ORDER BY 1, 2;
 
+\echo '=== 11. Pares aprobados y resolución por identificador NOMENCLADOR-AR ==='
+SELECT m.source_catalog_code,
+       m.source_code,
+       m.target_catalog_code,
+       m.target_code,
+       i.permanent_code AS permanent_resuelto,
+       ident.value AS identificador_nomenclador
+  FROM public.os_oftar_nomenclador_match m
+  LEFT JOIN public.os_catalog tc ON tc.code = m.target_catalog_code
+  LEFT JOIN public.os_catalog_item i
+         ON i.catalog_id = tc.id AND i.permanent_code = m.target_code
+  LEFT JOIN public.os_catalog_identifier ident
+         ON ident.item_id = i.id
+        AND ident.system_name = 'NOMENCLADOR-AR'
+        AND ident.value = m.target_code
+ WHERE m.review_status = 'approved'
+ ORDER BY 1, 2;
+
+\echo '=== 12. Destino alternativo: item de oftar-pr por identificador ==='
+SELECT m.source_code,
+       m.target_code,
+       ident.value AS valor_identificador,
+       i.permanent_code AS permanent_resuelto
+  FROM public.os_oftar_nomenclador_match m
+  JOIN public.os_catalog tc ON tc.code = m.target_catalog_code
+  JOIN public.os_catalog_identifier ident
+         ON ident.system_name = 'NOMENCLADOR-AR'
+        AND ident.value = m.target_code
+  JOIN public.os_catalog_item i
+         ON i.id = ident.item_id AND i.catalog_id = tc.id
+ WHERE m.review_status = 'approved'
+ ORDER BY 1;
+
 ROLLBACK;
