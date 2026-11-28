@@ -229,7 +229,7 @@ final class CatalogEngineService
         $startedAt = hrtime(true);
 
         $catalogStatement = $this->db->prepare(
-            'SELECT id, code, name, short_name, family_code
+            'SELECT id, code, name, short_name, family_code, domain_type
                FROM os_catalog
               WHERE code = :catalog_code AND is_active = TRUE
               LIMIT 1'
@@ -574,6 +574,7 @@ final class CatalogEngineService
                     'name' => $values['catalog_name'] ?? $catalogRow['name'],
                     'short_name' => $values['catalog_short_name'] ?? $catalogRow['short_name'],
                     'family' => $catalogRow['family_code'] !== null ? (string) $catalogRow['family_code'] : null,
+                    'domain_type' => $catalogRow['domain_type'] !== null ? (string) $catalogRow['domain_type'] : null,
                 ],
                 'permanent_code' => $preferred['permanent_code'],
                 'official_code' => $preferred['official_code'] !== null ? (string) $preferred['official_code'] : null,
@@ -620,6 +621,7 @@ final class CatalogEngineService
                 ),
                 'related_codes' => $related['codes'],
                 'uvr' => $related['uvr'],
+                'relations' => $this->relationsForItem($itemId, $requestedLanguage, $catalog),
             ],
             'meta' => $meta + [
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
@@ -807,6 +809,192 @@ final class CatalogEngineService
                 'took_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
             ],
         ];
+    }
+
+    /**
+     * Relaciones públicas separadas por clase (modelo transversal).
+     *
+     * El contrato histórico (`mappings`, `related_codes`, `uvr`) no se toca.
+     * Esta proyección es aditiva y solo devuelve filas `approved`; cualquier
+     * esquema ausente o falta de SELECT deja la clase correspondiente vacía,
+     * nunca inventa un valor ni rompe el detalle.
+     *
+     * @return array{clinical: list<array<string, mixed>>, terminological: list<array<string, mixed>>}
+     */
+    private function relationsForItem(int $itemId, string $requestedLanguage, LanguageCatalog $catalog): array
+    {
+        $relations = ['clinical' => [], 'terminological' => []];
+
+        if ($itemId <= 0 || !$this->relationTablesAvailable()) {
+            return $relations;
+        }
+
+        $hasRelationTypeCode = $this->relationColumnExists('relation_type_code');
+        $hasValidity = $this->relationColumnExists('valid_from')
+            && $this->relationColumnExists('valid_to');
+        $typeExpression = $hasRelationTypeCode
+            ? "COALESCE(NULLIF(r.relation_type_code, ''), r.relation_type)"
+            : 'r.relation_type';
+        $validFromExpression = $hasValidity ? 'r.valid_from' : 'NULL';
+        $validToExpression = $hasValidity ? 'r.valid_to' : 'NULL';
+
+        try {
+            $clinicalStatement = $this->db->prepare(
+                'SELECT r.id AS relation_id, '
+                . $typeExpression . ' AS relation_type, '
+                . " CASE WHEN r.source_item_id = :source_item_id THEN 'outgoing' ELSE 'incoming' END AS direction,"
+                . ' src.permanent_code AS source_code, tgt.permanent_code AS target_code,'
+                . ' r.source_system_code AS source_system, tgtcat.code AS target_system,'
+                . ' srccat.family_code AS family_source, tgtcat.family_code AS family_target,'
+                . $validFromExpression . ' AS valid_from, ' . $validToExpression . ' AS valid_to,'
+                . ' r.review_status, r.context_text, r.provenance'
+                . ' FROM os_catalog_relation r'
+                . ' JOIN os_catalog_item src ON src.id = r.source_item_id'
+                . ' JOIN os_catalog_item tgt ON tgt.id = r.target_item_id'
+                . ' JOIN os_catalog srccat ON srccat.id = src.catalog_id'
+                . ' JOIN os_catalog tgtcat ON tgtcat.id = tgt.catalog_id'
+                . ' WHERE (r.source_item_id = :source_item_id OR r.target_item_id = :target_item_id)'
+                . "   AND r.review_status = 'approved'"
+                . ' ORDER BY direction ASC, relation_type ASC, target_code ASC'
+            );
+            $clinicalStatement->execute([
+                ':source_item_id' => $itemId,
+                ':target_item_id' => $itemId,
+            ]);
+            $clinicalRows = $clinicalStatement->fetchAll();
+        } catch (\PDOException) {
+            $clinicalRows = [];
+        }
+
+        foreach ($clinicalRows as $row) {
+            $relations['clinical'][] = [
+                'relation_id' => (int) $row['relation_id'],
+                'class' => 'clinical',
+                'type' => (string) $row['relation_type'],
+                'direction' => (string) $row['direction'],
+                'source' => (string) $row['source_code'],
+                'target' => (string) $row['target_code'],
+                'source_system' => $row['source_system'] !== null ? (string) $row['source_system'] : null,
+                'target_system' => (string) $row['target_system'],
+                'family_source' => $row['family_source'] !== null ? (string) $row['family_source'] : null,
+                'family_target' => $row['family_target'] !== null ? (string) $row['family_target'] : null,
+                'edition' => null,
+                'valid_from' => $row['valid_from'] !== null ? (string) $row['valid_from'] : null,
+                'valid_to' => $row['valid_to'] !== null ? (string) $row['valid_to'] : null,
+                'review_status' => 'approved',
+                'context' => $row['context_text'] !== null ? (string) $row['context_text'] : null,
+                'provenance' => $row['provenance'] !== null ? (string) $row['provenance'] : null,
+            ];
+        }
+
+        $hasMappingMetadata = $this->relationTableExists('os_mapping_metadata');
+        $mappingMetadataJoin = $hasMappingMetadata
+            ? ' LEFT JOIN os_mapping_metadata mm ON mm.mapping_id = m.id'
+            : '';
+        $mappingNatureExpression = $hasMappingMetadata ? 'mm.mapping_nature' : 'NULL';
+        $mappingMetadataFilter = $hasMappingMetadata
+            ? " AND (mm.mapping_id IS NULL OR mm.review_status = 'approved')"
+            : '';
+
+        try {
+            $terminologicalStatement = $this->db->prepare(
+                'SELECT m.id, sys.code AS system_code, sys.default_version AS edition,'
+                . ' m.external_code, m.external_display, m.mapping_type,'
+                . ' ' . $mappingNatureExpression . ' AS mapping_nature,'
+                . ' m.relationship_role, m.review_status, m.provenance, m.source_reference,'
+                . ' m.source_language_code, m.source_language_code_display, m.language_evidence'
+                . ' FROM os_concept_mapping m'
+                . ' JOIN os_terminology_system sys ON sys.id = m.terminology_system_id'
+                . $mappingMetadataJoin
+                . " WHERE m.item_id = :item_id AND m.review_status = 'approved'"
+                . $mappingMetadataFilter
+                . ' ORDER BY sys.code ASC, m.external_code ASC'
+            );
+            $terminologicalStatement->execute([':item_id' => $itemId]);
+            $mappingRows = $terminologicalStatement->fetchAll();
+        } catch (\PDOException) {
+            $mappingRows = [];
+        }
+
+        if ($mappingRows !== []) {
+            $mappingResolution = (new MappingReviewReader($this->db, $catalog))
+                ->resolve($mappingRows, $requestedLanguage);
+
+            foreach ($mappingRows as $row) {
+                $id = (int) $row['id'];
+                $resolved = $mappingResolution[$id] ?? [];
+
+                $relations['terminological'][] = [
+                    'relation_id' => $id,
+                    'class' => 'terminological',
+                    'system' => (string) $row['system_code'],
+                    'code' => (string) $row['external_code'],
+                    'display' => $resolved['external_display'] ?? null,
+                    'mapping_type' => (string) $row['mapping_type'],
+                    'mapping_nature' => $row['mapping_nature'] !== null
+                        ? (string) $row['mapping_nature']
+                        : null,
+                    'edition' => $row['edition'] !== null ? (string) $row['edition'] : null,
+                    'role' => $row['relationship_role'] !== null ? (string) $row['relationship_role'] : null,
+                    'review_status' => 'approved',
+                    'untranslated' => (bool) ($resolved['untranslated'] ?? true),
+                    'provenance' => $row['provenance'] !== null ? (string) $row['provenance'] : null,
+                ];
+            }
+        }
+
+        return $relations;
+    }
+
+    private function relationTablesAvailable(): bool
+    {
+        static $available = null;
+
+        if ($available !== null) {
+            return $available;
+        }
+
+        $available = true;
+        foreach (['os_catalog_relation', 'os_concept_mapping', 'os_terminology_system', 'os_catalog_item', 'os_catalog'] as $table) {
+            if (!$this->relationTableExists($table)) {
+                $available = false;
+                break;
+            }
+        }
+
+        return $available;
+    }
+
+    private function relationTableExists(string $table): bool
+    {
+        static $cache = [];
+
+        if (!array_key_exists($table, $cache)) {
+            $statement = $this->db->prepare('SELECT to_regclass(:name) IS NOT NULL');
+            $statement->execute([':name' => 'public.' . $table]);
+            $cache[$table] = (bool) $statement->fetchColumn();
+        }
+
+        return $cache[$table];
+    }
+
+    private function relationColumnExists(string $column): bool
+    {
+        static $cache = [];
+
+        if (!array_key_exists($column, $cache)) {
+            $statement = $this->db->prepare(
+                'SELECT EXISTS ('
+                . " SELECT 1 FROM information_schema.columns"
+                . " WHERE table_schema = 'public' AND table_name = 'os_catalog_relation'"
+                . '   AND column_name = :column'
+                . ')'
+            );
+            $statement->execute([':column' => $column]);
+            $cache[$column] = (bool) $statement->fetchColumn();
+        }
+
+        return $cache[$column];
     }
 
     /**

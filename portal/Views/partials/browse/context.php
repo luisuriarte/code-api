@@ -216,8 +216,13 @@ if (isset($legacyTabs[$tab])) {
     $tab = $legacyTabs[$tab];
 }
 
+$relationsByClass = is_array($sections['relations_by_class'] ?? null)
+    ? $sections['relations_by_class']
+    : ['clinical' => [], 'terminological' => []];
+$hasClassifiedRelations = !empty($relationsByClass['clinical'])
+    || !empty($relationsByClass['terminological']);
 $tabs = ['concept' => $tabLabels['concept']];
-if (!empty($sections['relations'])) {
+if (!empty($sections['relations']) || $hasClassifiedRelations) {
     $tabs['relations'] = $tabLabels['relations'];
 }
 // La valoración UVR publicada vive en esta pestaña: aunque `values` esté
@@ -288,6 +293,15 @@ $relationRoleLabel = static function (string $role) use ($t, $relationRoleLabels
 };
 $reviewLabel = static function (string $status) use ($t, $reviewLabels): string {
     return isset($reviewLabels[$status]) ? $t($reviewLabels[$status]) : $status;
+};
+$relationClassLabels = [
+    'clinical' => 'browse.relation_class_clinical',
+    'terminological' => 'browse.relation_class_terminological',
+];
+$relationClassLabel = static function (string $class) use ($t, $relationClassLabels): string {
+    return isset($relationClassLabels[$class])
+        ? $t($relationClassLabels[$class])
+        : $class;
 };
 
 // Etiquetas de sistemas de identificadores. El valor crudo de la base nunca

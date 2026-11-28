@@ -1,7 +1,7 @@
 # Diseño de interfaz reutilizable de relaciones
 
 **Fecha:** 2026-11-28 · **Versión:** 1.0 · **Modelo rector:** `00-modelo-transversal-relaciones-origen-salud.md`
-**Estado:** diseño propuesto. (No implementado.)
+**Estado:** diseño implementado en código fuente; ejecución, verificación y publicación pendientes en entorno autorizado.
 
 ---
 
@@ -108,4 +108,4 @@ CÓDIGOS RELACIONADOS  (de <código propio>)
 +----------------------------------------------------------------------+
 ```
 
-**[P]** El componente se implementará solo tras aprobación del contrato API y de los perfiles de dominio. Hoy no hay cambio de código.
+**[H]** El componente quedó implementado en `portal/Repositories/CatalogRepository.php`, `BrowseService.php`, `BrowseController.php`, `context.php` y `detail/relations.php`, con etiquetas en los cuatro idiomas. **[P]** La publicación sigue sujeta a verificación en entorno autorizado.

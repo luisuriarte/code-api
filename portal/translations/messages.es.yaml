@@ -349,6 +349,8 @@ browse:
     relations_count: "%count% relaciones"
     relations_count_one: "1 relación"
     load_more: "Cargar más resultados"
+    relation_class_clinical: "Clínica"
+    relation_class_terminological: "Terminológica"
     relation_alternate_benefit: "Beneficio alternativo según fuente"
     relation_billed_in_conjunction_with: "Facturable en conjunto con"
     relation_concurrent_to: "Concurrente con"

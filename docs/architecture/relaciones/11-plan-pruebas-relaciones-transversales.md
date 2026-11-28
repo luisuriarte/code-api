@@ -1,7 +1,7 @@
 # Plan de pruebas del modelo transversal de relaciones
 
 **Fecha:** 2026-11-28 · **Versión:** 1.0 · **Modelo rector:** `00-modelo-transversal-relaciones-origen-salud.md`
-**Estado:** plan preparado; **todas las pruebas están PENDIENTES**. (No se ejecutó PHP, SQL ni API en esta tarea.)
+**Estado:** plan preparado; las pruebas siguen **PENDIENTES** en entorno con datos. Se ejecutó la batería estática `php tests/run.php` sobre el repositorio; no se ejecutó SQL ni API contra PostgreSQL en esta sesión.
 
 **Convención:** `PENDIENTE` = diseñada pero no ejecutada. `LECTURA` = verificada por inspección de archivos en rondas anteriores; no equivale a ejecución.
 
@@ -41,9 +41,9 @@
 | T-28 | Cambio de edición CDT/SNOMED/CIE-10 | nueva edición | nueva fila; identidad interna intacta; historial conservado | PENDIENTE |
 | T-29 | Trazabilidad | revisión de campo | hash vigente; `untranslated` coherente | PENDIENTE |
 | T-30 | Publicación | fila `draft`/`deprecated` | ausente en público; visible en editorial autorizado | PENDIENTE |
-| T-31 | API transversal | `/v1/items/<id>` DENTAR y OFTAR | `data.relations{clinical,terminological}`; `mappings`/`related_codes` intactos | PENDIENTE |
+| T-31 | API transversal | `/v1/catalogs/{catalog_code}/items/{item}` DENTAR y OFTAR | `data.relations{clinical,terminological}`; `mappings`/`related_codes` intactos | PENDIENTE |
 | T-32 | API sin relaciones | concepto válido | 200 con arrays vacíos | PENDIENTE |
-| T-33 | Filtros y paginación | `relations`, `relation_type`, `limit`, `offset` | límites `100`/`5000`; sin endpoints por familia | PENDIENTE |
+| T-33 | Contrato sin parámetros nuevos | ambas clases en la misma respuesta | clases separadas; sin endpoints por familia; paginación histórica intacta | PENDIENTE |
 | T-34 | Cabeceras | `Accept-Language` | `Vary`, `Content-Language`, `request_id` presentes | PENDIENTE |
 | T-35 | UI reutilizable | fichas DENTAR y OFTAR | mismos componentes; grupos adaptados; insignias distintas | PENDIENTE |
 | T-36 | Accesibilidad | tabla/diagrama | `aria-pressed`, `scope="col"`, teclado | PENDIENTE |
@@ -54,7 +54,7 @@
 
 ## 2. Pruebas de regresión
 
-- `php tests/run.php` debe ejecutarse en el entorno autorizado; resultado histórico previo: `OK: 4068 comprobaciones` (**no repetido en esta tarea**).
+- `php tests/run.php` ejecutado sobre el repositorio tras la implementación: **`OK: 4110 comprobaciones`**. Debe repetirse en el entorno autorizado antes de publicar; no equivale a T-01…T-38 con datos.
 - Verificar que las 333 relaciones CDT y 270 del Nomenclador documentadas siguen navegables y sin huérfanos.
 - Verificar que `mappings` y `related_codes` no cambian de forma.
 

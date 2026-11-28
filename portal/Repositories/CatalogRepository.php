@@ -2402,7 +2402,7 @@ final class CatalogRepository
      * Si una tabla no existe o el rol no tiene SELECT, la sección queda vacía
      * y la vista omite la pestaña: nunca se rellena con datos inventados.
      *
-     * @return array{concept: array<string, mixed>, relations: list<array<string, mixed>>, values: list<array<string, mixed>>, validity: list<array<string, mixed>>, clinical: array<string, mixed>, trace: array<string, mixed>}
+     * @return array{concept: array<string, mixed>, relations: list<array<string, mixed>>, relations_by_class: array{clinical: list<array<string, mixed>>, terminological: list<array<string, mixed>>}, values: list<array<string, mixed>>, validity: list<array<string, mixed>>, clinical: array<string, mixed>, trace: array<string, mixed>}
      */
     public static function detailSections(
         string $resultKey,
@@ -2412,6 +2412,10 @@ final class CatalogRepository
         $sections = [
             'concept' => [],
             'relations' => [],
+            'relations_by_class' => [
+                'clinical' => [],
+                'terminological' => [],
+            ],
             'values' => [],
             'validity' => [],
             'clinical' => [],
@@ -2454,6 +2458,7 @@ final class CatalogRepository
         $sections['clinical'] = $rich['clinical'];
         $sections['trace'] = $rich['trace'];
         $sections['relations'] = self::itemRelations($itemId, $requestedLanguage);
+        $sections['relations_by_class'] = self::itemRelationsByClass($itemId, $requestedLanguage);
         $sections['values'] = self::itemValues($itemId);
 
         return $sections;
@@ -3119,6 +3124,154 @@ final class CatalogRepository
         }
 
         return self::dedupeRelations($relations);
+    }
+
+    /**
+     * Relaciones públicas separadas por clase: clínica vs terminológica.
+     *
+     * La lista plana `itemRelations()` se conserva por compatibilidad. Esta
+     * proyección aditiva filtra `review_status='approved'` y deduplica cada
+     * clase por separado para que una correspondencia no elimine una relación
+     * clínica con el mismo sistema/código/tipo.
+     *
+     * @return array{clinical: list<array<string, mixed>>, terminological: list<array<string, mixed>>}
+     */
+    public static function itemRelationsByClass(int $itemId, string $requestedLanguage = 'es-AR'): array
+    {
+        $classes = ['clinical' => [], 'terminological' => []];
+
+        if (!self::ALLOW_RESTRICTED_SELECTS || $itemId <= 0) {
+            return $classes;
+        }
+
+        $pdo = PortalDatabase::connection();
+        $hasMappingTables = self::tableExists($pdo, 'os_concept_mapping')
+            && self::tableExists($pdo, 'os_terminology_system')
+            && self::tableExists($pdo, 'os_catalog_identifier');
+        $hasCatalogRelation = self::tableExists($pdo, 'os_catalog_relation');
+        if ((!$hasMappingTables && !$hasCatalogRelation)
+            || !self::tableExists($pdo, 'os_catalog_item')
+            || !self::tableExists($pdo, 'os_catalog')) {
+            return $classes;
+        }
+
+        if ($hasMappingTables) {
+            try {
+                $statement = $pdo->prepare(
+                    'SELECT sys.code AS system_code, sys.uri AS system_uri,'
+                    . ' sys.default_version AS system_version, m.external_code, m.external_display,'
+                    . ' m.mapping_type, m.relationship_role, m.review_status, m.provenance,'
+                    . ' linked.matches AS linked_matches, linked.item_id AS linked_item,'
+                    . ' linked.catalog_code AS linked_catalog, linked.domain_type AS linked_domain_type'
+                    . ' FROM os_concept_mapping m'
+                    . ' JOIN os_terminology_system sys ON sys.id = m.terminology_system_id'
+                    . ' LEFT JOIN LATERAL ('
+                    . '   SELECT count(*) AS matches, min(li.item_id) AS item_id,'
+                    . '          min(lcat.code) AS catalog_code, min(lcat.domain_type) AS domain_type'
+                    . '   FROM os_catalog_identifier li'
+                    . '   JOIN os_catalog_item litem ON litem.id = li.item_id'
+                    . '   JOIN os_catalog lcat ON lcat.id = litem.catalog_id'
+                    . '   WHERE li.value = m.external_code AND li.system_name = sys.code'
+                    . ' AND lcat.is_active = TRUE'
+                    . ' ) linked ON TRUE'
+                    . " WHERE m.item_id = ? AND m.review_status = 'approved'"
+                    . ' ORDER BY sys.code ASC, m.external_code ASC'
+                );
+                $statement->execute([$itemId]);
+                $rows = $statement->fetchAll();
+            } catch (PDOException) {
+                $rows = [];
+            }
+
+            foreach ($rows as $row) {
+                $targetKey = '';
+                if ((int) ($row['linked_matches'] ?? 0) === 1) {
+                    $targetKey = self::osCatalogResultKey(
+                        (string) ($row['linked_domain_type'] ?? ''),
+                        (string) ($row['linked_catalog'] ?? ''),
+                        (int) ($row['linked_item'] ?? 0)
+                    );
+                }
+
+                $classes['terminological'][] = [
+                    'class' => 'terminological',
+                    'system' => (string) $row['system_code'],
+                    'uri' => $row['system_uri'] !== null ? (string) $row['system_uri'] : null,
+                    'version' => $row['system_version'] !== null ? (string) $row['system_version'] : null,
+                    'code' => (string) $row['external_code'],
+                    'display' => $row['external_display'] !== null ? (string) $row['external_display'] : null,
+                    'type' => (string) $row['mapping_type'],
+                    'role' => (string) $row['relationship_role'],
+                    'review_status' => 'approved',
+                    'provenance' => $row['provenance'] !== null ? (string) $row['provenance'] : null,
+                    'result_key' => $targetKey,
+                ];
+            }
+        }
+
+        if ($hasCatalogRelation) {
+            try {
+                $statement = $pdo->prepare(
+                    'SELECT r.relation_type, r.source_system_code, r.source_field, r.source_value,'
+                    . ' r.context_text, r.review_status, r.provenance,'
+                    . " CASE WHEN r.source_item_id = ? THEN 'outgoing' ELSE 'incoming' END AS direction,"
+                    . ' other.id AS other_item_id, other.permanent_code AS other_code,'
+                    . ' cat.code AS other_catalog, cat.domain_type AS other_domain_type,'
+                    . ' (SELECT iv.preferred_term FROM os_catalog_item_version iv'
+                    . '   WHERE iv.item_id = other.id AND iv.language_code IN (?, \'es-AR\')'
+                    . '   ORDER BY CASE WHEN iv.language_code = ? THEN 0 ELSE 1 END, iv.id DESC'
+                    . '   LIMIT 1) AS other_display'
+                    . ' FROM os_catalog_relation r'
+                    . ' JOIN os_catalog_item other'
+                    . '   ON other.id = CASE WHEN r.source_item_id = ?'
+                    . '                      THEN r.target_item_id ELSE r.source_item_id END'
+                    . ' JOIN os_catalog cat ON cat.id = other.catalog_id'
+                    . ' WHERE (r.source_item_id = ? OR r.target_item_id = ?)'
+                    . "   AND r.review_status = 'approved'"
+                    . ' ORDER BY direction ASC, r.relation_type ASC, other.permanent_code ASC'
+                );
+                $statement->execute([
+                    $itemId,
+                    $requestedLanguage,
+                    $requestedLanguage,
+                    $itemId,
+                    $itemId,
+                    $itemId,
+                ]);
+                $relationRows = $statement->fetchAll();
+            } catch (PDOException) {
+                $relationRows = [];
+            }
+
+            foreach ($relationRows as $row) {
+                $classes['clinical'][] = [
+                    'class' => 'clinical',
+                    'system' => (string) $row['source_system_code'],
+                    'uri' => null,
+                    'version' => null,
+                    'code' => (string) $row['other_code'],
+                    'display' => $row['other_display'] !== null ? (string) $row['other_display'] : null,
+                    'type' => (string) $row['relation_type'],
+                    'role' => (string) $row['direction'],
+                    'review_status' => 'approved',
+                    'provenance' => (string) $row['provenance'],
+                    'result_key' => self::osCatalogResultKey(
+                        (string) ($row['other_domain_type'] ?? ''),
+                        (string) ($row['other_catalog'] ?? ''),
+                        (int) ($row['other_item_id'] ?? 0)
+                    ),
+                    'source_field' => (string) $row['source_field'],
+                    'source_value' => (string) $row['source_value'],
+                    'context_text' => $row['context_text'] !== null ? (string) $row['context_text'] : null,
+                    'direction' => (string) $row['direction'],
+                ];
+            }
+        }
+
+        $classes['clinical'] = self::dedupeRelations($classes['clinical']);
+        $classes['terminological'] = self::dedupeRelations($classes['terminological']);
+
+        return $classes;
     }
 
     /**

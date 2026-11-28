@@ -210,8 +210,8 @@ $sqlFiles = array_values(array_filter(
         && !str_contains(basename($f), 'correccion_')
 ));
 $check(
-    count($sqlFiles) === 14,
-    'Deben existir catorce artefactos SQL propuestos (Fases 3, 8, 10, 11, gestión UVR, gestión de catálogos, categorías clínicas, U7-B y publicación legacy).'
+    count($sqlFiles) === 16,
+    'Deben existir dieciséis artefactos SQL propuestos (Fases 3, 5, 8, 10, 11, gestión UVR, gestión de catálogos, categorías clínicas, U7-B y publicación legacy).'
 );
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
@@ -2786,7 +2786,7 @@ $check(
 
 // OFTAR: identidad externa, importación CIE-10 de diagnósticos y verificación.
 $oftarIdentityPath = $root . '/sql/03_oftar/oftar_external_identity.sql';
-$oftarImportPath = $root . '/tools/sources/oftar/importar_cie10_dx.sql';
+$oftarImportPath = $root . '/tools/sources/oftalmologico/oftar/importar_cie10_dx.sql';
 $oftarCie10VerifyPath = $root . '/sql/03_oftar/verificacion_oftar_cie10.sql';
 $check(
     is_file($oftarIdentityPath) && is_file($oftarImportPath) && is_file($oftarCie10VerifyPath),
@@ -3421,7 +3421,7 @@ $check(
         && !preg_match('/^\s*ALTER\s+DEFAULT\s+PRIVILEGES/mi', $renameCode),
     'El renombrado debe ser acotado a 6 dígitos, auditable y no tocar identificadores externos.'
 );
-$dxImportSql = (string) file_get_contents($root . '/tools/sources/oftar/importar_cie10_dx.sql');
+$dxImportSql = (string) file_get_contents($root . '/tools/sources/oftalmologico/oftar/importar_cie10_dx.sql');
 $dxVerifySql = (string) file_get_contents($root . '/sql/03_oftar/verificacion_oftar_cie10.sql');
 $check(
     str_contains($dxImportSql, "'OFT-DX-' || lpad(")
@@ -4700,6 +4700,68 @@ foreach (['es-AR', 'es', 'en', 'pt-BR'] as $clinicalLocale) {
         $clinicalLocale . ': deben existir las etiquetas de las doce categorías y del browser/admin.'
     );
 }
+
+// Modelo transversal de relaciones: contrato aditivo y ficha reutilizable.
+$engineSourceRelations = $auditRead('api/services/CatalogEngineService.php');
+$check(
+    str_contains($engineSourceRelations, "'relations' => \$this->relationsForItem(")
+        && str_contains($engineSourceRelations, 'private function relationsForItem(')
+        && str_contains($engineSourceRelations, "'clinical' => [], 'terminological' => []")
+        && str_contains($engineSourceRelations, "'related_codes' => \$related['codes']")
+        && str_contains($engineSourceRelations, "'uvr' => \$related['uvr']"),
+    'La API debe añadir data.relations{clinical,terminological} sin alterar mappings, related_codes ni uvr.'
+);
+$check(
+    str_contains($engineSourceRelations, "r.review_status = 'approved'")
+        && str_contains($engineSourceRelations, "m.review_status = 'approved'")
+        && !str_contains($auditRead('api/index.php'), "'/v1/relations'")
+        && !str_contains($auditRead('api/index.php'), "'/v1/dentar/relations'")
+        && !str_contains($auditRead('api/index.php'), "'/v1/oftar/relations'"),
+    'Las relaciones públicas deben ser solo aprobadas y no crear endpoints por familia.'
+);
+$repositorySourceRelations = $auditRead('portal/Repositories/CatalogRepository.php');
+$check(
+    str_contains($repositorySourceRelations, "'relations_by_class' =>")
+        && str_contains($repositorySourceRelations, 'public static function itemRelationsByClass(')
+        && str_contains($repositorySourceRelations, '$classes[\'clinical\'] = self::dedupeRelations($classes[\'clinical\'])')
+        && str_contains($repositorySourceRelations, '$classes[\'terminological\'] = self::dedupeRelations($classes[\'terminological\'])'),
+    'El repositorio debe conservar la lista plana y añadir relaciones separadas y deduplicadas por clase.'
+);
+$check(
+    str_contains($auditRead('portal/Views/partials/browse/detail/relations.php'), "sections['relations_by_class']")
+        && str_contains($auditRead('portal/Views/partials/browse/detail/relations.php'), 'data-relation-class')
+        && str_contains($auditRead('portal/Views/partials/browse/detail.php'), "require __DIR__ . '/detail/' . \$tabKey . '.php'"),
+    'La ficha reutilizable debe mostrar clases distintas sin crear una vista por familia.'
+);
+foreach (['es-AR', 'es', 'en', 'pt-BR'] as $relationLocale) {
+    $relationMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $relationLocale . '.yaml');
+    $check(
+        isset($relationMessages['browse']['relation_class_clinical'])
+            && isset($relationMessages['browse']['relation_class_terminological'])
+            && trim((string) $relationMessages['browse']['relation_class_clinical']) !== ''
+            && trim((string) $relationMessages['browse']['relation_class_terminological']) !== '',
+        $relationLocale . ': deben existir las etiquetas de clase clínica y terminológica.'
+    );
+}
+$fase5Sql = $auditRead('sql/08_arquitectura/fase5_relaciones_transversales.sql');
+$check(
+    str_contains($fase5Sql, 'relation_type_code VARCHAR(60)')
+        && str_contains($fase5Sql, 'fk_ocr_relation_type_code')
+        && !str_contains($fase5Sql, 'DELETE FROM')
+        && !str_contains($fase5Sql, 'DROP TABLE')
+        && !str_contains($fase5Sql, 'TRUNCATE '),
+    'El DDL aditivo debe crear relation_type_code con FK y no contener sentencias destructivas.'
+);
+$fase5SeedSql = $auditRead('sql/08_arquitectura/fase5_semillas_tipos_relacion.sql');
+$check(
+    substr_count($fase5SeedSql, "'clinical', 'OFTAR-v1.0'") === 31
+        && str_contains($fase5SeedSql, "'REL-DX-NARROW'")
+        && str_contains($fase5SeedSql, "'REL-DX-BROAD'")
+        && !str_contains($fase5SeedSql, 'DELETE FROM')
+        && !str_contains($fase5SeedSql, 'DROP TABLE')
+        && !str_contains($fase5SeedSql, 'TRUNCATE '),
+    'Las semillas del diccionario deben contener 31 tipos, una inversa y ninguna sentencia destructiva.'
+);
 
 // Resultado.
 if ($failures !== []) {

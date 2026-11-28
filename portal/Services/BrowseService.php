@@ -348,6 +348,10 @@ final class BrowseService
         return [
             'concept' => [],
             'relations' => [],
+            'relations_by_class' => [
+                'clinical' => [],
+                'terminological' => [],
+            ],
             'values' => [],
             'validity' => [],
             'clinical' => [],

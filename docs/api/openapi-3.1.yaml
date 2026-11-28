@@ -225,7 +225,7 @@ paths:
       tags: [Catálogos]
       operationId: getCatalogItem
       summary: Detalle de un ítem por código permanente, oficial o término.
-      description: "Un catálogo o ítem inexistente devuelve `404` con `ErrorEnvelope` (`error.code=not_found`)."
+      description: "Un catálogo o ítem inexistente devuelve `404` con `ErrorEnvelope` (`error.code=not_found`). `data.relations` agrega `clinical` y `terminological` sin alterar `mappings`, `related_codes` ni `uvr`."
       parameters:
         - $ref: '#/components/parameters/CatalogCode'
         - name: item

@@ -629,6 +629,8 @@ browse:
     relation_role: "Papel"
     relation_review: "Revisão"
     relation_provenance: "Procedência"
+    relation_class_clinical: "Clínica"
+    relation_class_terminological: "Terminológica"
     relation_equivalent: "Equivalente segundo a fonte"
     relation_narrower: "Mais específico segundo a fonte"
     relation_broader: "Mais amplo segundo a fonte"

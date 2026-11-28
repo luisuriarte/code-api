@@ -243,6 +243,10 @@ final class BrowseController
             'sections' => [
                 'concept' => [],
                 'relations' => [],
+                'relations_by_class' => [
+                    'clinical' => [],
+                    'terminological' => [],
+                ],
                 'values' => [],
                 'validity' => [],
                 'clinical' => [],

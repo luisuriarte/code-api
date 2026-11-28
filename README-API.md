@@ -261,7 +261,7 @@ curl -s -X GET "https://api.origen.ar/v1/catalogs/dentar-dx/items?q=caries" \
 
 ### 3.3. Ficha Técnica de la Prestación con Aranceles y Mapeos
 #### `GET /v1/catalogs/{catalog_code}/items/{item}`
-Devuelve la identidad permanente, categoría clínica (`clinical_category`, `clinical_category_code`), aranceles vigentes (UB, Galenos, Módulos o Pesos), mapeos cruzados a **SNOMED-CT**, **CIE-10** y **LOINC**, además de `related_codes` (códigos relacionados en `os_prestacion_codigo`, NBU, CIE-10, programas SUMAR/REMEDIAR/ENO, GTIN) y `uvr` (valoración UVR publicada en `v_os_uvr_prestacion_public`).
+Devuelve la identidad permanente, categoría clínica (`clinical_category`, `clinical_category_code`), aranceles vigentes (UB, Galenos, Módulos o Pesos), mapeos cruzados a **SNOMED-CT**, **CIE-10** y **LOINC**, además de `related_codes` (códigos relacionados en `os_prestacion_codigo`, NBU, CIE-10, programas SUMAR/REMEDIAR/ENO, GTIN) y `uvr` (valoración UVR publicada en `v_os_uvr_prestacion_public`). El campo aditivo `relations` separa `clinical` y `terminological`; solo incluye filas `approved` y no sustituye a `mappings`, `related_codes` ni `uvr`.
 Si el catálogo o el ítem no existe, la respuesta es `404` con `ErrorEnvelope`
 (`error.code=not_found`); no se devuelve `200` con `data: []`.
 

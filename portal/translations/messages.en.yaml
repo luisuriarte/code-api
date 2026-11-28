@@ -629,6 +629,8 @@ browse:
     relation_role: "Role"
     relation_review: "Review"
     relation_provenance: "Provenance"
+    relation_class_clinical: "Clinical"
+    relation_class_terminological: "Terminological"
     relation_equivalent: "Equivalent per source"
     relation_narrower: "Narrower per source"
     relation_broader: "Broader per source"

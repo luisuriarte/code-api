@@ -58,6 +58,7 @@ ejecutó desde otra carpeta, por lo que no hay un script `fase9_*` aquí.
 | — | 9 | Nomenclador Odontológico Nacional, ya ejecutado desde `sql/03_dentar/nomenclador_odontologico_nacional.sql` |
 | `fase10_catalogos_os.sql` | 10 | Familia `OS-PRODUCTS` y etiquetas OS-* reservadas (+ `verificacion_fase10.sql`) |
 | `fase11_integracion_farmacia.sql` | 11 | Integración ANMAT/UDI/GTIN: estructura vacía (+ `verificacion_fase11.sql`) |
+| `fase5_relaciones_transversales.sql` | T | DDL aditivo `relation_type_code` + FK al diccionario común (+ `fase5_semillas_tipos_relacion.sql`, `verificacion_fase5_relaciones_transversales.sql`) |
 | `uvr_gobernanza_datos.sql` | U0–U6 | Gestión UVR aditiva: actores, evidencia, guardián y auditoría (+ `verificacion_uvr_gobernanza.sql`) |
 | `catalogos_gestion_gobernada.sql` | C0–C6 | Aplicador controlado de cambios de catálogo; sin grants de escritura directa (+ `verificacion_catalogos_gestion.sql`). **Aplicado y verificado el 2026-11-20.** |
 | — | U7 | Documental: `gobernanza-uvr-acta-u7.md`. Sin artefacto SQL; la migración U7-B no está autorizada. |
@@ -637,3 +638,30 @@ numeración histórica de los archivos; ver la tabla de alineación más arriba:
 Si una fase posterior depende de una anterior, revertir primero la posterior.
 Después de cualquier rollback, repetir las consultas de verificación de la fase
 y confirmar que `os_catalog_relation` conserva sus 603 filas y 15 tipos.
+
+## Operación T (transversal): diccionario común de relaciones
+
+Artefactos: `fase5_relaciones_transversales.sql` (DDL aditivo),
+`fase5_semillas_tipos_relacion.sql` (31 tipos `REL-*` y una inversa) y
+`verificacion_fase5_relaciones_transversales.sql` (`BEGIN READ ONLY` /
+`ROLLBACK`). Requiere Fase 1, Fase 4 y el núcleo DENTAR ya aplicados.
+
+El DDL agrega `relation_type_code VARCHAR(60)` con FK a `os_relation_type` y
+deja las 603 relaciones heredadas con ese campo en `NULL`; no amplía el `CHECK`
+de los 15 tipos CDT. La semilla es gobernada e idempotente (`ON CONFLICT DO
+NOTHING`) y no crea relaciones entre conceptos. No hay sentencias destructivas.
+
+```bash
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_fase5_relaciones_transversales.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/fase5_relaciones_transversales.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/fase5_semillas_tipos_relacion.sql
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d origen_codes \
+  -f sql/08_arquitectura/verificacion_fase5_relaciones_transversales.sql
+```
+
+**Estado: preparado, no ejecutado**. La ejecución depende de
+`docs/audit/acta-ejecucion-relaciones-transversales.md`, de la confirmación de
+la base destino y de la firma clínica de cada par que se cargue.

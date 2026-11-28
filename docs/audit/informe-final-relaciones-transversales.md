@@ -34,6 +34,8 @@
   - `docs/audit/plan-pruebas-oftar.md`
   - `docs/audit/plan-implementacion-controlada-oftar.md`
 - **Detalle:** 21 artefactos OFTAR conservan la frase de cierre exacta; los 13 transversales no la llevan porque no son documentos OFTAR. Sin commit, push ni deploy.
+- **Implementación posterior a la aprobación (2026-11-28):** `api/services/CatalogEngineService.php`, `portal/Repositories/CatalogRepository.php`, `portal/Services/BrowseService.php`, `portal/Controllers/BrowseController.php`, `portal/Views/partials/browse/context.php`, `portal/Views/partials/browse/detail/relations.php`, cuatro archivos de traducciones, `tests/run.php`, `docs/api/openapi-3.1.yaml`, `README-API.md`, documentos transversales 09–12 y `sql/08_arquitectura/README.md`.
+- **Nuevos artefactos de ejecución controlada:** `docs/audit/acta-ejecucion-relaciones-transversales.md`, `sql/08_arquitectura/fase5_relaciones_transversales.sql`, `sql/08_arquitectura/fase5_semillas_tipos_relacion.sql` y `sql/08_arquitectura/verificacion_fase5_relaciones_transversales.sql`. Ninguno fue ejecutado contra PostgreSQL en esta sesión.
 
 ## 3. Decisiones
 
@@ -96,9 +98,9 @@
 
 ## 10. Pruebas ejecutadas
 
-- **0 pruebas ejecutadas en esta ronda**; 0 consultas SQL, 0 requests API, 0 escrituras.
-- **Antecedente histórico:** `php tests/run.php` registró `OK: 4068 comprobaciones` en rondas anteriores; **no se repitió** y no se usa como evidencia de este cambio.
-- Plan de pruebas transversal preparado con 38 casos (T-01…T-38), todos `PENDIENTE`, incluyendo DENTAR-PR↔DX, PR↔CDT, DX↔CIE-10, DENTAR↔SNOMED, OFTAR-PR↔DX, OFTAR↔CAO/NN, OFTAR↔CIE-10, OFTAR↔SNOMED, relaciones entre familias, equivalencias exactas/parciales, no equivalencia clínica, direccionalidad, integridad, versionado, trazabilidad, publicación y compatibilidad API.
+- **Ronda documental inicial:** 0 pruebas, 0 consultas SQL, 0 requests API y 0 escrituras.
+- **Ronda de implementación:** `php -l` sin errores en siete archivos PHP modificados; `php tests/run.php` → **`OK: 4110 comprobaciones`**. La línea de base había fallado 4 comprobaciones por la ruta renombrada de `importar_cie10_dx.sql`; se corrigió a `tools/sources/oftalmologico/oftar/importar_cie10_dx.sql`.
+- **No ejecutado:** 0 consultas SQL contra PostgreSQL, 0 requests API, 0 migraciones, 0 seeds, 0 importaciones y 0 escrituras. T-01…T-38 siguen `PENDIENTE` en entorno con datos.
 
 ## 11. Riesgos
 
@@ -111,13 +113,14 @@
 
 ## 12. Estado de preparación y decisión clínica pendiente
 
-- **Preparación documental:** lista. OFTAR v1.0 permanece como **«Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada.»**
-- **Decisión clínica pendiente:** ratificación de los 31 tipos, de la dirección `broader`/`narrower`, de la simetría y de cada par/corrección/candidato; CDT y nomencladores solo se aprueban con edición, fuente, licencia y evidencia.
-- **Otros pendientes:** universo DX (2.661 CIE-10-ES 2026 frente a 2.678 condicional), P-01…P-19, acta `READ ONLY`, backup y autorización explícita.
-- **Cierre operativo:** etapas 1–9 documentadas; etapa 10 bloqueada; etapas 11–14 no iniciadas. **Se detuvo antes de generar o ejecutar seeds.**
+- **Preparación documental y de código:** lista. OFTAR v1.0 permanece como **«Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada.»**
+- **Implementación entregada:** contrato `data.relations{clinical,terminological}` en la API; ficha reutilizable con insignias Clínica/Terminológica; DDL aditivo y semillas del diccionario versionados; `php tests/run.php` en verde.
+- **Decisión clínica:** ratificación declarada por Luis A. Uriarte; falta adjuntar la referencia de acta al expediente. Siguen sin carga los pares/correcciones/candidatos porque no hay filas ratificadas exportables sin inventar datos.
+- **Otros pendientes:** universo DX (2.661 CIE-10-ES 2026 frente a 2.678 condicional), P-01…P-19 y salida `READ ONLY` en el entorno autorizado. La base destino quedó confirmada como `origen_codes`.
+- **Cierre operativo:** etapas 1–9 completadas en documento/código; etapa 10 con puertas declaradas pero sin ejecución en esta sesión; etapas 11–14 preparadas, **no ejecutadas**. Sin commit, push ni deploy.
 
 ---
 
 ## Criterio de aceptación transversal
 
-**[P] Cumplido en el plano documental:** DENTAR y OFTAR pueden administrarse con un mecanismo común (`os_catalog_relation` + `os_concept_mapping` + `os_relation_type`), sin motores paralelos y sin perder particularidades mediante perfiles de dominio. La extensión a NN-PMO, NBU, NHPGD, ANDIS, KINESIOLOGIA, SALUD_MENTAL y futuras familias no requiere un modelo nuevo. La verificación práctica queda supeditada a autorización, acta y pruebas pendientes.
+**[P] Cumplido en el plano documental y de código fuente:** DENTAR y OFTAR comparten el mecanismo (`os_catalog_relation` + `os_concept_mapping` + `os_relation_type`), sin motores paralelos y sin perder particularidades mediante perfiles de dominio; la API y la ficha ya separan ambas clases. La extensión a NN-PMO, NBU, NHPGD, ANDIS, KINESIOLOGIA, SALUD_MENTAL y futuras familias no requiere un modelo nuevo. La aceptación práctica queda supeditada a la base destino, al acta `READ ONLY` y a T-01…T-38 en entorno autorizado.

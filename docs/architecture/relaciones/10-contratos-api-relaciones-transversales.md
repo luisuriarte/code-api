@@ -1,7 +1,7 @@
 # Contratos API transversales de relaciones
 
 **Fecha:** 2026-11-28 · **Versión:** 1.0 · **Modelo rector:** `00-modelo-transversal-relaciones-origen-salud.md`
-**Estado:** contrato propuesto, **no implementado**. (No autoriza cambios en API ni despliegue.)
+**Estado:** contrato implementado en código fuente; ejecución, verificación y publicación pendientes en entorno autorizado.
 
 ---
 
@@ -68,7 +68,7 @@
     }
   },
   "meta": { "effective_language": "es-AR", "pagination": {} },
-  "request_id": "<UUID>"
+  "request_id": "<REQUEST_ID_NO_UUID>"
 }
 ```
 
@@ -80,15 +80,9 @@
 
 | Parámetro | Valores | Aplicación |
 |---|---|---|
-| `relations` | `clinical`, `terminological`, `all` (default `all`) | Selecciona subclase; nunca mezcla clases. |
-| `relation_type` | código del diccionario o tipo heredado | Filtro por tipo. |
-| `relation_class` | `clinical`, `terminological` | Alias explícito de `relations`. |
-| `relation_direction` | `outgoing`, `incoming` | Solo relaciones internas. |
-| `system` | código de `os_terminology_system` | Solo terminológicas. |
-| `limit` / `offset` | enteros | Mismos límites que el motor (`MAX_PAGE_SIZE=100`, `MAX_OFFSET=5000`). |
 | `language` / `Accept-Language` | idiomas soportados | Misma resolución que el detalle actual. |
 
-**[P]** Los filtros no crean relaciones: solo acotan lo persistido y visible.
+**[H]** La implementación entregada no añade parámetros nuevos: `data.relations` devuelve ambas clases completas, separadas y ya filtradas por `review_status='approved'`. **[P]** Filtros por clase, tipo, dirección o sistema quedan como ampliación futura; no crean relaciones ni justifican endpoints nuevos. El detalle mantiene `limit` 1–100 y `offset >= 0` en el listado; no se afirma un `MAX_OFFSET` en `CatalogEngineService::listItems()`.
 
 ---
 
@@ -115,6 +109,6 @@
 
 ---
 
-## 6. Implementación futura
+## 6. Implementación entregada
 
-**[P]** El cambio se hará en `CatalogEngineService` y en la proyección de `CatalogRepository::itemRelations()` sin alterar `mappings`/`related_codes`. Requiere PR revisado, tests en verde y gate de publicación. En esta tarea solo se documenta.
+**[H]** El cambio quedó en `CatalogEngineService::relationsForItem()` y en `CatalogRepository::itemRelationsByClass()`, sin alterar `mappings`/`related_codes` ni crear rutas por familia. La proyección pública solo incluye filas `approved`; `display` y `rationale` pasan por `MappingReviewReader`, y `mapping_nature` es `null` cuando Fase 3 no aporta metadatos vigentes. **[P]** Requiere PR revisado, tests en verde y gate de publicación antes de desplegar.
