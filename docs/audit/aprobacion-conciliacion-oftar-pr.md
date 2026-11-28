@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — análisis y propuesta de aprobación.
-**Estado:** **dictamen documental; no aprobación clínica ni autorización de publicación**. Las 433 filas de la matriz siguen siendo `propuesta_no_publicada`.
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.) **Dictamen documental; no aprobación clínica ni autorización de publicación.** Las 433 filas de la matriz siguen siendo `propuesta_no_publicada`.
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §9).
 **Convención:** `[H]` hecho verificado · `[I]` dictamen clínico documentado · `[P]` decisión propuesta sujeta a aprobación.
 

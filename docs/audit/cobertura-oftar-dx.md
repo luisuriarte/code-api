@@ -26,7 +26,7 @@ Evidencia: `oftar_family.sql:61-64`, `oftar_core.sql:148-150,251`, `sync_oftar_d
 
 **[H]** El CSV español contiene 74.260 diagnósticos en total; el filo H00-H59 tiene 2.661 filas, todas `Nodo_Final=1`.
 
-**[H]** El archivo inglés principal contiene 23.292 códigos; al analizar el archivo con patrón laxo de separador, hay 2.677 códigos H y 2.660 coinciden con el CSV ES.
+**[H]** El archivo inglés principal tiene 74.879 líneas; al analizar el archivo con patrón laxo de separador, hay 2.677 códigos H y 2.660 coinciden con el CSV ES. **[I]** La cifra 23.292 citada en documentos anteriores no se reproduce y queda retirada (`universo-diagnosticos-oftar-dx.md:25`; rector §16).
 
 **[I]** La cifra 2.678 coincide con la documentada por `renombrar_codigos_oftar.sql:9` (2678 diagnósticos). Estado en producción: desconocido.
 

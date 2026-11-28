@@ -66,7 +66,7 @@ Grupos verificados: `PRACTICAS QUIRURGICAS` 80, `PRACTICAS Y ESTUDIOS COMPLEMENT
 | Artefacto | Uso en OFTAR | Estado verificado |
 |---|---|---|
 | `tools/sources/cie10/Diagnosticos_Tabla_Referencia_CIE10ES_2026.csv` | Base de diagnósticos H00-H59. | 74.260 filas totales; **2.661 H00-H59**. |
-| `tools/sources/cie10/2027-code-descriptions-in-tabular-order.zip` | Textos en inglés; cubre huecos del CSV español. | 23.292 códigos en el archivo principal de descripciones; 2.677 H; **17 H exclusivos** frente al CSV ES. |
+| `tools/sources/cie10/2027-code-descriptions-in-tabular-order.zip` | Textos en inglés; cubre huecos del CSV español. | 74.879 líneas en el archivo principal de descripciones; 2.677 H; **17 H exclusivos** frente al CSV ES. La cifra 23.292 es no reproducible y está retirada. |
 | `tools/sources/cie10/Procedimientos_Tabla_Referencia_CIE10ES_2026.csv` | CIE-10-PCS / procedimientos. | 78.948 filas; **1.212 `08*`**. No se importan como códigos OFTAR nuevos. |
 | `tools/sources/cie10/zip-file-3-2027-icd-10-pcs-codes-file.zip` | ICD-10-PCS 2027 en inglés. | Fuente cruda complementaria. |
 | `tools/sources/cie10_argentina/sql/01_esquema.sql`, `02_carga.sql`, `03_postcarga.sql`, `99_verificacion.sql` | Carga OpenEMR CIE-10-ES. | No es el camino usado por el importador OFTAR; referencia de la edición. |

@@ -1,9 +1,9 @@
 # Modelo funcional canónico de OFTAR
 
 **Fecha:** 2026-11-28
-**Etapa:** tercera revisión — diseño documentado.
-**Estado:** propuesta para aprobación. **No implementado; sin DDL ni seeds.**
-**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §9).
+**Versión:** 1.0
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución; sin DDL ni seeds.)
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0, §7 y §9).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta.
 
 ---
@@ -34,7 +34,7 @@
 | Modalidad / técnica | `ATTR-MODALITY` / técnica en extensión | Existente | Definido; dominio a cargar por gobernanza. |
 | Identificadores externos | `os_catalog_identifier`, `os_concept_mapping`, `oftar_external_identity` | Existente | Sistema, edición, versión y procedencia según política final. |
 | Procedencia | `provenance`, `source_reference` | Existente | Obligatoria, específica por fuente. |
-| Estado editorial | `review_status`, `os_field_review`, `os_audit_log` | Existente | Depende del objeto: versión `unknown`/`approved` sin CHECK; mapeo `draft\|reviewed\|approved\|deprecated`; campo/traducción `unknown`/`approved` con hash. `in_review` y `rejected` son etiquetas de gobernanza, no valores persistidos. |
+| Estado editorial | `review_status`, `os_field_review`, `os_audit_log` | Existente | Depende del objeto: versión `unknown`/`approved` sin CHECK; mapeo y relación clínica `draft\|reviewed\|approved\|deprecated`; campo/traducción `unknown`/`approved` con hash; release `draft\|review\|published\|deprecated`. `in_review`, `rejected` y `pending_review` son etiquetas de gobernanza, no valores persistidos. |
 | Vigencia | `valid_from`, `valid_to`, `active` | Parcial | Solo si la fuente la declara; si no, `desconocida`. |
 | Versión | `os_catalog_release`, versión de ítem | Existente | Toda corrección crea versión nueva; no sobrescribe la publicada. |
 
@@ -58,24 +58,35 @@
 
 ---
 
-## 4. Relaciones permitidas
+## 4. Modelo integral de relaciones
 
-| Relación solicitada | Soporte actual propuesto | Uso clínico |
+**[P] Principio:** las relaciones clínicas vinculan conceptos; las relaciones terminológicas los corresponden con sistemas externos. Son dos clases distintas, con tablas, reglas y visibilidad distintas. No se resuelve una relación PR↔DX con un mapeo.
+
+### 4.1 Relaciones clínicas
+
+**[P]** Se apoyan en `os_catalog_relation`, nunca en `os_concept_mapping`. Cubren PR↔PR, DX↔DX, PR↔DX, anatomía/función y contexto clínico. El inventario canónico de 31 tipos (`REL-PR-*`, `REL-DX-*`, `REL-PRDX-*`, `REL-ANAT-*`, `REL-FUNC-*`) está en `diccionario-tipos-relacion-oftar.md` y la semántica completa en `modelo-relaciones-clinicas-oftar.md`.
+
+| Clase | Ejemplos de uso | Dirección y regla |
 |---|---|---|
-| Equivalente a | `os_concept_mapping.mapping_type='equivalent'` (valor real del `CHECK`) | Solo con evidencia y doble revisión. «Exacta» es etiqueta documental de la matriz, no valor de base de datos. |
-| Más amplio que | `mapping_type='broader'` | Dirección: concepto OFTAR respecto del externo, a ratificar. |
-| Más específico que | `mapping_type='narrower'` | Misma convención de dirección. |
-| Relacionado con | `mapping_type='related'` o `os_catalog_relation` | Asociación clínica/editorial, no equivalencia. |
-| Variante de | `os_catalog_relation` con `relation_kind` de variante, o metadata de atributo | Preferir atributo cuando solo cambia lateralidad/sesión. |
-| Sustituido por | `os_catalog_relation` con vigencia | Para códigos retirados; nunca borrar el histórico. |
-| Requiere | `os_catalog_relation` con contexto | Solo si la dependencia está documentada. |
-| Incluye | `os_catalog_relation` / jerarquía de versión | Para paquetes con sesiones incluidas. |
+| PR-PR | variante, complemento, alternativa, parte, combinación, requisito, secuencia | Direccionales o simétricas según tipo; no equivalencia automática. |
+| DX-DX | relacionado, asociado, diagnóstico diferencial, más amplio/más específico, manifestación, complicación, etiología, coexistencia | `narrow`/`broad` jerárquicos; el resto asociativo. Sin propagación automática. |
+| PR-DX | diagnostica, evalúa, trata, seguimiento, control, previene, contraindica, no recomendado | Muchos a muchos; un procedimiento puede tener varios diagnósticos y viceversa. Nunca `equivalent`. |
+| Anatómica/funcional | afecta, interviene, evalúa, localiza, parte de, deteriora | `ANAT-UVE` y `ANAT-SUP` son agrupaciones: no propagan `ANAT-COR`/`ANAT-CON`. Motilidad en `AREA-ESTRAB`. |
+| Contexto | lateralidad, condiciones y observaciones | `ATTR-LATERALITY` OD/OI/AO/NA; condiciones en `context_text`/`clinical_rationale`; fuente en `provenance`/`source_reference`. |
 
-**[H]** `os_concept_mapping` y `os_catalog_relation` ya soportan tipos de mapeo/relación con `provenance`, `reviewed_by`, `context_text` y `valid_from/to` (`taxonomia-oftar-propuesta.md:78-90`).
+**[H]** El `CHECK` vigente de `relation_type` enumera 15 tipos CDT y no admite los códigos OFTAR (`nomenclador_odontologico_nacional.sql:534-559`). **[P]** Destino: tipos en `os_relation_type` con `relation_kind='clinical'` y migración aditiva no ejecutada de `relation_type_code VARCHAR(60)` con FK. Puente transitorio sin migración: `relation_type='referencia_literal'`, `source_system_code='OFTAR-CLINICAL'`, `source_field='notes'`, `source_value` con el código corto, `context_text` y `provenance` obligatorios.
 
-**[I]** Algunas relaciones (`variante de`, `sustituido por`, `requiere`, `incluye`) pueden necesitar un `relation_type` específico. Se prefiere reutilizar `relation_kind` existente con `context_text` antes que ampliar el `CHECK` de la base.
+### 4.2 Relaciones terminológicas
 
-**[P]** No usar `equivalent` para aproximaciones parciales: estas deben ser `related` + evidencia de parcialidad en `mapping_nature` o en la metadata de gobernanza, con `review_status='approved'` solo tras revisión. La ausencia de correspondencia se registra como `unmatched`, no como `no_map`.
+**[H]** `mapping_type` acepta solo `equivalent|narrower|broader|related|unmatched` (`origen_catalog_engine.sql:125-126`). «Exacta» es etiqueta documental; el valor persistible es `equivalent`. `exact`, `no_map` y `reference` no existen en el `CHECK`.
+
+**[P]** Dirección canónica OFTAR → sistema externo: `broader` = OFTAR más amplio; `narrower` = OFTAR más específico, sujeto a ratificación. Las ocho clases solicitadas se persisten así: equivalencia exacta → `equivalent` + `univocal`; aproximada → `related` + `approximate`; parcial → `related` + `partial`; más amplia → `broader`; más específica → `narrower`; asociativa → `related` con justificación; sin correspondencia → `unmatched` + `not_mappable`; pendiente → `review_status='draft'` sin visibilidad pública. Detalle en `modelo-relaciones-terminologicas-oftar.md` e `integracion-os-concept-mapping-oftar.md`.
+
+**[P]** No mezclar sistemas aunque el código coincida: resolver por sistema + edición + release. Un mismo `external_code` puede repetirse con distinto `relationship_role` (UNIQUE de 4 columnas). `justifying_diagnosis` es un rol de mapeo, no una relación clínica.
+
+### 4.3 Gobernanza común
+
+**[P]** Propuesta automática, revisión documental, revisión clínica, aprobación y rechazo son etapas distintas. Publicar solo con `review_status='approved'`, evidencia, hash vigente cuando corresponda y dos revisiones humanas. `rejected` y `pending_review` no son valores de los `CHECK` de versión, mapeo ni relación: el rechazo se documenta en gobernanza sin borrar historial. Las relaciones sustituidas se conservan con `valid_from`/`valid_to` y traza en `os_audit_log`.
 
 ---
 

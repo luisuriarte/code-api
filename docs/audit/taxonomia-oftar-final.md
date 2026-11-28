@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — solo documentación.
-**Estado:** propuesta para aprobación. **No se renombraron ni movieron categorías históricas.**
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución; propuesta no implementada, sin renombrar ni mover categorías históricas.)
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §5).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta.
 

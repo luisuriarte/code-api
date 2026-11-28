@@ -3,7 +3,7 @@
 **Fecha:** 2026-11-28
 **Versión:** 1.0
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0
-**Estado:** Aprobada como base técnica para iniciar la implementación controlada (no autoriza ejecución).
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 
 **Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta.
 
@@ -11,14 +11,15 @@
 
 ---
 
-## 1. Cinco objetos, cinco estados distintos
+## 1. Seis objetos, seis estados distintos
 
 **[H]** Los valores se leen del DDL versionado; no se asume comportamiento de base.
 
 | Objeto (columna exacta) | Valores admitidos | Default | CHECK | Significado y evidencia |
 |---|---|---|---|---|
 | **Versión de concepto** — `os_catalog_item_version.review_status` | `unknown` (default) y `approved` (asignado por script). El DDL no restringe el contenido: técnicamente admite cualquier `VARCHAR(20)`. | `unknown` | **No** (`sql/07_multilingue/04_fase3_columnas.sql:27`) | Aprobación **técnica/de gobernanza** de la versión; la vista OFTAR exige `='approved'` (`oftar_domain_search.sql:77`). **No equivale a aprobación clínica con firma profesional.** **`draft\|review\|published\|deprecated` NO son de aquí**: pertenecen a `os_catalog_release.status` (`origen_catalog_engine.sql:49`). |
-| **Mapeo** — `os_concept_mapping.review_status` | `draft\|reviewed\|approved\|deprecated`. **No existen** `pending_review` ni `rejected` en esta tabla. | `approved` en el DDL original (`:130`); `draft` para inserciones futuras (`fase3_relaciones_mapeos.sql:183-184`, que **no** altera filas ni CHECK) | **Sí** (`origen_catalog_engine.sql:130`; coincides `tools/generate_unified_catalog_engine_sql.py:365`) | Estado de la correspondencia. `approved` de la fila no basta para publicar texto externo: se requiere revisión de campo vigente. |
+| **Mapeo terminológico** — `os_concept_mapping.review_status` | `draft\|reviewed\|approved\|deprecated`. **No existen** `pending_review` ni `rejected` en esta tabla. | `approved` en el DDL original (`:130`); `draft` para inserciones futuras (`fase3_relaciones_mapeos.sql:183-184`, que **no** altera filas ni CHECK) | **Sí** (`origen_catalog_engine.sql:130`; coincide `tools/generate_unified_catalog_engine_sql.py:365`) | Estado de la correspondencia con sistemas externos. `approved` de la fila no basta para publicar texto externo: se requiere revisión de campo vigente. |
+| **Relación clínica** — `os_catalog_relation.review_status` | `draft\|reviewed\|approved\|deprecated` (`nomenclador_odontologico_nacional.sql:551-552`). El tipo se clasifica con `relation_kind='clinical'` cuando la fase 3 está presente; si no, el puente usa `source_system_code='OFTAR-CLINICAL'`. | `reviewed` en el DDL CDT; las filas OFTAR propuestas nacen `draft` | **Sí** en `review_status` y en `relation_type` (solo 15 tipos CDT); **no** en `relation_kind` (`fase3_relaciones_mapeos.sql:67,99`) | Estado de la vinculación clínica entre conceptos OFTAR. No equivale a mapeo, ni a aprobación clínica con firma profesional. `rejected`/`pending_review` no existen aquí. |
 | **Texto localizado / traducción** — `os_localized_text.review_status` (y `os_catalog_term.review_status`, `04_fase3_columnas.sql:45`) | `unknown` (default) y `approved` (exigido por los evaluadores); sin lista cerrada. | `unknown` | **No** (`01_fase2_tablas.sql:70`) | Revisión editorial por idioma/campo. `content_hash` es `NOT NULL`; `scope_release_id` con `ON DELETE RESTRICT`; **no existe `is_current`** (`:55-81`). `undet`/`undetermined` es evidencia de idioma, **no** un estado. |
 | **Revisión de campo** — `os_field_review.review_status` | `unknown` (default) y `approved` (exigido); sin lista cerrada. | `unknown` | **No** (`01_fase2_tablas.sql:122-137`) | Aprobación granular de `preferred_term`, `definition`, `external_display`, etc. `content_hash NOT NULL`, `reviewed_by`, `reviewed_at`. Es la fuente que consultan los evaluadores. |
 | **Publicación de catálogo** — `os_catalog_release.status` + `os_catalog_item.status` (con `os_catalog.is_active`) | Release: `draft\|review\|published\|deprecated`. Ítems: `active\|retired\|superseded`. | Release **`published`**; ítem `active`; catálogo `TRUE` | **Sí** en release (`:49`) e ítem (`:67`) | Visibilidad técnica. `product_role CHECK(family\|catalog)` en `:20,33-40` es otro eje, no un estado. |
@@ -38,6 +39,8 @@
 | Mapeo | `approved` → `draft` (solo default) | `fase3_relaciones_mapeos.sql:183-184` cambia el default de **inserciones futuras**; no modifica filas existentes. | DDL de arquitectura (fuera de este trabajo). | Las filas nuevas no son elegibles hasta aprobación; las antiguas conservan `approved`. |
 | Mapeo | `draft` → `reviewed` → `approved` | Evidencia, hash vigente y **[P]** dos revisiones (rector §9.2). | Comité/gobernanza. | Necesario pero **no suficiente**: `/v1/mappings` exige además revisión de campo de `external_display`/`clinical_rationale`. |
 | Mapeo | `approved` → `deprecated`; rechazo → **sin transición** | Retiro gobernado. El rechazo se documenta en gobernanza; la fila conserva su estado técnico (rector §9.1), porque `rejected` no es valor de esta tabla. | Comité. | Deja de publicarse. No inventar `rejected`/`pending_review` aquí. |
+| Relación clínica | `draft` → `reviewed` → `approved` | Evidencia, justificación, vigencia declarada y **[P]** dos revisiones; la aprobación automática por similitud está prohibida. | Comité clínico y gobernanza. | Solo `approved` entra en la superficie pública propuesta `data.relations.clinical`. |
+| Relación clínica | `approved` → `deprecated` | Sustitución gobernada: nueva fila con `valid_from`/`valid_to`, sin borrar la anterior. | Comité. | Deja de publicarse; el historial permanece en `os_audit_log`. |
 | Texto localizado | `unknown` → `approved` | Revisión aprobada, `content_hash` vigente y `scope_release_id` compatible (`EditorialEvaluator.php`, `FieldReviewRepository.php:176-224`). | Revisores/gobernanza. | Texto visible en API; sin ello, `null` + `untranslated=true`. |
 | Texto localizado | `approved` → invalidado **[I]** | Cambio de contenido (`05_fase3_triggers.sql`); sin `is_current`, la vigencia se resuelve por hash + scope. | Sistema (trigger). | Deja de publicarse. |
 | Revisión de campo | `unknown` → `approved` | `source_reference`, hash vigente y dos revisiones humanas; se registran `reviewed_by`/`reviewed_at`. | Revisores/gobernanza. | Habilita `preferred_term` en la vista vía script y el resto de campos en API/Browse. |
@@ -56,6 +59,7 @@
 | Texto en API | Candidato `approved`, revisión de campo aprobada, scope compatible y hash vigente (`EditorialEvaluator.php`, `FieldReviewRepository.php`). | Sin contenido aprobado: `null` + `untranslated=true`; `undet` es etiqueta de idioma, no estado. |
 | `/v1/mappings` | Release `published` + revisión de campo vigente para `external_display`/`clinical_rationale` (`MappingReviewReader.php`). | El `approved` de la fila no basta. `mapping_type` se pasa sin interpretarlo como `equivalence` (`CatalogEngineService.php:612,708`; `CatalogRepository.php:3055`). |
 | Browse Codes | No usa la vista OFTAR: consulta ítems/versiones con release `published` y aplica aprobación por campo en PHP (`CatalogRepository.php:2197-2381`). | Comportamiento independiente de `/v1/search`; no compartir supuestos entre ambas superficies. |
+| `data.relations` **[P] propuesto** | `clinical`: `os_catalog_relation.review_status='approved'`; `terminological`: `os_concept_mapping.review_status='approved'` + revisión de campo vigente. | Hoy no existe: `itemRelations()` mezcla ambas clases y el detalle de API no expone relaciones clínicas. No implementado en esta ronda. |
 
 ---
 
@@ -79,7 +83,8 @@
 |---|---|---|
 | Aprobación de versión (técnica; no clínica) | `os_catalog_item_version.review_status` (`approved`) | Que el release esté publicado, que cada campo tenga revisión vigente ni que exista firma profesional de aprobación clínica. |
 | Revisión editorial | `os_field_review` / `os_localized_text.review_status` + `content_hash` | Que la versión esté `approved` ni que el ítem sea visible. |
-| Publicación técnica | `os_catalog_release.status='published'` + `os_catalog_item.status='active'` + `is_active` | Que el texto o el mapeo estén aprobados. |
+| Relación clínica | `os_catalog_relation.review_status` + `relation_kind='clinical'` y evidencia | Que exista correspondencia terminológica ni que una equivalencia esté aprobada. PR↔DX nunca se persiste como mapeo. |
+| Publicación técnica | `os_catalog_release.status='published'` + `os_catalog_item.status='active'` + `is_active` | Que el texto, el mapeo o la relación estén aprobados. |
 | Vocabulario de gobernanza | `os_review_state` (`in_review`, `reviewed`, etc.) | Ser un CHECK o ser leído por la API. |
 
 **[P]** Toda aprobación queda trazada en `os_audit_log` (append-only) con responsable, fecha, evidencia, hash y dos revisiones (rector §9.2, §12). `rejected` se documenta como decisión negativa sin crear valores nuevos en SQL; `undet` nunca se interpreta como estado de revisión.
@@ -113,14 +118,14 @@ COMMIT;
 
 > Solo `SELECT`, en sesión de solo lectura. No se ejecutaron en este trabajo.
 
-**7.1 Defaults y CHECK reales de los cinco objetos**
+**7.1 Defaults y CHECK reales de los seis objetos**
 
 ```sql
 SELECT table_name, column_name, column_default, is_nullable, data_type
 FROM information_schema.columns
 WHERE table_schema = 'public'
   AND ((table_name = 'os_catalog_item_version' AND column_name = 'review_status')
-    OR (table_name IN ('os_concept_mapping','os_localized_text','os_field_review')
+    OR (table_name IN ('os_concept_mapping','os_catalog_relation','os_localized_text','os_field_review')
         AND column_name = 'review_status')
     OR (table_name = 'os_catalog_release' AND column_name = 'status')
     OR (table_name = 'os_catalog_item' AND column_name = 'status'))
@@ -131,6 +136,7 @@ FROM pg_constraint
 WHERE contype = 'c'
   AND conrelid IN ('public.os_catalog_item_version'::regclass,
                    'public.os_concept_mapping'::regclass,
+                   'public.os_catalog_relation'::regclass,
                    'public.os_catalog_release'::regclass,
                    'public.os_catalog_item'::regclass)
 ORDER BY 1, 2;
@@ -142,6 +148,7 @@ ORDER BY 1, 2;
 SELECT 'item_version' AS objeto, COALESCE(review_status,'<NULL>') AS estado, count(*) AS filas
 FROM os_catalog_item_version GROUP BY 1,2
 UNION ALL SELECT 'mapping', COALESCE(review_status,'<NULL>'), count(*) FROM os_concept_mapping GROUP BY 1,2
+UNION ALL SELECT 'clinical_relation', COALESCE(review_status,'<NULL>'), count(*) FROM os_catalog_relation GROUP BY 1,2
 UNION ALL SELECT 'localized_text', COALESCE(review_status,'<NULL>'), count(*) FROM os_localized_text GROUP BY 1,2
 UNION ALL SELECT 'field_review', COALESCE(review_status,'<NULL>'), count(*) FROM os_field_review GROUP BY 1,2
 UNION ALL SELECT 'release', COALESCE(status,'<NULL>'), count(*) FROM os_catalog_release GROUP BY 1,2
@@ -195,3 +202,4 @@ SELECT code, is_publication_allowed FROM os_review_state ORDER BY code;
 - `arquitectura-tecnica-oftar-final.md` §1 (límite de verificación) y §2.2 (gobernanza).
 - `politica-identificacion-oftar-final.md` (identidad externa) y `modelo-funcional-canonico-oftar.md` §2 (campos canónicos).
 - `integracion-os-catalog-oftar.md` (dominio, familia, `product_role` y `domain_type`).
+- `modelo-relaciones-clinicas-oftar.md`, `modelo-relaciones-terminologicas-oftar.md`, `diccionario-tipos-relacion-oftar.md`, `contratos-api-relaciones-oftar.md` y `plan-pruebas-oftar.md` (separación de clases y gobernanza de relaciones).

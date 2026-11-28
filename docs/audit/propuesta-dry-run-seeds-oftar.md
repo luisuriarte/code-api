@@ -3,7 +3,7 @@
 **Fecha:** 2026-11-28
 **Versión:** 1.0
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0
-**Estado:** Aprobada como base técnica para iniciar la implementación controlada (no autoriza ejecución).
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 
 **Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta. **Este documento es un diseño, no una ejecución.** No se generaron seeds, no se consultó PostgreSQL, no hay `psql` ni variables `DB_*`/`PG*`; `php tests/run.php` registró 4.068 comprobaciones en una ronda anterior, pero **no se ejecutaron pruebas en esta ronda**. Todos los números siguientes son **esperados y NO validados en esta ronda**.
 
@@ -12,7 +12,7 @@
 1. **Idempotencia:** clave natural por `(catálogo, identificador)` y operaciones `INSERT ... ON CONFLICT DO NOTHING`/`DO UPDATE` solo cuando hay `IS DISTINCT FROM`; repetir el manifiesto no duplica filas.
 2. **Deterministicidad:** misma entrada + mismo hash ⇒ mismo manifiesto; orden estable por código original y línea de fuente; sin fecha de ejecución incrustada en claves.
 3. **Sin sentencias destructivas:** 0 `DELETE`, `DROP`, `TRUNCATE`, `ALTER ... DROP` ni reescritura de versiones publicadas (`plan-reconstruccion-oftar.md:9-19,77-101`).
-4. **Sin escritura en producción:** el dry-run solo simula y produce reportes; la carga real exige autorización explícita (etapa 10 del plan y rector §14, §17.10).
+4. **Sin escritura en producción:** el dry-run solo simula y produce reportes; la generación simulada corresponde a la etapa 7 y la carga real exige autorización explícita en la etapa 10 del plan de 13 etapas (rector §14, §17.10).
 5. **Gobernanza:** toda publicación futura requiere `review_status` real del objeto, dos revisores, `content_hash` vigente y traza en `os_audit_log`; el `approved` documental no basta.
 6. **Trazabilidad:** sistema + edición + versión + release/fecha + código y descripción originales + idioma + procedencia + `source_reference` (archivo y línea) por fila (rector §12).
 
@@ -136,7 +136,7 @@ La verificación de las cifras RF2 (217.373 / 155.106 / 130.055 / 6.783) se hace
 | i18n | 100% `es-AR` publicable; huecos `en`/`pt-BR` informados como `untranslated`, no tratados como paridad |
 | UVR | 0 UVR en `oftar-dx`; 0 importes CAO/Regional convertidos |
 | API/Browse | Contratos `/v1/*` y filtros históricos sin cambios; vista con `family_code='oftar'` y versión `approved` |
-| Bloqueantes | 0 para autorizar la etapa 10; cualquier bloqueante detiene el plan |
+| Bloqueantes | 0 para cerrar la etapa 7 y 0 para autorizar la etapa 10; cualquier bloqueante detiene el plan |
 
 ## 7. Declaración de alcance
 

@@ -3,127 +3,165 @@
 **Fecha:** 2026-11-28
 **Versión:** 1.0
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0
-**Estado:** Aprobada como base técnica para iniciar la implementación controlada (no autoriza ejecución).
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 
-**Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta. Esta numeración operativa (1–10) sucede a las fases 0–6 de `plan-reconstruccion-oftar.md` y al índice histórico del rector §14; el rector remite a este documento como plan canónico, sin reescribir el histórico. Responsable = quien ejecuta SQL, Git y deploy; asistente = solo diagnóstico, documentación y verificaciones.
+**Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta. Las 13 etapas siguientes son la secuencia canónica solicitada. Suceden a las fases 0–6 de `plan-reconstruccion-oftar.md` y a la numeración operativa anterior de 10 etapas, sin reescribir el histórico. Responsable = quien ejecuta SQL, Git y deploy; asistente = solo diagnóstico, documentación y verificaciones. **Ninguna etapa se ejecutó en esta ronda; el plan se detiene antes de generar o ejecutar seeds.**
 
-## Etapa 1 — Acta `READ ONLY` y freeze
+---
 
-- **Objetivo:** convertir inferencias en hechos antes de cualquier cambio (`plan-reconstruccion-oftar.md:22-37`; rector §14).
-- **Entradas:** consultas A–F de `auditoria-oftar-actual.md`; acta de la etapa previa si existe.
-- **Trabajo permitido:** consultas de solo lectura ejecutadas por el responsable; documentación de resultados por el asistente; snapshot/hash de la configuración observada.
-- **SALIDA verificable:** acta firmada con objetos, privilegios (incluido `GRANT SELECT` sobre `v_oftar_search_catalog`), valores reales de los `CHECK`, conteos por catálogo y estados de revisión.
-- **Criterios de aceptación medibles:** 1 acta; 0 escrituras; desviaciones registradas frente a 154 PR / 143 CAO / 136 Regional / 2.661 H ES / 2.677 H CM; `target_code` documentado (H-02).
-- **Gate de autorización:** acta completa; sin ella no se inicia la etapa 2.
-- **Prohibido:** escribir en BD, ejecutar `psql` por el asistente, migraciones, seeds y publicación.
+## Etapa 1 — Verificación del esquema actual y compatibilidad
 
-## Etapa 2 — Correcciones documentales y cierre de inconsistencias
+- **Objetivo `[P]`:** convertir inferencias de código en hechos deProduction mediante un acta `READ ONLY`; verificar tipos, `CHECK`, vistas, privilegios, relaciones y datos existentes.
+- **Archivos afectados:** `auditoria-oftar-actual.md`, `plan-reconstruccion-oftar.md`, `matriz-estados-publicacion-oftar.md`, acta nueva firmada.
+- **Dependencias:** ninguna. Requiere credenciales autorizadas de solo lectura.
+- **Riesgos:** estado runtime distinto del SQL versionado; vista sin `GRANT SELECT`; `target_code` (H-02) distinto del esperado.
+- **Pruebas:** consultas A–F del plan histórico; `to_regclass`, `pg_constraint`, `pg_get_viewdef`, conteos por catálogo y estados.
+- **Criterios de aceptación medibles:** 1 acta firmada; 0 escrituras; 0 desviaciones sin explicar frente a 154 PR / 143 CAO / 136 Regional / 2.661 H ES / 2.677 H CM; `relation_type` CDT-only confirmado; `review_status` real por entidad documentado.
+- **Condición para avanzar:** acta completa; sin ella no se inicia la etapa 2.
 
-- **Objetivo:** fijar la capa semántica sin tocar código ni fuentes (`plan-reconstruccion-oftar.md:41-54`).
-- **Entradas:** `inconsistencias-resueltas-oftar.md` (11 filas); rector §0, §7, §9, §10.
-- **Trabajo permitido:** crear los documentos nuevos y corregir la documentación existente ya auditada; marcar contradicciones históricas sin reescribir auditorías previas.
-- **SALIDA verificable:** tabla de inconsistencias con resolución `[H]`/`[P]` y referencias estables por sección; correcciones aplicadas al rector §7, §9, §14 y a la arquitectura, registradas en el historial del rector.
-- **Criterios de aceptación medibles:** 11/11 inconsistencias con evidencia citada; 0 cambios en SQL, PHP, seeds ni datos; correcciones documentales trazadas en el historial; 4 documentos nuevos creados.
-- **Gate de autorización:** aprobación documental del responsable para cualquier cambio posterior de rutas.
-- **Prohibido:** editar seeds, migraciones o fuentes originales; ejecutar generadores.
+## Etapa 2 — Cierre del modelo de conceptos
 
-## Etapa 3 — Decisión clínica documentada de OFTAR-PR
+- **Objetivo `[P]`:** fijar identidad, campos canónicos, taxonomía y dimensiones anatómicas sin tocar datos.
+- **Archivos afectados:** `modelo-funcional-canonico-oftar.md`, `taxonomia-oftar-final.md`, `clasificacion-anatomica-oftar-final.md`, `politica-identificacion-oftar-final.md`.
+- **Dependencias:** etapa 1.
+- **Riesgos:** reutilizar prefijos retirados; mezclar `domain_type` con familia; atribuir `ANAT-*`/`AREA-*` a `CLIN-*`.
+- **Pruebas:** revisión estática de `OFT-PR-NNNNNN`/`OFT-DX-NNNNNN`, `os_catalog_identifier`, categorías 8 + `GRP-*` + `CAT-DX` + 12 `CLIN-*` y no propagación de agrupaciones.
+- **Criterios de aceptación medibles:** 0 `domain_type='oftar'`; 0 catálogos `OFTAR-*`; 0 renombres de categorías históricas; 4 dimensiones separadas.
+- **Condición para avanzar:** aprobación documental del responsable.
 
-- **Objetivo:** cerrar la conciliación sin publicar (`aprobacion-conciliacion-oftar-pr.md:17,148-150`).
-- **Entradas:** 433 filas de la matriz; 13 pares / 26 filas propuestos; 6 pares / 12 filas a degradar o corregir; 48 registros y 3 candidatos (rector §2).
-- **Trabajo permitido:** revisión humana, corrección documental de justificaciones (RFG) y fallo sobre cada registro; actualización de la matriz gobernada como worklist.
-- **SALIDA verificable:** acta firmada con destino de los 13 pares, de los 6 pares y de las 48 filas, incluidos `460106`, `305003`, `305041`.
-- **Criterios de aceptación medibles:** 13/13 pares con firma; 6/6 correcciones o degradaciones; 48/48 filas con destino; 0 equivalencias publicadas; 0 importes migrados.
-- **Gate de autorización:** firma del comité clínico y del responsable de gobernanza.
-- **Prohibido:** equivalencia automática por texto, altas automáticas de conceptos, asignación de UVR.
+## Etapa 3 — Cierre del modelo de relaciones clínicas
 
-## Etapa 4 — Decisión de alcance de OFTAR-DX
+- **Objetivo `[P]`:** ratificar diccionario, direccionalidad, simetría, jerarquía, cardinalidad y gobernanza de PR-PR, DX-DX, PR-DX, anatomía/función y contexto.
+- **Archivos afectados:** `modelo-relaciones-clinicas-oftar.md`, `diccionario-tipos-relacion-oftar.md`, `integracion-os-catalog-oftar.md`.
+- **Dependencias:** etapas 1–2.
+- **Riesgos:** persistir relaciones PR↔DX en `os_concept_mapping`; inventar `relation_type` dentro del `CHECK` CDT; generar inversas automáticas no equivalentes; propagar `ANAT-UVE`/`ANAT-SUP`.
+- **Pruebas:** `plan-pruebas-oftar.md` grupo B; validación de `source_value` ≤ 20 caracteres y unicidad de 7 columnas en `os_catalog_relation`.
+- **Criterios de aceptación medibles:** 31/31 tipos documentados con dirección e inversa o ausencia justificada de inversa; 0 inversas automáticas; 0 relaciones clínicas en mapeos; 0 cambios en `CHECK`.
+- **Condición para avanzar:** aprobación de arquitectura; la migración aditiva de `relation_type_code` queda propuesta y separada.
 
-- **Objetivo:** cerrar el universo y sus referencias externas (`universo-diagnosticos-oftar-dx.md:31-75`; rector §3).
-- **Entradas:** 2.661 H00-H59 finales ES (74.260 filas), 2.677 H CM (74.879 líneas), intersección 2.660, 17 exclusivos CM, 1 exclusivo ES (`H01.8`), 90 S05, 9 `H36.8*`, refset SNOMED `447562003`.
-- **Trabajo permitido:** acta de conjuntos, decisión sobre 2.661 frente a 2.678, sobre S05/T15/T26/T85/E11.\* y sobre `AREA-SIST`; definición del filtro SNOMED.
-- **SALIDA verificable:** acta de universo con conjuntos numerados y regla de incorporación justificada.
-- **Criterios de aceptación medibles:** 2.660 intersección, 17 CM, 1 ES; 6.783 mapeos H de 130.055 activos con `mapTarget` de 217.373 filas RF2; 0 usos de la cifra 23.292; 0 importaciones masivas.
-- **Gate de autorización:** acta firmada del responsable de DX y del comité clínico.
-- **Prohibido:** importar SNOMED completo o PCS como diagnóstico, traducir códigos CM inventando `es-AR`, publicar candidatos no aprobados.
+## Etapa 4 — Cierre del modelo de relaciones terminológicas
 
-## Etapa 5 — Migración aditiva independiente de `review_status` (solo propuesta)
+- **Objetivo `[P]`:** ratificar dirección OFTAR→externo, las 8 clases de correspondencia, identidad por sistema/edición/release y gobernanza de SNOMED.
+- **Archivos afectados:** `modelo-relaciones-terminologicas-oftar.md`, `integracion-os-concept-mapping-oftar.md`, `matriz-estados-publicacion-oftar.md`, `politica-identificacion-oftar-final.md`.
+- **Dependencias:** etapas 1–2.
+- **Riesgos:** tratar equivalencia parcial o asociativa como exacta; mezclar CIE-10-ES con ICD-10-CM; usar `exact`/`no_map`/`rejected` como valores de base.
+- **Pruebas:** `plan-pruebas-oftar.md` grupos C y D; verificación de `mapping_nature` y de `MappingReviewReader`.
+- **Criterios de aceptación medibles:** 8/8 clases mapeadas a valores reales; 0 `exact`; 0 códigos CM convertidos a CIE-10; 0 mapeos SNOMED sin refset `447562003`.
+- **Condición para avanzar:** acta de ratificación de dirección y de sistemas/ediciones.
 
-- **Objetivo:** diseñar cambios estructurales sin ejecutarlos (rector §17.5).
-- **Entradas:** actas de etapas 1 y 4; `origen_catalog_engine.sql:18,49,67,119-133`; `04_fase3_columnas.sql:24-37`; `fase3_relaciones_mapeos.sql:177-184`.
-- **Trabajo permitido:** redactar propuesta de metadatos de edición/versión/release/provenance, independiente de cualquier cambio en `review_status`; proponer por separado el `CHECK` aditivo de `review_status` (P-08) con preflight de solo lectura.
-- **SALIDA verificable:** archivo SQL propuesto con encabezado de no ejecución, lista de preflights y plan de rollback; 0 sentencias aplicadas.
-- **Criterios de aceptación medibles:** 0 `DROP`/`TRUNCATE`/`DELETE`; 0 cambios de DEFAULT sin autorización; todos los objetos usan `CREATE ... IF NOT EXISTS`/`ADD COLUMN IF NOT EXISTS` o equivalente aditivo.
-- **Gate de autorización:** aprobación formal de arquitectura + DBA; ejecución futura en acto separado.
-- **Prohibido:** ejecutar migración, modificar filas existentes, asumir que el `CHECK` cambió el estado de las filas.
+## Etapa 5 — Corrección de código e importadores
 
-## Etapa 6 — Seeds de estructura, familia y catálogos (diseño)
+- **Objetivo `[P]`:** preparar correcciones de código **en el repositorio**, sin ejecutarlas contra producción: reglas de taxonomía, cierre RFG, resolver `target_code` por identificador y separación clínica/terminológica en lectura.
+- **Archivos afectados:** generadores de PR/DX, `importar_nomenclador_oftar_pr.sql`, `sync_oftar_dx_to_os.sql`, `RelatedCodesResolver.php`, `CatalogRepository.php`, `CatalogEngineService.php`, `BrowseController.php`, vistas y tests asociados.
+- **Dependencias:** etapas 3–4.
+- **Riesgos:** romper contratos `/v1/*`, cambiar defaults de dominios o eliminar filtros históricos.
+- **Pruebas:** `tests/run.php` en entorno controlado; diff revisado; comprobación de que `mappings`/`related_codes` siguen intactos.
+- **Criterios de aceptación medibles:** 0 rutas renombradas; 0 parámetros históricos eliminados; 0 cambios en `GET /v1/mappings` `LIMIT 50`; diff firmado.
+- **Condición para avanzar:** CI en verde y aprobación de código; ningún deploy.
 
-- **Objetivo:** preparar, no generar, la carga aditiva de la estructura (`oftar_core.sql:142-150`; `oftar_family.sql:57-64`).
-- **Entradas:** decisiones de etapas 4 y 5; prefijos `OFT-PR`/`OFT-DX`; dominios `ANAT-*`/`AREA-*` propuestos (rector §6).
-- **Trabajo permitido:** redactar manifiesto y reglas `INSERT ... ON CONFLICT` idempotentes para 1 familia y 2 catálogos; documentar dominios de atributos como pendientes de siembra.
-- **SALIDA verificable:** manifiesto de estructura con claves naturales, conteos esperados y hashes de entrada.
-- **Criterios de aceptación medibles:** 1 familia `oftar`, 2 catálogos (`oftar-pr`, `oftar-dx`), 0 `domain_type='oftar'`, 0 catálogos `OFTAR-*`, 0 sentencias destructivas.
-- **Gate de autorización:** etapas 1, 4 y 5 firmadas.
-- **Prohibido:** ejecutar el generador, escribir en BD, crear motor paralelo, sembrar UVR en DX.
+## Etapa 6 — Preparación y normalización de fuentes
 
-## Etapa 7 — Seeds de conceptos PR (diseño)
+- **Objetivo `[P]`:** conservar fuentes originales independientes y normalizar metadatos sin reemplazar una fuente por otra.
+- **Archivos afectados:** CSV/zip de NN 2025, CAO, Regional, CIE-10-ES 2026, ICD-10-CM 2027, RF2 de SNOMED; manifiesto de hashes; `tools/sources/...`.
+- **Dependencias:** etapas 2 y 4.
+- **Riesgos:** etiquetar CIE-10-ES como norma argentina; traducir automáticamente los 17 códigos CM; importar SNOMED completo; usar la cifra 23.292.
+- **Pruebas:** conteos reproducibles 2.661 / 2.677 / 2.660 / 17 / 1; 6.783 mapeos H; 90 S05 y 9 `H36.8*`; 0 usos de 23.292.
+- **Criterios de aceptación medibles:** cada fila conserva sistema, edición, versión, release, código, descripción original, idioma y procedencia; 0 fuentes fusionadas destructivamente.
+- **Condición para avanzar:** acta de normalización firmada.
 
-- **Objetivo:** preparar la reconciliación corregida de procedimientos (`aprobacion-conciliacion-oftar-pr.md:89-132`).
-- **Entradas:** 154 NN 2025, 143 CAO, 136 Regional; 13 pares firmados, 6 corregidos, 48 filas clasificadas y 3 candidatos (etapa 3).
-- **Trabajo permitido:** diseñar cargas gobernadas por `os_catalog_identifier`, `os_field_review` y `os_concept_mapping`; conservar numeración original y descripciones.
-- **SALIDA verificable:** manifiesto PR con pares, atributos, variantes, duplicados y candidatos marcados como no automáticos.
-- **Criterios de aceptación medibles:** 154/143/136 filas de origen; 26 filas de 13 pares; 12 filas corregidas; 48/48 clasificadas; 3 candidatos sin alta automática; 0 importes convertidos.
-- **Gate de autorización:** etapa 3 firmada y etapa 6 aprobada.
-- **Prohibido:** publicar `mapping_type` no permitido por el `CHECK` real, publicar pares sin dos revisiones, inventar equivalencias de facturación.
+## Etapa 7 — Generación de seeds en modo `dry-run`
 
-## Etapa 8 — Seeds de conceptos DX y mapeos (diseño)
+- **Objetivo `[P]`:** **solo diseñar y simular** la preparación de seeds; no generar el artefacto definitivo ni aplicarlo.
+- **Archivos afectados:** `propuesta-dry-run-seeds-oftar.md`, manifiesto simulado, reporte de diferencias.
+- **Dependencias:** etapas 1–6.
+- **Riesgos:** idempotencia mal declarada; claves naturales ambiguas por código repetido; inclusión automática de los 3 candidatos o de las equivalencias no firmadas.
+- **Pruebas:** simulación estática de `ON CONFLICT`, orden estable y hashes; comparación esperado vs observado en entorno aislado autorizado.
+- **Criterios de aceptación medibles:** 1 familia `oftar`, 2 catálogos, 0 `domain_type='oftar'`, 0 seeds definitivos generados, 0 escrituras en producción; 13 pares y 6 pares marcados según gobernanza; 3 candidatos sin alta automática.
+- **Condición para avanzar:** informe de dry-run sin bloqueantes; **su resultado no autoriza la carga**.
 
-- **Objetivo:** preparar diagnósticos y vinculación SNOMED filtrada (`universo-diagnosticos-oftar-dx.md:91-117`).
-- **Entradas:** 2.661 códigos H ES finales; 2.677 H CM; 17 exclusivos CM; 90 S05 y 9 `H36.8*` como referencias; 6.783 mapeos RF2 destino H.
-- **Trabajo permitido:** diseñar cargas con identidad por sistema+edición+versión+release+idioma+procedencia; `mapping_type='related'` y `review_status='draft'` para SNOMED, conservando `mapRule`/`mapAdvice` en `clinical_rationale`.
-- **SALIDA verificable:** manifiesto DX con conjuntos, versiones esperadas y criterios de no incorporación.
-- **Criterios de aceptación medibles:** 2.661 base; 2.661+17=2.678 solo si se aprueba; 5.338 versiones esperadas documentadas (2.661 `es-AR` + 2.677 `en`); 0 UVR; 0 usos de 23.292.
-- **Gate de autorización:** etapa 4 firmada y etapa 6 aprobada.
-- **Prohibido:** importar SNOMED completo, publicar textos sin revisión, reetiquetar códigos CM como CIE-10-ES, crear categorías `CLIN-*` para S05/T/E11.
+## Etapa 8 — Validación de integridad, trazabilidad y duplicados
 
-## Etapa 9 — Verificación API/Browse/i18n y dry-run
+- **Objetivo `[P]`:** verificar que el manifiesto simulado no rompe unicidad, vigencia, historial ni separación de relational classes.
+- **Archivos afectados:** `plan-pruebas-oftar.md`, `modelo-trazabilidad-versionado-oftar.md`, verificaciones `verificacion_*.sql`.
+- **Dependencias:** etapa 7.
+- **Riesgos:** duplicados por `UNIQUE` mal elegido (4 columnas en mapeos, 7 en relaciones); sobrescritura de versiones publicadas; pérdida de `mapAdvice`/`mapRule`.
+- **Pruebas:** grupos A, B, C, D y E del plan de pruebas; comprobación de `os_audit_log` append-only.
+- **Criterios de aceptación medibles:** 0 duplicados; 0 relaciones huérfanas; 0 cambios silenciosos por edición; 100% de filas con procedencia y hash cuando corresponda.
+- **Condición para avanzar:** 0 fallos bloqueantes y acta de validación firmada.
 
-- **Objetivo:** comprobar que el diseño preserva contratos antes de cualquier aplicación (`plan-reconstruccion-oftar.md:133-146`; rector §9.3 y §13).
-- **Entradas:** manifiestos de etapas 6–8; `propuesta-dry-run-seeds-oftar.md`; `TerminologySearchService.php:49,52-68,76-80,417-432`; `CatalogEngineService.php:126-146`; `CatalogRepository.php:2197-2381`.
-- **Trabajo permitido:** simulación estática del manifiesto, reporte de diferencias y consultas de solo lectura en entorno autorizado que no sea producción.
-- **SALIDA verificable:** informe de dry-run con conteos esperados vs observados, checks de API/Browse/i18n y lista de bloqueantes.
-- **Criterios de aceptación medibles:** `oftar` en `DOMAINS` y ausente en `DEFAULT_DOMAINS`; vista con `family_code='oftar'`, `product_role='catalog'`, ítem `active`, versión `approved`; 100% `es-AR` publicable; 0 bloqueantes; 0 escrituras en producción.
-- **Gate de autorización:** aprobación explícita para ejecutar el dry-run en entorno aislado; su resultado no autoriza seeds.
-- **Prohibido:** aplicar manifiestos en producción, ejecutar `php tests/run.php` en esta ronda, publicar, desplegar.
+## Etapa 9 — Revisión editorial y clínica
 
-## Etapa 10 — Autorización de seeds y publicación controlada posterior
+- **Objetivo `[P]`:** completar las dos revisiones humanas, cerrar las 12 filas a corregir, decidir los 3 conceptos nuevos y aprobar o degradar las equivalencias.
+- **Archivos afectados:** `aprobacion-conciliacion-oftar-pr.md`, `revision-clinica-oftar-pr.md`, `revision-clinica-oftar-dx.md`, `os_field_review`, `os_governance_review/decision`.
+- **Dependencias:** etapas 3, 4 y 8.
+- **Riesgos:** llamar «aprobación clínica» a un dictamen documental; publicar antes de la firma; usar `rejected` como valor de base.
+- **Pruebas:** verificación de hash vigente, dos revisores distintos y traza en `os_audit_log`.
+- **Criterios de aceptación medibles:** 13/13 pares con firma o degradación; 6/6 correcciones; 48/48 registros con destino; 3/3 candidatos decididos; 0 equivalencias publicadas aún.
+- **Condición para avanzar:** firma profesional responsable y del responsable de gobernanza.
 
-- **Objetivo:** emitir la autorización explícita que hoy no existe (rector §14, §17.10).
-- **Entradas:** actas de etapas 1–9; manifiestos con hash; regla de rollback; `cuestiones-pendientes-oftar.md` con gates cerrados.
-- **Trabajo permitido:** firma de un acta de autorización con alcance, responsables, entorno, hash de manifiestos y condiciones de parada. La publicación gobernada queda para un acto posterior.
-- **SALIDA verificable:** acta de autorización; registro de 0 seeds generados y 0 seeds ejecutados por este plan.
-- **Criterios de aceptación medibles:** 1 acta firmada por el responsable; 0 pendientes P-01…P-15 abiertas que afecten el alcance autorizado; 0 writes posteriores a la firma en esta ronda.
-- **Gate de autorización:** firma expresa del responsable; sin firma, el plan se detiene.
-- **Prohibido:** generar seeds, ejecutar seeds, ejecutar migraciones/importadores, publicar, hacer `git push`, desplegar.
+## Etapa 10 — Backup y autorización explícita
+
+- **Objetivo `[P]`:** emitir la autorización expresa que hoy no existe y verificar el punto de restauración.
+- **Archivos afectados:** acta de autorización, dump verificado, `cuestiones-pendientes-oftar.md` con gates cerrados.
+- **Dependencias:** etapas 1–9.
+- **Riesgos:** autorización ambigua; backup no restaurable; pendientes abiertos que afecten el alcance.
+- **Pruebas:** verificación de solo lectura del dump y del hash de manifiestos; revisión de gates P-01…P-15.
+- **Criterios de aceptación medibles:** 1 acta firmada con alcance, responsables, entorno y hash; 0 pendientes bloqueantes abiertos; 0 seeds generados o ejecutados hasta esta etapa.
+- **Condición para avanzar:** firma del responsable; sin firma, el plan se detiene.
+
+## Etapa 11 — Carga aditiva y transaccional
+
+- **Objetivo `[P]`:** ejecutar futura carga gobernada, aditiva y transaccional, sin borrar ni reescribir histórico.
+- **Archivos afectados:** seeds autorizados, `os_catalog_apply_governed_change`, migración aditiva aprobada de `relation_type_code`, tablas de gobernanza.
+- **Dependencias:** etapa 10.
+- **Riesgos:** ejecución parcial; columnas nuevas no presentes; privilegios insuficientes; reversión por `DELETE`/`DROP`.
+- **Pruebas:** transacción con verificación posterior de conteos, `CHECK`, FKs y `os_audit_log`.
+- **Criterios de aceptación medibles:** 0 `DELETE`/`DROP`/`TRUNCATE`; 0 filas existentes modificadas fuera del mecanismo gobernado; rollback probado sobre dump, nunca sobre datos vivos.
+- **Condición para avanzar:** commit verificado y acta de carga; cualquier desviación detiene el plan.
+
+## Etapa 12 — Pruebas de búsqueda y API
+
+- **Objetivo `[P]`:** comprobar búsqueda, detalle, Browse y contratos propuestos tras la carga autorizada.
+- **Archivos afectados:** `TerminologySearchService.php`, `CatalogEngineService.php`, `MappingReviewReader.php`, `CatalogRepository.php`, `plan-pruebas-oftar.md` grupo F, tests automatizados.
+- **Dependencias:** etapa 11.
+- **Riesgos:** relaciones no publicadas visibles; mezcla de clases clínica/terminológica; paginación sin tope; pérdida de `Vary`/envelope.
+- **Pruebas:** ejecución real de `tests/run.php` y consultas HTTP controladas; comparación con el acta de etapa 1.
+- **Criterios de aceptación medibles:** `oftar` en `DOMAINS` y no en `DEFAULT_DOMAINS`; vista con familia/catálogo/ítem/versión correctos; 0 relaciones `draft`/`deprecated` en público; 0 cambios de rutas; paginación con tope.
+- **Condición para avanzar:** 0 fallos bloqueantes y evidencia adjunta.
+
+## Etapa 13 — Publicación controlada
+
+- **Objetivo `[P]`:** publicar solo lo aprobado, en release `published`, con traza y posibilidad de retiro gobernado.
+- **Archivos afectados:** `os_catalog_release`, `os_field_review`, `os_audit_log`, acta de publicación.
+- **Dependencias:** etapas 10–12.
+- **Riesgos:** publicar equivalencias documentales como clínicas; publicar `en` sin `es-AR` aprobado; asignar UVR a DX.
+- **Pruebas:** verificación de estados por entidad, hash vigente, dos revisores y reglas de visibilidad de la matriz de estados.
+- **Criterios de aceptación medibles:** 100% de conceptos publicados con `es-AR` aprobado; 0 UVR en `oftar-dx`; 0 pendientes visibles en público; 1 acta de publicación.
+- **Condición para avanzar:** cierre del acta; cualquier cambio posterior crea nueva versión/release sin borrar historial.
+
+---
 
 ## Trazabilidad etapa → documento → gate
 
 | Etapa | Documento de origen | Gate |
 |---:|---|---|
-| 1 | `plan-reconstruccion-oftar.md:22-37`; rector §14, §16 | Acta `READ ONLY` firmada |
-| 2 | `inconsistencias-resueltas-oftar.md`; rector §0, §7 | Aprobación documental |
-| 3 | `aprobacion-conciliacion-oftar-pr.md:17,148-150` | Firma clínica + corrección de 12 filas |
-| 4 | `universo-diagnosticos-oftar-dx.md:31-75`; rector §3 | Acta de universo DX |
-| 5 | Rector §17.5; `origen_catalog_engine.sql:119-133` | Aprobación de arquitectura/DBA (sin ejecución) |
-| 6 | `oftar_core.sql:142-150`; `oftar_family.sql:57-64` | Etapas 1, 4 y 5 cerradas |
-| 7 | `aprobacion-conciliacion-oftar-pr.md:89-132` | Etapa 3 firmada |
-| 8 | `universo-diagnosticos-oftar-dx.md:91-117` | Etapas 4 y 6 cerradas |
-| 9 | `propuesta-dry-run-seeds-oftar.md`; rector §9.3, §13 | Autorización de entorno aislado |
-| 10 | Rector §14, §17.10 | Firma explícita de autorización de seeds |
+| 1 | `plan-reconstruccion-oftar.md`, `arquitectura-tecnica-oftar-final.md` §7 | Acta `READ ONLY` firmada |
+| 2 | `modelo-funcional-canonico-oftar.md`, `taxonomia-oftar-final.md`, `clasificacion-anatomica-oftar-final.md` | Aprobación documental |
+| 3 | `modelo-relaciones-clinicas-oftar.md`, `diccionario-tipos-relacion-oftar.md` | Arquitectura de relaciones aprobada |
+| 4 | `modelo-relaciones-terminologicas-oftar.md`, `integracion-os-concept-mapping-oftar.md` | Acta de dirección y sistemas |
+| 5 | Código y generadores del repositorio | CI en verde, sin deploy |
+| 6 | Fuentes originales y `politica-identificacion-oftar-final.md` | Acta de normalización |
+| 7 | `propuesta-dry-run-seeds-oftar.md` | Informe de simulación, sin seeds definitivos |
+| 8 | `plan-pruebas-oftar.md`, `modelo-trazabilidad-versionado-oftar.md` | 0 fallos bloqueantes |
+| 9 | `aprobacion-conciliacion-oftar-pr.md`, `universo-diagnosticos-oftar-dx.md` | Firma clínica y de gobernanza |
+| 10 | `cuestiones-pendientes-oftar.md` | Autorización explícita y backup |
+| 11 | Migración aditiva y seeds autorizados | Commit verificado |
+| 12 | `contratos-api-relaciones-oftar.md`, `diseno-interfaz-consulta-oftar.md` | Pruebas API/Browse en verde |
+| 13 | `matriz-estados-publicacion-oftar.md` | Acta de publicación |
 
 ## Regla de rollback y parada `[P]`
 
-- Ante cualquier diferencia con el acta de la etapa 1, cualquier escritura no gobernada, un valor fuera de los `CHECK` reales o un pendiente sin gate, se detiene la etapa en curso y se documenta el bloqueante; no se avanza a la siguiente.
-- Rollback futura = restaurar el dump previo verificado (`plan-reconstruccion-oftar.md:145`), nunca `DELETE`, `TRUNCATE` ni `DROP`; `os_audit_log` es append-only y no se reescribe.
-- El plan termina aquí, **antes de generar o ejecutar seeds**. La etapa 10 es únicamente la autorización; ninguna etapa de este documento ejecuta cambios.
+- Ante cualquier diferencia con el acta de la etapa 1, escritura no gobernada, valor fuera de los `CHECK` reales o pendiente sin gate, se detiene la etapa y se documenta el bloqueante; no se avanza.
+- Rollback futuro = restaurar el dump previo verificado, nunca `DELETE`, `TRUNCATE` ni `DROP`; `os_audit_log` es append-only y no se reescribe.
+- Las relaciones y mapeos se sustituyen creando una nueva fila vigente con `valid_from`/`valid_to` y traza, sin borrar la anterior.
+- **El plan termina en esta etapa de diseño: no se generaron seeds, no se ejecutaron seeds, no se modificó PostgreSQL, no se hizo commit, push ni deploy.** Queda a la espera de autorización explícita del responsable.

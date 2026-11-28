@@ -3,7 +3,7 @@
 **Fecha:** 2026-11-28
 **Versión:** 1.0
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0
-**Estado:** Aprobada como base técnica para iniciar la implementación controlada (no autoriza ejecución).
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 
 **Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta/decisión documental. Las resoluciones `[H]` se cierran por evidencia de código; las `[P]` requieren aprobación explícita. Prevalencia según el documento rector §0: lo implementado y verificable gobierna sobre la narrativa histórica; las matrices son worklists, no verdad de producción. Esta ronda fue solo documental: no se consultó PostgreSQL, no hay `psql` ni variables `DB_*`/`PG*`.
 

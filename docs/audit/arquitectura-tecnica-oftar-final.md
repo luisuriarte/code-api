@@ -1,9 +1,9 @@
 # Arquitectura técnica definitiva de OFTAR
 
 **Fecha:** 2026-11-28
-**Etapa:** tercera revisión — verificación de la arquitectura real.
-**Estado:** análisis documentado. **No se ejecutaron migraciones, importadores, seeds ni sentencias de escritura.**
-**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §9).
+**Versión:** 1.0
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución; análisis documentado.)
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0, §7 y §9).
 **Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` decisión propuesta.
 
 ---
@@ -77,7 +77,11 @@
 
 **[H]** No existen columnas `anatomy`, `clinical_area`, `anatomy_code` ni `area_code` en el SQL revisado. Los identificadores `ANAT-*` y `AREA-*` son **propuesta documental**, no valores sembrados (`clasificacion-anatomica-oftar-final.md:29,35-63`). Cargarlos sería inserción en tablas existentes, sin DDL, previa ratificación.
 
-**[H]** `os_catalog_relation` existe con `relation_type`, `context_text`, `review_status`, `provenance` y otros campos (`aprobar_mapeo_nomencladores_oftar.sql:196-221`), pero su `CHECK relation_type` enumera tipos literales CDT (`:200-207`). **[I]** Usarlo para jerarquía anatómica multivaluada requiere validar el dominio o ampliarlo; no asumir que cualquier `relation_type` es aceptado.
+**[H]** `os_catalog_relation` existe con `source_item_id`, `target_item_id`, `relation_type`, `source_system_code`, `source_field`, `source_value`, `context_text`, `review_status` y `provenance` (`sql/03_dentar/nomenclador_odontologico_nacional.sql:534-559`). Su `CHECK relation_type` admite solo 15 valores CDT, `source_field` admite `description|procedure|notes|req`, `source_value` es `VARCHAR(20)`, `review_status` es `draft|reviewed|approved|deprecated`, la fila no puede ser self-relation y hay `UNIQUE` de siete columnas. **[I]** Usarlo para relaciones clínicas OFTAR requiere el puente documentado o la migración aditiva aprobada; no asumir que cualquier `relation_type` es aceptado.
+
+**[H]** `sql/08_arquitectura/fase1_infraestructura.sql:42-81` define `os_relation_kind` (`unclassified|structural|clinical|editorial|billing|regulatory|mapping`) y `os_relation_type` con `code VARCHAR(60)`, `relation_kind` e `inverse_code`. `fase3_relaciones_mapeos.sql:53-113` agrega columnas aditivas (`valid_from/to`, catálogos/releases de origen/destino, `relation_kind`, `mapping_method`, `confidence_level`, `reviewed_by/at`, `license_reference`, `inverse_relation_type`). **[I]** La coexistencia de ambas definiciones exige verificar en el acta `READ ONLY` qué columnas están presentes en producción.
+
+**[P]** Modelo integral: relaciones clínicas en `os_catalog_relation` y correspondencias terminológicas en `os_concept_mapping`, sin motor paralelo. El diccionario de 31 tipos OFTAR, la direccionalidad y las reglas de simetría están en `modelo-relaciones-clinicas-oftar.md` y `diccionario-tipos-relacion-oftar.md`; las ocho clases de correspondencia en `modelo-relaciones-terminologicas-oftar.md`. La migración aditiva de `relation_type_code VARCHAR(60)` con FK a `os_relation_type` está propuesta y **no ejecutada**. `itemRelations()` mezcla hoy ambos tipos en una sola lista (`CatalogRepository.php:2992-3121`); la separación en `data.relations.clinical` y `data.relations.terminological` es un contrato propuesto (`contratos-api-relaciones-oftar.md`).
 
 **[P]** Las consultas de anatomía/área vía `?anatomy=` o `?clinical_area=` no existen hoy en `api/`; serían un cambio aditivo de capa de lectura, no un cambio de esquema. La API ya expone `clinical_category`/`clinical_category_code` (`CatalogEngineService.php:109-123,196-200`).
 
@@ -87,6 +91,7 @@
 |---|---|---|
 | `os_catalog_item_version.review_status` | `NOT NULL DEFAULT 'unknown'`, **sin CHECK** (`04_fase3_columnas.sql:24-37`). `approved` es asignado por los scripts de aprobación OFTAR (`aprobar_preferred_term_oftar_dx.sql:108-112`). | `v_oftar_search_catalog` exige `ver.review_status='approved'` (`oftar_domain_search.sql:77`). |
 | `os_concept_mapping.review_status` | `CHECK(draft\|reviewed\|approved\|deprecated)`, default actual `draft` (`fase3_relaciones_mapeos.sql:183-184`). No existen `pending_review` ni `rejected` en el SQL versionado. | La fila debe estar `approved`; además `external_display`/`clinical_rationale` requieren revisión de campo aprobada y hash vigente (`MappingReviewReader.php:10-130`). |
+| `os_catalog_relation.review_status` | `CHECK(draft\|reviewed\|approved\|deprecated)`, default `reviewed` (`nomenclador_odontologico_nacional.sql:551-552`). `relation_type` está limitado a los 15 tipos CDT (`:538-545`). | Solo `approved` puede entrar en la superficie pública propuesta `data.relations.clinical`; el rechazo se documenta en gobernanza, nunca como valor de `CHECK`. |
 | `os_field_review.review_status` | `DEFAULT 'unknown'`, **sin CHECK** (`01_fase2_tablas.sql:122-137`). | `EditorialEvaluator.php:209-211,308-310` y `CatalogRepository.php:2312-2319` solo aceptan `approved` con hash vigente y scope/release compatible. |
 | `os_localized_text.review_status` | `DEFAULT 'unknown'`, **sin CHECK** (`01_fase2_tablas.sql:55-81`). | Igual que `os_field_review`; si no hay contenido aprobado, la API devuelve `null` y `untranslated=true`. |
 | `os_catalog_release.status` | `CHECK(draft\|review\|published\|deprecated)`, default `published` (`origen_catalog_engine.sql:49`). | Los endpoints de catálogo exigen release `published` (`CatalogEngineService.php:137,304-305`). |
@@ -124,14 +129,14 @@
 
 **[H]** API: `/health`, `/v1/domains`, `/v1/refsets`, `/v1/search[/{domain}]`, `/v1/catalogs[/{code}/releases|items|items/{item}]`, `/v1/mappings`, `/v1/pricing-units` y rutas de nomencladores/LOINC/PMO/CIE10/ANMAT/odontología (`api/index.php:194-601+`). Envelope `data/meta/request_id`, `Vary: Accept-Language`, `X-Request-Id` (`:143-174`). OpenAPI documenta que `catalogs/*/releases` e `items` pueden devolver 200 vacío, `items/{item}` 404 y `/v1/mappings` sin paginación real con `LIMIT 50` (`docs/api/openapi-3.1.yaml:187-263`).
 
-**[H]** `CatalogEngineService.php:245-527` resuelve idioma y evalúa `meta.field_languages/available_languages/untranslated/dialect_determined`. `MappingReviewReader.php:10-130` publica `external_display`/`clinical_rationale` solo con revisión aprobada vigente y hash coincidente.
+**[H]** `CatalogEngineService.php:245-527` resuelve idioma y evalúa `meta.field_languages/available_languages/untranslated/dialect_determined`. `MappingReviewReader.php:10-130` publica `external_display`/`clinical_rationale` solo con revisión aprobada vigente y hash coincidente. El detalle de `CatalogEngineService.php:528-628` devuelve `mappings` y `related_codes`, pero no consulta `os_catalog_relation`; la pestaña Relaciones de Browse usa `itemRelations()` y mezcla mapeos con relaciones en una lista con `type`, `role`, `direction` y `result_key` (`CatalogRepository.php:2992-3121`).
 
 **[H]** `TerminologySearchService.php:35-79,417-432,448-453,520-607` incluye `oftar` en dominios y usa `v_oftar_search_catalog`; `DEFAULT_DOMAINS` sigue acotado a `snomed, cie10, anmat`. La respuesta incluye `meta.query/language/domains/.../page_counts/took_ms`.
 
 **[H]** Frontend: `BrowseController.php:15-148` normaliza `q, domain, catalog, family, type, category, status, version, validity, page, limit, tab, rel_view, compare, history` y fragmentos `detail|results`. `BrowseService.php:17-221` y `CatalogRepository.php:20-58,333-506,557-655` aplican whitelists, `MAX_OFFSET=5000`, `MAX_PAGE_SIZE=100` y exclusión mutua `domain` vs `catalog/family`. OFTAR y DENTAR son catálogos publicados admitidos.
 
-**[P] Se puede agregar sin romper:** campos opcionales en `data/meta`, filtros query opcionales ignorables, facets de anatomía/área apoyados en atributos ya presentes.
-**[P] No se puede cambiar sin versionado:** rutas, nombres de parámetros, forma de `result_key`/`catalog_code`/`code`/`term`, semántica 200 vacío frente a 404, paginación de `/v1/mappings`, defaults de dominios y gating editorial de `MappingReviewReader`.
+**[P] Se puede agregar sin romper:** campos opcionales en `data/meta`, filtros query opcionales ignorables, facets de anatomía/área apoyados en atributos ya presentes y, previo cambio de código aprobado, `data.relations` con `clinical`/`terminological`, filtros `relations`, `relation_type`, `relation_class`, `relation_direction`, `include_unpublished` y `meta.pagination`. `mappings` y `related_codes` se conservan intactos. Detalle en `contratos-api-relaciones-oftar.md`; diseño visual en `diseno-interfaz-consulta-oftar.md`.
+**[P] No se puede cambiar sin versionado:** rutas, nombres de parámetros, forma de `result_key`/`catalog_code`/`code`/`term`, semántica 200 vacío frente a 404, paginación de `/v1/mappings` (`LIMIT 50`), defaults de dominios (`oftar` en `DOMAINS`, no en `DEFAULT_DOMAINS`) y gating editorial de `MappingReviewReader`.
 
 ---
 
@@ -165,6 +170,8 @@ SELECT current_database(), current_user, version();
 SELECT to_regclass('public.os_catalog') AS os_catalog,
        to_regclass('public.os_catalog_item_version') AS os_catalog_item_version,
        to_regclass('public.os_concept_mapping') AS os_concept_mapping,
+       to_regclass('public.os_catalog_relation') AS os_catalog_relation,
+       to_regclass('public.os_relation_type') AS os_relation_type,
        to_regclass('public.os_field_review') AS os_field_review,
        to_regclass('public.os_localized_text') AS os_localized_text,
        to_regclass('public.os_audit_log') AS os_audit_log,
@@ -174,11 +181,13 @@ SELECT to_regclass('public.os_catalog') AS os_catalog,
        to_regclass('public.os_oftar_nomenclador_match') AS os_oftar_nomenclador_match;
 SELECT catalogo, count(*) FROM public.v_oftar_search_catalog GROUP BY 1 ORDER BY 1;
 SELECT review_status, count(*) FROM public.os_concept_mapping GROUP BY 1 ORDER BY 1;
+SELECT review_status, count(*) FROM public.os_catalog_relation GROUP BY 1 ORDER BY 1;
 SELECT code, name FROM public.os_clinical_category ORDER BY sort_order;
 SELECT conname, pg_get_constraintdef(oid) AS check_def
   FROM pg_constraint
  WHERE conrelid IN ('public.os_catalog_item_version'::regclass,
                    'public.os_concept_mapping'::regclass,
+                   'public.os_catalog_relation'::regclass,
                    'public.os_localized_text'::regclass,
                    'public.os_field_review'::regclass)
    AND contype = 'c'
@@ -204,6 +213,8 @@ ROLLBACK;
 | Publicar pares revisados con `os_concept_mapping`/`os_field_review` | Sí | No |
 | Filtros de navegación aditivos | Sí, capa de servicio | No |
 | Identidad externa con `edition/version/release` estructurados | No de forma limpia | Sí, SQL aditivo aprobado |
+| Tipos clínicos OFTAR con inversa y vigencia estructurada | Puente `referencia_literal` documentado, sin DDL | Sí: `relation_type_code` + `os_relation_type`, SQL aditivo aprobado |
+| Separar clínicas/terminológicas en lectura pública | No: `itemRelations()` mezcla clases | Sí, contrato `data.relations` aprobado y versionado |
 | Relaciones multivaluadas nativas para anatomía/área | No de forma limpia | Sí, si no bastan `os_catalog_relation` |
 | Cambiar paginación de `/v1/mappings` o defaults de dominios | No | Sí, con versionado de contrato |
 
@@ -213,4 +224,4 @@ ROLLBACK;
 
 **[I]** La arquitectura real es compatible con la especificación propuesta: no hace falta motor paralelo y la mayoría de las decisiones se apoyan en tablas y contratos existentes. El riesgo está en la brecha entre intención documentada y estado runtime no verificado.
 
-**[P]** Queda resuelto qué se puede implementar sin DDL y qué requiere ampliación. Queda pendiente el acta de solo lectura de §7 antes de cualquier reconstrucción de datos.
+**[P]** Queda resuelto qué se puede implementar sin DDL y qué requiere ampliación, incluida la distinción entre relaciones clínicas y terminológicas. Queda pendiente el acta de solo lectura de §7, la ratificación de la dirección `broader`/`narrower` y la aprobación de la migración aditiva de `relation_type_code` antes de cualquier reconstrucción de datos.

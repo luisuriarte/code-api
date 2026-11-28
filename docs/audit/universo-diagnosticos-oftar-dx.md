@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — definición documentada del universo.
-**Estado:** propuesta para aprobación. **No se generaron seeds ni se importaron diagnósticos.**
+**Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución; propuesta no aprobada, sin seeds ni diagnósticos importados.)
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §3).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta.
 
