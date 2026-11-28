@@ -1,7 +1,7 @@
 # Plan de pruebas del modelo transversal de relaciones
 
 **Fecha:** 2026-11-28 · **Versión:** 1.0 · **Modelo rector:** `00-modelo-transversal-relaciones-origen-salud.md`
-**Estado:** plan preparado; las pruebas siguen **PENDIENTES** en entorno con datos. Se ejecutó la batería estática `php tests/run.php` sobre el repositorio; no se ejecutó SQL ni API contra PostgreSQL en esta sesión.
+**Estado:** plan en ejecución. Runbook operativo en `13-runbook-ejecucion-T01-T38.md`; resultados a registrar en `docs/audit/resultado-T01-T38-relaciones-transversales.md`. La verificación SQL y la regresión estática ya están conformes; T-01…T-38 con datos y API/UI quedan a la espera de su ejecución registrada.
 
 **Convención:** `PENDIENTE` = diseñada pero no ejecutada. `LECTURA` = verificada por inspección de archivos en rondas anteriores; no equivale a ejecución.
 
@@ -68,4 +68,4 @@ Cada prueba debe registrar: ID, fecha, entorno, consulta/request, filas afectada
 
 ## 4. Límite
 
-**[P]** No se ejecuta ninguna prueba en esta tarea. No se crean datos de prueba en PostgreSQL ni se usa producción como entorno de ensayo sin autorización.
+**[P]** No se crean datos de prueba en PostgreSQL ni se usan inserciones inválidas para forzar un constraint. Las pruebas destructivas se sustituyen por verificación de la restricción. La ejecución es `READ ONLY` y se realiza bajo el acta autorizada.

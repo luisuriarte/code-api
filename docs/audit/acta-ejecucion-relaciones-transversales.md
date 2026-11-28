@@ -78,4 +78,4 @@
 | Corrección | `tests/run.php` fija `PORTAL_SERVICE_REQUEST_LINK_ENABLED=false` durante la generación del sitemap y restaura el valor previo. |
 | Repetición en VPS | Verificación corregida conforme; `php tests/run.php` → **`OK: 4110 comprobaciones`**. Salidas: `/tmp/fase5_verificacion_post_corregida.log` y `/tmp/fase5_tests_corregido.log`. |
 
-**[P]** Adjuntar al expediente `/tmp/fase5_verificacion_post_corregida.log` y `/tmp/fase5_tests_corregido.log`, ejecutar T-01…T-38 y decidir la publicación con gobernanza. No se cargaron relaciones clínicas por par.
+**[H]** Adjuntadas las salidas `/tmp/fase5_verificacion_post_corregida.log` y `/tmp/fase5_tests_corregido.log`. **[P]** Ejecutar T-01…T-38 según `docs/architecture/relaciones/13-runbook-ejecucion-T01-T38.md`, registrar `docs/audit/resultado-T01-T38-relaciones-transversales.md` y decidir en `docs/audit/acta-publicacion-relaciones-transversales.md`. No se cargaron relaciones clínicas por par.
