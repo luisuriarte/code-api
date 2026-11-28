@@ -145,4 +145,112 @@ SELECT m.source_code,
  WHERE m.review_status = 'approved'
  ORDER BY 1;
 
+\echo '=== 13. Versiones vinculadas al release publicado vigente ==='
+WITH pub AS (
+    SELECT DISTINCT ON (catalog_id) id, catalog_id, version_tag
+      FROM public.os_catalog_release
+     WHERE status = 'published'
+     ORDER BY catalog_id, valid_from DESC, id DESC
+)
+SELECT c.code AS catalogo,
+       pub.version_tag,
+       count(*) FILTER (WHERE v.release_id = pub.id) AS en_release,
+       count(*) FILTER (WHERE v.release_id IS DISTINCT FROM pub.id) AS fuera_de_release
+  FROM public.os_catalog c
+  JOIN pub ON pub.catalog_id = c.id
+  JOIN public.os_catalog_item i ON i.catalog_id = c.id
+  LEFT JOIN public.os_catalog_item_version v ON v.item_id = i.id
+ WHERE c.code IN ('nomenclador-oftalmologico-cao-ar',
+                  'nomenclador-oftalmologico-regional-ar')
+ GROUP BY 1, 2 ORDER BY 1;
+
+\echo '=== 14. Simulación del browser: items con "Cornea" por catálogo ==='
+WITH pub AS (
+    SELECT DISTINCT ON (catalog_id) id, catalog_id
+      FROM public.os_catalog_release
+     WHERE status = 'published'
+     ORDER BY catalog_id, valid_from DESC, id DESC
+)
+SELECT c.code AS catalogo,
+       count(DISTINCT i.id) AS items
+  FROM public.os_catalog_item i
+  JOIN public.os_catalog c ON c.id = i.catalog_id
+  JOIN pub ON pub.catalog_id = c.id
+  JOIN public.os_catalog_item_version v ON v.item_id = i.id AND v.release_id = pub.id
+ WHERE c.family_code = 'oftar'
+   AND c.is_active = TRUE
+   AND i.status = 'active'
+   AND (v.preferred_term ILIKE '%Cornea%'
+        OR i.permanent_code ILIKE '%Cornea%'
+        OR EXISTS (SELECT 1 FROM public.os_catalog_identifier pi
+                    WHERE pi.item_id = i.id AND pi.value ILIKE '%Cornea%'))
+ GROUP BY 1 ORDER BY 1;
+
+\echo '=== 15. Mapeos de los cuatro catálogos OFTAR por sistema y estado ==='
+SELECT c.code AS catalogo, sys.code AS sistema, m.review_status, count(*) AS mapeos
+  FROM public.os_concept_mapping m
+  JOIN public.os_terminology_system sys ON sys.id = m.terminology_system_id
+  JOIN public.os_catalog_item i ON i.id = m.item_id
+  JOIN public.os_catalog c ON c.id = i.catalog_id
+ WHERE c.code IN ('oftar-pr', 'oftar-dx',
+                  'nomenclador-oftalmologico-cao-ar',
+                  'nomenclador-oftalmologico-regional-ar')
+ GROUP BY 1, 2, 3 ORDER BY 1, 2, 3;
+
+\echo '=== 16. Mapeos publicados de CAO y Regional por ítem ==='
+SELECT c.code AS catalogo, sys.code AS sistema, m.review_status, count(*) AS mapeos
+  FROM public.os_concept_mapping m
+  JOIN public.os_terminology_system sys ON sys.id = m.terminology_system_id
+  JOIN public.os_catalog_item i ON i.id = m.item_id
+  JOIN public.os_catalog c ON c.id = i.catalog_id
+ WHERE c.code IN ('nomenclador-oftalmologico-cao-ar',
+                  'nomenclador-oftalmologico-regional-ar')
+ GROUP BY 1, 2, 3 ORDER BY 1, 2, 3;
+
+\echo '=== 17. Identificadores por catálogo y sistema ==='
+SELECT c.code AS catalogo, ident.system_name, count(*) AS identificadores
+  FROM public.os_catalog_identifier ident
+  JOIN public.os_catalog_item i ON i.id = ident.item_id
+  JOIN public.os_catalog c ON c.id = i.catalog_id
+ WHERE c.code IN ('oftar-pr',
+                  'nomenclador-oftalmologico-cao-ar',
+                  'nomenclador-oftalmologico-regional-ar')
+ GROUP BY 1, 2 ORDER BY 1, 2;
+
+\echo '=== 18. Primeros 20 resultados del browser para "Cornea" (orden real) ==='
+WITH pub AS (
+    SELECT DISTINCT ON (catalog_id) id, catalog_id
+      FROM public.os_catalog_release
+     WHERE status = 'published'
+     ORDER BY catalog_id, valid_from DESC, id DESC
+), cand AS (
+    SELECT c.code AS catalogo,
+           item.permanent_code,
+           ver.preferred_term,
+           CASE
+             WHEN lower(ver.preferred_term) = lower('Cornea') THEN 1.0
+             WHEN item.permanent_code ILIKE 'Cornea%' THEN 0.96
+             WHEN EXISTS (SELECT 1 FROM public.os_catalog_identifier pi
+                           WHERE pi.item_id = item.id AND pi.value ILIKE 'Cornea%') THEN 0.96
+             WHEN ver.preferred_term ILIKE 'Cornea%' THEN 0.92
+             WHEN ver.preferred_term ILIKE '%Cornea%' THEN 0.78
+             ELSE 0.0
+           END AS score
+      FROM public.os_catalog_item item
+      JOIN public.os_catalog c ON c.id = item.catalog_id
+      JOIN pub ON pub.catalog_id = c.id
+      JOIN public.os_catalog_item_version ver ON ver.item_id = item.id AND ver.release_id = pub.id
+     WHERE c.family_code = 'oftar'
+       AND c.is_active = TRUE
+       AND item.status = 'active'
+       AND (ver.preferred_term ILIKE '%Cornea%'
+            OR item.permanent_code ILIKE '%Cornea%'
+            OR EXISTS (SELECT 1 FROM public.os_catalog_identifier pi
+                        WHERE pi.item_id = item.id AND pi.value ILIKE '%Cornea%'))
+)
+SELECT catalogo, permanent_code, preferred_term, score
+  FROM cand
+ ORDER BY score DESC, length(preferred_term) ASC, preferred_term ASC
+ LIMIT 20;
+
 ROLLBACK;

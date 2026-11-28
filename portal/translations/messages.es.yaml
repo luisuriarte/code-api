@@ -335,7 +335,7 @@ browse:
     catalogs: "Catálogos publicados"
     family: "Familia"
     family_dentar: "DENTAR (odontología)"
-    family_oftar: "OFTAR (oftalmología)"
+    family_oftar: "Oftalmología"
     reserved_note: "Solo estos catálogos se pueden consultar. Las etiquetas DENTAR-*/OS-* están en preparación y no devuelven resultados. OFTAR-DX no tiene UVR: la valoración corresponde a OFTAR-PR."
     type: "Tipo"
     category: "Categoría"

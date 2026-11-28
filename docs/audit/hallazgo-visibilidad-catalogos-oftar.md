@@ -1,6 +1,6 @@
 # Hallazgo — visibilidad de los nomencladores oftalmológicos y sus relaciones
 
-**Fecha:** 2026-11-28 · **Entorno:** producción `origen_codes` · **Estado:** diagnóstico ejecutado por el responsable; salida `/tmp/visibilidad_catalogos_oftar.log`.
+**Fecha:** 2026-11-28 · **Entorno:** producción `origen_codes` · **Estado:** diagnóstico v3 ejecutado por el responsable; salida `/tmp/visibilidad_catalogos_oftar_v3.log`.
 
 **Convención:** `[H]` verificado en repositorio/documentación o en la salida del responsable · `[I]` inferencia · `[P]` propuesta.
 
@@ -36,7 +36,17 @@
 | curl sin credenciales | `401 unauthorized` en `/v1/catalogs` y `/v1/search`. | Falló la autenticación, no la consulta. |
 | `git log` en el VPS | `not a git repository`. | El VPS no tiene `.git`; no afecta a `git apply`, sí a `git log`. |
 
-`[H]` El único par aprobado no resuelve destino por `permanent_code`; H-02 está confirmado con datos reales. Por eso `aprobar_mapeo_nomencladores_oftar.sql`, aun ejecutado ahora, insertaría **0 relaciones**: la fila aprobada se descarta en el `JOIN` de `aprobar_mapeo_nomencladores_oftar.sql:163-165`.
+`[H]` Sección 13: CAO y Regional tienen 143 y 136 versiones **vinculadas al release publicado vigente**, y 0 fuera de él. Queda descartada la hipótesis de versiones aprobadas colgadas de otro release.
+
+`[H]` Sección 14: con `Cornea` hay coincidencias reales en los cuatro catálogos — CAO 4, Regional 11, `oftar-pr` 3, `oftar-dx` 185. CAO **sí** es buscable en datos; si no aparece en pantalla, la causa es de orden/paginación o de selección del desplegable, no de ausencia de filas. La sección 18 replica el orden del browser (`score DESC, length(term) ASC, term ASC`) para confirmarlo.
+
+`[H]` Sección 15: `oftar-pr` tiene **0 mapeos terminológicos** en cualquier sistema. El CIE-10 que ve el usuario no viene de `os_concept_mapping` de `oftar-pr`; la sección 18 del diagnóstico se amplió a los cuatro catálogos para localizar el origen. `itemRelations()` (`:2997-3127`) muestra todos los estados, mientras que `itemRelationsByClass()` (`:3139-3275`) solo publica `approved`; la vista usa la clasificación y cae a la lista plana solo si no hay filas clasificadas (`portal/Views/partials/browse/detail/relations.php:7-21`).
+
+`[H]` Sección 16: CAO y Regional tienen 0 mapeos. Sección 17: **ningún ítem de CAO ni Regional tiene `os_catalog_identifier`**; solo `oftar-pr` tiene 154 identificadores `NOMENCLADOR-AR`. Por eso no hay enlaces navegables hacia esos nomencladores aunque existan mapeos.
+
+`[P]` El usuario pidió cambiar **solo la etiqueta visible** de la familia: `browse.family_oftar` pasa de «OFTAR (oftalmología)» a «Oftalmología» en los cuatro idiomas. El valor interno sigue siendo `family_code='oftar'`; no se toca la API ni la base.
+
+`[H]` H-02 quedó confirmado con un caso concreto: el único par aprobado es CAO `460105` → `306002`; no resuelve por `permanent_code` (sección 11) pero **sí** resuelve por `os_catalog_identifier` a `OFT-PR-000025` (sección 12). Por eso `aprobar_mapeo_nomencladores_oftar.sql`, ejecutado tal cual, insertaría **0 relaciones**: la fila aprobada se descarta en el `JOIN` de `aprobar_mapeo_nomencladores_oftar.sql:163-165`.
 
 `[H]` Las matrices clínicas `matriz-conciliacion-clinica-oftar-pr.csv` y `matriz-equivalencias-oftar-pr.csv` están íntegramente como `propuesta_no_publicada` (`verificacion-oftar-pr.md:14`). Publicar equivalencias clínicas por coincidencia textual está prohibido por el acta de ejecución.
 
@@ -44,11 +54,11 @@
 
 ## 3. Causa raíz
 
-`[H]` **Browser:** no es falta de datos ni de código; es el comportamiento del filtro. Sin familia seleccionada, las opciones de catálogo están ocultas por diseño.
+`[H]` **Browser:** sin familia, las opciones de catálogo están ocultas por diseño. Con familia OFTAR, CAO y Regional están en la whitelist y tienen datos buscables. La ausencia de CAO en pantalla no se explica por datos ni por whitelist; queda por comprobar el orden de resultados (sección 18) o el estado del desplegable en el navegador.
 
 `[H]` **API:** las consultas se hicieron sin API Key. La respuesta `401` impide evaluar el contenido; hay que repetir con `Authorization: Bearer $API_KEY`.
 
-`[H]` **Relaciones:** hay 1 par aprobado y 90 propuestos en CAO, 0 en Regional; el par aprobado no resuelve a `OFT-PR-NNNNNN` (H-02). El script de aprobación filtra `review_status='approved'` y hace `JOIN` por `permanent_code`, así que no genera enlaces. No hay equivalencias clínicas ratificadas que publicar.
+`[H]` **Relaciones:** hay 1 par aprobado y 90 propuestos en CAO, 0 en Regional; el par aprobado no resuelve por `permanent_code` pero sí por identificador (H-02). El script de aprobación filtra `review_status='approved'` y hace `JOIN` por `permanent_code`, así que no genera enlaces. CAO/Regional no tienen identificadores ni mapeos, y las equivalencias clínicas siguen sin ratificar. No se publica nada sin acta.
 
 ---
 
@@ -59,7 +69,7 @@ cd /var/www/html/origen.ar/code-api
 
 sudo -u postgres psql -X -v ON_ERROR_STOP=1 -P pager=off -d origen_codes \
   -f sql/03_oftar/verificacion_visibilidad_catalogos_oftar.sql \
-  2>&1 | tee /tmp/visibilidad_catalogos_oftar_v2.log
+  2>&1 | tee /tmp/visibilidad_catalogos_oftar_v3.log
 
 read -rsp 'API_KEY: ' API_KEY; export API_KEY; echo
 BASE='https://api.origen.ar/v1'
@@ -88,6 +98,9 @@ En el browser: elegir familia **`oftar`** y luego marcar los catálogos `NOM-CAO
 | 1 par `approved`, 90 `proposed`, 0 en Regional | **[P]** Revisión humana gobernada antes de aprobar más pares; el agente no aprueba correspondencias. |
 | H-02 confirmado (91/91 sin resolver) | **[P]** Corregir la resolución de destino por `os_catalog_identifier` (`system_name='NOMENCLADOR-AR'`) antes de publicar enlaces; repetir verificación. |
 | Relaciones 0 en ambos sentidos | Conforme al estado actual: no se publican relaciones sin pares aprobados resolubles. No marcar `PASS`. |
+| Etiqueta «OFTAR (oftalmología)» | **[P]** Cambiada solo en traducciones; `family_code` y contratos intactos. |
+| CAO ausente mientras Regional aparece | **[P]** Pendiente de las secciones 13/14: comparar vinculación al release publicado y coincidencias de `Cornea`. |
+| Solo CIE-10 en Relaciones de OFTAR-PR | **[P]** Pendiente de las secciones 15/16: SNOMED puede estar `draft` y CAO/Regional tienen 0 mapeos. |
 | Equivalencias clínicas de las matrices | **[P]** Permanecen `propuesta_no_publicada` hasta acta clínica firmada. |
 
 `[P]` Ninguna acción de escritura se ejecutó. La decisión de publicación gobernada sigue limitada al sostén técnico registrado en `docs/audit/acta-publicacion-relaciones-transversales.md`.

@@ -770,7 +770,7 @@ browse:
     catalogs: "Published catalogs"
     family: "Family"
     family_dentar: "DENTAR (dentistry)"
-    family_oftar: "OFTAR (ophthalmology)"
+    family_oftar: "Ophthalmology"
     type: "Type"
     category: "Category"
     status: "Status"
