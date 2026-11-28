@@ -297,7 +297,7 @@ browse:
     approved_note: "Solo se muestran textos aprobados por el modelo editorial vigente."
     invalid_domain: "El catálogo seleccionado no es válido."
     invalid_catalog: "El catálogo DENTAR seleccionado no es válido."
-    catalog: "Catálogo DENTAR"
+    catalog: "Catálogo"
     catalog_all: "Sin filtro de producto"
     dentar_badge: "DENTAR"
     dentar_intro: "Explorando %catalog% con el buscador compartido de Origen Salud."

@@ -4774,6 +4774,11 @@ foreach (['es-AR', 'es', 'en', 'pt-BR'] as $relationLocale) {
             && trim((string) $relationMessages['browse']['relation_class_terminological']) !== '',
         $relationLocale . ': deben existir las etiquetas de clase clínica y terminológica.'
     );
+    $check(
+        isset($relationMessages['browse']['catalog'])
+            && !str_contains(mb_strtolower((string) $relationMessages['browse']['catalog']), 'dentar'),
+        $relationLocale . ': la etiqueta «browse.catalog» no debe estar ligada a DENTAR.'
+    );
 }
 $fase5Sql = $auditRead('sql/08_arquitectura/fase5_relaciones_transversales.sql');
 $check(

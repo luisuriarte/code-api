@@ -604,7 +604,7 @@ browse:
     invalid_domain: "El origen seleccionado no es válido."
     invalid_catalog: "El catálogo odontológico u oftalmológico seleccionado no es válido."
     invalid_combination: "No se pueden combinar fuentes terminológicas con catálogos DENTAR/OFTAR. Elegí una sola familia."
-    catalog: "Catálogo DENTAR"
+    catalog: "Catálogo"
     catalog_all: "Sin filtro de producto"
     dentar_badge: "DENTAR"
     dentar_intro: "Explorando %catalog% con el buscador compartido de Origen Salud."

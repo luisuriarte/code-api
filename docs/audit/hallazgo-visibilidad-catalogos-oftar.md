@@ -44,7 +44,9 @@
 
 `[H]` **Defecto de publicación encontrado:** `itemRelations()` (`CatalogRepository.php:2997-3127`) no filtraba `review_status`, y `relations.php:14-23` resucitaba la lista plana cuando la proyección clasificada estaba vacía. Eso hacía visibles públicamente los 2.678 mapeos `draft` de `oftar-dx`, en contra de la regla de que `pending_review`/`draft` no son publicables. `itemRelationsByClass()` (`:3139-3275`) sí filtraba `approved`, pero la ruta de compatibilidad lo bypassaba.
 
-`[P]` **Corrección aplicada en el working tree, sin desplegar:** `itemRelations()` ahora filtra `m.review_status='approved'` y `r.review_status='approved'`; la vista solo usa la lista plana si la proyección `relations_by_class` **no existe**, nunca si existe vacía; `context.php` aplica el mismo criterio para mostrar la pestaña. Se agregaron dos comprobaciones en `tests/run.php` (`OK: 4112`).
+`[P]` **Corrección aplicada en el working tree, sin desplegar:** `itemRelations()` ahora filtra `m.review_status='approved'` y `r.review_status='approved'`; la vista solo usa la lista plana si la proyección `relations_by_class` **no existe**, nunca si existe vacía. La pestaña Relaciones **sí se muestra** cuando la proyección existe, aunque esté vacía, para que la ficha diga explícitamente que no hay relaciones publicadas. `context.php` aplica ese criterio. Se agregaron comprobaciones en `tests/run.php` (`OK: 4116`).
+
+`[H]` El usuario también informó que la ficha decía «Catálogo DENTAR» al consultar un código OFTAR. `browse.catalog` estaba traducido como «Catálogo DENTAR» / «DENTAR catalog» en los cuatro idiomas. `[P]` Se cambió a «Catálogo» / «Catalog», sin tocar el valor `catalog_code` (`oftar-pr`, CAO…).
 
 `[H]` Sección 16: CAO y Regional tienen 0 mapeos. Sección 17: **ningún ítem de CAO ni Regional tiene `os_catalog_identifier`**; solo `oftar-pr` tiene 154 identificadores `NOMENCLADOR-AR`. Por eso no hay enlaces navegables hacia esos nomencladores aunque existan mapeos.
 
@@ -63,6 +65,8 @@
 `[H]` **API:** las consultas se hicieron sin API Key. La respuesta `401` impide evaluar el contenido; hay que repetir con `Authorization: Bearer $API_KEY`.
 
 `[H]` **Relaciones:** el CIE-10 visible era `draft` de `oftar-dx` filtrado por la ruta de compatibilidad; ya está corregido en código. Hay 1 par aprobado y 90 propuestos en CAO, 0 en Regional; el par aprobado no resuelve por `permanent_code` pero sí por identificador (H-02). El script de aprobación hace `JOIN` por `permanent_code`, así que no genera enlaces. CAO/Regional no tienen identificadores ni mapeos, y las equivalencias clínicas siguen sin ratificar. No se publica nada sin acta.
+
+`[H]` **Panel de administración:** en `/admin/catalogs/{code}/{itemId}` la tabla de relaciones es solo lectura; el formulario «Relaciones» permite **proponer una relación nueva** en `os_catalog_relation`, nunca editar ni borrar la existente. El servicio acepta los 15 tipos CDT heredados, pero el desplegable ofrece solo 4 (`refer_to_details`, `used_in_combination_with`, `not_paid_separately`, `interchangeable_with`); `referencia_literal` no está en la UI y los 31 tipos `REL-*` no son aceptados por la vía gobernada. La publicación exige dos revisiones, decisión con evidencia y `catalog.publish`; el aplicador fija `review_status='approved'` y, si no se informa lo contrario, `source_system_code='CDT-2025'`. El panel **no gestiona** `os_concept_mapping` (CIE-10/SNOMED) ni `os_oftar_nomenclador_match` (los 91 pares), y resuelve el destino por `target_item_id` numérico, no por identificador `NOMENCLADOR-AR`.
 
 ---
 
@@ -106,6 +110,9 @@ En el browser: elegir familia **`oftar`** y luego marcar los catálogos `NOM-CAO
 | CAO ausente mientras Regional aparece | **[H]** Confirmado: orden por relevancia; CAO queda tras 185 resultados de `oftar-dx`. Filtrar por catálogo lo resuelve. |
 | Solo CIE-10 en Relaciones | **[H]** Era `draft` de `oftar-dx` filtrado por compatibilidad. **[P]** Corregido en código; requiere despliegue. |
 | Mapeos `draft` visibles en público | **[P]** Corregido: `itemRelations()` filtra `approved` y la vista no resucita la lista plana. |
+| Pestaña Relaciones ausente | **[P]** Corregido: vuelve a mostrarse con la proyección, aunque no haya filas `approved`. |
+| «Catálogo DENTAR» en ficha OFTAR | **[P]** Corregido: etiqueta neutral en los cuatro idiomas; el valor del catálogo sigue siendo el real. |
+| Gestión desde el panel | **[H]** Solo alta gobernada de relaciones internas; sin edición/borrado, sin `referencia_literal` en la UI y sin mapeos/pares nomenclador. |
 | Equivalencias clínicas de las matrices | **[P]** Permanecen `propuesta_no_publicada` hasta acta clínica firmada. |
 
 `[P]` Ninguna acción de escritura se ejecutó. La decisión de publicación gobernada sigue limitada al sostén técnico registrado en `docs/audit/acta-publicacion-relaciones-transversales.md`.
