@@ -7,6 +7,8 @@
 
 **Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta.
 
+**[P]** Perfil OFTAR de la integración común con `os_catalog` (`docs/architecture/relaciones/05-integracion-os-catalog.md`); `os_catalog` sigue siendo el motor único.
+
 > Solo documentación: no se ejecutó SQL, no se consultó PostgreSQL y no se modificó ningún objeto. La verificación de base queda para el acta `READ ONLY` (rector §14 / `plan-implementacion-controlada-oftar.md` etapa 1; `arquitectura-tecnica-oftar-final.md` §1).
 
 ---

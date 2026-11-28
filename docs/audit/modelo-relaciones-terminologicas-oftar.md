@@ -6,6 +6,8 @@
 **Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta sujeta a aprobación explícita.
 
+**[P]** Este documento es el **perfil de dominio OFTAR** del modelo transversal de correspondencias de Origen Salud (`docs/architecture/relaciones/02-modelo-correspondencias-terminologicas-transversal.md`); no define un mecanismo exclusivo para OFTAR.
+
 > Documento de solo lectura. No se ejecutaron SQL, seeds, migraciones ni importadores; no se consultó ni se escribió en PostgreSQL. Toda carga, aprobación o publicación requiere autorización posterior, acta y firmas clínicas (rector §0, §14 y `plan-implementacion-controlada-oftar.md`).
 
 ---

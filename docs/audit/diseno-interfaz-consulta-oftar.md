@@ -6,6 +6,8 @@
 **Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 **Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta no implementada.
 
+**[P]** Perfil OFTAR del componente reutilizable de interfaz (`docs/architecture/relaciones/09-diseno-interfaz-relaciones-reutilizable.md`); DENTAR usa el mismo componente con grupos adaptados.
+
 ---
 
 ## 0. Método y límite

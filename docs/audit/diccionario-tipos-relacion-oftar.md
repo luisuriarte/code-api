@@ -5,6 +5,8 @@
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0
 **Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta sujeta a aprobación explícita.
+
+**[P]** Los 31 códigos se conservan como **perfil OFTAR** del diccionario común (`docs/architecture/relaciones/03-diccionario-tipos-relacion-transversal.md`); DENTAR los reutiliza solo cuando la semántica coincide.
 **Complemento:** `modelo-relaciones-clinicas-oftar.md` (principios, representación, gobernanza y ejemplos).
 
 > Documento **solo de diseño**. No se ejecutó SQL, seed, migración ni consulta a PostgreSQL; las fuentes se verificaron por lectura. Los códigos de la tabla son propuestas sujetas a ratificación clínica y a la migración aditiva aprobada, no tipos ya persistidos.

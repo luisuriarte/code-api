@@ -19,6 +19,15 @@
 > otra extensión propuesta en este documento se considera aprobada: toda
 > implementación requiere aprobación explícita previa.
 >
+> **Revisión del 2026-11-28 — modelo transversal obligatorio.** El modelo de
+> relaciones clínicas y terminológicas deja de diseñarse solo para OFTAR y pasa
+> a ser una capacidad compartida de Origen Salud, con primera aplicación en
+> DENTAR y OFTAR y extensión futura a NN-PMO, NBU, NHPGD, ANDIS,
+> KINESIOLOGIA, SALUD_MENTAL y otras familias. El detalle está en
+> `docs/architecture/relaciones/00-modelo-transversal-relaciones-origen-salud.md`.
+> Esta revisión es solo documental: no ejecuta migraciones, seeds ni cambios de
+> datos.
+>
 > El registro de decisiones multilingüe (`decisiones-arquitectura-multilingue.md`,
 > D-01 a D-41) sigue siendo la referencia de coherencia en materia de idioma,
 > procedencia y publicación. La verificación demostró que **la capa multilingüe
@@ -318,7 +327,9 @@ DML, publicación o cambio de contrato.
    origen.
 2. **Infraestructura compartida.** Un solo registro de dominios/catálogos, un
    solo motor de consulta, un solo modelo de relaciones, versionado, idioma,
-   auditoría y documentación.
+   auditoría y documentación. El modelo de relaciones es **transversal**: sirve
+   a DENTAR, OFTAR y a cualquier familia futura sin duplicar motores ni
+   crear un modelo por catálogo (`docs/architecture/relaciones/`).
 3. **Extensibilidad real.** Incorporar un dominio es insertar datos y, si hace
    falta, crear un módulo específico con FK al núcleo; nunca rediseñar el núcleo
    ni crear una implementación paralela.
@@ -455,6 +466,19 @@ piezas, superficies y regiones; CL representa hallazgos y condiciones; las
 relaciones entre catálogos son explícitas, tipificadas, versionadas y
 auditables.
 
+**Fuentes odontológicas obligatorias [PROP]:** CDT es referencia internacional
+para `DENTAR-PR` y debe conservar descripción oficial, edición/año, categorías,
+cambios entre ediciones y licencia, sin asumir equivalencia exacta; el
+Nomenclador Nacional de Prestaciones Odontológicas de Argentina es referencia
+fundamental y conserva el formato original (`01.01` **no** se convierte en
+`0101`), capítulo, normas particulares, alcance, vigencia y fuente; los
+nomencladores provinciales, regionales e institucionales mantienen identidad
+independiente, con institución, jurisdicción, edición, vigencia y condiciones
+de cobertura separadas de la identidad clínica. La ficha DENTAR debe distinguir
+visualmente equivalencias de relaciones clínicas. Detalle en
+`docs/architecture/relaciones/02-modelo-correspondencias-terminologicas-transversal.md`
+y `04-reglas-validez-dominio-catalogo.md`.
+
 ### 5.2 Nomenclador Odontológico Nacional
 
 El generador `tools/generate_nomenclador_odontologico_sql.py` produce
@@ -488,8 +512,10 @@ dump quedaron vinculados y los 3 restantes no se inventaron. El código visible
 de DENTAR-PR sigue siendo principal; el nacional es secundario y se relaciona
 por `referencia_literal`, sin juicio de equivalencia clínica. El portal ya
 incluye el catálogo en `CatalogRepository::DENTAR_CATALOGS` y en la vista de
-Browse [REPO], por lo que es consultable sin cambios de código; las relaciones
-siguen sin ser navegables mientras `itemRelations()` no consuma la tabla [REPO].
+Browse [REPO], por lo que es consultable sin cambios de código. Las relaciones
+son navegables desde la Fase 4 (§7.4); la revisión del 2026-11-28 exige, además,
+separar visualmente las relaciones clínicas de las correspondencias
+terminológicas (§7.5).
 
 ### 5.3 Catálogos generales propuestos (OS-*)
 
@@ -550,37 +576,45 @@ Regla de oro: **la clase determine el tratamiento, no la forma de la tabla.**
 
 ### 7.1 Fundamento
 
-Los 15 tipos reales de CDT incluyen `referencia_literal`, `refer_to_details`,
-`denied_as_integral`, `used_in_combination_with` y `billed_in_conjunction_with`
-[DOC]. No deben aplanarse a `related`: para eso ya existe `os_concept_mapping`,
-que pierde el contexto. El tipo debe referenciar `os_relation_type`, no un
-`CHECK` cerrado.
+El modelo es **transversal**: atiende relaciones clínicas, anatómicas y
+funcionales entre conceptos internos, y correspondencias terminológicas con
+sistemas externos, para DENTAR, OFTAR y futuras familias con un solo mecanismo
+(`docs/architecture/relaciones/00-modelo-transversal-relaciones-origen-salud.md`).
+Los 15 tipos reales de CDT, incluidos `referencia_literal`, `refer_to_details`,
+`denied_as_integral`, `used_in_combination_with` y `billed_in_conjunction_with`,
+se conservan como procedencia [DOC]. No deben aplanarse a `related`: para eso
+existe `os_concept_mapping`, que pierde el contexto clínico.
 
 ### 7.2 Modelo propuesto
 
-Mantener `os_catalog_relation` como tabla de relaciones entre ítems y extenderla
-de forma aditiva:
+Mantener las responsabilidades separadas sin crear un motor paralelo:
 
-- `relation_id` (PK), `valid_from`/`valid_to`;
-- `source_catalog_id`/`source_release_id` y `target_catalog_id`/
-  `target_release_id` para versionar ambos extremos;
-- `relation_kind` (`structural`, `clinical`, `editorial`, `billing`,
-  `regulatory`, `mapping`) sin perder el tipo específico;
-- `mapping_method`, `confidence_level`, `reviewed_by`, `reviewed_at`,
-  `license_reference`;
-- `inverse_relation_type` opcional para navegación inversa.
+- **Relaciones internas:** `os_catalog_relation` + `os_relation_kind` /
+  `os_relation_type`, con `valid_from`/`valid_to`, catálogos y releases de
+  ambos extremos, `relation_kind`, `mapping_method`, `confidence_level`,
+  `reviewed_by`/`reviewed_at`, `license_reference` e
+  `inverse_relation_type` (`fase3_relaciones_mapeos.sql:60-73`).
+- **Correspondencias externas:** `os_concept_mapping` + `os_mapping_metadata`
+  + `os_terminology_system`, con edición/versión, naturaleza, método, licencia,
+  vigencia y revisión (`origen_catalog_engine.sql:111-136`;
+  `fase3_relaciones_mapeos.sql:118-147`).
+- **Tipos gobernados:** ampliación aditiva propuesta `relation_type_code
+  VARCHAR(60)` con FK a `os_relation_type`; el `CHECK` actual de 15 tipos CDT
+  permanece intacto hasta aprobación (`nomenclador_odontologico_nacional.sql:538-545`).
+- **Perfiles:** tipos, combinaciones y sistemas válidos se definen por dominio,
+  familia y catálogo (`docs/architecture/relaciones/04-reglas-validez-dominio-catalogo.md`).
 
-Tipos del prompt a incorporar **cuando haya evidencia**: `related_to`,
-`equivalent_to`, `broader_than`, `narrower_than`, `replaces`, `replaced_by`,
-`indicated_by`, `contraindicated_by`, `requires`, `uses`, `contains`,
-`classified_as`, `maps_to`. **No asignar `equivalent_to` por similitud de
-nombres.** Los mapeos pueden ser unívocos, múltiples, parciales o aproximados y
-deben declararlo.
+El diccionario común reutiliza los 31 códigos `REL-*` de OFTAR para DENTAR
+cuando la semántica sea idéntica (`docs/architecture/relaciones/03-diccionario-tipos-relacion-transversal.md`).
+**No asignar equivalencia por similitud de nombres**, y no convertir una
+relación clínica en mapeo de nomenclador.
 
 ### 7.3 Compatibilidad de exportación
 
 Conservar `related_dentar` y `related_external` como vistas o proyecciones sobre
-la tabla relacional normalizada, sin romper formatos existentes.
+la tabla relacional normalizada, sin romper formatos existentes. La API añade
+`data.relations{clinical,terminological}` sin quitar `mappings` ni
+`related_codes` (`docs/architecture/relaciones/10-contratos-api-relaciones-transversales.md`).
 
 ### 7.4 Integración aprobada (Fase 4)
 
@@ -595,6 +629,16 @@ constraints, 2 índices y las tablas `os_mapping_metadata` y
 `sql/08_arquitectura/fase3_relaciones_mapeos.sql`, sin tocar esas 603 filas.
 Ejecutada y verificada el 2026-11-19: **603 de 603 relaciones resultaron
 navegables**, sin huérfanos ni privilege leaks en las tablas nuevas.
+
+### 7.5 Componentes y documentación asociada
+
+La interfaz de ficha y los contratos son compartidos: grupos adaptados por
+DENTAR/OFTAR, distinción visual Clínica vs Terminológica y un solo componente
+reutilizable (`docs/architecture/relaciones/09-diseno-interfaz-relaciones-reutilizable.md`).
+El plan de pruebas y el plan de implementación están en
+`docs/architecture/relaciones/11-plan-pruebas-relaciones-transversales.md` y
+`12-plan-implementacion-relaciones-transversales.md`. Ninguno autoriza carga:
+la secuencia se detiene antes de migraciones y seeds.
 
 ---
 
@@ -672,8 +716,8 @@ propuesta `os_mapping_metadata`:
 |---|---|
 | `source_system`, `source_version`, `source_code` | Lado origen |
 | `target_system`, `target_version`, `target_code` | Lado destino |
-| `mapping_type` | `equivalent_to`, `maps_to`, `broader_than`, `narrower_than`, `not_mappable` |
-| `mapping_nature` | unívoco, múltiple, parcial, aproximado |
+| `mapping_type` | `equivalent`, `narrower`, `broader`, `related`, `unmatched` (CHECK real, `origen_catalog_engine.sql:125-126`). «Exacta», «parcial» y «aproximada» son etiquetas documentales. |
+| `mapping_nature` | `univocal`, `multiple`, `partial`, `approximate`, `not_mappable` (CHECK real, `fase3_relaciones_mapeos.sql:125-127`). |
 | `method` / `confidence_level` | Cómo se obtuvo y cuánto se confía |
 | `source_reference` / `license_reference` | Documentación y licencia |
 | `review_status` / `reviewed_by` / `reviewed_at` | Gestión (D-01, D-02) |
@@ -1057,6 +1101,13 @@ exponer cualquier `/fhir/*`.
     `sql/08_arquitectura/fase3_i18n.sql`. Esta autorización deja sin efecto, para
     esta fase, el diferimiento M7 del Acta M0. El corte `OS_IMPORT_MODE` sigue
     resuelto: modo efectivo `dual`, sin activación de Fase 13 (§1.6, hallazgo 6).
+17. **Pendiente (2026-11-28).** Ratificar el modelo transversal
+    `docs/architecture/relaciones/`, los perfiles DENTAR/OFTAR, el diccionario
+    común, el contrato `data.relations` y la migración aditiva
+    `relation_type_code`. También cerrar las brechas documentales verificadas:
+    licencia CDT, diff entre ediciones CDT, vigencia normativa del Nomenclador
+    Nacional y ausencia de artefactos odontológicos
+    provinciales/regionales/institucionales. No se ejecuta nada sin autorización.
 
 ---
 

@@ -5,7 +5,7 @@
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0
 **Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 
-**Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta. Las 13 etapas siguientes son la secuencia canónica solicitada. Suceden a las fases 0–6 de `plan-reconstruccion-oftar.md` y a la numeración operativa anterior de 10 etapas, sin reescribir el histórico. Responsable = quien ejecuta SQL, Git y deploy; asistente = solo diagnóstico, documentación y verificaciones. **Ninguna etapa se ejecutó en esta ronda; el plan se detiene antes de generar o ejecutar seeds.**
+**Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta. Secuencia específica del perfil OFTAR dentro del plan transversal `docs/architecture/relaciones/12-plan-implementacion-relaciones-transversales.md`. Las 13 etapas siguientes son la secuencia canónica solicitada. Suceden a las fases 0–6 de `plan-reconstruccion-oftar.md` y a la numeración operativa anterior de 10 etapas, sin reescribir el histórico. Responsable = quien ejecuta SQL, Git y deploy; asistente = solo diagnóstico, documentación y verificaciones. **Ninguna etapa se ejecutó en esta ronda; el plan se detiene antes de generar o ejecutar seeds.**
 
 ---
 

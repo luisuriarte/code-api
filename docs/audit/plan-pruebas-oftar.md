@@ -5,6 +5,7 @@
 - **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0
 - **Estado:** `OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)`
 - **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` propuesta/plan sujeto a aprobación o acta.
+- **Perfil:** plan específico de OFTAR dentro del plan transversal `docs/architecture/relaciones/11-plan-pruebas-relaciones-transversales.md`, que añade DENTAR y pruebas entre familias.
 
 > **Alcance documental.** Este plan define pruebas de verificación para OFTAR-PR y OFTAR-DX. No autoriza ejecución en producción, seeds, migraciones, importaciones, publicación ni aprobaciones clínicas. Toda prueba que implique base de datos, API viva o tests PHP requiere acta, entorno controlado y autorización explícita.
 

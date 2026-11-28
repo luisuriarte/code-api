@@ -5,6 +5,8 @@
 **Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0
 **Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta sujeta a aprobación explícita.
+
+**[P]** Este documento es el **perfil de dominio OFTAR** del modelo transversal de Origen Salud (`docs/architecture/relaciones/00-modelo-transversal-relaciones-origen-salud.md`); conserva los 31 tipos y las decisiones clínicas de esta familia sin proponer un motor propio.
 **Alcance:** relaciones clínicas internas entre conceptos OFTAR-PR, OFTAR-DX y anatomía/función. No cubre correspondencias con terminologías externas.
 
 > Documento **solo de diseño**. Para su elaboración no se ejecutó SQL, seed, migración, importador ni consulta alguna a PostgreSQL: las fuentes se verificaron **por lectura**. Nada de lo aquí descrito autoriza escribir en la base de datos. El detalle de cada código está en `diccionario-tipos-relacion-oftar.md`.

@@ -6,6 +6,8 @@
 **Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 **Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` propuesta no implementada.
 
+**[P]** Perfil OFTAR de las reglas comunes de versionado y trazabilidad (`docs/architecture/relaciones/07-reglas-versionado-relaciones.md`).
+
 ---
 
 ## 0. Método y límite

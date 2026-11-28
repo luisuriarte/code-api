@@ -6,6 +6,8 @@
 **Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada. (No autoriza ejecución.)
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta sujeta a aprobación explícita.
 
+**[P]** Perfil OFTAR de la integración común con `os_concept_mapping` (`docs/architecture/relaciones/06-integracion-os-concept-mapping.md`); el motor no se duplica.
+
 > Documento de solo lectura. No se ejecutaron SQL, seeds, migraciones ni importadores; no se consultó ni se escribió en PostgreSQL. Las reglas de inserción de la sección 4 son **propuestas para el futuro**, no instrucciones ejecutadas.
 
 ---

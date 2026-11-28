@@ -4,11 +4,11 @@
 **Fecha de revisión:** 2026-11-28
 **Estado:** OFTAR v1.0 — Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada.
 **Antecedente:** aprobada como base técnica para iniciar la implementación controlada; esa aprobación sigue siendo documental y no constituye autorización de ejecución.
-**Alcance:** OFTAR-PR y OFTAR-DX.
+**Alcance:** OFTAR-PR y OFTAR-DX, como **primera aplicación** del modelo transversal de relaciones de Origen Salud; el mecanismo común también aplica a DENTAR y a futuras familias.
 **Tipo de documento:** Especificación funcional y técnica.
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta sujeta a aprobación explícita.
 
-> Esta consolidación es **documental y técnica**: fija la base sobre la que puede iniciarse la implementación controlada. **No autoriza seeds, migraciones, importaciones, publicación ni aprobación clínica.** Toda reconstrucción queda supeditada a una autorización explícita posterior, al acta de solo lectura de la etapa 1 y a las firmas clínicas correspondientes. El plan canónico de 13 etapas está en `plan-implementacion-controlada-oftar.md`.
+> Esta consolidación es **documental y técnica**: fija la base sobre la que puede iniciarse la implementación controlada. **No autoriza seeds, migraciones, importaciones, publicación ni aprobación clínica.** Toda reconstrucción queda supeditada a una autorización explícita posterior, al acta de solo lectura de la etapa 1 y a las firmas clínicas correspondientes. El plan canónico de 13 etapas está en `plan-implementacion-controlada-oftar.md`. El modelo de relaciones se gobierna de forma transversal en `docs/architecture/relaciones/`; este documento es su perfil OFTAR v1.0.
 
 ---
 
@@ -39,6 +39,8 @@ Esta especificación integra y gobierna los 21 entregables de la consolidación 
 21. `propuesta-dry-run-seeds-oftar.md`
 
 `politica-identificacion-oftar-final.md` y `extensibilidad-futura-oftar.md` se conservan como antecedentes integrados en los entregables 2, 4, 8, 10 y 11; no se cuentan dos veces.
+
+**[P]** Los entregables 7–10, 13, 14 y 17 son el **perfil OFTAR** del modelo transversal documentado en los 13 archivos de `docs/architecture/relaciones/`. Ante una discrepancia de alcance general, prevalece el modelo transversal; ante una decisión clínica específica de OFTAR, prevalece este perfil v1.0.
 
 **Regla de prevalencia `[P]`:**
 
@@ -150,6 +152,8 @@ Esta especificación integra y gobierna los 21 entregables de la consolidación 
 ### 7.1 Principio rector
 
 **[P] Las relaciones clínicas explican cómo se vinculan los conceptos; las relaciones terminológicas explican cómo se corresponden con otros sistemas. Nunca deben confundirse.** OFTAR no es una lista de códigos ni un dictionary de equivalencias: es una red gobernada donde cada concepto propio conserva identidad permanente y puede relacionarse con otros conceptos OFTAR, con estructuras/funciones y con sistemas externos.
+
+**[P] OFTAR es un perfil de dominio dentro del modelo transversal de Origen Salud**, no una solución exclusiva. El mismo mecanismo debe administrar DENTAR y futuras familias sin duplicar motores ni perder las particularidades de cada dominio (`docs/architecture/relaciones/00-modelo-transversal-relaciones-origen-salud.md`).
 
 **[H]** No existen dos motores: las relaciones clínicas se apoyan en `os_catalog_relation` (`sql/03_dentar/nomenclador_odontologico_nacional.sql:534-559`) y las terminológicas en `os_concept_mapping` (`origen_catalog_engine.sql:119-136`) con metadatos de `os_mapping_metadata` (`fase3_relaciones_mapeos.sql:115-148`). `os_relation_kind` incluye `clinical`, `structural` y `mapping` (`fase1_infraestructura.sql:42-56`).
 
