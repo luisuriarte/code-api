@@ -46,4 +46,4 @@
 
 ## 4. Estado actual
 
-**[H]** Etapas 1–9: documentadas; etapa 6 con código preparado en el repositorio. **[P]** Etapa 10: autorización, puertas y base destino `origen_codes` registradas en `docs/audit/acta-ejecucion-relaciones-transversales.md`; falta ejecutar la verificación `READ ONLY` desde un entorno con cliente PostgreSQL y conectividad. Etapas 11–14: scripts preparados, **no ejecutados**. No se ha ejecutado SQL, migración, seed, importador, commit, push ni deploy desde esta sesión.
+**[H]** Etapas 1–9: documentadas; etapa 6 con código preparado en el repositorio. Etapa 10: autorización, puertas y base destino `origen_codes` registradas en `docs/audit/acta-ejecucion-relaciones-transversales.md`. Etapas 11–12: ejecutadas por el responsable en producción; verificación posterior repetida y conforme. Regresión estática repetida en el VPS: `OK: 4110 comprobaciones`. **[P]** Etapas 13–14: pendientes de T-01…T-38 y publicación gobernada. El agente no ejecutó SQL, migración, seed, importador, commit, push ni deploy.

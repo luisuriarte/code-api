@@ -1507,9 +1507,25 @@ $check(
 $check(!str_contains($homeControllerSource, "'approval_state' => 'approved'"), 'API-12: el ejemplo no debe inventar aprobación editorial.');
 
 $check(is_file($root . '/web/sitemap.php'), 'Debe existir web/sitemap.php para ^sitemap\\.xml$.');
+// El sitemap depende de PORTAL_SERVICE_REQUEST_LINK_ENABLED. Se fija a false
+// para que la prueba sea idéntica en local y en producción, donde .env lo
+// habilita legítimamente y añade /solicitud a las rutas localizadas.
+$sitemapLinkEnvPrevious = [
+    'ENV' => $_ENV['PORTAL_SERVICE_REQUEST_LINK_ENABLED'] ?? null,
+    'SERVER' => $_SERVER['PORTAL_SERVICE_REQUEST_LINK_ENABLED'] ?? null,
+];
+$_ENV['PORTAL_SERVICE_REQUEST_LINK_ENABLED'] = 'false';
+$_SERVER['PORTAL_SERVICE_REQUEST_LINK_ENABLED'] = 'false';
 ob_start();
 require $root . '/web/sitemap.php';
 $sitemapXml = (string) ob_get_clean();
+foreach ($sitemapLinkEnvPrevious as $bag => $previousValue) {
+    if ($previousValue === null) {
+        unset(${'_' . $bag}['PORTAL_SERVICE_REQUEST_LINK_ENABLED']);
+    } else {
+        ${'_' . $bag}['PORTAL_SERVICE_REQUEST_LINK_ENABLED'] = $previousValue;
+    }
+}
 $sitemapDoc = new DOMDocument();
 $check($sitemapDoc->loadXML($sitemapXml), 'El sitemap generado debe ser XML válido.');
 $check(

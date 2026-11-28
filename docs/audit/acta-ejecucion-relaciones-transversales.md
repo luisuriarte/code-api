@@ -1,7 +1,7 @@
 # Acta de ejecución — modelo transversal de relaciones
 
 **Fecha:** 2026-11-28
-**Estado:** **Este documento no autoriza por sí solo la ejecución.** Las siete puertas previas fueron declaradas en verde por el responsable; la ejecución queda sujeta a verificación `READ ONLY` desde el entorno autorizado y al registro de la base destino.
+**Estado:** **Ejecutada y verificada por el responsable en producción el 2026-11-28.** DDL y semillas aplicados en `origen_codes`; verificación posterior y regresión estática conformes. Quedan pendientes T-01…T-38, la publicación gobernada y el adjunto de salidas al expediente. **Este documento no autoriza por sí solo la ejecución.**
 **Referencia:** `docs/architecture/relaciones/12-plan-implementacion-relaciones-transversales.md`, etapas 10–13.
 
 ---
@@ -60,4 +60,22 @@
 
 ## 5. Cierre
 
-**[H]** Las siete puertas fueron declaradas en verde por Luis A. Uriarte y la base destino quedó confirmada como `origen_codes`. **[P]** La ejecución la realizará el responsable en el VPS `/var/www/html/origen.ar/code-api`. Desde esta sesión no hay cliente PostgreSQL ni controlador `pdo_pgsql` disponibles, por lo que la implementación entregada sigue siendo código fuente y scripts versionados, sin escrituras en PostgreSQL por el agente.
+**[H]** Las siete puertas fueron declaradas en verde por Luis A. Uriarte y la base destino quedó confirmada como `origen_codes`. **[H]** La ejecución fue realizada por el responsable en el VPS `/var/www/html/origen.ar/code-api`; el agente no escribió en PostgreSQL. **[H]** Verificación corregida y `php tests/run.php` repetidos en el VPS con resultado `OK: 4110 comprobaciones`. **[P]** Quedan completar T-01…T-38 y publicar solo con gobernanza; no hay commit, push ni deploy registrados.
+
+---
+
+## 6. Ejecución registrada
+
+**[H]** Salidas capturadas por el responsable el 2026-11-28:
+
+| Paso | Resultado |
+|---|---|
+| Verificación previa | Falló en la consulta de `relation_type_code` porque la columna aún no existía. No hubo escritura: la transacción era `READ ONLY` y terminó sin `COMMIT`. El script fue corregido con `\if` para omitir esa consulta antes del DDL. |
+| DDL `fase5_relaciones_transversales.sql` | `BEGIN / SET / SET / DO / ALTER TABLE / DO / COMMIT` correctos. |
+| Semillas `fase5_semillas_tipos_relacion.sql` | `INSERT 0 31`, `UPDATE 2`, `COMMIT` correctos. |
+| Verificación posterior | 603 relaciones, 15 tipos heredados, 0 con `relation_type_code`, 316 `referencia_literal`, 31 tipos `OFTAR-v1.0`, 2 inversas, 0 huérfanos, FK `fk_ocr_relation_type_code` presente. |
+| Regresión estática inicial | `FALLOS (2 de 4110)`: sitemap esperaba 30 URLs/x-default; en producción `.env` habilita `/solicitud` y genera 33. No está relacionado con relaciones. |
+| Corrección | `tests/run.php` fija `PORTAL_SERVICE_REQUEST_LINK_ENABLED=false` durante la generación del sitemap y restaura el valor previo. |
+| Repetición en VPS | Verificación corregida conforme; `php tests/run.php` → **`OK: 4110 comprobaciones`**. Salidas: `/tmp/fase5_verificacion_post_corregida.log` y `/tmp/fase5_tests_corregido.log`. |
+
+**[P]** Adjuntar al expediente `/tmp/fase5_verificacion_post_corregida.log` y `/tmp/fase5_tests_corregido.log`, ejecutar T-01…T-38 y decidir la publicación con gobernanza. No se cargaron relaciones clínicas por par.

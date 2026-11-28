@@ -2,6 +2,8 @@
 -- Verificación READ ONLY del modelo transversal de relaciones
 -- sql/08_arquitectura/verificacion_fase5_relaciones_transversales.sql
 -- No escribe. Se ejecuta antes y después del DDL y de las semillas autorizadas.
+-- Antes del DDL, relation_type_code no existe: la consulta correspondiente se
+-- omite con \if en lugar de fallar. Después del DDL, se ejecuta normalmente.
 -- =============================================================================
 
 BEGIN READ ONLY;
@@ -27,11 +29,27 @@ SELECT conname, pg_get_constraintdef(oid) AS definition
  WHERE conrelid = 'public.os_catalog_relation'::regclass
    AND conname IN ('fk_ocr_relation_type_code');
 
+SELECT EXISTS (
+    SELECT 1
+      FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'os_catalog_relation'
+       AND column_name = 'relation_type_code'
+) AS has_relation_type_code \gset
+
+\if :has_relation_type_code
 SELECT count(*) AS relaciones_totales,
        count(DISTINCT relation_type) AS tipos_heredados,
        count(*) FILTER (WHERE relation_type_code IS NOT NULL) AS con_tipo_gobernado,
        count(*) FILTER (WHERE relation_type = 'referencia_literal') AS referencias_literales
   FROM public.os_catalog_relation;
+\else
+SELECT count(*) AS relaciones_totales,
+       count(DISTINCT relation_type) AS tipos_heredados,
+       NULL::bigint AS con_tipo_gobernado,
+       count(*) FILTER (WHERE relation_type = 'referencia_literal') AS referencias_literales
+  FROM public.os_catalog_relation;
+\endif
 
 SELECT count(*) AS tipos_oftar
   FROM public.os_relation_type
