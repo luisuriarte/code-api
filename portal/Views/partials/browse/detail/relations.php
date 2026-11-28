@@ -5,15 +5,17 @@ declare(strict_types=1);
 use OrigenSalud\Portal\Services\BrowseService;
 
 $legacyRelations = is_array($sections['relations'] ?? null) ? $sections['relations'] : [];
-$classified = is_array($sections['relations_by_class'] ?? null)
+$hasClassifiedProjection = array_key_exists('relations_by_class', $sections);
+$classified = $hasClassifiedProjection && is_array($sections['relations_by_class'])
     ? $sections['relations_by_class']
     : ['clinical' => [], 'terminological' => []];
 $clinicalRelations = array_values(is_array($classified['clinical'] ?? null) ? $classified['clinical'] : []);
 $terminologicalRelations = array_values(is_array($classified['terminological'] ?? null) ? $classified['terminological'] : []);
 
-// La lista plana sigue siendo el respaldo de datos históricos. Cuando existe
-// la proyección separada, nunca se mezclan ambas clases en una sola sección.
-if ($clinicalRelations === [] && $terminologicalRelations === [] && $legacyRelations !== []) {
+// La lista plana solo es respaldo cuando la proyección separada no existe.
+// Si la proyección existe y está vacía, no se resucitan mapeos pendientes ni
+// rechazados por la ruta de compatibilidad.
+if (!$hasClassifiedProjection && $legacyRelations !== []) {
     $classBlocks = ['all' => $legacyRelations];
 } else {
     $classBlocks = [

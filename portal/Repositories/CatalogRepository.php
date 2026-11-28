@@ -3032,7 +3032,7 @@ final class CatalogRepository
                     . '   WHERE li.value = m.external_code AND li.system_name = sys.code'
                     . ' AND lcat.is_active = TRUE'
                     . ' ) linked ON TRUE'
-                    . ' WHERE m.item_id = ?'
+                    . " WHERE m.item_id = ? AND m.review_status = 'approved'"
                     . ' ORDER BY sys.code ASC, m.external_code ASC'
                 );
                 $statement->execute([$itemId]);
@@ -3083,7 +3083,8 @@ final class CatalogRepository
                     . '   ON other.id = CASE WHEN r.source_item_id = ?'
                     . '                      THEN r.target_item_id ELSE r.source_item_id END'
                     . ' JOIN os_catalog cat ON cat.id = other.catalog_id'
-                    . ' WHERE r.source_item_id = ? OR r.target_item_id = ?'
+                    . ' WHERE (r.source_item_id = ? OR r.target_item_id = ?)'
+                    . "   AND r.review_status = 'approved'"
                     . ' ORDER BY direction ASC, r.relation_type ASC, other.permanent_code ASC'
                 );
                 $statement->execute([

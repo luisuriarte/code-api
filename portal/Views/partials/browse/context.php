@@ -221,8 +221,10 @@ $relationsByClass = is_array($sections['relations_by_class'] ?? null)
     : ['clinical' => [], 'terminological' => []];
 $hasClassifiedRelations = !empty($relationsByClass['clinical'])
     || !empty($relationsByClass['terminological']);
+$hasClassifiedProjection = array_key_exists('relations_by_class', $sections);
 $tabs = ['concept' => $tabLabels['concept']];
-if (!empty($sections['relations']) || $hasClassifiedRelations) {
+if (($hasClassifiedProjection && $hasClassifiedRelations)
+    || (!$hasClassifiedProjection && !empty($sections['relations']))) {
     $tabs['relations'] = $tabLabels['relations'];
 }
 // La valoración UVR publicada vive en esta pestaña: aunque `values` esté

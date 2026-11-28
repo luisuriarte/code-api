@@ -4749,6 +4749,22 @@ $check(
         && str_contains($auditRead('portal/Views/partials/browse/detail.php'), "require __DIR__ . '/detail/' . \$tabKey . '.php'"),
     'La ficha reutilizable debe mostrar clases distintas sin crear una vista por familia.'
 );
+$flatRelationsBlock = substr(
+    $repositorySourceRelations,
+    strpos($repositorySourceRelations, 'public static function itemRelations('),
+    strpos($repositorySourceRelations, 'public static function itemRelationsByClass(')
+        - strpos($repositorySourceRelations, 'public static function itemRelations(')
+);
+$check(
+    str_contains($flatRelationsBlock, "m.review_status = 'approved'")
+        && str_contains($flatRelationsBlock, "r.review_status = 'approved'"),
+    'La lista plana itemRelations() no debe publicar mapeos ni relaciones pendientes o rechazadas.'
+);
+$check(
+    str_contains($auditRead('portal/Views/partials/browse/detail/relations.php'), '!$hasClassifiedProjection')
+        && str_contains($auditRead('portal/Views/partials/browse/context.php'), '$hasClassifiedProjection'),
+    'La proyección vacía no debe resucitar relaciones por la ruta de compatibilidad.'
+);
 foreach (['es-AR', 'es', 'en', 'pt-BR'] as $relationLocale) {
     $relationMessages = Yaml::parseFile($root . '/portal/translations/messages.' . $relationLocale . '.yaml');
     $check(
