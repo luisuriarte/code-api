@@ -1,6 +1,6 @@
 # Hallazgo — visibilidad de los nomencladores oftalmológicos y sus relaciones
 
-**Fecha:** 2026-11-28 · **Entorno:** producción `origen_codes` · **Estado:** diagnóstico v3 ejecutado por el responsable; salida `/tmp/visibilidad_catalogos_oftar_v3.log`.
+**Fecha:** 2026-11-28 · **Entorno:** producción `origen_codes` · **Estado:** diagnóstico ejecutado por el responsable; salidas `/tmp/visibilidad_catalogos_oftar_v3.log` y `/tmp/visibilidad_catalogos_oftar_v4.log` (esta última generada con el archivo anterior, sin las secciones 15 ampliada ni 18). Pendiente de copiar la versión actual al VPS.
 
 **Convención:** `[H]` verificado en repositorio/documentación o en la salida del responsable · `[I]` inferencia · `[P]` propuesta.
 
@@ -99,8 +99,8 @@ En el browser: elegir familia **`oftar`** y luego marcar los catálogos `NOM-CAO
 | H-02 confirmado (91/91 sin resolver) | **[P]** Corregir la resolución de destino por `os_catalog_identifier` (`system_name='NOMENCLADOR-AR'`) antes de publicar enlaces; repetir verificación. |
 | Relaciones 0 en ambos sentidos | Conforme al estado actual: no se publican relaciones sin pares aprobados resolubles. No marcar `PASS`. |
 | Etiqueta «OFTAR (oftalmología)» | **[P]** Cambiada solo en traducciones; `family_code` y contratos intactos. |
-| CAO ausente mientras Regional aparece | **[P]** Pendiente de las secciones 13/14: comparar vinculación al release publicado y coincidencias de `Cornea`. |
-| Solo CIE-10 en Relaciones de OFTAR-PR | **[P]** Pendiente de las secciones 15/16: SNOMED puede estar `draft` y CAO/Regional tienen 0 mapeos. |
+| CAO ausente mientras Regional aparece | **[H]** Descartado: release vinculado y 4 coincidencias de `Cornea`. Queda el orden/paginación (sección 18). |
+| Solo CIE-10 en Relaciones | **[H]** `oftar-pr` tiene 0 mapeos; CAO/Regional 0 mapeos y 0 identificadores. Se localiza el origen con la sección 15 ampliada. |
 | Equivalencias clínicas de las matrices | **[P]** Permanecen `propuesta_no_publicada` hasta acta clínica firmada. |
 
 `[P]` Ninguna acción de escritura se ejecutó. La decisión de publicación gobernada sigue limitada al sostén técnico registrado en `docs/audit/acta-publicacion-relaciones-transversales.md`.
