@@ -1,0 +1,2394 @@
+diff --git a/docs/audit/crud-relaciones-auditable.md b/docs/audit/crud-relaciones-auditable.md
+new file mode 100644
+index 0000000..4efafb9
+--- /dev/null
++++ b/docs/audit/crud-relaciones-auditable.md
+@@ -0,0 +1,114 @@
++# CRUD administrativo directo y auditable de relaciones
++
++**Convención:** `[H]` verificado en repositorio/documentación o en la salida del responsable · `[I]` inferencia · `[P]` propuesta.
++
++**Estado:** preparado en el working tree. **No desplegado, no ejecutado en producción, sin commit ni push.**
++
++---
++
++## 1. Decisión del usuario
++
++`[H]` El usuario pidió «editar/agregar/borrar relaciones» y eligió **Directo con auditoría**: el cambio se aplica de inmediato por un rol con permiso, pero queda en `draft`/pendiente y **no se publica** hasta una revisión formal.
++
++`[H]` Alcance elegido: **las tres tablas** — `os_catalog_relation`, `os_concept_mapping` y `os_oftar_nomenclador_match`.
++
++`[H]` Restricciones vigentes: `os_catalog` es el motor único; `oftar` es `family_code`, nunca `domain_type`; no se inventan datos, aprobaciones ni equivalencias; `SIN_DATOS`/`GAP_DOCUMENTADO` no son `PASS`; sin endpoints por familia; `rejected`/`pending_review`/`draft` no son publicables.
++
++---
++
++## 2. Lo que se implementó
++
++### 2.1 Capa SQL
++
++`[P]` `sql/08_arquitectura/relaciones_crud_auditable.sql` crea `public.os_relation_admin_write(text, text, bigint, jsonb, text, bigint, text)`:
++
++- `[P]` `SECURITY DEFINER`, `SET search_path = public, pg_temp`. `origen_admin` recibe solo `EXECUTE`; **no** recibe `INSERT`/`UPDATE`/`DELETE` sobre las tablas base.
++- `[P]` Entidades admitidas: `catalog_relation`, `concept_mapping`, `nomenclador_match`. Operaciones: `create`, `update`, `delete`.
++- `[P]` Motivo (`p_reason`) obligatorio, mínimo 4 caracteres; actor obligatorio. El motivo se guarda en la auditoría.
++- `[P]` Devuelve `before`/`after` en JSONB para que PHP audite con el estado completo.
++
++Estados forzados por la función:
++
++| Entidad | Alta / edición | Baja lógica | CHECK de la tabla |
++|---|---|---|---|
++| `os_catalog_relation` | `draft` | `deprecated` | `('draft','reviewed','approved','deprecated')` |
++| `os_concept_mapping` | `draft` | `deprecated` | `('draft','reviewed','approved','deprecated')` |
++| `os_oftar_nomenclador_match` | `proposed` | `rejected` | `('proposed','approved','rejected')` |
++
++`[H]` Los CHECK se verificaron en `sql/03_oftar/aprobar_mapeo_nomencladores_oftar.sql:200-221`, `sql/02_catalogs/origen_catalog_engine.sql:119-133` y `sql/03_oftar/nomencladores_oftar_mapping.sql:38-55`. La función **nunca escribe `approved`**.
++
++`[P]` La función escribe solo columnas del esquema base ya existente. No usa `relation_type_code`, `relation_kind`, `valid_from`, `valid_to`, `reviewed_by` ni `reviewed_at` de `os_catalog_relation`, para no depender de las fases 3/5 que aún no se aplicaron en el VPS. Los metadatos (`os_mapping_metadata`) se escriben solo si `to_regclass('public.os_mapping_metadata')` existe.
++
++`[P]` Deduplicación previa acorde a las UNIQUE reales de cada tabla; validación de enums y de existencia de ítems/sistemas; baja **lógica**, sin `DELETE FROM`, `TRUNCATE` ni `DROP TABLE`.
++
++### 2.2 Capa PHP
++
++`[P]` `portal/Repositories/RelationAdminRepository.php`:
++
++- Lecturas por `PortalDatabase` (solo lectura); escritura por `AdminDatabase` + `os_relation_admin_write()`.
++- `beginTransaction()` → función → `AuditLogger::record()` → `commit()`; cualquier fallo hace `rollBack()` (**fail closed**).
++- `matchTarget()` resuelve el destino de un par por `os_catalog_identifier` con `system_name='NOMENCLADOR-AR'` y `cat.code='oftar-pr'`; **no** por `permanent_code`. Es el criterio del caso H-02 (`460105 → 306002` resuelve a `OFT-PR-000025`).
++- Las listas de pares muestran `target_permanent_code` calculado por el mismo identificador, y `unresolved` cuando no hay resolución.
++
++`[P]` `portal/Controllers/AdminRelationController.php`:
++
++- `catalog.view` para consultar; `catalog.edit_draft` para escribir (permiso ya asignado a `superadmin`, `catalog_admin` y `editor` en `sql/09_admin/fase1_identidad.sql:233,246,254,261`). **No se crea un permiso nuevo.**
++- CSRF en todo POST, whitelist de entidades, razón obligatoria, mensajes flash estables.
++- El alta de relaciones y mapeos recibe códigos permanentes y los resuelve a `item_id` en el servidor, sin aceptar IDs arbitrarios del navegador.
++
++`[P]` Rutas planas en `portal/Router.php`: `GET /admin/relations` y `POST /admin/relations` con `op=create|update|delete`. Sin endpoints por familia.
++
++`[P]` Vista `portal/Views/admin/relations/index.php`: tres secciones, búsqueda, edición en línea, baja con confirmación, aviso explícito de «no publicable», `datalist` de destinos por identificador y visualización de la resolución `NOMENCLADOR-AR`. Enlace en el menú administrativo con `catalog.view`.
++
++`[P]` Traducciones añadidas en `messages.es-AR.yaml`, `messages.es.yaml`, `messages.en.yaml` y `messages.pt-BR.yaml`. Etiquetas nuevas, sin tocar códigos ni `family_code`.
++
++`[P]` `php tests/run.php` → **OK: 4140 comprobaciones** (antes: 4116). Se ajustó el conteo de artefactos SQL de 16 a 17 y se agregaron comprobaciones de la función, RBAC, CSRF, transacción, auditoría, resolución por identificador, vistas y traducciones.
++
++---
++
++## 3. Lo que NO se hizo
++
++`[H]` No se ejecutó SQL en producción; no se copió nada al VPS; no hay commit, push ni deploy.
++
++`[H]` No se publicaron relaciones ni equivalencias: no se escribe `approved`, no se aprueban los 90 pares `proposed`, no se crean equivalencias clínicas a partir de las matrices (`propuesta_no_publicada`).
++
++`[H]` No se cambió `family_code`, `domain_type`, contratos de API (`OFT-PR-NNNNNN`, `OFT-DX-NNNNNN`, `mappings`, `related_codes`, `uvr`, `data.relations{clinical,terminological}`) ni la decisión de publicación ya tomada (solo sostén técnico).
++
++`[H]` No se crearon datos de prueba en producción.
++
++---
++
++## 4. Riesgos y límites
++
++`[I]` El flujo gobernado anterior (`/admin/catalogs/proposals`) sigue existiendo y puede publicar cambios aprobados con `catalog.publish`. El CRUD directo **no** habilita esa publicación: un registro creado aquí queda `draft`/`proposed` hasta que una revisión formal decide.
++
++`[I]` La baja lógica conserva la fila; el exclusionismo depende de que las proyecciones públicas sigan filtrando `review_status='approved'` (corrección ya aplicada en `CatalogRepository.php`).
++
++`[I]` La resolución por identificador se muestra, pero el alta de un par no crea automáticamente una relación navegable. Publicar ese enlace sigue requiriendo revisión formal y el script correspondiente, corregido para resolver por identificador.
++
++`[I]` Si `origen_admin` no tiene `EXECUTE` sobre la función porque el parche no se aplicó, el panel mostrará `relation_write_failed` y la transacción se revertirá; no escribirá parcialmente.
++
++---
++
++## 5. Pendiente en el VPS (sin ejecutar por el agente)
++
++`[P]` 1. Aplicar `sql/08_arquitectura/relaciones_crud_auditable.sql` con `postgres`, tras backup verificado. Verificación `READ ONLY` posterior:
++
++```sql
++SELECT has_function_privilege(
++  'origen_admin',
++  'public.os_relation_admin_write(text,text,bigint,jsonb,text,bigint,text)',
++  'EXECUTE'
++);
++SELECT review_status, count(*) FROM public.os_catalog_relation GROUP BY 1 ORDER BY 1;
++SELECT review_status, count(*) FROM public.os_concept_mapping GROUP BY 1 ORDER BY 1;
++SELECT review_status, count(*) FROM public.os_oftar_nomenclador_match GROUP BY 1 ORDER BY 1;
++```
++
++`[P]` 2. Copiar los archivos PHP, las cuatro traducciones y el enlace del menú; verificar `/admin/relations` con un usuario `catalog.view` y otro sin ese permiso (403).
++
++`[P]` 3. Repetir la verificación original pendiente: aplicar `patches/verificacion_T01_T38_relaciones_transversales_v1_a_v3.patch`, ejecutar la v3 por `postgres` y capturar `/tmp/T01_T38_sql_v3.log`.
++
++`[P]` 4. Repetir los `curl` autenticados con `Authorization: Bearer $API_KEY` sobre `/v1/catalogs`, `/v1/search?domains=oftar&q=OFT` y `/v1/catalogs/nomenclador-oftalmologico-cao-ar/items?limit=1`.
++
++`[P]` 5. Solo después de revisión formal y autorización explícita: commit, push, deploy y firma del acta. Rollback: restaurar backup `20261126` (ya verificado por el responsable).
+diff --git a/portal/Controllers/AdminRelationController.php b/portal/Controllers/AdminRelationController.php
+new file mode 100644
+index 0000000..37b4b65
+--- /dev/null
++++ b/portal/Controllers/AdminRelationController.php
+@@ -0,0 +1,306 @@
++<?php
++
++declare(strict_types=1);
++
++namespace OrigenSalud\Portal\Controllers;
++
++use OrigenSalud\Portal\Admin\AdminGuard;
++use OrigenSalud\Portal\Admin\Rbac;
++use OrigenSalud\Portal\Repositories\RelationAdminRepository;
++use OrigenSalud\Portal\Repositories\RepositoryException;
++use OrigenSalud\Portal\View;
++use OrigenSalud\Web\I18n;
++
++/**
++ * CRUD directo y auditable de relaciones, mapeos y pares CAO/Regional ↔ OFT-PR.
++ *
++ * Requiere `catalog.view` para consultar y `catalog.edit_draft` para escribir.
++ * Los cambios quedan en estado no publicable (`draft` / `proposed`) y la baja
++ * es lógica (`deprecated` / `rejected`). Ninguna acción fija `approved`.
++ */
++final class AdminRelationController
++{
++    /** @var array<string, string> */
++    private const MESSAGES = [
++        'create' => 'relation_created',
++        'update' => 'relation_updated',
++        'delete' => 'relation_deleted',
++    ];
++
++    public static function index(): void
++    {
++        $current = AdminGuard::require(['permission' => 'catalog.view']);
++        $entity = self::entity();
++        $query = self::query();
++        $edit = self::edit();
++        $repo = new RelationAdminRepository();
++
++        try {
++            $options = $repo->options();
++            $all = [
++                'catalog_relation' => $repo->relations($query),
++                'concept_mapping' => $repo->mappings($query),
++                'nomenclador_match' => $repo->matches($query),
++            ];
++        } catch (RepositoryException) {
++            $options = [];
++            $all = [
++                'catalog_relation' => [],
++                'concept_mapping' => [],
++                'nomenclador_match' => [],
++            ];
++        }
++
++        $editing = null;
++
++        if ($edit !== null) {
++            foreach ($all[$edit['entity']] as $row) {
++                if (self::rowKey($edit['entity'], $row) === $edit['key']) {
++                    $editing = $row;
++                    break;
++                }
++            }
++        }
++
++        $target = null;
++
++        if ($editing !== null && $edit !== null && $edit['entity'] === 'nomenclador_match') {
++            try {
++                $target = $repo->matchTarget((string) ($editing['target_code'] ?? ''));
++            } catch (RepositoryException) {
++                $target = null;
++            }
++        }
++
++        $flash = AdminForm::pull();
++        $flashValues = is_array($flash['values'] ?? null) ? $flash['values'] : [];
++
++        self::render($current, [
++            'entities' => RelationAdminRepository::ENTITIES,
++            'entity' => $entity,
++            'query' => $query,
++            'rows' => $entity === '' ? $all : [$entity => $all[$entity] ?? []],
++            'editing' => $editing,
++            'editKey' => $edit['key'] ?? '',
++            'options' => $options,
++            'target' => $target,
++            'flashValues' => $flashValues,
++            'canWrite' => Rbac::hasPermission(
++                $current['permissions'] ?? [],
++                'catalog.edit_draft'
++            ),
++            'flash' => $flash,
++        ]);
++    }
++
++    public static function create(): void
++    {
++        self::save('create');
++    }
++
++    public static function update(): void
++    {
++        self::save('update');
++    }
++
++    public static function delete(): void
++    {
++        self::save('delete');
++    }
++
++    private static function save(string $action): void
++    {
++        $current = AdminGuard::require(['permission' => 'catalog.edit_draft']);
++        AdminForm::requirePost();
++
++        $entity = self::posted('entity');
++        $back = '/admin/relations';
++
++        if ($entity !== '') {
++            $back .= '?entity=' . rawurlencode($entity);
++        }
++
++        if (!AdminForm::validCsrf()) {
++            AdminForm::fail($back, 'csrf');
++        }
++
++        if (!array_key_exists($entity, RelationAdminRepository::ENTITIES)) {
++            AdminForm::fail($back, 'relation_entity_invalid');
++        }
++
++        $reason = self::posted('reason');
++
++        if (mb_strlen($reason) < 4) {
++            AdminForm::fail($back, 'relation_reason_required', self::values());
++        }
++
++        $repo = new RelationAdminRepository();
++
++        try {
++            [$id, $payload] = self::payload($repo, $entity, $action);
++            $repo->write($entity, $action, $id, $payload, $reason, $current);
++        } catch (RepositoryException $exception) {
++            AdminForm::exception($back, $exception, self::values());
++        } catch (\RuntimeException $exception) {
++            AdminForm::fail($back, $exception->getMessage(), self::values());
++        }
++
++        AdminForm::success($back, self::MESSAGES[$action]);
++    }
++
++    /**
++     * @return array{int, array<string, mixed>}
++     */
++    private static function payload(RelationAdminRepository $repo, string $entity, string $action): array
++    {
++        $id = self::postedInt('id');
++
++        if ($entity === 'catalog_relation') {
++            $source = $repo->itemByCode(self::posted('source_code'));
++            $target = $repo->itemByCode(self::posted('target_code'));
++
++            if ($action === 'create' && ($source === null || $target === null)) {
++                throw new \RuntimeException('relation_item_not_found');
++            }
++
++            $payload = [
++                'source_item_id' => (string) ($source['id'] ?? ''),
++                'target_item_id' => (string) ($target['id'] ?? ''),
++                'relation_type' => self::posted('relation_type'),
++                'source_system_code' => self::posted('source_system_code'),
++                'source_field' => self::posted('source_field'),
++                'source_value' => self::posted('source_value'),
++                'context_text' => self::posted('context_text'),
++                'provenance' => self::posted('provenance'),
++            ];
++
++            return [$id, $payload];
++        }
++
++        if ($entity === 'concept_mapping') {
++            $item = $repo->itemByCode(self::posted('item_code'));
++
++            if ($action === 'create' && $item === null) {
++                throw new \RuntimeException('relation_item_not_found');
++            }
++
++            $payload = [
++                'item_id' => (string) ($item['id'] ?? ''),
++                'terminology_system_id' => self::posted('terminology_system_id'),
++                'external_code' => self::posted('external_code'),
++                'external_display' => self::posted('external_display'),
++                'mapping_type' => self::posted('mapping_type'),
++                'relationship_role' => self::posted('relationship_role'),
++                'clinical_rationale' => self::posted('clinical_rationale'),
++            ];
++
++            return [$id, $payload];
++        }
++
++        $payload = [
++            'source_catalog_code' => self::posted('source_catalog_code'),
++            'source_code' => self::posted('source_code'),
++            'target_catalog_code' => self::posted('target_catalog_code') ?: 'oftar-pr',
++            'target_code' => self::posted('target_code'),
++            'match_basis' => self::posted('match_basis'),
++            'source_term' => self::posted('source_term'),
++            'target_term' => self::posted('target_term'),
++            'provenance' => self::posted('provenance'),
++            'notes' => self::posted('notes'),
++        ];
++
++        return [$id, $payload];
++    }
++
++    /**
++     * @param array<string, mixed> $current
++     * @param array<string, mixed> $extra
++     */
++    private static function render(array $current, array $extra): void
++    {
++        View::render('admin/relations/index', $extra + [
++            'pageTitle' => 'Relaciones | Origen Salud',
++            'pageDescription' => 'Gestión auditable de relaciones y mapeos.',
++            'locale' => I18n::locale(),
++            'currentPath' => '/admin/relations',
++            'adminUser' => $current['user'],
++            'current' => $current,
++        ], 'admin');
++    }
++
++    private static function posted(string $key): string
++    {
++        $value = $_POST[$key] ?? '';
++
++        return is_string($value) ? trim(mb_substr($value, 0, 1000)) : '';
++    }
++
++    private static function postedInt(string $key): int
++    {
++        $value = self::posted($key);
++
++        return ctype_digit($value) ? (int) $value : 0;
++    }
++
++    /** @return array<string, string> */
++    private static function values(): array
++    {
++        $values = [];
++
++        foreach ([
++            'entity', 'id', 'source_code', 'target_code', 'relation_type',
++            'source_system_code', 'source_field', 'source_value', 'context_text',
++            'item_code', 'terminology_system_id', 'external_code', 'external_display',
++            'mapping_type', 'relationship_role', 'clinical_rationale',
++            'source_catalog_code', 'source_code', 'target_catalog_code', 'target_code',
++            'match_basis', 'source_term', 'target_term', 'provenance', 'notes', 'reason',
++        ] as $key) {
++            $value = self::posted($key);
++
++            if ($value !== '') {
++                $values[$key] = $value;
++            }
++        }
++
++        return $values;
++    }
++
++    private static function entity(): string
++    {
++        $entity = $_GET['entity'] ?? '';
++
++        return is_string($entity) && array_key_exists($entity, RelationAdminRepository::ENTITIES)
++            ? $entity
++            : '';
++    }
++
++    private static function query(): string
++    {
++        $query = $_GET['q'] ?? '';
++
++        return is_string($query) ? trim(mb_substr($query, 0, 80)) : '';
++    }
++
++    /** @return array{entity: string, key: string}|null */
++    private static function edit(): ?array
++    {
++        $entity = self::entity();
++        $key = $_GET['edit'] ?? '';
++
++        if ($entity === '' || !is_string($key) || $key === '') {
++            return null;
++        }
++
++        return ['entity' => $entity, 'key' => trim(mb_substr($key, 0, 160))];
++    }
++
++    /** @param array<string, mixed> $row */
++    private static function rowKey(string $entity, array $row): string
++    {
++        if ($entity === 'nomenclador_match') {
++            return (string) ($row['source_catalog_code'] ?? '') . ':' . (string) ($row['source_code'] ?? '');
++        }
++
++        return (string) ($row['id'] ?? '');
++    }
++}
+diff --git a/portal/Repositories/RelationAdminRepository.php b/portal/Repositories/RelationAdminRepository.php
+new file mode 100644
+index 0000000..a35de44
+--- /dev/null
++++ b/portal/Repositories/RelationAdminRepository.php
+@@ -0,0 +1,333 @@
++<?php
++
++declare(strict_types=1);
++
++namespace OrigenSalud\Portal\Repositories;
++
++use OrigenSalud\Portal\Admin\AuditLogger;
++use OrigenSalud\Portal\Admin\UvrGovernanceException;
++use PDO;
++use PDOException;
++use Throwable;
++
++/**
++ * Acceso administrativo a relaciones, mapeos y pares nomenclador ↔ OFT-PR.
++ *
++ * Las lecturas usan la conexión pública de solo lectura. Las escrituras pasan
++ * por public.os_relation_admin_write(), SECURITY DEFINER, y la auditoría se
++ * escribe en la misma transacción: si falla la auditoría, se revierte el cambio.
++ * Ninguna ruta fija review_status='approved'.
++ */
++final class RelationAdminRepository
++{
++    private const LIMIT = 100;
++
++    public const ENTITIES = [
++        'catalog_relation' => 'relaciones de catálogo',
++        'concept_mapping' => 'mapeos terminológicos',
++        'nomenclador_match' => 'pares nomenclador ↔ OFT-PR',
++    ];
++
++    /** @return array<string, list<array<string, mixed>>> */
++    public function options(): array
++    {
++        return [
++            'relation_types' => [
++                'alternate_benefit', 'billed_in_conjunction_with', 'concurrent_to',
++                'denied_as_integral', 'frequency_limitations', 'integral_to',
++                'interchangeable_with', 'not_paid_separately', 'not_to_be_used_with',
++                'paid_as_code', 'procedure_code_not_used_for', 'refer_to_details',
++                'referencia_literal', 'shares_frequency_limitation_with',
++                'used_in_combination_with',
++            ],
++            'source_fields' => ['description', 'procedure', 'notes', 'req'],
++            'mapping_types' => ['equivalent', 'narrower', 'broader', 'related', 'unmatched'],
++            'relationship_roles' => [
++                'procedure_concept', 'justifying_diagnosis',
++                'observation_concept', 'substance_concept',
++            ],
++            'match_basis' => ['texto_identico_normalizado', 'revision_manual'],
++            'relation_kinds' => self::readRows(
++                'SELECT code, description FROM public.os_relation_kind ORDER BY code'
++            ),
++            'relation_type_codes' => self::readRows(
++                'SELECT code, source FROM public.os_relation_type ORDER BY code'
++            ),
++            'systems' => self::readRows(
++                'SELECT id, code, name FROM public.os_terminology_system ORDER BY code'
++            ),
++            'catalogs' => self::readRows(
++                'SELECT code, short_name FROM public.os_catalog WHERE is_active = TRUE ORDER BY code'
++            ),
++            'match_targets' => self::readRows(
++                'SELECT ident.value AS value, item.permanent_code AS permanent_code,
++                        COALESCE(latest.preferred_term, item.permanent_code) AS display
++                   FROM public.os_catalog_identifier ident
++                   JOIN public.os_catalog_item item ON item.id = ident.item_id
++                   JOIN public.os_catalog cat ON cat.id = item.catalog_id
++                   LEFT JOIN LATERAL (
++                       SELECT ver.preferred_term
++                         FROM public.os_catalog_item_version ver
++                        WHERE ver.item_id = item.id
++                        ORDER BY ver.id DESC
++                        LIMIT 1
++                   ) latest ON TRUE
++                  WHERE ident.system_name = \'NOMENCLADOR-AR\'
++                    AND cat.code = \'oftar-pr\'
++                  ORDER BY ident.value
++                  LIMIT 500'
++            ),
++        ];
++    }
++
++    /** @return list<array<string, mixed>> */
++    public function relations(string $query): array
++    {
++        return self::readRows(
++            'SELECT r.id, r.source_item_id, src.permanent_code AS source_code,
++                    sc.code AS source_catalog, r.target_item_id,
++                    tgt.permanent_code AS target_code, tc.code AS target_catalog,
++                    r.relation_type, r.source_system_code, r.source_field,
++                    r.source_value, r.context_text, r.review_status, r.provenance
++               FROM public.os_catalog_relation r
++               JOIN public.os_catalog_item src ON src.id = r.source_item_id
++               JOIN public.os_catalog sc ON sc.id = src.catalog_id
++               JOIN public.os_catalog_item tgt ON tgt.id = r.target_item_id
++               JOIN public.os_catalog tc ON tc.id = tgt.catalog_id
++              WHERE src.permanent_code ILIKE :q
++                 OR tgt.permanent_code ILIKE :q
++                 OR r.relation_type ILIKE :q
++                 OR COALESCE(r.source_system_code, \'\') ILIKE :q
++                 OR COALESCE(r.provenance, \'\') ILIKE :q
++              ORDER BY r.id DESC
++              LIMIT ' . self::LIMIT,
++            [':q' => '%' . $query . '%']
++        );
++    }
++
++    /** @return list<array<string, mixed>> */
++    public function mappings(string $query): array
++    {
++        return self::readRows(
++            'SELECT m.id, i.permanent_code AS item_code, c.code AS catalog_code,
++                    sys.id AS system_id, sys.code AS system_code, m.external_code,
++                    m.external_display, m.mapping_type, m.relationship_role,
++                    m.clinical_rationale, m.review_status
++               FROM public.os_concept_mapping m
++               JOIN public.os_catalog_item i ON i.id = m.item_id
++               JOIN public.os_catalog c ON c.id = i.catalog_id
++               JOIN public.os_terminology_system sys ON sys.id = m.terminology_system_id
++              WHERE i.permanent_code ILIKE :q
++                 OR sys.code ILIKE :q
++                 OR m.external_code ILIKE :q
++                 OR m.external_display ILIKE :q
++              ORDER BY m.id DESC
++              LIMIT ' . self::LIMIT,
++            [':q' => '%' . $query . '%']
++        );
++    }
++
++    /** @return list<array<string, mixed>> */
++    public function matches(string $query): array
++    {
++        return self::readRows(
++            'SELECT m.source_catalog_code, m.source_code, m.target_catalog_code,
++                    m.target_code, m.match_basis, m.review_status,
++                    m.source_term, m.target_term, m.provenance, m.notes,
++                    m.reviewed_at, m.reviewed_by,
++                    resolved.permanent_code AS target_permanent_code,
++                    resolved.display AS target_display
++               FROM public.os_oftar_nomenclador_match m
++               LEFT JOIN LATERAL (
++                   SELECT item.permanent_code,
++                          COALESCE(latest.preferred_term, item.permanent_code) AS display
++                     FROM public.os_catalog_identifier ident
++                     JOIN public.os_catalog_item item ON item.id = ident.item_id
++                     JOIN public.os_catalog cat ON cat.id = item.catalog_id
++                     LEFT JOIN LATERAL (
++                         SELECT ver.preferred_term
++                           FROM public.os_catalog_item_version ver
++                          WHERE ver.item_id = item.id
++                          ORDER BY ver.id DESC
++                          LIMIT 1
++                     ) latest ON TRUE
++                    WHERE ident.system_name = \'NOMENCLADOR-AR\'
++                      AND ident.value = m.target_code
++                      AND cat.code = \'oftar-pr\'
++                    LIMIT 1
++               ) resolved ON TRUE
++              WHERE m.source_catalog_code ILIKE :q
++                 OR m.source_code ILIKE :q
++                 OR m.target_code ILIKE :q
++                 OR COALESCE(m.source_term, \'\') ILIKE :q
++                 OR COALESCE(m.target_term, \'\') ILIKE :q
++              ORDER BY m.source_catalog_code, m.source_code
++              LIMIT ' . self::LIMIT,
++            [':q' => '%' . $query . '%']
++        );
++    }
++
++    /** @return array<string, mixed>|null */
++    public function itemByCode(string $code): ?array
++    {
++        $code = trim($code);
++
++        if ($code === '') {
++            return null;
++        }
++
++        return self::readRow(
++            'SELECT i.id, i.permanent_code, c.code AS catalog_code,
++                    COALESCE(latest.preferred_term, i.permanent_code) AS display
++               FROM public.os_catalog_item i
++               JOIN public.os_catalog c ON c.id = i.catalog_id
++               LEFT JOIN LATERAL (
++                   SELECT ver.preferred_term
++                     FROM public.os_catalog_item_version ver
++                    WHERE ver.item_id = i.id
++                    ORDER BY ver.id DESC
++                    LIMIT 1
++               ) latest ON TRUE
++              WHERE i.permanent_code = :code
++              ORDER BY i.id
++              LIMIT 1',
++            [':code' => $code]
++        );
++    }
++
++    /**
++     * Resuelve el destino de un par por identificador NOMENCLADOR-AR,
++     * nunca por permanent_code (H-02).
++     *
++     * @return array<string, mixed>|null
++     */
++    public function matchTarget(string $value): ?array
++    {
++        $value = trim($value);
++
++        if ($value === '') {
++            return null;
++        }
++
++        return self::readRow(
++            'SELECT ident.value, i.permanent_code, c.code AS catalog_code,
++                    COALESCE(latest.preferred_term, i.permanent_code) AS display
++               FROM public.os_catalog_identifier ident
++               JOIN public.os_catalog_item i ON i.id = ident.item_id
++               JOIN public.os_catalog c ON c.id = i.catalog_id
++               LEFT JOIN LATERAL (
++                   SELECT ver.preferred_term
++                     FROM public.os_catalog_item_version ver
++                    WHERE ver.item_id = i.id
++                    ORDER BY ver.id DESC
++                    LIMIT 1
++               ) latest ON TRUE
++              WHERE ident.system_name = \'NOMENCLADOR-AR\'
++                AND ident.value = :value
++                AND c.code = \'oftar-pr\'
++              ORDER BY i.id
++              LIMIT 1',
++            [':value' => $value]
++        );
++    }
++
++    /**
++     * @param array<string, mixed> $payload
++     * @param array<string, mixed> $actor
++     */
++    public function write(
++        string $entity,
++        string $action,
++        int $id,
++        array $payload,
++        string $reason,
++        array $actor
++    ): void {
++        $actorId = (int) ($actor['id'] ?? 0);
++        $actorEmail = (string) ($actor['email'] ?? '');
++        $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
++
++        if ($encoded === false) {
++            throw new UvrGovernanceException('relation_invalid');
++        }
++
++        $pdo = AdminDatabase::connection();
++        $pdo->beginTransaction();
++
++        try {
++            $statement = $pdo->prepare(
++                'SELECT public.os_relation_admin_write('
++                . ':entity, :action, :id, CAST(:payload AS jsonb), '
++                . ':reason, :actor, :email)'
++            );
++            $statement->execute([
++                ':entity' => $entity,
++                ':action' => $action,
++                ':id' => $id,
++                ':payload' => $encoded,
++                ':reason' => $reason,
++                ':actor' => $actorId,
++                ':email' => $actorEmail,
++            ]);
++
++            $raw = (string) $statement->fetchColumn();
++            $result = json_decode($raw, true);
++
++            if (!is_array($result)) {
++                throw new UvrGovernanceException('relation_invalid');
++            }
++
++            AuditLogger::record('relation_' . $entity . '_' . $action, [
++                'actor_user_id' => $actorId,
++                'actor_email' => $actorEmail,
++                'entity_type' => $entity,
++                'entity_id' => (string) ($result['id'] ?? ''),
++                'catalog_code' => $result['catalog_code'] ?? null,
++                'before_state' => $result['before'] ?? null,
++                'after_state' => $result['after'] ?? null,
++                'reason' => $reason,
++            ]);
++
++            $pdo->commit();
++        } catch (Throwable $exception) {
++            if ($pdo->inTransaction()) {
++                $pdo->rollBack();
++            }
++
++            if ($exception instanceof UvrGovernanceException
++                || $exception instanceof RepositoryException
++            ) {
++                throw $exception;
++            }
++
++            throw new RepositoryException('relation_write_failed');
++        }
++    }
++
++    /** @return list<array<string, mixed>> */
++    private static function readRows(string $sql, array $params = []): array
++    {
++        try {
++            $statement = PortalDatabase::connection()->prepare($sql);
++            $statement->execute($params);
++
++            return $statement->fetchAll();
++        } catch (PDOException) {
++            throw new RepositoryException('relation_read_unavailable');
++        }
++    }
++
++    /** @return array<string, mixed>|null */
++    private static function readRow(string $sql, array $params = []): ?array
++    {
++        try {
++            $statement = PortalDatabase::connection()->prepare($sql);
++            $statement->execute($params);
++            $row = $statement->fetch();
++
++            return $row === false ? null : $row;
++        } catch (PDOException) {
++            throw new RepositoryException('relation_read_unavailable');
++        }
++    }
++}
+diff --git a/portal/Router.php b/portal/Router.php
+index 794e0ee..35d141c 100644
+--- a/portal/Router.php
++++ b/portal/Router.php
+@@ -13,6 +13,7 @@ use OrigenSalud\Portal\Controllers\AdminHomeController;
+ use OrigenSalud\Portal\Controllers\AdminInvitationController;
+ use OrigenSalud\Portal\Controllers\AdminMembershipController;
+ use OrigenSalud\Portal\Controllers\AdminOrganizationController;
++use OrigenSalud\Portal\Controllers\AdminRelationController;
+ use OrigenSalud\Portal\Controllers\AdminUvrController;
+ use OrigenSalud\Portal\Controllers\BrowseController;
+ use OrigenSalud\Portal\Controllers\ContactController;
+@@ -277,6 +278,11 @@ final class Router
+             return;
+         }
+ 
++        // CRUD auditable de relaciones, mapeos y pares CAO/Regional ↔ OFT-PR.
++        if ($this->relations($section, $method)) {
++            return;
++        }
++
+         // Gestión (M2): rutas con identificadores y acciones.
+         $segments = $section === '' ? [] : explode('/', $section);
+ 
+@@ -287,6 +293,40 @@ final class Router
+         $this->notFound(I18n::locale(), $path);
+     }
+ 
++    /** Rutas planas para el CRUD auditable de relaciones. */
++    private function relations(string $section, string $method): bool
++    {
++        if ($section === 'relations') {
++            if ($method === 'GET') {
++                AdminRelationController::index();
++
++                return true;
++            }
++
++            if ($method === 'POST') {
++                $operation = $_POST['op'] ?? '';
++
++                if ($operation === 'create') {
++                    AdminRelationController::create();
++                } elseif ($operation === 'update') {
++                    AdminRelationController::update();
++                } elseif ($operation === 'delete') {
++                    AdminRelationController::delete();
++                } else {
++                    $this->notFound(I18n::locale(), '/admin/relations');
++
++                    return true;
++                }
++
++                return true;
++            }
++
++            return false;
++        }
++
++        return false;
++    }
++
+     /**
+      * @param list<string> $segments
+      */
+diff --git a/portal/Views/admin/relations/index.php b/portal/Views/admin/relations/index.php
+new file mode 100644
+index 0000000..b98da05
+--- /dev/null
++++ b/portal/Views/admin/relations/index.php
+@@ -0,0 +1,450 @@
++<?php
++
++declare(strict_types=1);
++
++use OrigenSalud\Portal\Services\Csrf;
++
++/** @var array<string, string> $entities */
++/** @var string $entity */
++/** @var string $query */
++/** @var array<string, list<array<string, mixed>>> $rows */
++/** @var array<string, mixed>|null $editing */
++/** @var string $editKey */
++/** @var array<string, mixed> $options */
++/** @var array<string, mixed>|null $target */
++/** @var array<string, string> $flashValues */
++/** @var bool $canWrite */
++/** @var array<string, mixed> $current */
++
++require __DIR__ . '/../_flash.php';
++
++$options = is_array($options ?? null) ? $options : [];
++$relations = is_array($options['relation_types'] ?? null) ? $options['relation_types'] : [];
++$sourceFields = is_array($options['source_fields'] ?? null) ? $options['source_fields'] : [];
++$mappingTypes = is_array($options['mapping_types'] ?? null) ? $options['mapping_types'] : [];
++$roles = is_array($options['relationship_roles'] ?? null) ? $options['relationship_roles'] : [];
++$basis = is_array($options['match_basis'] ?? null) ? $options['match_basis'] : [];
++$systems = is_array($options['systems'] ?? null) ? $options['systems'] : [];
++$catalogs = is_array($options['catalogs'] ?? null) ? $options['catalogs'] : [];
++$matchTargets = is_array($options['match_targets'] ?? null) ? $options['match_targets'] : [];
++$flashValues = is_array($flashValues ?? null) ? $flashValues : [];
++$editing = is_array($editing ?? null) ? $editing : [];
++
++$value = static function (string $key, string $default = '') use ($flashValues, $editing): string {
++    if (is_string($flashValues[$key] ?? null) && $flashValues[$key] !== '') {
++        return (string) $flashValues[$key];
++    }
++
++    return is_string($editing[$key] ?? null) ? (string) $editing[$key] : $default;
++};
++
++$isEdit = $editKey !== '';
++$activeEntity = $entity !== '' ? $entity : 'catalog_relation';
++$base = static fn (string $targetEntity): string => '/admin/relations?entity=' . rawurlencode($targetEntity);
++$editHref = static function (string $targetEntity, string $key) use ($base): string {
++    return $base($targetEntity) . '&edit=' . rawurlencode($key);
++};
++$rowKey = static function (string $targetEntity, array $row): string {
++    if ($targetEntity === 'nomenclador_match') {
++        return (string) ($row['source_catalog_code'] ?? '') . ':' . (string) ($row['source_code'] ?? '');
++    }
++
++    return (string) ($row['id'] ?? '');
++};
++?>
++<section class="space-y-6">
++    <article class="ui-card ui-card-pad">
++        <div class="flex flex-wrap items-start justify-between gap-4">
++            <div>
++                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-dark"><?= e($t('nav.management')) ?></p>
++                <h1 class="ui-title"><?= e($t('admin.relations.title')) ?></h1>
++                <p class="ui-subtitle"><?= e($t('admin.relations.lead')) ?></p>
++            </div>
++            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint text-teal-dark">
++                <i data-lucide="git-fork" class="h-5 w-5"></i>
++            </span>
++        </div>
++        <div class="ui-alert mt-5 border-amber-200 bg-amber-50 text-amber-900" role="note">
++            <i data-lucide="shield-alert" class="h-4 w-4 shrink-0"></i>
++            <p><?= e($t('admin.relations.draft_notice')) ?></p>
++        </div>
++    </article>
++
++    <article class="ui-card ui-card-pad">
++        <form method="get" action="/admin/relations" class="ui-grid items-end">
++            <div>
++                <label for="relation-entity" class="ui-label"><?= e($t('admin.relations.col_entity')) ?></label>
++                <select id="relation-entity" name="entity" class="ui-input" onchange="this.form.submit()">
++                    <option value=""><?= e($t('admin.select')) ?></option>
++                    <?php foreach ($entities as $code => $label): ?>
++                        <option value="<?= e($code) ?>" <?= $code === $entity ? 'selected' : '' ?>>
++                            <?= e($t('admin.relations.entity.' . $code)) ?>
++                        </option>
++                    <?php endforeach; ?>
++                </select>
++            </div>
++            <div>
++                <label for="relation-q" class="ui-label"><?= e($t('admin.relations.search')) ?></label>
++                <input id="relation-q" name="q" value="<?= e($query) ?>" class="ui-input" maxlength="80">
++            </div>
++            <div>
++                <button type="submit" class="ui-btn ui-btn-sm"><?= e($t('admin.relations.search_submit')) ?></button>
++            </div>
++        </form>
++    </article>
++
++    <?php foreach ($entities as $entityCode => $entityLabel): ?>
++        <?php if ($entity !== '' && $entity !== $entityCode) { continue; } ?>
++        <?php $records = $rows[$entityCode] ?? []; ?>
++        <article class="ui-card ui-card-pad">
++            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
++                <h2 class="text-lg font-semibold text-ink">
++                    <?= e($t('admin.relations.entity.' . $entityCode)) ?>
++                </h2>
++                <span class="ui-badge"><?= count($records) ?></span>
++            </div>
++
++            <?php if ($records === []): ?>
++                <p class="ui-subtitle"><?= e($t('admin.relations.empty')) ?></p>
++            <?php else: ?>
++                <div class="overflow-x-auto">
++                    <table class="ui-table">
++                        <thead>
++                            <tr>
++                                <?php if ($entityCode === 'catalog_relation'): ?>
++                                    <th><?= e($t('admin.relations.col_source')) ?></th>
++                                    <th><?= e($t('admin.relations.col_target')) ?></th>
++                                    <th><?= e($t('admin.relations.col_type')) ?></th>
++                                    <th><?= e($t('admin.relations.col_status')) ?></th>
++                                <?php elseif ($entityCode === 'concept_mapping'): ?>
++                                    <th><?= e($t('admin.relations.col_item')) ?></th>
++                                    <th><?= e($t('admin.relations.col_system')) ?></th>
++                                    <th><?= e($t('admin.relations.col_external')) ?></th>
++                                    <th><?= e($t('admin.relations.col_status')) ?></th>
++                                <?php else: ?>
++                                    <th><?= e($t('admin.relations.col_pair')) ?></th>
++                                    <th><?= e($t('admin.relations.col_resolved')) ?></th>
++                                    <th><?= e($t('admin.relations.col_basis')) ?></th>
++                                    <th><?= e($t('admin.relations.col_status')) ?></th>
++                                <?php endif; ?>
++                                <th><?= e($t('admin.relations.col_actions')) ?></th>
++                            </tr>
++                        </thead>
++                        <tbody>
++                            <?php foreach ($records as $record): ?>
++                                <?php
++                                $key = $rowKey($entityCode, $record);
++                                $rowId = (string) ($record['id'] ?? '0');
++                                $isCurrent = $isEdit && $activeEntity === $entityCode && $editKey === $key;
++                                ?>
++                                <tr class="<?= $isCurrent ? 'bg-mint/30' : '' ?>">
++                                    <?php if ($entityCode === 'catalog_relation'): ?>
++                                        <td class="font-mono text-xs"><?= e((string) ($record['source_code'] ?? '')) ?></td>
++                                        <td class="font-mono text-xs"><?= e((string) ($record['target_code'] ?? '')) ?></td>
++                                        <td><?= e((string) ($record['relation_type'] ?? '')) ?></td>
++                                    <?php elseif ($entityCode === 'concept_mapping'): ?>
++                                        <td class="font-mono text-xs"><?= e((string) ($record['item_code'] ?? '')) ?></td>
++                                        <td><?= e((string) ($record['system_code'] ?? '')) ?></td>
++                                        <td class="font-mono text-xs"><?= e((string) ($record['external_code'] ?? '')) ?></td>
++                                    <?php else: ?>
++                                        <td class="font-mono text-xs">
++                                            <?= e((string) ($record['source_catalog_code'] ?? '')) ?>:
++                                            <?= e((string) ($record['source_code'] ?? '')) ?>
++                                            → <?= e((string) ($record['target_code'] ?? '')) ?>
++                                        </td>
++                                        <td>
++                                            <?php if (($record['target_permanent_code'] ?? null) !== null): ?>
++                                                <span class="ui-badge">
++                                                    <?= e((string) $record['target_permanent_code']) ?>
++                                                </span>
++                                            <?php else: ?>
++                                                <span class="text-amber-700">
++                                                    <?= e($t('admin.relations.unresolved')) ?>
++                                                </span>
++                                            <?php endif; ?>
++                                        </td>
++                                        <td><?= e((string) ($record['match_basis'] ?? '')) ?></td>
++                                    <?php endif; ?>
++                                    <td><span class="ui-badge"><?= e((string) ($record['review_status'] ?? '')) ?></span></td>
++                                    <td>
++                                        <?php if ($canWrite): ?>
++                                            <div class="flex flex-wrap items-center gap-3">
++                                                <a href="<?= e($editHref($entityCode, $key)) ?>" class="text-sm font-medium text-teal-dark hover:underline">
++                                                    <?= e($t('admin.relations.edit')) ?>
++                                                </a>
++                                                <form method="post" action="/admin/relations"
++                                                      onsubmit="return confirm('<?= e($t('admin.relations.confirm_delete')) ?>');">
++                                                    <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e(Csrf::token()) ?>">
++                                                    <input type="hidden" name="op" value="delete">
++                                                    <input type="hidden" name="entity" value="<?= e($entityCode) ?>">
++                                                    <?php if ($entityCode === 'nomenclador_match'): ?>
++                                                        <input type="hidden" name="source_catalog_code"
++                                                               value="<?= e((string) ($record['source_catalog_code'] ?? '')) ?>">
++                                                        <input type="hidden" name="source_code"
++                                                               value="<?= e((string) ($record['source_code'] ?? '')) ?>">
++                                                    <?php else: ?>
++                                                        <input type="hidden" name="id" value="<?= e($rowId) ?>">
++                                                    <?php endif; ?>
++                                                    <input type="hidden" name="reason"
++                                                           value="<?= e($t('admin.relations.delete_reason')) ?>">
++                                                    <button type="submit" class="text-sm font-medium text-red-700 hover:underline">
++                                                        <?= e($t('admin.relations.delete')) ?>
++                                                    </button>
++                                                </form>
++                                            </div>
++                                        <?php else: ?>
++                                            <span class="text-xs text-slate-500"><?= e($t('admin.relations.read_only')) ?></span>
++                                        <?php endif; ?>
++                                    </td>
++                                </tr>
++                            <?php endforeach; ?>
++                        </tbody>
++                    </table>
++                </div>
++            <?php endif; ?>
++        </article>
++    <?php endforeach; ?>
++
++    <?php if ($canWrite): ?>
++        <article class="ui-card ui-card-pad">
++            <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
++                <div>
++                    <h2 class="text-lg font-semibold text-ink">
++                        <?= e($isEdit ? $t('admin.relations.edit_title') : $t('admin.relations.new_title')) ?>
++                    </h2>
++                    <p class="ui-subtitle"><?= e($t('admin.relations.form_note')) ?></p>
++                </div>
++                <?php if ($isEdit): ?>
++                    <a href="<?= e($base($activeEntity)) ?>" class="text-sm font-medium text-teal-dark hover:underline"><?= e($t('admin.relations.cancel')) ?></a>
++                <?php endif; ?>
++            </div>
++
++            <form method="post" action="/admin/relations" class="space-y-5">
++                <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e(Csrf::token()) ?>">
++                <input type="hidden" name="op" value="<?= $isEdit ? 'update' : 'create' ?>">
++                <input type="hidden" name="entity" value="<?= e($activeEntity) ?>">
++                <?php if ($isEdit && $activeEntity !== 'nomenclador_match'): ?>
++                    <input type="hidden" name="id" value="<?= e($editKey) ?>">
++                <?php endif; ?>
++
++                <?php if ($activeEntity === 'catalog_relation'): ?>
++                    <div class="ui-grid">
++                        <div>
++                            <label for="source_code" class="ui-label"><?= e($t('admin.relations.col_source')) ?></label>
++                            <input id="source_code" name="source_code" class="ui-input" required
++                                   value="<?= e($value('source_code')) ?>"
++                                   placeholder="OFT-PR-000025">
++                        </div>
++                        <div>
++                            <label for="target_code" class="ui-label"><?= e($t('admin.relations.col_target')) ?></label>
++                            <input id="target_code" name="target_code" class="ui-input" required
++                                   value="<?= e($value('target_code')) ?>">
++                        </div>
++                        <div>
++                            <label for="relation_type" class="ui-label"><?= e($t('admin.relations.col_type')) ?></label>
++                            <select id="relation_type" name="relation_type" class="ui-input" required>
++                                <option value=""><?= e($t('admin.select')) ?></option>
++                                <?php foreach ($relations as $type): ?>
++                                    <option value="<?= e($type) ?>" <?= $type === $value('relation_type') ? 'selected' : '' ?>>
++                                        <?= e($type) ?>
++                                    </option>
++                                <?php endforeach; ?>
++                            </select>
++                        </div>
++                        <div>
++                            <label for="source_field" class="ui-label"><?= e($t('admin.relations.col_source_field')) ?></label>
++                            <select id="source_field" name="source_field" class="ui-input" required>
++                                <option value=""><?= e($t('admin.select')) ?></option>
++                                <?php foreach ($sourceFields as $field): ?>
++                                    <option value="<?= e($field) ?>" <?= $field === $value('source_field', 'description') ? 'selected' : '' ?>>
++                                        <?= e($field) ?>
++                                    </option>
++                                <?php endforeach; ?>
++                            </select>
++                        </div>
++                        <div>
++                            <label for="source_system_code" class="ui-label"><?= e($t('admin.relations.col_system_code')) ?></label>
++                            <input id="source_system_code" name="source_system_code" class="ui-input" maxlength="30"
++                                   value="<?= e($value('source_system_code', 'CDT-2025')) ?>">
++                        </div>
++                        <div>
++                            <label for="source_value" class="ui-label"><?= e($t('admin.relations.col_source_value')) ?></label>
++                            <input id="source_value" name="source_value" class="ui-input" maxlength="20" required
++                                   value="<?= e($value('source_value')) ?>">
++                        </div>
++                    </div>
++                    <div>
++                        <label for="context_text" class="ui-label"><?= e($t('admin.relations.col_context')) ?></label>
++                        <textarea id="context_text" name="context_text" class="ui-input" rows="2"><?= e($value('context_text')) ?></textarea>
++                    </div>
++                    <div>
++                        <label for="provenance" class="ui-label"><?= e($t('admin.relations.col_provenance')) ?></label>
++                        <input id="provenance" name="provenance" class="ui-input" required
++                               value="<?= e($value('provenance')) ?>">
++                    </div>
++
++                <?php elseif ($activeEntity === 'concept_mapping'): ?>
++                    <div class="ui-grid">
++                        <div>
++                            <label for="item_code" class="ui-label"><?= e($t('admin.relations.col_item')) ?></label>
++                            <input id="item_code" name="item_code" class="ui-input" required
++                                   value="<?= e($value('item_code')) ?>">
++                        </div>
++                        <div>
++                            <label for="terminology_system_id" class="ui-label"><?= e($t('admin.relations.col_system')) ?></label>
++                            <select id="terminology_system_id" name="terminology_system_id" class="ui-input" required>
++                                <option value=""><?= e($t('admin.select')) ?></option>
++                                <?php foreach ($systems as $system): ?>
++                                    <?php $systemId = (string) ($system['id'] ?? ''); ?>
++                                    <option value="<?= e($systemId) ?>"
++                                        <?= $systemId === $value('terminology_system_id') ? 'selected' : '' ?>>
++                                        <?= e((string) ($system['code'] ?? '')) ?>
++                                        <?= (string) ($system['name'] ?? '') !== '' ? ' · ' . e((string) $system['name']) : '' ?>
++                                    </option>
++                                <?php endforeach; ?>
++                            </select>
++                        </div>
++                        <div>
++                            <label for="external_code" class="ui-label"><?= e($t('admin.relations.col_external')) ?></label>
++                            <input id="external_code" name="external_code" class="ui-input" required
++                                   value="<?= e($value('external_code')) ?>">
++                        </div>
++                        <div>
++                            <label for="external_display" class="ui-label"><?= e($t('admin.relations.col_external_display')) ?></label>
++                            <input id="external_display" name="external_display" class="ui-input" required
++                                   value="<?= e($value('external_display')) ?>">
++                        </div>
++                        <div>
++                            <label for="mapping_type" class="ui-label"><?= e($t('admin.relations.col_mapping_type')) ?></label>
++                            <select id="mapping_type" name="mapping_type" class="ui-input">
++                                <?php foreach ($mappingTypes as $type): ?>
++                                    <option value="<?= e($type) ?>" <?= $type === $value('mapping_type', 'equivalent') ? 'selected' : '' ?>>
++                                        <?= e($type) ?>
++                                    </option>
++                                <?php endforeach; ?>
++                            </select>
++                        </div>
++                        <div>
++                            <label for="relationship_role" class="ui-label"><?= e($t('admin.relations.col_role')) ?></label>
++                            <select id="relationship_role" name="relationship_role" class="ui-input">
++                                <?php foreach ($roles as $role): ?>
++                                    <option value="<?= e($role) ?>" <?= $role === $value('relationship_role', 'procedure_concept') ? 'selected' : '' ?>>
++                                        <?= e($role) ?>
++                                    </option>
++                                <?php endforeach; ?>
++                            </select>
++                        </div>
++                    </div>
++                    <div>
++                        <label for="clinical_rationale" class="ui-label"><?= e($t('admin.relations.col_rationale')) ?></label>
++                        <textarea id="clinical_rationale" name="clinical_rationale" class="ui-input" rows="2"><?= e($value('clinical_rationale')) ?></textarea>
++                    </div>
++
++                <?php else: ?>
++                    <div class="ui-grid">
++                        <div>
++                            <label for="source_catalog_code" class="ui-label"><?= e($t('admin.relations.col_source_catalog')) ?></label>
++                            <select id="source_catalog_code" name="source_catalog_code" class="ui-input" required
++                                <?= $isEdit ? 'disabled' : '' ?>>
++                                <option value=""><?= e($t('admin.select')) ?></option>
++                                <?php foreach ($catalogs as $catalog): ?>
++                                    <?php $code = (string) ($catalog['code'] ?? ''); ?>
++                                    <option value="<?= e($code) ?>"
++                                        <?= $code === $value('source_catalog_code', 'nomenclador-oftalmologico-cao-ar') ? 'selected' : '' ?>>
++                                        <?= e($code) ?>
++                                    </option>
++                                <?php endforeach; ?>
++                            </select>
++                            <?php if ($isEdit): ?>
++                                <input type="hidden" name="source_catalog_code"
++                                       value="<?= e($value('source_catalog_code')) ?>">
++                            <?php endif; ?>
++                        </div>
++                        <div>
++                            <label for="source_code" class="ui-label"><?= e($t('admin.relations.col_source_code')) ?></label>
++                            <input id="source_code" name="source_code" class="ui-input" maxlength="20" required
++                                   <?= $isEdit ? 'readonly' : '' ?>
++                                   value="<?= e($value('source_code')) ?>">
++                        </div>
++                        <div>
++                            <label for="target_catalog_code" class="ui-label"><?= e($t('admin.relations.col_target_catalog')) ?></label>
++                            <input id="target_catalog_code" name="target_catalog_code" class="ui-input" maxlength="30"
++                                   value="<?= e($value('target_catalog_code', 'oftar-pr')) ?>">
++                        </div>
++                        <div>
++                            <label for="target_code" class="ui-label"><?= e($t('admin.relations.col_target_code')) ?></label>
++                            <input id="target_code" name="target_code" class="ui-input" maxlength="30" required
++                                   list="match-targets" value="<?= e($value('target_code')) ?>">
++                            <datalist id="match-targets">
++                                <?php foreach ($matchTargets as $candidate): ?>
++                                    <option value="<?= e((string) ($candidate['value'] ?? '')) ?>">
++                                        <?= e((string) ($candidate['permanent_code'] ?? '')) ?>
++                                        · <?= e((string) ($candidate['display'] ?? '')) ?>
++                                    </option>
++                                <?php endforeach; ?>
++                            </datalist>
++                        </div>
++                        <div>
++                            <label for="match_basis" class="ui-label"><?= e($t('admin.relations.col_basis')) ?></label>
++                            <select id="match_basis" name="match_basis" class="ui-input" required>
++                                <option value=""><?= e($t('admin.select')) ?></option>
++                                <?php foreach ($basis as $item): ?>
++                                    <option value="<?= e($item) ?>" <?= $item === $value('match_basis') ? 'selected' : '' ?>>
++                                        <?= e($item) ?>
++                                    </option>
++                                <?php endforeach; ?>
++                            </select>
++                        </div>
++                    </div>
++                    <?php if ($target !== null): ?>
++                        <div class="ui-alert border-mint bg-mint/40 text-teal-dark" role="status">
++                            <i data-lucide="link-2" class="h-4 w-4 shrink-0"></i>
++                            <p>
++                                <?= e($t('admin.relations.resolved_as')) ?>:
++                                <span class="font-mono"><?= e((string) ($target['permanent_code'] ?? '')) ?></span>
++                                · <?= e((string) ($target['display'] ?? '')) ?>
++                            </p>
++                        </div>
++                    <?php endif; ?>
++                    <div class="ui-grid">
++                        <div>
++                            <label for="source_term" class="ui-label"><?= e($t('admin.relations.col_source_term')) ?></label>
++                            <input id="source_term" name="source_term" class="ui-input"
++                                   value="<?= e($value('source_term')) ?>">
++                        </div>
++                        <div>
++                            <label for="target_term" class="ui-label"><?= e($t('admin.relations.col_target_term')) ?></label>
++                            <input id="target_term" name="target_term" class="ui-input"
++                                   value="<?= e($value('target_term')) ?>">
++                        </div>
++                    </div>
++                    <div>
++                        <label for="provenance" class="ui-label"><?= e($t('admin.relations.col_provenance')) ?></label>
++                        <input id="provenance" name="provenance" class="ui-input" required
++                               value="<?= e($value('provenance')) ?>">
++                    </div>
++                    <div>
++                        <label for="notes" class="ui-label"><?= e($t('admin.relations.col_notes')) ?></label>
++                        <textarea id="notes" name="notes" class="ui-input" rows="2"><?= e($value('notes')) ?></textarea>
++                    </div>
++                <?php endif; ?>
++
++                <div>
++                    <label for="reason" class="ui-label"><?= e($t('admin.relations.col_reason')) ?></label>
++                    <input id="reason" name="reason" class="ui-input" required minlength="4"
++                           value="<?= e($value('reason')) ?>">
++                    <p class="mt-1 text-xs text-slate-500"><?= e($t('admin.relations.reason_hint')) ?></p>
++                </div>
++
++                <div class="flex flex-wrap gap-3">
++                    <button type="submit" class="ui-btn">
++                        <?= e($isEdit ? $t('admin.relations.save') : $t('admin.relations.create')) ?>
++                    </button>
++                    <a href="<?= e($base($activeEntity)) ?>" class="ui-btn ui-btn-ghost no-underline">
++                        <?= e($t('admin.cancel')) ?>
++                    </a>
++                </div>
++            </form>
++        </article>
++    <?php endif; ?>
++</section>
+diff --git a/portal/Views/layouts/admin.php b/portal/Views/layouts/admin.php
+index 4c34261..d30268d 100644
+--- a/portal/Views/layouts/admin.php
++++ b/portal/Views/layouts/admin.php
+@@ -62,6 +62,7 @@ $adminNav = [
+     ['/admin', 'admin.home.title', 'layout-dashboard', null],
+     ['/admin/uvr', 'admin.uvr.title', 'scale', 'catalog.view'],
+     ['/admin/catalogs', 'admin.catalogs.title', 'library', 'catalog.view'],
++    ['/admin/relations', 'admin.relations.nav', 'git-fork', 'catalog.view'],
+     ['/admin/organizations', 'admin.orgs.title', 'building-2', 'admin.orgs.manage'],
+     ['/admin/invitations', 'admin.invites.title', 'mail', 'admin.invites.manage'],
+     ['/admin/audit', 'admin.audit.title', 'scroll-text', 'audit.view'],
+diff --git a/portal/translations/messages.en.yaml b/portal/translations/messages.en.yaml
+index 1043a54..93f2412 100644
+--- a/portal/translations/messages.en.yaml
++++ b/portal/translations/messages.en.yaml
+@@ -1597,9 +1597,18 @@ admin:
+         membership_updated: 'Collaborator status updated.'
+         grant_updated: 'Catalog permission updated.'
+         context_switched: 'Active context updated.'
++        relation_created: 'Record created in a non-publishable state.'
++        relation_updated: 'Record updated in a non-publishable state.'
++        relation_deleted: 'Record logically retired.'
+     errors:
+         catalog_permission_denied: 'You do not have permission for this catalog operation.'
+         catalog_grant_denied: 'Your catalog scope does not allow this operation.'
++        relation_entity_invalid: 'The record type is not valid.'
++        relation_reason_required: 'A reason for the change is required.'
++        relation_item_not_found: 'The specified catalog code does not exist.'
++        relation_read_unavailable: 'The records could not be read.'
++        relation_write_failed: 'The change could not be saved; the operation was rolled back.'
++        relation_invalid: 'The record data is not valid.'
+         catalog_item_not_found: 'The requested code does not exist in the catalog.'
+         catalog_proposal_not_found: 'The catalog request does not exist.'
+         catalog_unavailable: 'The selected catalog is not available.'
+@@ -1813,6 +1822,62 @@ admin:
+         publish_title: 'Publish approved change'
+         publish_note: 'Publication applies the change in the database through a secure function and records the audit trail.'
+ 
++    relations:
++        nav: 'Relations'
++        title: 'Relations and mappings'
++        lead: 'Direct create, edit and retire actions for relations, mappings and CAO/Regional ↔ OFT-PR pairs.'
++        draft_notice: 'Changes remain draft or proposed and are not published to the API or browser until formal review. Retirement is logical.'
++        entity:
++            catalog_relation: 'Catalog relations'
++            concept_mapping: 'Terminology mappings'
++            nomenclador_match: 'Nomenclature ↔ OFT-PR pairs'
++        col_entity: 'Record type'
++        search: 'Search'
++        search_submit: 'Filter'
++        empty: 'No records match this filter.'
++        col_source: 'Source code'
++        col_target: 'Target code'
++        col_type: 'Relation type'
++        col_status: 'Status'
++        col_item: 'Item code'
++        col_system: 'Terminology system'
++        col_external: 'External code'
++        col_pair: 'Source pair'
++        col_resolved: 'Resolved target'
++        col_basis: 'Pair basis'
++        col_actions: 'Actions'
++        unresolved: 'Not resolved by identifier'
++        edit: 'Edit'
++        delete: 'Retire'
++        confirm_delete: 'Retire this record? The row is kept in a non-publishable state.'
++        delete_reason: 'Logical retirement from the admin panel'
++        read_only: 'Read only'
++        edit_title: 'Edit record'
++        new_title: 'New record'
++        form_note: 'An auditable reason is required. No action approves or publishes the record.'
++        cancel: 'Cancel'
++        col_source_field: 'Source field'
++        col_system_code: 'Source system'
++        col_source_value: 'Source value'
++        col_context: 'Context'
++        col_provenance: 'Provenance'
++        col_external_display: 'External display'
++        col_mapping_type: 'Mapping type'
++        col_role: 'Relationship role'
++        col_rationale: 'Clinical rationale'
++        col_source_catalog: 'Source catalog'
++        col_source_code: 'Source code'
++        col_target_catalog: 'Target catalog'
++        col_target_code: 'Target code (NOMENCLADOR-AR identifier)'
++        resolved_as: 'Resolves by identifier to'
++        col_source_term: 'Source term'
++        col_target_term: 'Target term'
++        col_notes: 'Notes'
++        col_reason: 'Reason for change'
++        reason_hint: 'Stored in the audit trail with the previous and new state.'
++        save: 'Save changes'
++        create: 'Create as draft'
++
+ service_request:
+     eyebrow: "Tailored solutions"
+     title: "Service Request"
+diff --git a/portal/translations/messages.es-AR.yaml b/portal/translations/messages.es-AR.yaml
+index 390e9d8..8511bb1 100644
+--- a/portal/translations/messages.es-AR.yaml
++++ b/portal/translations/messages.es-AR.yaml
+@@ -1597,9 +1597,18 @@ admin:
+         membership_updated: 'Estado del colaborador actualizado.'
+         grant_updated: 'Permiso por catálogo actualizado.'
+         context_switched: 'Contexto activo actualizado.'
++        relation_created: 'Registro creado en estado no publicable.'
++        relation_updated: 'Registro actualizado en estado no publicable.'
++        relation_deleted: 'Registro dado de baja lógicamente.'
+     errors:
+         catalog_permission_denied: 'No tiene permiso para esta operación de catálogo.'
+         catalog_grant_denied: 'Su alcance por catálogo no permite esta operación.'
++        relation_entity_invalid: 'El tipo de registro no es válido.'
++        relation_reason_required: 'La razón de la modificación es obligatoria.'
++        relation_item_not_found: 'El código de catálogo indicado no existe.'
++        relation_read_unavailable: 'No se pudieron leer los registros.'
++        relation_write_failed: 'No se pudo guardar el cambio; la operación se revirtió.'
++        relation_invalid: 'Los datos del registro no son válidos.'
+         catalog_item_not_found: 'El código solicitado no existe en el catálogo.'
+         catalog_proposal_not_found: 'La solicitud de catálogo no existe.'
+         catalog_unavailable: 'El catálogo elegido no está disponible.'
+@@ -1813,6 +1822,62 @@ admin:
+         publish_title: 'Publicar cambio aprobado'
+         publish_note: 'La publicación aplica el cambio en la base mediante una función segura y registra la auditoría.'
+ 
++    relations:
++        nav: 'Relaciones'
++        title: 'Relaciones y mapeos'
++        lead: 'Altas, ediciones y bajas directas de relaciones, mapeos y pares CAO/Regional ↔ OFT-PR.'
++        draft_notice: 'Los cambios quedan en borrador o propuestos y no se publican en la API ni en el explorador hasta una revisión formal. La baja es lógica.'
++        entity:
++            catalog_relation: 'Relaciones de catálogo'
++            concept_mapping: 'Mapeos terminológicos'
++            nomenclador_match: 'Pares nomenclador ↔ OFT-PR'
++        col_entity: 'Tipo de registro'
++        search: 'Buscar'
++        search_submit: 'Filtrar'
++        empty: 'No hay registros para este filtro.'
++        col_source: 'Código de origen'
++        col_target: 'Código de destino'
++        col_type: 'Tipo de relación'
++        col_status: 'Estado'
++        col_item: 'Código del ítem'
++        col_system: 'Sistema terminológico'
++        col_external: 'Código externo'
++        col_pair: 'Par de origen'
++        col_resolved: 'Destino resuelto'
++        col_basis: 'Base del par'
++        col_actions: 'Acciones'
++        unresolved: 'Sin resolución por identificador'
++        edit: 'Editar'
++        delete: 'Dar de baja'
++        confirm_delete: '¿Dar de baja este registro? La fila se conserva con estado no publicable.'
++        delete_reason: 'Baja lógica desde el panel administrativo'
++        read_only: 'Solo lectura'
++        edit_title: 'Editar registro'
++        new_title: 'Nuevo registro'
++        form_note: 'Se requiere una razón auditorable. Ninguna acción aprueba ni publica el registro.'
++        cancel: 'Cancelar'
++        col_source_field: 'Campo de fuente'
++        col_system_code: 'Sistema de origen'
++        col_source_value: 'Valor de fuente'
++        col_context: 'Contexto'
++        col_provenance: 'Procedencia'
++        col_external_display: 'Texto externo'
++        col_mapping_type: 'Tipo de mapeo'
++        col_role: 'Rol de la relación'
++        col_rationale: 'Justificación clínica'
++        col_source_catalog: 'Catálogo de origen'
++        col_source_code: 'Código de origen'
++        col_target_catalog: 'Catálogo de destino'
++        col_target_code: 'Código destino (identificador NOMENCLADOR-AR)'
++        resolved_as: 'Resuelve por identificador a'
++        col_source_term: 'Término de origen'
++        col_target_term: 'Término de destino'
++        col_notes: 'Notas'
++        col_reason: 'Razón de la modificación'
++        reason_hint: 'Se guarda en la auditoría junto con el estado anterior y el nuevo.'
++        save: 'Guardar cambios'
++        create: 'Crear en borrador'
++
+ service_request:
+     eyebrow: "Soluciones a medida"
+     title: "Solicitud de Servicios"
+diff --git a/portal/translations/messages.es.yaml b/portal/translations/messages.es.yaml
+index 21e7f43..795d47b 100644
+--- a/portal/translations/messages.es.yaml
++++ b/portal/translations/messages.es.yaml
+@@ -852,9 +852,18 @@ admin:
+         membership_updated: "Estado del colaborador actualizado."
+         grant_updated: "Permiso por catálogo actualizado."
+         context_switched: "Contexto activo actualizado."
++        relation_created: 'Registro creado en estado no publicable.'
++        relation_updated: 'Registro actualizado en estado no publicable.'
++        relation_deleted: 'Registro dado de baja lógicamente.'
+     errors:
+         catalog_permission_denied: 'No tiene permiso para esta operación de catálogo.'
+         catalog_grant_denied: 'Su alcance por catálogo no permite esta operación.'
++        relation_entity_invalid: 'El tipo de registro no es válido.'
++        relation_reason_required: 'La razón de la modificación es obligatoria.'
++        relation_item_not_found: 'El código de catálogo indicado no existe.'
++        relation_read_unavailable: 'No se pudieron leer los registros.'
++        relation_write_failed: 'No se pudo guardar el cambio; la operación se revirtió.'
++        relation_invalid: 'Los datos del registro no son válidos.'
+         catalog_item_not_found: 'El código solicitado no existe en el catálogo.'
+         catalog_proposal_not_found: 'La solicitud de catálogo no existe.'
+         catalog_unavailable: 'El catálogo elegido no está disponible.'
+@@ -1068,6 +1077,62 @@ admin:
+         publish_title: 'Publicar cambio aprobado'
+         publish_note: 'La publicación aplica el cambio en la base mediante una función segura y registra la auditoría.'
+ 
++    relations:
++        nav: 'Relaciones'
++        title: 'Relaciones y mapeos'
++        lead: 'Altas, ediciones y bajas directas de relaciones, mapeos y pares CAO/Regional ↔ OFT-PR.'
++        draft_notice: 'Los cambios quedan en borrador o propuestos y no se publican en la API ni en el explorador hasta una revisión formal. La baja es lógica.'
++        entity:
++            catalog_relation: 'Relaciones de catálogo'
++            concept_mapping: 'Mapeos terminológicos'
++            nomenclador_match: 'Pares nomenclador ↔ OFT-PR'
++        col_entity: 'Tipo de registro'
++        search: 'Buscar'
++        search_submit: 'Filtrar'
++        empty: 'No hay registros para este filtro.'
++        col_source: 'Código de origen'
++        col_target: 'Código de destino'
++        col_type: 'Tipo de relación'
++        col_status: 'Estado'
++        col_item: 'Código del ítem'
++        col_system: 'Sistema terminológico'
++        col_external: 'Código externo'
++        col_pair: 'Par de origen'
++        col_resolved: 'Destino resuelto'
++        col_basis: 'Base del par'
++        col_actions: 'Acciones'
++        unresolved: 'Sin resolución por identificador'
++        edit: 'Editar'
++        delete: 'Dar de baja'
++        confirm_delete: '¿Dar de baja este registro? La fila se conserva con estado no publicable.'
++        delete_reason: 'Baja lógica desde el panel administrativo'
++        read_only: 'Solo lectura'
++        edit_title: 'Editar registro'
++        new_title: 'Nuevo registro'
++        form_note: 'Se requiere una razón auditorable. Ninguna acción aprueba ni publica el registro.'
++        cancel: 'Cancelar'
++        col_source_field: 'Campo de fuente'
++        col_system_code: 'Sistema de origen'
++        col_source_value: 'Valor de fuente'
++        col_context: 'Contexto'
++        col_provenance: 'Procedencia'
++        col_external_display: 'Texto externo'
++        col_mapping_type: 'Tipo de mapeo'
++        col_role: 'Rol de la relación'
++        col_rationale: 'Justificación clínica'
++        col_source_catalog: 'Catálogo de origen'
++        col_source_code: 'Código de origen'
++        col_target_catalog: 'Catálogo de destino'
++        col_target_code: 'Código destino (identificador NOMENCLADOR-AR)'
++        resolved_as: 'Resuelve por identificador a'
++        col_source_term: 'Término de origen'
++        col_target_term: 'Término de destino'
++        col_notes: 'Notas'
++        col_reason: 'Razón de la modificación'
++        reason_hint: 'Se guarda en la auditoría junto con el estado anterior y el nuevo.'
++        save: 'Guardar cambios'
++        create: 'Crear en borrador'
++
+ clinical_category:
+     CLIN-DIAG:
+         label: "Diagnósticos"
+diff --git a/portal/translations/messages.pt-BR.yaml b/portal/translations/messages.pt-BR.yaml
+index 4a2c036..9554813 100644
+--- a/portal/translations/messages.pt-BR.yaml
++++ b/portal/translations/messages.pt-BR.yaml
+@@ -1597,9 +1597,18 @@ admin:
+         membership_updated: 'Situação do colaborador atualizada.'
+         grant_updated: 'Permissão por catálogo atualizada.'
+         context_switched: 'Contexto ativo atualizado.'
++        relation_created: 'Registro criado em estado não publicável.'
++        relation_updated: 'Registro atualizado em estado não publicável.'
++        relation_deleted: 'Registro baixado logicamente.'
+     errors:
+         catalog_permission_denied: 'Você não tem permissão para esta operação de catálogo.'
+         catalog_grant_denied: 'Seu escopo por catálogo não permite esta operação.'
++        relation_entity_invalid: 'O tipo de registro não é válido.'
++        relation_reason_required: 'O motivo da alteração é obrigatório.'
++        relation_item_not_found: 'O código de catálogo informado não existe.'
++        relation_read_unavailable: 'Não foi possível ler os registros.'
++        relation_write_failed: 'Não foi possível salvar a alteração; a operação foi revertida.'
++        relation_invalid: 'Os dados do registro não são válidos.'
+         catalog_item_not_found: 'O código solicitado não existe no catálogo.'
+         catalog_proposal_not_found: 'A solicitação de catálogo não existe.'
+         catalog_unavailable: 'O catálogo selecionado não está disponível.'
+@@ -1813,6 +1822,62 @@ admin:
+         publish_title: 'Publicar alteração aprovada'
+         publish_note: 'A publicação aplica a alteração no banco por meio de uma função segura e registra a auditoria.'
+ 
++    relations:
++        nav: 'Relações'
++        title: 'Relações e mapeamentos'
++        lead: 'Altas, edições e baixas diretas de relações, mapeamentos e pares CAO/Regional ↔ OFT-PR.'
++        draft_notice: 'As alterações ficam em rascunho ou propostas e não são publicadas na API nem no navegador até revisão formal. A baixa é lógica.'
++        entity:
++            catalog_relation: 'Relações de catálogo'
++            concept_mapping: 'Mapeamentos terminológicos'
++            nomenclador_match: 'Pares nomenclador ↔ OFT-PR'
++        col_entity: 'Tipo de registro'
++        search: 'Buscar'
++        search_submit: 'Filtrar'
++        empty: 'Não há registros para este filtro.'
++        col_source: 'Código de origem'
++        col_target: 'Código de destino'
++        col_type: 'Tipo de relação'
++        col_status: 'Estado'
++        col_item: 'Código do item'
++        col_system: 'Sistema terminológico'
++        col_external: 'Código externo'
++        col_pair: 'Par de origem'
++        col_resolved: 'Destino resolvido'
++        col_basis: 'Base do par'
++        col_actions: 'Ações'
++        unresolved: 'Sem resolução por identificador'
++        edit: 'Editar'
++        delete: 'Dar baixa'
++        confirm_delete: 'Dar baixa neste registro? A linha é mantida em estado não publicável.'
++        delete_reason: 'Baixa lógica pelo painel administrativo'
++        read_only: 'Somente leitura'
++        edit_title: 'Editar registro'
++        new_title: 'Novo registro'
++        form_note: 'É necessário um motivo auditável. Nenhuma ação aprova ou publica o registro.'
++        cancel: 'Cancelar'
++        col_source_field: 'Campo de origem'
++        col_system_code: 'Sistema de origem'
++        col_source_value: 'Valor de origem'
++        col_context: 'Contexto'
++        col_provenance: 'Proveniência'
++        col_external_display: 'Texto externo'
++        col_mapping_type: 'Tipo de mapeamento'
++        col_role: 'Papel da relação'
++        col_rationale: 'Justificativa clínica'
++        col_source_catalog: 'Catálogo de origem'
++        col_source_code: 'Código de origem'
++        col_target_catalog: 'Catálogo de destino'
++        col_target_code: 'Código de destino (identificador NOMENCLADOR-AR)'
++        resolved_as: 'Resolve por identificador para'
++        col_source_term: 'Termo de origem'
++        col_target_term: 'Termo de destino'
++        col_notes: 'Notas'
++        col_reason: 'Motivo da alteração'
++        reason_hint: 'Registrado na auditoria junto com o estado anterior e o novo.'
++        save: 'Salvar alterações'
++        create: 'Criar como rascunho'
++
+ service_request:
+     eyebrow: "Soluções sob medida"
+     title: "Solicitação de Serviços"
+diff --git a/sql/08_arquitectura/relaciones_crud_auditable.sql b/sql/08_arquitectura/relaciones_crud_auditable.sql
+new file mode 100644
+index 0000000..893f32d
+--- /dev/null
++++ b/sql/08_arquitectura/relaciones_crud_auditable.sql
+@@ -0,0 +1,603 @@
++-- =============================================================================
++-- NO EJECUTAR SIN BACKUP Y VERIFICACIÓN READ ONLY
++-- sql/08_arquitectura/relaciones_crud_auditable.sql
++-- =============================================================================
++-- CRUD auditable de relaciones terminológicas y clínicas desde el panel.
++--
++-- Qué hace:
++--   1. Crea una función SECURITY DEFINER que escribe en:
++--        · public.os_catalog_relation
++--        · public.os_concept_mapping (+ os_mapping_metadata, si existe)
++--        · public.os_oftar_nomenclador_match
++--   2. Fuerza estados NO publicables en alta/edición:
++--        · catalog_relation / concept_mapping -> 'draft'
++--        · nomenclador_match                 -> 'proposed'
++--   3. El "borrado" es lógico:
++--        · catalog_relation / concept_mapping -> 'deprecated'
++--        · nomenclador_match                 -> 'rejected'
++--   4. Devuelve before/after para que PHP registre auditoría en la MISMA
++--      transacción (fail closed).
++--
++-- Qué NO hace:
++--   - No publica relaciones: nunca escribe review_status='approved'.
++--   - No aprueba pares, no crea equivalencias clínicas y no toca la API.
++--   - No elimina filas físicamente ni modifica las relaciones heredadas.
++--   - No depende de columnas agregadas por fases posteriores (Fase 3/5):
++--     solo escribe columnas del esquema base ya existente en producción.
++--   - No cambia family_code ni crea endpoints por familia.
++--
++-- Requisito: origen_admin debe poder ejecutar la función; no recibe grants
++-- de INSERT/UPDATE/DELETE sobre las tablas base. La función se crea como
++-- postgres (owner) para que SECURITY DEFINER tenga los privilegios necesarios.
++-- =============================================================================
++
++BEGIN;
++
++SET LOCAL client_encoding = 'UTF8';
++SET LOCAL standard_conforming_strings = on;
++
++CREATE OR REPLACE FUNCTION public.os_relation_admin_write(
++    p_entity TEXT,
++    p_action TEXT,
++    p_id BIGINT,
++    p_payload JSONB,
++    p_reason TEXT,
++    p_actor_id BIGINT,
++    p_actor_email TEXT
++)
++RETURNS JSONB
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = public, pg_temp
++AS $$
++DECLARE
++    v_before    JSONB := NULL;
++    v_after     JSONB := NULL;
++    v_entity_id TEXT := '';
++    v_catalog   TEXT := NULL;
++    v_reason    TEXT := NULLIF(btrim(COALESCE(p_reason, '')), '');
++BEGIN
++    IF COALESCE(p_entity, '') NOT IN (
++        'catalog_relation', 'concept_mapping', 'nomenclador_match'
++    ) THEN
++        RAISE EXCEPTION 'RELATION_ENTITY_INVALID: %', COALESCE(p_entity, 'null');
++    END IF;
++
++    IF COALESCE(p_action, '') NOT IN ('create', 'update', 'delete') THEN
++        RAISE EXCEPTION 'RELATION_ACTION_INVALID: %', COALESCE(p_action, 'null');
++    END IF;
++
++    IF v_reason IS NULL OR char_length(v_reason) < 4 THEN
++        RAISE EXCEPTION 'RELATION_REASON_REQUIRED';
++    END IF;
++
++    IF NULLIF(btrim(COALESCE(p_actor_email, '')), '') IS NULL THEN
++        RAISE EXCEPTION 'RELATION_ACTOR_REQUIRED';
++    END IF;
++
++    IF p_payload IS NULL OR jsonb_typeof(p_payload) <> 'object' THEN
++        RAISE EXCEPTION 'RELATION_PAYLOAD_INVALID';
++    END IF;
++
++    -- -------------------------------------------------------------------------
++    -- 1. Relaciones internas (os_catalog_relation)
++    -- -------------------------------------------------------------------------
++    IF p_entity = 'catalog_relation' THEN
++        DECLARE
++            v_rel       public.os_catalog_relation%ROWTYPE;
++            v_source    INT;
++            v_target    INT;
++            v_type      TEXT;
++            v_src       TEXT;
++            v_val       TEXT;
++            v_ctx       TEXT;
++            v_system    TEXT := COALESCE(NULLIF(p_payload ->> 'source_system_code', ''), 'CDT-2025');
++        BEGIN
++            IF p_action = 'create' THEN
++                v_source := NULLIF(p_payload ->> 'source_item_id', '')::INT;
++                v_target := NULLIF(p_payload ->> 'target_item_id', '')::INT;
++                v_type   := NULLIF(p_payload ->> 'relation_type', '');
++                v_src    := NULLIF(p_payload ->> 'source_field', '');
++                v_val    := NULLIF(btrim(COALESCE(p_payload ->> 'source_value', '')), '');
++                v_ctx    := NULLIF(p_payload ->> 'context_text', '');
++
++                IF v_source IS NULL OR v_target IS NULL OR v_source = v_target THEN
++                    RAISE EXCEPTION 'RELATION_ITEMS_INVALID';
++                END IF;
++
++                IF NOT EXISTS (SELECT 1 FROM public.os_catalog_item WHERE id = v_source)
++                   OR NOT EXISTS (SELECT 1 FROM public.os_catalog_item WHERE id = v_target) THEN
++                    RAISE EXCEPTION 'RELATION_ITEMS_INVALID';
++                END IF;
++
++                IF v_type IS NULL OR v_type NOT IN (
++                    'alternate_benefit', 'billed_in_conjunction_with', 'concurrent_to',
++                    'denied_as_integral', 'frequency_limitations', 'integral_to',
++                    'interchangeable_with', 'not_paid_separately', 'not_to_be_used_with',
++                    'paid_as_code', 'procedure_code_not_used_for', 'refer_to_details',
++                    'referencia_literal', 'shares_frequency_limitation_with',
++                    'used_in_combination_with'
++                ) THEN
++                    RAISE EXCEPTION 'RELATION_TYPE_INVALID: %', COALESCE(v_type, 'null');
++                END IF;
++
++                IF v_src IS NULL OR v_src NOT IN ('description', 'procedure', 'notes', 'req') THEN
++                    RAISE EXCEPTION 'RELATION_FIELD_INVALID';
++                END IF;
++
++                IF v_val IS NULL OR char_length(v_val) > 20 THEN
++                    RAISE EXCEPTION 'RELATION_VALUE_INVALID';
++                END IF;
++
++                IF NULLIF(btrim(COALESCE(p_payload ->> 'provenance', '')), '') IS NULL THEN
++                    RAISE EXCEPTION 'RELATION_PROVENANCE_REQUIRED';
++                END IF;
++
++                IF char_length(v_system) > 30 THEN
++                    RAISE EXCEPTION 'RELATION_SYSTEM_INVALID';
++                END IF;
++
++                IF EXISTS (
++                    SELECT 1 FROM public.os_catalog_relation r
++                     WHERE r.source_item_id = v_source
++                       AND r.target_item_id = v_target
++                       AND r.relation_type = v_type
++                       AND r.source_system_code = v_system
++                       AND r.source_field = v_src
++                       AND r.source_value = v_val
++                       AND r.context_text IS NOT DISTINCT FROM v_ctx
++                ) THEN
++                    RAISE EXCEPTION 'RELATION_DUPLICATE';
++                END IF;
++
++                INSERT INTO public.os_catalog_relation (
++                    source_item_id, target_item_id, relation_type, source_system_code,
++                    source_field, source_value, context_text, review_status, provenance
++                ) VALUES (
++                    v_source, v_target, v_type, v_system, v_src, v_val, v_ctx,
++                    'draft', btrim(p_payload ->> 'provenance')
++                )
++                RETURNING * INTO v_rel;
++
++            ELSIF p_action = 'update' THEN
++                SELECT * INTO v_rel
++                  FROM public.os_catalog_relation
++                 WHERE id = p_id
++                 FOR UPDATE;
++
++                IF NOT FOUND THEN
++                    RAISE EXCEPTION 'RELATION_NOT_FOUND';
++                END IF;
++
++                v_before := to_jsonb(v_rel);
++
++                v_type := COALESCE(NULLIF(p_payload ->> 'relation_type', ''), v_rel.relation_type);
++                v_src  := COALESCE(NULLIF(p_payload ->> 'source_field', ''), v_rel.source_field);
++                v_val  := COALESCE(NULLIF(btrim(COALESCE(p_payload ->> 'source_value', '')), ''), v_rel.source_value);
++                v_ctx  := COALESCE(NULLIF(p_payload ->> 'context_text', ''), v_rel.context_text);
++                v_system := COALESCE(NULLIF(p_payload ->> 'source_system_code', ''), v_rel.source_system_code);
++
++                IF v_type NOT IN (
++                    'alternate_benefit', 'billed_in_conjunction_with', 'concurrent_to',
++                    'denied_as_integral', 'frequency_limitations', 'integral_to',
++                    'interchangeable_with', 'not_paid_separately', 'not_to_be_used_with',
++                    'paid_as_code', 'procedure_code_not_used_for', 'refer_to_details',
++                    'referencia_literal', 'shares_frequency_limitation_with',
++                    'used_in_combination_with'
++                ) THEN
++                    RAISE EXCEPTION 'RELATION_TYPE_INVALID: %', v_type;
++                END IF;
++
++                IF v_src NOT IN ('description', 'procedure', 'notes', 'req') THEN
++                    RAISE EXCEPTION 'RELATION_FIELD_INVALID';
++                END IF;
++
++                IF v_val IS NULL OR char_length(v_val) > 20 THEN
++                    RAISE EXCEPTION 'RELATION_VALUE_INVALID';
++                END IF;
++
++                v_source := COALESCE(NULLIF(p_payload ->> 'source_item_id', '')::INT, v_rel.source_item_id);
++                v_target := COALESCE(NULLIF(p_payload ->> 'target_item_id', '')::INT, v_rel.target_item_id);
++
++                IF v_source IS NULL OR v_target IS NULL OR v_source = v_target THEN
++                    RAISE EXCEPTION 'RELATION_ITEMS_INVALID';
++                END IF;
++
++                IF EXISTS (
++                    SELECT 1 FROM public.os_catalog_relation r
++                     WHERE r.id <> p_id
++                       AND r.source_item_id = v_source
++                       AND r.target_item_id = v_target
++                       AND r.relation_type = v_type
++                       AND r.source_system_code = v_system
++                       AND r.source_field = v_src
++                       AND r.source_value = v_val
++                       AND r.context_text IS NOT DISTINCT FROM v_ctx
++                ) THEN
++                    RAISE EXCEPTION 'RELATION_DUPLICATE';
++                END IF;
++
++                UPDATE public.os_catalog_relation r
++                   SET source_item_id     = v_source,
++                       target_item_id     = v_target,
++                       relation_type      = v_type,
++                       source_system_code = v_system,
++                       source_field       = v_src,
++                       source_value       = v_val,
++                       context_text       = v_ctx,
++                       provenance         = COALESCE(
++                           NULLIF(btrim(COALESCE(p_payload ->> 'provenance', '')), ''),
++                           r.provenance),
++                       review_status      = 'draft'
++                 WHERE r.id = p_id
++                RETURNING * INTO v_rel;
++
++            ELSE
++                SELECT * INTO v_rel
++                  FROM public.os_catalog_relation
++                 WHERE id = p_id
++                 FOR UPDATE;
++
++                IF NOT FOUND THEN
++                    RAISE EXCEPTION 'RELATION_NOT_FOUND';
++                END IF;
++
++                v_before := to_jsonb(v_rel);
++
++                UPDATE public.os_catalog_relation
++                   SET review_status = 'deprecated'
++                 WHERE id = p_id
++                RETURNING * INTO v_rel;
++            END IF;
++
++            v_after := to_jsonb(v_rel);
++            v_entity_id := v_rel.id::TEXT;
++            v_catalog := (
++                SELECT c.code FROM public.os_catalog_item i
++                  JOIN public.os_catalog c ON c.id = i.catalog_id
++                 WHERE i.id = v_rel.source_item_id
++            );
++        END;
++
++    -- -------------------------------------------------------------------------
++    -- 2. Mapeos terminológicos (os_concept_mapping)
++    -- -------------------------------------------------------------------------
++    ELSIF p_entity = 'concept_mapping' THEN
++        DECLARE
++            v_map        public.os_concept_mapping%ROWTYPE;
++            v_item       INT;
++            v_system     INT;
++            v_ext        TEXT;
++            v_display    TEXT;
++            v_type       TEXT;
++            v_role       TEXT;
++            v_has_meta   BOOLEAN := to_regclass('public.os_mapping_metadata') IS NOT NULL;
++        BEGIN
++            IF p_action = 'create' THEN
++                v_item    := NULLIF(p_payload ->> 'item_id', '')::INT;
++                v_system  := NULLIF(p_payload ->> 'terminology_system_id', '')::INT;
++                v_ext     := NULLIF(btrim(COALESCE(p_payload ->> 'external_code', '')), '');
++                v_display := NULLIF(btrim(COALESCE(p_payload ->> 'external_display', '')), '');
++                v_type    := COALESCE(NULLIF(p_payload ->> 'mapping_type', ''), 'equivalent');
++                v_role    := COALESCE(NULLIF(p_payload ->> 'relationship_role', ''), 'procedure_concept');
++
++                IF v_item IS NULL OR v_system IS NULL
++                   OR NOT EXISTS (SELECT 1 FROM public.os_catalog_item WHERE id = v_item)
++                   OR NOT EXISTS (SELECT 1 FROM public.os_terminology_system WHERE id = v_system) THEN
++                    RAISE EXCEPTION 'MAPPING_ITEMS_INVALID';
++                END IF;
++
++                IF v_ext IS NULL OR v_display IS NULL THEN
++                    RAISE EXCEPTION 'MAPPING_EXTERNAL_REQUIRED';
++                END IF;
++
++                IF v_type NOT IN ('equivalent', 'narrower', 'broader', 'related', 'unmatched') THEN
++                    RAISE EXCEPTION 'MAPPING_TYPE_INVALID';
++                END IF;
++
++                IF v_role NOT IN (
++                    'procedure_concept', 'justifying_diagnosis',
++                    'observation_concept', 'substance_concept'
++                ) THEN
++                    RAISE EXCEPTION 'MAPPING_ROLE_INVALID';
++                END IF;
++
++                IF EXISTS (
++                    SELECT 1 FROM public.os_concept_mapping m
++                     WHERE m.item_id = v_item
++                       AND m.terminology_system_id = v_system
++                       AND m.external_code = v_ext
++                       AND m.relationship_role = v_role
++                ) THEN
++                    RAISE EXCEPTION 'MAPPING_DUPLICATE';
++                END IF;
++
++                INSERT INTO public.os_concept_mapping (
++                    item_id, terminology_system_id, external_code, external_display,
++                    mapping_type, relationship_role, clinical_rationale, review_status
++                ) VALUES (
++                    v_item, v_system, v_ext, v_display, v_type, v_role,
++                    NULLIF(p_payload ->> 'clinical_rationale', ''), 'draft'
++                )
++                RETURNING * INTO v_map;
++
++            ELSIF p_action = 'update' THEN
++                SELECT * INTO v_map
++                  FROM public.os_concept_mapping
++                 WHERE id = p_id
++                 FOR UPDATE;
++
++                IF NOT FOUND THEN
++                    RAISE EXCEPTION 'MAPPING_NOT_FOUND';
++                END IF;
++
++                v_before := to_jsonb(v_map);
++
++                v_type := COALESCE(NULLIF(p_payload ->> 'mapping_type', ''), v_map.mapping_type);
++                v_role := COALESCE(NULLIF(p_payload ->> 'relationship_role', ''), v_map.relationship_role);
++
++                IF v_type NOT IN ('equivalent', 'narrower', 'broader', 'related', 'unmatched') THEN
++                    RAISE EXCEPTION 'MAPPING_TYPE_INVALID';
++                END IF;
++
++                IF v_role NOT IN (
++                    'procedure_concept', 'justifying_diagnosis',
++                    'observation_concept', 'substance_concept'
++                ) THEN
++                    RAISE EXCEPTION 'MAPPING_ROLE_INVALID';
++                END IF;
++
++                v_item := COALESCE(NULLIF(p_payload ->> 'item_id', '')::INT, v_map.item_id);
++                v_system := COALESCE(NULLIF(p_payload ->> 'terminology_system_id', '')::INT, v_map.terminology_system_id);
++                v_ext := COALESCE(NULLIF(btrim(COALESCE(p_payload ->> 'external_code', '')), ''), v_map.external_code);
++
++                IF NOT EXISTS (SELECT 1 FROM public.os_catalog_item WHERE id = v_item)
++                   OR NOT EXISTS (SELECT 1 FROM public.os_terminology_system WHERE id = v_system) THEN
++                    RAISE EXCEPTION 'MAPPING_ITEMS_INVALID';
++                END IF;
++
++                IF EXISTS (
++                    SELECT 1 FROM public.os_concept_mapping m
++                     WHERE m.id <> p_id
++                       AND m.item_id = v_item
++                       AND m.terminology_system_id = v_system
++                       AND m.external_code = v_ext
++                       AND m.relationship_role = v_role
++                ) THEN
++                    RAISE EXCEPTION 'MAPPING_DUPLICATE';
++                END IF;
++
++                UPDATE public.os_concept_mapping m
++                   SET item_id               = v_item,
++                       terminology_system_id = v_system,
++                       external_code         = v_ext,
++                       external_display      = COALESCE(
++                           NULLIF(btrim(COALESCE(p_payload ->> 'external_display', '')), ''),
++                           m.external_display),
++                       mapping_type          = v_type,
++                       relationship_role     = v_role,
++                       clinical_rationale    = NULLIF(p_payload ->> 'clinical_rationale', ''),
++                       review_status         = 'draft'
++                 WHERE m.id = p_id
++                RETURNING * INTO v_map;
++
++            ELSE
++                SELECT * INTO v_map
++                  FROM public.os_concept_mapping
++                 WHERE id = p_id
++                 FOR UPDATE;
++
++                IF NOT FOUND THEN
++                    RAISE EXCEPTION 'MAPPING_NOT_FOUND';
++                END IF;
++
++                v_before := to_jsonb(v_map);
++
++                UPDATE public.os_concept_mapping
++                   SET review_status = 'deprecated'
++                 WHERE id = p_id
++                RETURNING * INTO v_map;
++            END IF;
++
++            v_after := to_jsonb(v_map);
++            v_entity_id := v_map.id::TEXT;
++            v_catalog := (
++                SELECT c.code FROM public.os_catalog_item i
++                  JOIN public.os_catalog c ON c.id = i.catalog_id
++                 WHERE i.id = v_map.item_id
++            );
++
++            -- Metadatos: solo si la tabla existe y la operación no es baja.
++            IF v_has_meta AND p_action = 'delete' THEN
++                UPDATE public.os_mapping_metadata
++                   SET review_status = 'deprecated', reviewed_by = NULL, reviewed_at = NULL
++                 WHERE mapping_id = v_map.id;
++            ELSIF v_has_meta AND p_action <> 'delete'
++                  AND jsonb_typeof(p_payload -> 'metadata') = 'object' THEN
++                IF COALESCE(p_payload #>> '{metadata,mapping_nature}', '') <> ''
++                   AND (p_payload #>> '{metadata,mapping_nature}') NOT IN (
++                       'univocal', 'multiple', 'partial', 'approximate', 'not_mappable'
++                   ) THEN
++                    RAISE EXCEPTION 'MAPPING_NATURE_INVALID';
++                END IF;
++
++                INSERT INTO public.os_mapping_metadata (
++                    mapping_id, source_system_id, target_system_id, source_version,
++                    target_version, mapping_type_ext, mapping_nature, method,
++                    confidence_level, source_reference, license_reference,
++                    review_status, reviewed_by, reviewed_at
++                ) VALUES (
++                    v_map.id,
++                    NULLIF(p_payload #>> '{metadata,source_system_id}', '')::INT,
++                    NULLIF(p_payload #>> '{metadata,target_system_id}', '')::INT,
++                    NULLIF(p_payload #>> '{metadata,source_version}', ''),
++                    NULLIF(p_payload #>> '{metadata,target_version}', ''),
++                    NULLIF(p_payload #>> '{metadata,mapping_type_ext}', ''),
++                    NULLIF(p_payload #>> '{metadata,mapping_nature}', ''),
++                    NULLIF(p_payload #>> '{metadata,method}', ''),
++                    NULLIF(p_payload #>> '{metadata,confidence_level}', ''),
++                    NULLIF(p_payload #>> '{metadata,source_reference}', ''),
++                    NULLIF(p_payload #>> '{metadata,license_reference}', ''),
++                    'draft', NULL, NULL
++                )
++                ON CONFLICT (mapping_id) DO UPDATE SET
++                    source_system_id  = EXCLUDED.source_system_id,
++                    target_system_id  = EXCLUDED.target_system_id,
++                    source_version    = EXCLUDED.source_version,
++                    target_version    = EXCLUDED.target_version,
++                    mapping_type_ext  = EXCLUDED.mapping_type_ext,
++                    mapping_nature    = EXCLUDED.mapping_nature,
++                    method            = EXCLUDED.method,
++                    confidence_level  = EXCLUDED.confidence_level,
++                    source_reference  = EXCLUDED.source_reference,
++                    license_reference = EXCLUDED.license_reference,
++                    review_status     = 'draft',
++                    reviewed_by       = NULL,
++                    reviewed_at       = NULL;
++            END IF;
++        END;
++
++    -- -------------------------------------------------------------------------
++    -- 3. Pares nomenclador ↔ OFT-PR (os_oftar_nomenclador_match)
++    -- -------------------------------------------------------------------------
++    ELSE
++        DECLARE
++            v_match public.os_oftar_nomenclador_match%ROWTYPE;
++            v_src_code TEXT := NULLIF(btrim(COALESCE(p_payload ->> 'source_catalog_code', '')), '');
++            v_code     TEXT := NULLIF(btrim(COALESCE(p_payload ->> 'source_code', '')), '');
++            v_target   TEXT := NULLIF(btrim(COALESCE(p_payload ->> 'target_code', '')), '');
++            v_basis    TEXT := NULLIF(p_payload ->> 'match_basis', '');
++        BEGIN
++            IF v_src_code IS NULL OR v_code IS NULL THEN
++                RAISE EXCEPTION 'MATCH_KEY_REQUIRED';
++            END IF;
++
++            IF p_action = 'create' THEN
++                IF v_target IS NULL OR char_length(v_target) > 30 THEN
++                    RAISE EXCEPTION 'MATCH_TARGET_REQUIRED';
++                END IF;
++
++                IF v_basis IS NULL OR v_basis NOT IN (
++                    'texto_identico_normalizado', 'revision_manual'
++                ) THEN
++                    RAISE EXCEPTION 'MATCH_BASIS_INVALID';
++                END IF;
++
++                IF NULLIF(btrim(COALESCE(p_payload ->> 'provenance', '')), '') IS NULL THEN
++                    RAISE EXCEPTION 'MATCH_PROVENANCE_REQUIRED';
++                END IF;
++
++                IF EXISTS (
++                    SELECT 1 FROM public.os_oftar_nomenclador_match
++                     WHERE source_catalog_code = v_src_code AND source_code = v_code
++                ) THEN
++                    RAISE EXCEPTION 'MATCH_DUPLICATE';
++                END IF;
++
++                INSERT INTO public.os_oftar_nomenclador_match (
++                    source_catalog_code, source_code, target_catalog_code, target_code,
++                    match_basis, review_status, source_term, target_term, provenance, notes,
++                    reviewed_at, reviewed_by
++                ) VALUES (
++                    v_src_code, v_code,
++                    COALESCE(NULLIF(p_payload ->> 'target_catalog_code', ''), 'oftar-pr'),
++                    v_target, v_basis, 'proposed',
++                    NULLIF(p_payload ->> 'source_term', ''),
++                    NULLIF(p_payload ->> 'target_term', ''),
++                    btrim(p_payload ->> 'provenance'),
++                    NULLIF(p_payload ->> 'notes', ''), NULL, NULL
++                )
++                RETURNING * INTO v_match;
++
++            ELSIF p_action = 'update' THEN
++                SELECT * INTO v_match
++                  FROM public.os_oftar_nomenclador_match
++                 WHERE source_catalog_code = v_src_code AND source_code = v_code
++                 FOR UPDATE;
++
++                IF NOT FOUND THEN
++                    RAISE EXCEPTION 'MATCH_NOT_FOUND';
++                END IF;
++
++                v_before := to_jsonb(v_match);
++
++                IF v_basis IS NOT NULL AND v_basis NOT IN (
++                    'texto_identico_normalizado', 'revision_manual'
++                ) THEN
++                    RAISE EXCEPTION 'MATCH_BASIS_INVALID';
++                END IF;
++
++                UPDATE public.os_oftar_nomenclador_match m
++                   SET target_catalog_code = COALESCE(NULLIF(p_payload ->> 'target_catalog_code', ''), m.target_catalog_code),
++                       target_code         = COALESCE(v_target, m.target_code),
++                       match_basis         = COALESCE(v_basis, m.match_basis),
++                       source_term         = COALESCE(NULLIF(p_payload ->> 'source_term', ''), m.source_term),
++                       target_term         = COALESCE(NULLIF(p_payload ->> 'target_term', ''), m.target_term),
++                       provenance          = COALESCE(
++                           NULLIF(btrim(COALESCE(p_payload ->> 'provenance', '')), ''), m.provenance),
++                       notes               = COALESCE(NULLIF(p_payload ->> 'notes', ''), m.notes),
++                       review_status       = 'proposed',
++                       reviewed_at         = NULL,
++                       reviewed_by         = NULL
++                 WHERE m.source_catalog_code = v_src_code AND m.source_code = v_code
++                RETURNING * INTO v_match;
++
++            ELSE
++                SELECT * INTO v_match
++                  FROM public.os_oftar_nomenclador_match
++                 WHERE source_catalog_code = v_src_code AND source_code = v_code
++                 FOR UPDATE;
++
++                IF NOT FOUND THEN
++                    RAISE EXCEPTION 'MATCH_NOT_FOUND';
++                END IF;
++
++                v_before := to_jsonb(v_match);
++
++                UPDATE public.os_oftar_nomenclador_match m
++                   SET review_status = 'rejected',
++                       reviewed_at = now(),
++                       reviewed_by = left(btrim(p_actor_email), 120)
++                 WHERE m.source_catalog_code = v_src_code AND m.source_code = v_code
++                RETURNING * INTO v_match;
++            END IF;
++
++            v_after := to_jsonb(v_match);
++            v_entity_id := v_match.source_catalog_code || ':' || v_match.source_code;
++            v_catalog := v_match.source_catalog_code;
++        END;
++    END IF;
++
++    RETURN jsonb_build_object(
++        'entity', p_entity,
++        'action', p_action,
++        'id', v_entity_id,
++        'catalog_code', v_catalog,
++        'before', v_before,
++        'after', v_after
++    );
++END
++$$;
++
++REVOKE ALL PRIVILEGES ON FUNCTION public.os_relation_admin_write(
++    TEXT, TEXT, BIGINT, JSONB, TEXT, BIGINT, TEXT
++) FROM PUBLIC;
++
++DO $$
++BEGIN
++    IF to_regrole('origen_admin') IS NOT NULL THEN
++        EXECUTE 'GRANT EXECUTE ON FUNCTION public.os_relation_admin_write('
++             || 'TEXT, TEXT, BIGINT, JSONB, TEXT, BIGINT, TEXT'
++             || ') TO origen_admin';
++    END IF;
++END
++$$;
++
++COMMIT;
++
++-- Verificación posterior (READ ONLY):
++-- SELECT has_function_privilege('origen_admin',
++--   'public.os_relation_admin_write(text,text,bigint,jsonb,text,bigint,text)', 'EXECUTE');
++-- SELECT review_status, count(*) FROM public.os_catalog_relation GROUP BY 1 ORDER BY 1;
++-- SELECT review_status, count(*) FROM public.os_concept_mapping GROUP BY 1 ORDER BY 1;
++-- SELECT review_status, count(*) FROM public.os_oftar_nomenclador_match GROUP BY 1 ORDER BY 1;
+diff --git a/tests/run.php b/tests/run.php
+index 3d026f4..e779050 100644
+--- a/tests/run.php
++++ b/tests/run.php
+@@ -210,8 +210,8 @@ $sqlFiles = array_values(array_filter(
+         && !str_contains(basename($f), 'correccion_')
+ ));
+ $check(
+-    count($sqlFiles) === 16,
+-    'Deben existir dieciséis artefactos SQL propuestos (Fases 3, 5, 8, 10, 11, gestión UVR, gestión de catálogos, categorías clínicas, U7-B y publicación legacy).'
++    count($sqlFiles) === 17,
++    'Deben existir diecisiete artefactos SQL propuestos (Fases 3, 5, 8, 10, 11, gestión UVR, gestión de catálogos, categorías clínicas, U7-B, publicación legacy y CRUD auditable de relaciones).'
+ );
+ foreach ($sqlFiles as $file) {
+     $sql = (string) file_get_contents($file);
+@@ -4800,6 +4800,121 @@ $check(
+     'Las semillas del diccionario deben contener 31 tipos, una inversa y ninguna sentencia destructiva.'
+ );
+ 
++// CRUD auditable de relaciones: defendido por función SEGURITY DEFINER y RBAC.
++$relationSql = $auditRead('sql/08_arquitectura/relaciones_crud_auditable.sql');
++$check(
++    str_contains($relationSql, 'CREATE OR REPLACE FUNCTION public.os_relation_admin_write(')
++        && str_contains($relationSql, 'SECURITY DEFINER')
++        && str_contains($relationSql, 'SET search_path = public, pg_temp'),
++    'El CRUD de relaciones debe usar una función SECURITY DEFINER con search_path acotado.'
++);
++$check(
++    str_contains($relationSql, "'catalog_relation', 'concept_mapping', 'nomenclador_match'")
++        && substr_count($relationSql, "review_status      = 'draft'") >= 1
++        && str_contains($relationSql, "review_status       = 'proposed'")
++        && str_contains($relationSql, "SET review_status = 'deprecated'")
++        && str_contains($relationSql, "review_status = 'rejected'"),
++    'El CRUD debe forzar estados no publicables en alta/edición y baja lógica.'
++);
++$check(
++    !str_contains($relationSql, "review_status = 'approved'")
++        && !str_contains($relationSql, "review_status      = 'approved'")
++        && !preg_match('/\bDELETE\s+FROM\b/i', $relationSql)
++        && !preg_match('/\bTRUNCATE\b/i', $relationSql)
++        && !preg_match('/\bDROP\s+TABLE\b/i', $relationSql),
++    'El CRUD no debe aprobar, borrar físicamente ni usar sentencias destructivas.'
++);
++$check(
++    !str_contains($relationSql, 'relation_type_code')
++        && !str_contains($relationSql, 'ADD COLUMN')
++        && str_contains($relationSql, "to_regclass('public.os_mapping_metadata')"),
++    'El CRUD no debe depender de columnas de fases no aplicadas y debe proteger los metadatos opcionales.'
++);
++$check(
++    str_contains($relationSql, 'REVOKE ALL PRIVILEGES ON FUNCTION public.os_relation_admin_write(')
++        && str_contains($relationSql, 'GRANT EXECUTE ON FUNCTION public.os_relation_admin_write(')
++        && str_contains($relationSql, 'to_regrole(\'origen_admin\')'),
++    'El CRUD debe revocar la función a PUBLIC y conceder EXECUTE solo a origen_admin.'
++);
++
++$relationRepoSource = $auditRead('portal/Repositories/RelationAdminRepository.php');
++$check(
++    str_contains($relationRepoSource, 'public.os_relation_admin_write(')
++        && str_contains($relationRepoSource, 'beginTransaction()')
++        && str_contains($relationRepoSource, 'AuditLogger::record(')
++        && str_contains($relationRepoSource, '$pdo->commit()')
++        && str_contains($relationRepoSource, '$pdo->rollBack()'),
++    'El repositorio debe escribir y auditar en la misma transacción (fail closed).'
++);
++$check(
++    str_contains($relationRepoSource, "system_name = \\'NOMENCLADOR-AR\\'")
++        && str_contains($relationRepoSource, "cat.code = \\'oftar-pr\\'")
++        && str_contains($relationRepoSource, 'target_permanent_code'),
++    'La resolución de destinos CAO debe usar identificadores NOMENCLADOR-AR, nunca permanent_code.'
++);
++$check(
++    !str_contains($relationRepoSource, "review_status = 'approved'")
++        && str_contains($relationRepoSource, 'PortalDatabase::connection()')
++        && str_contains($relationRepoSource, 'AdminDatabase::connection()'),
++    'El repositorio no debe fijar aprobaciones y debe separar lectura pública de escritura administrativa.'
++);
++
++$relationControllerSource = $auditRead('portal/Controllers/AdminRelationController.php');
++$check(
++    str_contains($relationControllerSource, "'permission' => 'catalog.view'")
++        && str_contains($relationControllerSource, "'permission' => 'catalog.edit_draft'")
++        && str_contains($relationControllerSource, 'AdminForm::validCsrf()')
++        && str_contains($relationControllerSource, "array_key_exists(\$entity, RelationAdminRepository::ENTITIES)"),
++    'El controlador debe exigir catalog.view, catalog.edit_draft, CSRF y entidades permitidas.'
++);
++$check(
++    str_contains($relationControllerSource, "mb_strlen(\$reason) < 4")
++        && str_contains($relationControllerSource, "AdminForm::fail(\$back, 'relation_reason_required'")
++        && str_contains($relationControllerSource, "'delete' => 'relation_deleted'"),
++    'El controlador debe exigir razón auditorable y mensajes de estado estables.'
++);
++
++$routerSource = $auditRead('portal/Router.php');
++$check(
++    str_contains($routerSource, "AdminRelationController::index()")
++        && str_contains($routerSource, "AdminRelationController::create()")
++        && str_contains($routerSource, "AdminRelationController::update()")
++        && str_contains($routerSource, "AdminRelationController::delete()")
++        && str_contains($routerSource, "if (\$section === 'relations')"),
++    'El enrutador debe exponer /admin/relations para consulta, alta, edición y baja.'
++);
++
++$relationViewSource = $auditRead('portal/Views/admin/relations/index.php');
++$check(
++    str_contains($relationViewSource, "t('admin.relations.draft_notice')")
++        && str_contains($relationViewSource, 'Csrf::FIELD')
++        && str_contains($relationViewSource, 'id="match-targets"')
++        && str_contains($relationViewSource, "t('admin.relations.resolved_as')"),
++    'La vista debe advertir el estado borrador, usar CSRF y mostrar resolución por identificador.'
++);
++$check(
++    str_contains($relationViewSource, 'name="op" value="delete"')
++        && str_contains($relationViewSource, 'name="op" value="<?= $isEdit ? \'update\' : \'create\' ?>"'),
++    'La vista debe publicar operaciones de alta, edición y baja lógica.'
++);
++
++foreach (['es-AR', 'es', 'en', 'pt-BR'] as $locale) {
++    $messages = Yaml::parseFile($root . '/portal/translations/messages.' . $locale . '.yaml');
++    $check(
++        isset($messages['admin']['relations']['draft_notice'])
++            && isset($messages['admin']['relations']['entity']['nomenclador_match'])
++            && isset($messages['admin']['messages']['relation_created'])
++            && isset($messages['admin']['errors']['relation_write_failed']),
++        'Las traducciones de ' . $locale . ' deben incluir el CRUD auditable de relaciones.'
++    );
++}
++
++$adminLayoutSource = $auditRead('portal/Views/layouts/admin.php');
++$check(
++    str_contains($adminLayoutSource, "['/admin/relations', 'admin.relations.nav', 'git-fork', 'catalog.view']"),
++    'El menú administrativo debe incluir Relaciones con permiso catalog.view.'
++);
++
+ // Resultado.
+ if ($failures !== []) {
+     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");

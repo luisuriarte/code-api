@@ -13,6 +13,7 @@ use OrigenSalud\Portal\Controllers\AdminHomeController;
 use OrigenSalud\Portal\Controllers\AdminInvitationController;
 use OrigenSalud\Portal\Controllers\AdminMembershipController;
 use OrigenSalud\Portal\Controllers\AdminOrganizationController;
+use OrigenSalud\Portal\Controllers\AdminRelationController;
 use OrigenSalud\Portal\Controllers\AdminUvrController;
 use OrigenSalud\Portal\Controllers\BrowseController;
 use OrigenSalud\Portal\Controllers\ContactController;
@@ -277,6 +278,11 @@ final class Router
             return;
         }
 
+        // CRUD auditable de relaciones, mapeos y pares CAO/Regional ↔ OFT-PR.
+        if ($this->relations($section, $method)) {
+            return;
+        }
+
         // Gestión (M2): rutas con identificadores y acciones.
         $segments = $section === '' ? [] : explode('/', $section);
 
@@ -285,6 +291,40 @@ final class Router
         }
 
         $this->notFound(I18n::locale(), $path);
+    }
+
+    /** Rutas planas para el CRUD auditable de relaciones. */
+    private function relations(string $section, string $method): bool
+    {
+        if ($section === 'relations') {
+            if ($method === 'GET') {
+                AdminRelationController::index();
+
+                return true;
+            }
+
+            if ($method === 'POST') {
+                $operation = $_POST['op'] ?? '';
+
+                if ($operation === 'create') {
+                    AdminRelationController::create();
+                } elseif ($operation === 'update') {
+                    AdminRelationController::update();
+                } elseif ($operation === 'delete') {
+                    AdminRelationController::delete();
+                } else {
+                    $this->notFound(I18n::locale(), '/admin/relations');
+
+                    return true;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        return false;
     }
 
     /**

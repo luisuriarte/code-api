@@ -62,6 +62,7 @@ $adminNav = [
     ['/admin', 'admin.home.title', 'layout-dashboard', null],
     ['/admin/uvr', 'admin.uvr.title', 'scale', 'catalog.view'],
     ['/admin/catalogs', 'admin.catalogs.title', 'library', 'catalog.view'],
+    ['/admin/relations', 'admin.relations.nav', 'git-fork', 'catalog.view'],
     ['/admin/organizations', 'admin.orgs.title', 'building-2', 'admin.orgs.manage'],
     ['/admin/invitations', 'admin.invites.title', 'mail', 'admin.invites.manage'],
     ['/admin/audit', 'admin.audit.title', 'scroll-text', 'audit.view'],

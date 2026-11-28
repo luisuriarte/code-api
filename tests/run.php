@@ -210,8 +210,8 @@ $sqlFiles = array_values(array_filter(
         && !str_contains(basename($f), 'correccion_')
 ));
 $check(
-    count($sqlFiles) === 16,
-    'Deben existir dieciséis artefactos SQL propuestos (Fases 3, 5, 8, 10, 11, gestión UVR, gestión de catálogos, categorías clínicas, U7-B y publicación legacy).'
+    count($sqlFiles) === 17,
+    'Deben existir diecisiete artefactos SQL propuestos (Fases 3, 5, 8, 10, 11, gestión UVR, gestión de catálogos, categorías clínicas, U7-B, publicación legacy y CRUD auditable de relaciones).'
 );
 foreach ($sqlFiles as $file) {
     $sql = (string) file_get_contents($file);
@@ -4798,6 +4798,121 @@ $check(
         && !str_contains($fase5SeedSql, 'DROP TABLE')
         && !str_contains($fase5SeedSql, 'TRUNCATE '),
     'Las semillas del diccionario deben contener 31 tipos, una inversa y ninguna sentencia destructiva.'
+);
+
+// CRUD auditable de relaciones: defendido por función SEGURITY DEFINER y RBAC.
+$relationSql = $auditRead('sql/08_arquitectura/relaciones_crud_auditable.sql');
+$check(
+    str_contains($relationSql, 'CREATE OR REPLACE FUNCTION public.os_relation_admin_write(')
+        && str_contains($relationSql, 'SECURITY DEFINER')
+        && str_contains($relationSql, 'SET search_path = public, pg_temp'),
+    'El CRUD de relaciones debe usar una función SECURITY DEFINER con search_path acotado.'
+);
+$check(
+    str_contains($relationSql, "'catalog_relation', 'concept_mapping', 'nomenclador_match'")
+        && substr_count($relationSql, "review_status      = 'draft'") >= 1
+        && str_contains($relationSql, "review_status       = 'proposed'")
+        && str_contains($relationSql, "SET review_status = 'deprecated'")
+        && str_contains($relationSql, "review_status = 'rejected'"),
+    'El CRUD debe forzar estados no publicables en alta/edición y baja lógica.'
+);
+$check(
+    !str_contains($relationSql, "review_status = 'approved'")
+        && !str_contains($relationSql, "review_status      = 'approved'")
+        && !preg_match('/\bDELETE\s+FROM\b/i', $relationSql)
+        && !preg_match('/\bTRUNCATE\b/i', $relationSql)
+        && !preg_match('/\bDROP\s+TABLE\b/i', $relationSql),
+    'El CRUD no debe aprobar, borrar físicamente ni usar sentencias destructivas.'
+);
+$check(
+    !str_contains($relationSql, 'relation_type_code')
+        && !str_contains($relationSql, 'ADD COLUMN')
+        && str_contains($relationSql, "to_regclass('public.os_mapping_metadata')"),
+    'El CRUD no debe depender de columnas de fases no aplicadas y debe proteger los metadatos opcionales.'
+);
+$check(
+    str_contains($relationSql, 'REVOKE ALL PRIVILEGES ON FUNCTION public.os_relation_admin_write(')
+        && str_contains($relationSql, 'GRANT EXECUTE ON FUNCTION public.os_relation_admin_write(')
+        && str_contains($relationSql, 'to_regrole(\'origen_admin\')'),
+    'El CRUD debe revocar la función a PUBLIC y conceder EXECUTE solo a origen_admin.'
+);
+
+$relationRepoSource = $auditRead('portal/Repositories/RelationAdminRepository.php');
+$check(
+    str_contains($relationRepoSource, 'public.os_relation_admin_write(')
+        && str_contains($relationRepoSource, 'beginTransaction()')
+        && str_contains($relationRepoSource, 'AuditLogger::record(')
+        && str_contains($relationRepoSource, '$pdo->commit()')
+        && str_contains($relationRepoSource, '$pdo->rollBack()'),
+    'El repositorio debe escribir y auditar en la misma transacción (fail closed).'
+);
+$check(
+    str_contains($relationRepoSource, "system_name = \\'NOMENCLADOR-AR\\'")
+        && str_contains($relationRepoSource, "cat.code = \\'oftar-pr\\'")
+        && str_contains($relationRepoSource, 'target_permanent_code'),
+    'La resolución de destinos CAO debe usar identificadores NOMENCLADOR-AR, nunca permanent_code.'
+);
+$check(
+    !str_contains($relationRepoSource, "review_status = 'approved'")
+        && str_contains($relationRepoSource, 'PortalDatabase::connection()')
+        && str_contains($relationRepoSource, 'AdminDatabase::connection()'),
+    'El repositorio no debe fijar aprobaciones y debe separar lectura pública de escritura administrativa.'
+);
+
+$relationControllerSource = $auditRead('portal/Controllers/AdminRelationController.php');
+$check(
+    str_contains($relationControllerSource, "'permission' => 'catalog.view'")
+        && str_contains($relationControllerSource, "'permission' => 'catalog.edit_draft'")
+        && str_contains($relationControllerSource, 'AdminForm::validCsrf()')
+        && str_contains($relationControllerSource, "array_key_exists(\$entity, RelationAdminRepository::ENTITIES)"),
+    'El controlador debe exigir catalog.view, catalog.edit_draft, CSRF y entidades permitidas.'
+);
+$check(
+    str_contains($relationControllerSource, "mb_strlen(\$reason) < 4")
+        && str_contains($relationControllerSource, "AdminForm::fail(\$back, 'relation_reason_required'")
+        && str_contains($relationControllerSource, "'delete' => 'relation_deleted'"),
+    'El controlador debe exigir razón auditorable y mensajes de estado estables.'
+);
+
+$routerSource = $auditRead('portal/Router.php');
+$check(
+    str_contains($routerSource, "AdminRelationController::index()")
+        && str_contains($routerSource, "AdminRelationController::create()")
+        && str_contains($routerSource, "AdminRelationController::update()")
+        && str_contains($routerSource, "AdminRelationController::delete()")
+        && str_contains($routerSource, "if (\$section === 'relations')"),
+    'El enrutador debe exponer /admin/relations para consulta, alta, edición y baja.'
+);
+
+$relationViewSource = $auditRead('portal/Views/admin/relations/index.php');
+$check(
+    str_contains($relationViewSource, "t('admin.relations.draft_notice')")
+        && str_contains($relationViewSource, 'Csrf::FIELD')
+        && str_contains($relationViewSource, 'id="match-targets"')
+        && str_contains($relationViewSource, "t('admin.relations.resolved_as')"),
+    'La vista debe advertir el estado borrador, usar CSRF y mostrar resolución por identificador.'
+);
+$check(
+    str_contains($relationViewSource, 'name="op" value="delete"')
+        && str_contains($relationViewSource, 'name="op" value="<?= $isEdit ? \'update\' : \'create\' ?>"'),
+    'La vista debe publicar operaciones de alta, edición y baja lógica.'
+);
+
+foreach (['es-AR', 'es', 'en', 'pt-BR'] as $locale) {
+    $messages = Yaml::parseFile($root . '/portal/translations/messages.' . $locale . '.yaml');
+    $check(
+        isset($messages['admin']['relations']['draft_notice'])
+            && isset($messages['admin']['relations']['entity']['nomenclador_match'])
+            && isset($messages['admin']['messages']['relation_created'])
+            && isset($messages['admin']['errors']['relation_write_failed']),
+        'Las traducciones de ' . $locale . ' deben incluir el CRUD auditable de relaciones.'
+    );
+}
+
+$adminLayoutSource = $auditRead('portal/Views/layouts/admin.php');
+$check(
+    str_contains($adminLayoutSource, "['/admin/relations', 'admin.relations.nav', 'git-fork', 'catalog.view']"),
+    'El menú administrativo debe incluir Relaciones con permiso catalog.view.'
 );
 
 // Resultado.
