@@ -2,12 +2,12 @@
 
 **Versión:** 1.0
 **Fecha de revisión:** 2026-11-28
-**Estado:** Pendiente de aprobación de implementación.
+**Estado:** Aprobada como base técnica para iniciar la implementación controlada.
 **Alcance:** OFTAR-PR y OFTAR-DX.
 **Tipo de documento:** Especificación funcional y técnica.
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta sujeta a aprobación explícita.
 
-> Este documento es el contrato de implementación de la siguiente etapa. **No autoriza seeds, migraciones, importaciones ni publicación.** Toda reconstrucción queda supeditada a aprobación explícita y al acta de solo lectura de Fase 0.
+> Esta aprobación es **documental y técnica**: fija la base sobre la que puede iniciarse la implementación controlada. **No autoriza seeds, migraciones, importaciones ni publicación.** Toda reconstrucción queda supeditada a una autorización explícita posterior, al acta de solo lectura de la etapa 1 y a las firmas clínicas correspondientes. El plan canónico de 10 etapas está en `plan-implementacion-controlada-oftar.md`.
 
 ---
 
@@ -56,7 +56,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 **[P] Conciliación:**
 
-- 13 pares / 26 filas **propuestos documentalmente** como `exact`; no están clínicamente aprobados.
+- 13 pares / 26 filas **propuestos documentalmente** como equivalentes (la etiqueta de la matriz dice «exactas»; el valor persistible real es `mapping_type='equivalent'`); no están clínicamente aprobados.
 - 6 pares / 12 filas a degradar o corregir: HD Analizer, láser femto, `306116`↔`461302`, `306129`↔`460111`, informes clínicos y autorefractometría digital.
 - Corrección obligatoria de la justificación RFG: las descripciones dicen “no incluye fluoresceína”.
 - 48 registros de CAO/Regional sin cobertura NN: 18 atributos, 8 variantes, 6 duplicados, 3 relacionados, 3 candidatos a concepto nuevo, 2 no incorporables y 8 pendientes de revisión.
@@ -132,12 +132,13 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 ## 7. Modelo de relaciones
 
-**[H]** `os_concept_mapping.mapping_type` acepta `exact|narrower|broader|related|no_map|reference`. No existe `equivalent`: el valor correcto es `exact`.
+**[H]** `os_concept_mapping.mapping_type` acepta `equivalent|narrower|broader|related|unmatched` (`origen_catalog_engine.sql:125-126`; confirmado en `tools/generate_unified_catalog_engine_sql.py:360-361`). **No existen `exact`, `no_map` ni `reference` en el `CHECK`.** Corrección documental: las versiones anteriores de esta especificación afirmaban lo contrario; esa afirmación queda retirada. La API reenvía el valor sin interpretarlo (`CatalogEngineService.php:612,708`; `CatalogRepository.php:3055`).
 
 **[P]** Convención:
 
-- Equivalencia verificable → `exact`.
-- Aproximada/parcial → `related` con evidencia de parcialidad; nunca `exact`.
+- Equivalencia verificable → `equivalent` (la palabra «exacta» de la matriz clínica es una etiqueta documental, no un valor de base de datos).
+- Aproximada/parcial → `related` con evidencia de parcialidad; nunca `equivalent`.
+- Sin correspondencia identificada → `unmatched`.
 - Más amplio/más específico → `broader`/`narrower`, dirección OFTAR respecto del externo, a ratificar.
 - Asociativa → `os_catalog_relation` con `context_text`.
 - Variante/sustitución/requiere/incluye → tipo existente de `os_catalog_relation` antes que ampliar `CHECK`; verificar que el `relation_type` permitido cubre el caso, porque el dominio actual enumera tipos CDT (`aprobar_mapeo_nomencladores_oftar.sql:200-207`).
@@ -152,7 +153,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 **[P]** La similitud textual es pista, nunca prueba. Se exigen ancla clínica, técnica, modalidad, lateralidad, región, alcance/sesiones y condiciones. Ante duda, `correspondencia_incierta`; sin ancla compartida, `sin_correspondencia_identificada`.
 
-**[H]** Matriz: 433 filas; 38 exactas propuestas, 165 aproximadas/parciales, 2 más amplios, 1 más específico, 30 relacionados, 22 diferentes, 169 inciertas y 6 sin correspondencia. Todas no publicadas.
+**[H]** Matriz: 433 filas; 38 «exactas» propuestas (etiqueta documental de la clase, no valor de `mapping_type`), 165 aproximadas/parciales, 2 más amplios, 1 más específico, 30 relacionados, 22 diferentes, 169 inciertas y 6 sin correspondencia. Todas `propuesta_no_publicada`.
 
 ---
 
@@ -218,18 +219,20 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 ---
 
-## 14. Plan de reconstrucción — solo tras aprobación
+## 14. Plan de reconstrucción — solo tras autorización
 
-| Fase | Acción | Quién |
-|---|---|---|
-| 0 | Acta `READ ONLY` de PostgreSQL: objetos, privilegios, conteos, `target_code` (H-02), estado de `categorias_clinicas.sql`, valores reales de los `CHECK`, definición vigente de `v_oftar_search_catalog`, estados de revisión y catálogos OFTAR. | Responsable |
-| 1 | Aprobación de esta especificación y firma del dictamen PR / universo DX. | Responsable |
-| 2 | Corrección documental de las 12 filas exactas y decisión sobre los 3 conceptos nuevos. | Asistente (documentos), responsable (aprobación) |
-| 3 | Preparación de seeds y verificaciones, sin ejecutarlos, aditivos e idempotentes. | Asistente |
-| 4 | Ejecución controlada, aprobaciones por campo y publicación gobernada. | Responsable |
-| 5 | Validación con consultas de solo lectura y pruebas de aceptación. | Responsable |
+**[P]** El plan operativo canónico es `plan-implementacion-controlada-oftar.md`: **10 etapas** con entradas, salidas verificables, criterios de aceptación y gates. La tabla histórica siguiente se conserva solo como índice de compatibilidad; **no es el plan vigente** y ninguna de sus fases autoriza por sí misma una escritura.
 
-**[P]** Queda prohibido hasta la Fase 3 autorizada: ejecutar migraciones, importadores, generadores, `DELETE`/`DROP`/`TRUNCATE`, asignar UVR o publicar equivalencias no aprobadas.
+| Numeración histórica | Equivalencia en el plan de 10 etapas |
+|---|---|
+| 0 — acta `READ ONLY` | Etapa 1 (acta y congelación) |
+| 1 — aprobación documental | Etapas 2–4 (correcciones, decisión PR, alcance DX) |
+| 2 — corrección de las 12 filas y decisión sobre 3 conceptos | Etapa 3 |
+| 3 — preparación de seeds sin ejecutar | Etapas 6–9 y `propuesta-dry-run-seeds-oftar.md` |
+| 4 — ejecución controlada y publicación | Etapa 10, solo con autorización explícita |
+| 5 — validación de solo lectura | Etapa 9 y actas posteriores |
+
+**[P]** Queda prohibido hasta la autorización explícita de la etapa 10: ejecutar migraciones, importadores, generadores, seeds, `DELETE`/`DROP`/`TRUNCATE`, asignar UVR o publicar equivalencias no aprobadas. El cierre de esta especificación como base técnica **no** constituye esa autorización.
 
 ---
 
@@ -263,7 +266,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 |---:|---|---|
 | 11 | Jerarquía anatómica coherente | `ANAT-UVE` no sustituye a `ANAT-COROID`; `ANAT-SUP` no genera `ANAT-COR`+`ANAT-CON`; `ANAT-NEU` no se usa para motilidad. |
 | 12 | Multi-estructura | Un concepto puede tener varias estructuras/áreas con evidencia; no se duplica el código OFTAR ni se propaga automáticamente desde un padre. |
-| 13 | Exactas frente a parciales | Solo las propuestas documentalmente justificadas pueden llegar a `exact` tras aprobación; las parciales usan `related` con evidencia. |
+| 13 | Equivalentes frente a parciales | Solo las propuestas documentalmente justificadas pueden llegar a `equivalent` tras aprobación; las parciales usan `related` con evidencia. |
 | 14 | Clínica frente a facturación | Las columnas de equivalencia de facturación e importe migrado permanecen `NO` salvo aprobación separada. |
 | 15 | SNOMED filtrado | Solo refset `447562003`, `active=1`, destino H00-H59, sin importación masiva ni equivalencia automática. |
 
@@ -362,7 +365,7 @@ Los diez listados en §16; el más crítico es la ausencia de acta de Fase 0 y l
 
 **[I]** La reconstrucción no necesita un nuevo motor ni una nueva nomenclatura. Necesita decisiones clínicas explícitas, identidad por edición y gobernanza que impida publicar equivalencias no revisadas.
 
-**[P]** Esta especificación es el documento principal para la futura implementación. No ejecuta cambios, no modifica PostgreSQL ni seeds y espera aprobación explícita antes de cualquier reconstrucción de datos.
+**[P]** Esta especificación es el documento principal para la futura implementación y queda **aprobada como base técnica**. No ejecuta cambios, no modifica PostgreSQL ni seeds y espera una autorización explícita adicional antes de cualquier reconstrucción de datos.
 
 ---
 
@@ -370,6 +373,6 @@ Los diez listados en §16; el más crítico es la ausencia de acta de Fase 0 y l
 
 | Versión | Fecha | Cambio |
 |---|---|---|
-| 1.0 | 2026-11-28 | Cierre de la especificación funcional y técnica. Separa estados editoriales por objeto, aclara `oftar` como dominio funcional frente a `domain_type`, consolida política i18n sin paridad absoluta, corrige jerarquía anatómica, conserva el dictamen PR como propuesta no aprobada, mantiene el universo DX como conjunto candidato, amplía las pruebas de aceptación y registra los cambios futuros que requieren aprobación. |
+| 1.0 | 2026-11-28 | Cierre de la especificación funcional y técnica, aprobada como base técnica para la implementación controlada. Separa estados editoriales por objeto, aclara `oftar` como dominio funcional frente a `domain_type`, consolida política i18n sin paridad absoluta, corrige jerarquía anatómica, conserva el dictamen PR como propuesta no aprobada, mantiene el universo DX como conjunto candidato, amplía las pruebas de aceptación y registra los cambios futuros que requieren aprobación. Corrección adicional: `mapping_type` usa `equivalent\|unmatched` (no `exact\|no_map\|reference`) y `draft\|review\|published\|deprecated` pertenece a release, no a versión. Se añaden matriz de estados, integración con `os_catalog`, verificaciones PR/DX, inconsistencias, pendientes, plan de 10 etapas y propuesta de `dry-run`. |
 
 **Historial preservado:** las auditorías, propuestas y matrices previas en `docs/audit/` se conservan como evidencia histórica. Esta versión no las borra ni las sobrescribe; solo establece qué capa prevalece cuando existan contradicciones (§0).

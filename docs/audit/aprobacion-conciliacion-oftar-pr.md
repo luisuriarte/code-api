@@ -12,6 +12,8 @@
 
 **[H]** Matriz evaluada: `docs/audit/matriz-conciliacion-clinica-oftar-pr.csv`, 433 filas (NN 2025 154, CAO 143, Regional NOA 136). Todas tienen `equivalencia_clinica_publicada=NO`, `equivalencia_facturacion_publicada=NO`, `importe_migrado=NO` y `estado=propuesta_no_publicada`.
 
+**[H]** «Exacta» es la etiqueta de la clase documental de la matriz; el valor persistible en `os_concept_mapping.mapping_type` es `equivalent` (`origen_catalog_engine.sql:125-126`), no `exact`.
+
 **[I]** Criterio aplicado a las 38 filas marcadas como `equivalencia_clinica_exacta`: identidad de práctica, técnica, modalidad, lateralidad, región anatómica, alcance/sesiones y condiciones de realización (`revision-clinica-oftar-pr.md:61-70`). La coincidencia textual es solo pista.
 
 **[I] Resultado:** **26 filas / 13 pares tienen justificación documental suficiente para proponerse como exactas**; **12 filas / 6 pares no deben publicarse como exactas** sin corrección o degradación. Estas 13 propuestas **no están clínicamente aprobadas**: requieren firma de los responsables autorizados antes de cualquier publicación. El dictamen no cambia la matriz en esta etapa; solo documenta lo que debe aprobarse o corregirse antes de generar seeds.

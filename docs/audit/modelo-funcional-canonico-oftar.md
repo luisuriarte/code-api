@@ -62,7 +62,7 @@
 
 | Relación solicitada | Soporte actual propuesto | Uso clínico |
 |---|---|---|
-| Equivalente a | `os_concept_mapping.mapping_type='exact'` (valor real del `CHECK`) | Solo con evidencia y doble revisión. |
+| Equivalente a | `os_concept_mapping.mapping_type='equivalent'` (valor real del `CHECK`) | Solo con evidencia y doble revisión. «Exacta» es etiqueta documental de la matriz, no valor de base de datos. |
 | Más amplio que | `mapping_type='broader'` | Dirección: concepto OFTAR respecto del externo, a ratificar. |
 | Más específico que | `mapping_type='narrower'` | Misma convención de dirección. |
 | Relacionado con | `mapping_type='related'` o `os_catalog_relation` | Asociación clínica/editorial, no equivalencia. |
@@ -75,7 +75,7 @@
 
 **[I]** Algunas relaciones (`variante de`, `sustituido por`, `requiere`, `incluye`) pueden necesitar un `relation_type` específico. Se prefiere reutilizar `relation_kind` existente con `context_text` antes que ampliar el `CHECK` de la base.
 
-**[P]** No usar `exact` para aproximaciones parciales: estas deben ser `related` + evidencia de parcialidad en `mapping_nature` o en la metadata de gobernanza, con `review_status='approved'` solo tras revisión.
+**[P]** No usar `equivalent` para aproximaciones parciales: estas deben ser `related` + evidencia de parcialidad en `mapping_nature` o en la metadata de gobernanza, con `review_status='approved'` solo tras revisión. La ausencia de correspondencia se registra como `unmatched`, no como `no_map`.
 
 ---
 

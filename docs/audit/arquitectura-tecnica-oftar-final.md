@@ -30,12 +30,12 @@
 | `os_catalog_release` | FK `catalog_id`, `version_tag`, `status CHECK(draft\|review\|published\|deprecated)`, `UNIQUE(catalog_id, version_tag)` | 13-51 |
 | `os_catalog_category` | FK catálogo, `parent_category_id` self-FK, `UNIQUE(catalog_id, code)` | 54-60 |
 | `os_catalog_item` | FK catálogo, `permanent_code`, `status CHECK(active\|retired\|superseded)`, `UNIQUE(catalog_id, permanent_code)` | 63-70 |
-| `os_catalog_item_version` | FK ítem/release/categoría, `preferred_term`, `definition`, `clinical_criteria`, `is_billable`, `UNIQUE(item_id, release_id)`. `review_status` se agrega después: `NOT NULL DEFAULT 'unknown'`, **sin CHECK** (`sql/07_multilingue/04_fase3_columnas.sql:24-37`); los scripts OFTAR lo ponen en `approved` | 72-82; 04_fase3_columnas.sql:24-37 |
-| `os_catalog_term` | FK versión, `term`, `term_type CHECK(synonym\|lay_term\|abbreviation)`, `language_code DEFAULT 'es'` | 84-90 |
+| `os_catalog_item_version` | FK ítem/release/categoría, `preferred_term`, `definition`, `clinical_criteria`, `language_code DEFAULT 'es-AR'`, `UNIQUE(item_id, release_id, language_code)`. `review_status` se agrega después: `NOT NULL DEFAULT 'unknown'`, **sin CHECK** (`sql/07_multilingue/04_fase3_columnas.sql:24-37`); los scripts OFTAR lo ponen en `approved`. **No existe `is_billable`** | 72-82; 04_fase3_columnas.sql:24-37 |
+| `os_catalog_term` | FK versión, `term`, `term_type CHECK(preferred\|synonym\|acronym\|search_variant)`, `language_code DEFAULT 'es-AR'`. **No existen `lay_term` ni `abbreviation`** | 84-90 |
 | `os_catalog_identifier` | FK ítem, `system_name`, `value`, `is_primary`, `UNIQUE(item_id, system_name, value)` | 92-98 |
-| `os_concept_mapping` | FK ítem/sistema, `external_code`, `external_display`, `mapping_type CHECK(exact\|narrower\|broader\|related\|no_map\|reference)`, `relationship_role`, `provenance`, `source_reference`, `review_status CHECK(draft\|reviewed\|approved\|deprecated)`, `language_evidence`, `UNIQUE(item_id, terminology_system_id, external_code)`. Default original `approved`; `fase3_relaciones_mapeos.sql:183-184` lo cambia a `draft` sin modificar el CHECK | 119-134; fase3_relaciones_mapeos.sql:177-184 |
+| `os_concept_mapping` | FK ítem/sistema, `external_code`, `external_display`, `mapping_type CHECK(equivalent\|narrower\|broader\|related\|unmatched)`, `relationship_role CHECK(procedure_concept\|justifying_diagnosis\|observation_concept\|substance_concept)`, `provenance`, `source_reference`, `review_status CHECK(draft\|reviewed\|approved\|deprecated)`, `language_evidence`, `UNIQUE(item_id, terminology_system_id, external_code, relationship_role)`. Default original `approved`; `fase3_relaciones_mapeos.sql:183-184` lo cambia a `draft` sin modificar el CHECK | 119-134; fase3_relaciones_mapeos.sql:177-184 |
 
-**[H] Corrección necesaria:** el valor real para equivalencia es `exact`, no `equivalent`. Los documentos de trabajo que usaron `equivalent` deben leerse como intención, no como valor persistible. La especificación definitiva usa `exact`.
+**[H] Corrección aplicada:** el valor real para equivalencia es `equivalent`, no `exact`. La afirmación anterior —`exact|no_map|reference`— era incorrecta y queda retirada: esos tres valores no existen en el `CHECK` versionado ni en el generador. Las apariciones de «exacta» en la matriz clínica son etiquetas documentales. La especificación definitiva usa `equivalent`/`unmatched`.
 
 **[H] `oftar` no es un valor de `os_catalog.domain_type`.** El `CHECK` verificado admite `dental|medical|biochemical|rehabilitation|mental_health|pharma|terminology` (`origen_catalog_engine.sql:18`). La declaración real es:
 
@@ -53,7 +53,7 @@
 
 ### 2.2 Internacionalización y gobernanza
 
-**[H]** `sql/07_multilingue/01_fase2_tablas.sql:18-96,122+` crea `os_language`, `os_language_alias`, `os_catalog_language` (PK compuesta `catalog_id, language_code`, flags default/fallback/bridge, `coverage_status`), `os_localized_text` (`entity_type/entity_id/field_name`, `value`, `source_language_code`, `language_evidence`, `provenance`, `content_hash`, `scope_release_id`, `is_current`) y `os_field_review`.
+**[H]** `sql/07_multilingue/01_fase2_tablas.sql:18-96,122+` crea `os_language`, `os_language_alias`, `os_catalog_language` (PK compuesta `catalog_id, language_code`, flags default/fallback/bridge, `coverage_status`), `os_localized_text` (`entity_type/entity_id/field_name`, `value`, `source_language_code`, `language_evidence`, `provenance`, `content_hash`, `scope_release_id` con `ON DELETE RESTRICT`; **no existe `is_current`**) y `os_field_review` (`review_status DEFAULT 'unknown'`, sin CHECK, `content_hash NOT NULL`).
 
 **[H]** `sql/08_arquitectura/fase3_i18n.sql:1-93` activa D-31 con funciones/triggers y siembra `os_catalog_language` de forma idempotente; no reejecuta fases 01–15.
 

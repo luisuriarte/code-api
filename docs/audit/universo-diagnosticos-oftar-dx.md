@@ -112,7 +112,7 @@ SNOMED referencedComponentId
   → os_catalog_item / os_concept_mapping (review_status='draft')
 ```
 
-**[P]** Filtrar el destino con `^H(0[0-9]|[1-5][0-9])`: solo 6.783 de los 130.055 mapeos activos caen en H00-H59. Registrar `mapping_type='related'` inicialmente, nunca `exact` por similitud; conservar `mapRule`, `mapAdvice` y `mapCategoryId` en `clinical_rationale` (p. ej. la advertencia de posición primaria de `82571000119107 → H36.0`). Mantener `review_status='draft'` hasta revisión humana.
+**[P]** Filtrar el destino con `^H(0[0-9]|[1-5][0-9])`: solo 6.783 de los 130.055 mapeos activos caen en H00-H59. Registrar `mapping_type='related'` inicialmente, nunca `equivalent` por similitud (el `CHECK` real no admite `exact`; `origen_catalog_engine.sql:125-126`); conservar `mapRule`, `mapAdvice` y `mapCategoryId` en `clinical_rationale` (p. ej. la advertencia de posición primaria de `82571000119107 → H36.0`). Mantener `review_status='draft'` hasta revisión humana.
 
 **[P]** No usar este mapa para equivalencias de OFTAR-PR.
 
