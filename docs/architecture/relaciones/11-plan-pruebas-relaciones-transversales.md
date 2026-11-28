@@ -1,9 +1,9 @@
 # Plan de pruebas del modelo transversal de relaciones
 
 **Fecha:** 2026-11-28 · **Versión:** 1.0 · **Modelo rector:** `00-modelo-transversal-relaciones-origen-salud.md`
-**Estado:** plan en ejecución. Runbook operativo en `13-runbook-ejecucion-T01-T38.md`; resultados a registrar en `docs/audit/resultado-T01-T38-relaciones-transversales.md`. La verificación SQL y la regresión estática ya están conformes; T-01…T-38 con datos y API/UI quedan a la espera de su ejecución registrada.
+**Estado:** plan en ejecución. Runbook operativo en `13-runbook-ejecucion-T01-T38.md`; resultado consolidado en `docs/audit/resultado-T01-T38-relaciones-transversales.md`. Corrida v1 ejecutada; parche v1→v3 preparado en `patches/verificacion_T01_T38_relaciones_transversales_v1_a_v3.patch`. Pendientes: corrida v3 y T-31…T-36.
 
-**Convención:** `PENDIENTE` = diseñada pero no ejecutada. `LECTURA` = verificada por inspección de archivos en rondas anteriores; no equivale a ejecución.
+**Convención:** `PENDIENTE` = diseñada pero no ejecutada. `LECTURA` = verificada por inspección de archivos en rondas anteriores; no equivale a ejecución. `GAP_DOCUMENTADO` = sin metadatos de gobernanza, publicado con `untranslated=true` y plan de remediación.
 
 ---
 

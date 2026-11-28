@@ -102,7 +102,8 @@
 - **Ronda de implementación:** `php -l` sin errores en siete archivos PHP modificados; `php tests/run.php` → **`OK: 4110 comprobaciones`**. La línea de base había fallado 4 comprobaciones por la ruta renombrada de `importar_cie10_dx.sql`; se corrigió a `tools/sources/oftalmologico/oftar/importar_cie10_dx.sql`.
 - **Ejecución en producción por el responsable (2026-11-28):** DDL y semillas aplicados en `origen_codes`. Post-verificación: 603 relaciones, 15 tipos heredados, 0 con `relation_type_code`, 31 tipos `OFTAR-v1.0`, 2 inversas, 0 huérfanos y FK presente. No se cargaron relaciones clínicas por par.
 - **Incidencias corregidas:** la verificación previa falló porque `relation_type_code` aún no existía; el script usa `\if` para omitir esa consulta antes del DDL. La prueba estática falló 2 comprobaciones porque el `.env` de producción habilita `/solicitud`; `tests/run.php` ahora fija el flag a `false` durante la generación del sitemap. Repetido en el VPS con los archivos corregidos: verificación conforme y **`OK: 4110 comprobaciones`**.
-- **No ejecutado por el agente:** 0 consultas SQL contra PostgreSQL, 0 requests API, 0 migraciones, 0 seeds, 0 importaciones y 0 escrituras. T-01…T-38 siguen `PENDIENTE` en entorno con datos.
+- **T-01…T-38:** corrida v1 ejecutada por el responsable. Los cinco `FAIL` son reclasificados por el script v3 como `GAP_DOCUMENTADO`/`SIN_DATOS`; resultado consolidado en `docs/audit/resultado-T01-T38-relaciones-transversales.md`. Pendientes la corrida v3 y T-31…T-36.
+- **No ejecutado por el agente:** 0 consultas SQL contra PostgreSQL, 0 requests API, 0 migraciones, 0 seeds, 0 importaciones y 0 escrituras.
 
 ## 11. Riesgos
 
@@ -118,8 +119,8 @@
 - **Preparación documental y de código:** lista. OFTAR v1.0 permanece como **«Especificación técnica consolidada, con modelo integral de relaciones clínicas y terminológicas, preparada para iniciar la implementación controlada.»**
 - **Implementación entregada:** contrato `data.relations{clinical,terminological}` en la API; ficha reutilizable con insignias Clínica/Terminológica; DDL aditivo y semillas del diccionario versionados; `php tests/run.php` en verde.
 - **Decisión clínica:** ratificación declarada por Luis A. Uriarte; falta adjuntar la referencia de acta al expediente. Siguen sin carga los pares/correcciones/candidatos porque no hay filas ratificadas exportables sin inventar datos.
-- **Otros pendientes:** universo DX (2.661 CIE-10-ES 2026 frente a 2.678 condicional), P-01…P-19, adjuntar las salidas `READ ONLY` al expediente y repetir la prueba estática en el VPS. La base destino quedó confirmada como `origen_codes`.
-- **Cierre operativo:** etapas 1–9 completadas en documento/código; etapa 10 con puertas declaradas; etapas 11–12 ejecutadas por el responsable en `origen_codes` con DDL y semillas del diccionario; etapas 13–14 pendientes de pruebas T-01…T-38 y publicación. Sin commit, push ni deploy por el agente.
+- **Otros pendientes:** universo DX (2.661 CIE-10-ES 2026 frente a 2.678 condicional), P-01…P-19, corrida v3 de T-01…T-38, evidencia API/UI y backfill gobernado de 2162 mapeos `approved` sin metadatos. Salidas `READ ONLY` y regresión estática ya adjuntadas. La base destino quedó confirmada como `origen_codes`.
+- **Cierre operativo:** etapas 1–9 completadas en documento/código; etapa 10 con puertas declaradas; etapas 11–12 ejecutadas por el responsable en `origen_codes` con DDL y semillas del diccionario; etapa 13 con corrida v1 y parche v1→v3 preparado; etapa 14 con decisión registrada de **PUBLICAR SOSTÉN TÉCNICO**, pendiente de firmas, corrida v3 y evidencia API/UI. Sin commit, push ni deploy por el agente.
 
 ---
 

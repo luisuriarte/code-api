@@ -1,6 +1,6 @@
 # Runbook de ejecución T-01…T-38
 
-**Fecha:** 2026-11-28 · **Versión:** 1.0
+**Fecha:** 2026-11-28 · **Versión:** 1.1
 **Modelo rector:** `00-modelo-transversal-relaciones-origen-salud.md`
 **Estado:** preparado para ejecución por el responsable en el VPS `/var/www/html/origen.ar/code-api`.
 
@@ -11,6 +11,7 @@
 - No crear datos de prueba en producción.
 - No ejecutar inserciones, actualizaciones ni borrados para forzar una prueba; las pruebas de constraint se verifican por existencia de la restricción.
 - `SIN_DATOS` significa que el control es correcto pero no hay filas ratificadas para ese escenario. No equivale a `FAIL`.
+- `GAP_DOCUMENTADO` significa que faltan metadatos de gobernanza; la API expone `mapping_nature=null` y `untranslated=true`. No equivale a `FAIL`, pero exige el plan de remediación del acta.
 - `FAIL` bloquea la publicación hasta corregirse.
 - Guardar las salidas en `/tmp` y adjuntarlas al expediente.
 
@@ -18,24 +19,65 @@
 
 ## 2. Parte SQL — T-01…T-30, T-37, T-38
 
+### 2.1 Aplicar el parche v1 → v3
+
+El VPS tiene el script v1 (`sha256 14492015…`). Aplicar el parche versionado antes de repetir:
+
+Copiar el parche al VPS desde la máquina con el repositorio local (PowerShell):
+
+```powershell
+scp "D:\docs\luis\Documentos\sitios\code-api\patches\verificacion_T01_T38_relaciones_transversales_v1_a_v3.patch" `
+  root@mail:/var/www/html/origen.ar/code-api/patches/verificacion_T01_T38_relaciones_transversales_v1_a_v3.patch
+```
+
+En el VPS:
+
 ```bash
 cd /var/www/html/origen.ar/code-api
+mkdir -p patches
 
+sha256sum patches/verificacion_T01_T38_relaciones_transversales_v1_a_v3.patch
+# 5d0bba98c51240d2ee21e74d4bb8e5cbed6e2af1f5fb5c92e1958d6f41ea63ad
+
+sha256sum sql/08_arquitectura/verificacion_T01_T38_relaciones_transversales.sql
+# 14492015d2df774abb7d50a368100c361d2577c329ee380cfa0262c408e3d59a
+
+git apply --check patches/verificacion_T01_T38_relaciones_transversales_v1_a_v3.patch
+git apply patches/verificacion_T01_T38_relaciones_transversales_v1_a_v3.patch
+
+sha256sum sql/08_arquitectura/verificacion_T01_T38_relaciones_transversales.sql
+# 0275fd7205fa572eb276103e0aed54fd884e896ba5d0e7ba3a56cbfbf9073ee7
+```
+
+Si el primer `sha256sum` no coincide, **no aplicar** el parche y detenerse.
+
+### 2.2 Ejecutar
+
+```bash
 sudo -u postgres psql -X -v ON_ERROR_STOP=1 -P pager=off -d origen_codes \
   -f sql/08_arquitectura/verificacion_T01_T38_relaciones_transversales.sql \
-  2>&1 | tee /tmp/T01_T38_sql.log
+  2>&1 | tee /tmp/T01_T38_sql_v3.log
 ```
 
 El script es `BEGIN READ ONLY` / `ROLLBACK`, no escribe y devuelve una fila por prueba con `prueba`, `estado` y `detalle`.
 
-Interpretación inicial esperada con el estado actual de datos:
+Interpretación esperada con el estado actual de datos:
 
-- `PASS`: controles estructurales — T-14, T-21, T-22, T-24, T-25, T-26, T-27, T-30, T-37, T-38.
-- `SIN_DATOS`: escenarios clínicos sin filas ratificadas — T-01…T-13, T-15…T-20, T-23, T-28, T-29.
+- `PASS`: controles estructurales — T-09, T-14, T-21, T-22, T-24, T-25, T-26, T-27, T-28, T-30, T-37, T-38.
+- `SIN_DATOS`: escenarios sin filas ratificadas — T-01, T-02, T-04, T-05, T-08, T-10…T-13, T-16…T-18, T-20, T-23.
+- `GAP_DOCUMENTADO`: T-03, T-06, T-07, T-15, T-19, T-29 (faltan metadatos; 2162 mapeos `approved` sin fila en `os_mapping_metadata`).
 - `VERIFICAR_API`: T-31…T-34.
 - `VERIFICAR_UI`: T-35, T-36.
 
-Si aparece `FAIL`, detener y corregir antes de continuar.
+Si aparece `FAIL`, detener y corregir antes de continuar. Para confirmar T-19:
+
+```bash
+sudo -u postgres psql -X -Atq -d origen_codes -c "
+SELECT m.review_status, count(*)
+  FROM os_concept_mapping m
+ WHERE m.mapping_type = 'related'
+ GROUP BY 1 ORDER BY 1;"
+```
 
 ---
 

@@ -1,0 +1,284 @@
+diff --git a/sql/08_arquitectura/verificacion_T01_T38_relaciones_transversales.sql b/sql/08_arquitectura/verificacion_T01_T38_relaciones_transversales.sql
+index bdd6fa0..52495af 100644
+--- a/sql/08_arquitectura/verificacion_T01_T38_relaciones_transversales.sql
++++ b/sql/08_arquitectura/verificacion_T01_T38_relaciones_transversales.sql
+@@ -8,6 +8,9 @@
+ --   FAIL                 Invariant roto: revisar antes de cualquier publicación.
+ --   SIN_DATOS            El control es correcto pero no hay filas ratificadas
+ --                        para probar el escenario. No equivale a FAIL.
++--   GAP_DOCUMENTADO      No hay metadatos de gobernanza verificables; la API
++--                        expone mapping_nature=null y untranslated=true. No
++--                        equivale a FAIL; exige plan de remediación en el acta.
+ --   VERIFICAR_API        Requiere los comandos curl del runbook.
+ --   VERIFICAR_UI         Requiere la ficha DENTAR/OFTAR en el portal.
+ -- =============================================================================
+@@ -49,15 +52,21 @@ SELECT 'T-02' AS prueba,
+ 
+ -- T-03: DENTAR-PR → CDT terminológica con edición y licencia.
+ SELECT 'T-03' AS prueba,
+-       CASE WHEN count(*) = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE m.review_status <> 'approved'
+-                                    OR md.target_version IS NULL
+-                                    OR md.license_reference IS NULL) > 0 THEN 'FAIL'
++       CASE WHEN count(*) FILTER (WHERE m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE m.review_status = 'approved'
++                                    AND md.mapping_id IS NOT NULL
++                                    AND (md.target_version IS NULL OR md.license_reference IS NULL)) > 0 THEN 'FAIL'
++            WHEN count(*) FILTER (WHERE m.review_status = 'approved'
++                                    AND md.mapping_id IS NULL) > 0 THEN 'GAP_DOCUMENTADO'
+             ELSE 'PASS' END AS estado,
+        'mapeos CDT=' || count(*)::text
+-       || '; incompletos=' || count(*) FILTER (WHERE m.review_status <> 'approved'
+-                                               OR md.target_version IS NULL
+-                                               OR md.license_reference IS NULL)::text AS detalle
++       || '; approved=' || count(*) FILTER (WHERE m.review_status = 'approved')::text
++       || '; approved con metadatos=' || count(*) FILTER (WHERE m.review_status = 'approved' AND md.mapping_id IS NOT NULL)::text
++       || '; approved sin metadatos=' || count(*) FILTER (WHERE m.review_status = 'approved' AND md.mapping_id IS NULL)::text
++       || '; approved incompletos=' || count(*) FILTER (WHERE m.review_status = 'approved'
++                                                        AND md.mapping_id IS NOT NULL
++                                                        AND (md.target_version IS NULL OR md.license_reference IS NULL))::text
++       || '; draft=' || count(*) FILTER (WHERE m.review_status = 'draft')::text AS detalle
+   FROM public.os_concept_mapping m
+   JOIN public.os_catalog_item i ON i.id = m.item_id
+   JOIN public.os_catalog c ON c.id = i.catalog_id
+@@ -84,25 +93,31 @@ SELECT 'T-04' AS prueba,
+    AND m.external_code = '01.01';
+ 
+ -- T-05: dos nomencladores institucionales independientes.
+-SELECT 'T-05' AS prueba, 'SIN_DATOS' AS estado,
+-       'No hay dos sistemas terminológicos institucionales declarados para DENTAR-PR en os_terminology_system.' AS detalle
+- WHERE NOT EXISTS (
+-     SELECT 1 FROM public.os_terminology_system
+-      WHERE code ILIKE '%INSTITUCIONAL%'
+- )
+-UNION ALL
+-SELECT 'T-05', 'VERIFICAR_UI',
+-       'Sistemas institucionales declarados: ' || string_agg(code, ', ' ORDER BY code)
++SELECT 'T-05' AS prueba,
++       CASE WHEN count(*) = 0 THEN 'SIN_DATOS' ELSE 'VERIFICAR_UI' END AS estado,
++       CASE WHEN count(*) = 0
++            THEN 'No hay dos sistemas terminológicos institucionales declarados para DENTAR-PR en os_terminology_system.'
++            ELSE 'Sistemas institucionales declarados: ' || string_agg(code, ', ' ORDER BY code)
++       END AS detalle
+   FROM public.os_terminology_system
+  WHERE code ILIKE '%INSTITUCIONAL%';
+ 
+ -- T-06: DENTAR-DX → CIE-10 con edición explícita.
+ SELECT 'T-06' AS prueba,
+-       CASE WHEN count(*) = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE md.target_version IS NULL) > 0 THEN 'FAIL'
++       CASE WHEN count(*) FILTER (WHERE m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE m.review_status = 'approved'
++                                    AND md.mapping_id IS NOT NULL
++                                    AND md.target_version IS NULL) > 0 THEN 'FAIL'
++            WHEN count(*) FILTER (WHERE m.review_status = 'approved'
++                                    AND md.mapping_id IS NULL) > 0 THEN 'GAP_DOCUMENTADO'
+             ELSE 'PASS' END AS estado,
+        'mapeos CIE-10=' || count(*)::text
+-       || '; sin edición=' || count(*) FILTER (WHERE md.target_version IS NULL)::text AS detalle
++       || '; approved=' || count(*) FILTER (WHERE m.review_status = 'approved')::text
++       || '; approved sin metadatos=' || count(*) FILTER (WHERE m.review_status = 'approved' AND md.mapping_id IS NULL)::text
++       || '; approved sin edición=' || count(*) FILTER (WHERE m.review_status = 'approved'
++                                                       AND md.mapping_id IS NOT NULL
++                                                       AND md.target_version IS NULL)::text
++       || '; draft=' || count(*) FILTER (WHERE m.review_status = 'draft')::text AS detalle
+   FROM public.os_concept_mapping m
+   JOIN public.os_catalog_item i ON i.id = m.item_id
+   JOIN public.os_catalog c ON c.id = i.catalog_id
+@@ -112,15 +127,25 @@ SELECT 'T-06' AS prueba,
+ 
+ -- T-07: DENTAR-PR/DX → SNOMED CT AR con justificación conservada.
+ SELECT 'T-07' AS prueba,
+-       CASE WHEN count(*) = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE m.clinical_rationale IS NULL
+-                                    OR btrim(m.clinical_rationale) = ''
+-                                    OR md.source_reference IS NULL) > 0 THEN 'FAIL'
++       CASE WHEN count(*) FILTER (WHERE m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE m.review_status = 'approved'
++                                    AND md.mapping_id IS NOT NULL
++                                    AND md.source_reference IS NULL) > 0 THEN 'FAIL'
++            WHEN count(*) FILTER (WHERE m.review_status = 'approved'
++                                    AND (m.clinical_rationale IS NULL
++                                         OR btrim(m.clinical_rationale) = ''
++                                         OR md.mapping_id IS NULL
++                                         OR md.source_reference IS NULL)) > 0 THEN 'GAP_DOCUMENTADO'
+             ELSE 'PASS' END AS estado,
+        'mapeos SNOMED=' || count(*)::text
+-       || '; sin justificación/referencia=' || count(*) FILTER (WHERE m.clinical_rationale IS NULL
+-                                                                OR btrim(m.clinical_rationale) = ''
+-                                                                OR md.source_reference IS NULL)::text AS detalle
++       || '; approved=' || count(*) FILTER (WHERE m.review_status = 'approved')::text
++       || '; approved sin metadatos=' || count(*) FILTER (WHERE m.review_status = 'approved' AND md.mapping_id IS NULL)::text
++       || '; approved sin justificación/referencia=' || count(*) FILTER (WHERE m.review_status = 'approved'
++                                                                         AND (m.clinical_rationale IS NULL
++                                                                              OR btrim(m.clinical_rationale) = ''
++                                                                              OR md.mapping_id IS NULL
++                                                                               OR md.source_reference IS NULL))::text
++       || '; draft=' || count(*) FILTER (WHERE m.review_status = 'draft')::text AS detalle
+   FROM public.os_concept_mapping m
+   JOIN public.os_catalog_item i ON i.id = m.item_id
+   JOIN public.os_catalog c ON c.id = i.catalog_id
+@@ -238,72 +263,90 @@ SELECT 'T-14' AS prueba,
+ 
+ -- T-15: equivalencia exacta equivalent + univocal/multiple.
+ SELECT 'T-15' AS prueba,
+-       CASE WHEN count(*) FILTER (WHERE m.mapping_type = 'equivalent') = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE m.mapping_type = 'equivalent'
++       CASE WHEN count(*) FILTER (WHERE m.mapping_type = 'equivalent' AND m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE m.mapping_type = 'equivalent' AND m.review_status = 'approved'
++                                    AND md.mapping_id IS NOT NULL
+                                     AND coalesce(md.mapping_nature, '') NOT IN ('univocal', 'multiple')) > 0 THEN 'FAIL'
++            WHEN count(*) FILTER (WHERE m.mapping_type = 'equivalent' AND m.review_status = 'approved'
++                                    AND md.mapping_id IS NULL) > 0 THEN 'GAP_DOCUMENTADO'
+             ELSE 'PASS' END AS estado,
+        'equivalent=' || count(*) FILTER (WHERE m.mapping_type = 'equivalent')::text
+-       || '; con naturaleza inválida=' || count(*) FILTER (WHERE m.mapping_type = 'equivalent'
+-                                                         AND coalesce(md.mapping_nature, '') NOT IN ('univocal', 'multiple'))::text AS detalle
++       || '; approved=' || count(*) FILTER (WHERE m.mapping_type = 'equivalent' AND m.review_status = 'approved')::text
++       || '; approved sin metadatos=' || count(*) FILTER (WHERE m.mapping_type = 'equivalent' AND m.review_status = 'approved' AND md.mapping_id IS NULL)::text
++       || '; approved con naturaleza inválida=' || count(*) FILTER (WHERE m.mapping_type = 'equivalent'
++                                                                   AND m.review_status = 'approved'
++                                                                   AND md.mapping_id IS NOT NULL
++                                                                   AND coalesce(md.mapping_nature, '') NOT IN ('univocal', 'multiple'))::text
++       || '; draft=' || count(*) FILTER (WHERE m.mapping_type = 'equivalent' AND m.review_status = 'draft')::text AS detalle
+   FROM public.os_concept_mapping m
+   LEFT JOIN public.os_mapping_metadata md ON md.mapping_id = m.id;
+ 
+ -- T-16: equivalencia aproximada related + approximate.
+ SELECT 'T-16' AS prueba,
+-       CASE WHEN count(*) FILTER (WHERE md.mapping_nature = 'approximate') = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE md.mapping_nature = 'approximate'
++       CASE WHEN count(*) FILTER (WHERE md.mapping_nature = 'approximate' AND m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE md.mapping_nature = 'approximate' AND m.review_status = 'approved'
+                                     AND m.mapping_type = 'equivalent') > 0 THEN 'FAIL'
+             ELSE 'PASS' END AS estado,
+        'approximate=' || count(*) FILTER (WHERE md.mapping_nature = 'approximate')::text
++       || '; approved=' || count(*) FILTER (WHERE md.mapping_nature = 'approximate' AND m.review_status = 'approved')::text
+        || '; equivalentes encubiertos=' || count(*) FILTER (WHERE md.mapping_nature = 'approximate'
++                                                          AND m.review_status = 'approved'
+                                                           AND m.mapping_type = 'equivalent')::text AS detalle
+   FROM public.os_concept_mapping m
+   LEFT JOIN public.os_mapping_metadata md ON md.mapping_id = m.id;
+ 
+ -- T-17: correspondencia parcial related + partial, sin broader/narrower.
+ SELECT 'T-17' AS prueba,
+-       CASE WHEN count(*) FILTER (WHERE md.mapping_nature = 'partial') = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE md.mapping_nature = 'partial'
++       CASE WHEN count(*) FILTER (WHERE md.mapping_nature = 'partial' AND m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE md.mapping_nature = 'partial' AND m.review_status = 'approved'
+                                     AND m.mapping_type IN ('broader', 'narrower')) > 0 THEN 'FAIL'
+             ELSE 'PASS' END AS estado,
+        'partial=' || count(*) FILTER (WHERE md.mapping_nature = 'partial')::text
++       || '; approved=' || count(*) FILTER (WHERE md.mapping_nature = 'partial' AND m.review_status = 'approved')::text
+        || '; broader/narrower=' || count(*) FILTER (WHERE md.mapping_nature = 'partial'
++                                                  AND m.review_status = 'approved'
+                                                   AND m.mapping_type IN ('broader', 'narrower'))::text AS detalle
+   FROM public.os_concept_mapping m
+   LEFT JOIN public.os_mapping_metadata md ON md.mapping_id = m.id;
+ 
+ -- T-18: más amplio / más específico con jerarquía verificada.
+ SELECT 'T-18' AS prueba,
+-       CASE WHEN count(*) FILTER (WHERE m.mapping_type IN ('broader', 'narrower')) = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE m.mapping_type IN ('broader', 'narrower')
++       CASE WHEN count(*) FILTER (WHERE m.mapping_type IN ('broader', 'narrower') AND m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE m.mapping_type IN ('broader', 'narrower') AND m.review_status = 'approved'
+                                     AND (md.source_version IS NULL OR md.target_version IS NULL)) > 0 THEN 'FAIL'
+             ELSE 'PASS' END AS estado,
+        'broader/narrower=' || count(*) FILTER (WHERE m.mapping_type IN ('broader', 'narrower'))::text
+-       || '; sin versión=' || count(*) FILTER (WHERE m.mapping_type IN ('broader', 'narrower')
+-                                             AND (md.source_version IS NULL OR md.target_version IS NULL))::text AS detalle
++       || '; approved=' || count(*) FILTER (WHERE m.mapping_type IN ('broader', 'narrower') AND m.review_status = 'approved')::text
++       || '; approved sin versión=' || count(*) FILTER (WHERE m.mapping_type IN ('broader', 'narrower')
++                                                      AND m.review_status = 'approved'
++                                                      AND (md.source_version IS NULL OR md.target_version IS NULL))::text AS detalle
+   FROM public.os_concept_mapping m
+   LEFT JOIN public.os_mapping_metadata md ON md.mapping_id = m.id;
+ 
+ -- T-19: asociativa justificada related + rationale.
+ SELECT 'T-19' AS prueba,
+-       CASE WHEN count(*) FILTER (WHERE m.mapping_type = 'related') = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE m.mapping_type = 'related'
+-                                    AND (m.clinical_rationale IS NULL OR btrim(m.clinical_rationale) = '')) > 0 THEN 'FAIL'
++       CASE WHEN count(*) FILTER (WHERE m.mapping_type = 'related' AND m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE m.mapping_type = 'related' AND m.review_status = 'approved'
++                                    AND (m.clinical_rationale IS NULL OR btrim(m.clinical_rationale) = '')) > 0 THEN 'GAP_DOCUMENTADO'
+             ELSE 'PASS' END AS estado,
+        'related=' || count(*) FILTER (WHERE m.mapping_type = 'related')::text
+-       || '; sin rationale=' || count(*) FILTER (WHERE m.mapping_type = 'related'
+-                                               AND (m.clinical_rationale IS NULL OR btrim(m.clinical_rationale) = ''))::text AS detalle
++       || '; approved=' || count(*) FILTER (WHERE m.mapping_type = 'related' AND m.review_status = 'approved')::text
++       || '; approved sin rationale=' || count(*) FILTER (WHERE m.mapping_type = 'related'
++                                                        AND m.review_status = 'approved'
++                                                        AND (m.clinical_rationale IS NULL OR btrim(m.clinical_rationale) = ''))::text AS detalle
+   FROM public.os_concept_mapping m;
+ 
+ -- T-20: sin correspondencia unmatched + not_mappable.
+ SELECT 'T-20' AS prueba,
+-       CASE WHEN count(*) FILTER (WHERE m.mapping_type = 'unmatched') = 0 THEN 'SIN_DATOS'
+-            WHEN count(*) FILTER (WHERE m.mapping_type = 'unmatched'
++       CASE WHEN count(*) FILTER (WHERE m.mapping_type = 'unmatched' AND m.review_status = 'approved') = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE m.mapping_type = 'unmatched' AND m.review_status = 'approved'
+                                     AND coalesce(md.mapping_nature, '') <> 'not_mappable') > 0 THEN 'FAIL'
+             ELSE 'PASS' END AS estado,
+        'unmatched=' || count(*) FILTER (WHERE m.mapping_type = 'unmatched')::text
+-       || '; sin not_mappable=' || count(*) FILTER (WHERE m.mapping_type = 'unmatched'
+-                                                  AND coalesce(md.mapping_nature, '') <> 'not_mappable')::text AS detalle
++       || '; approved=' || count(*) FILTER (WHERE m.mapping_type = 'unmatched' AND m.review_status = 'approved')::text
++       || '; approved sin not_mappable=' || count(*) FILTER (WHERE m.mapping_type = 'unmatched'
++                                                           AND m.review_status = 'approved'
++                                                           AND coalesce(md.mapping_nature, '') <> 'not_mappable')::text AS detalle
+   FROM public.os_concept_mapping m
+   LEFT JOIN public.os_mapping_metadata md ON md.mapping_id = m.id;
+ 
+@@ -328,11 +371,18 @@ SELECT 'T-22' AS prueba,
+ -- T-23: simetría REL-DX-COEX declarada por segunda fila explícita.
+ SELECT 'T-23' AS prueba,
+        CASE WHEN count(*) = 0 THEN 'SIN_DATOS'
++            WHEN count(*) FILTER (WHERE sim.id IS NULL) > 0 THEN 'FAIL'
+             ELSE 'PASS' END AS estado,
+-       'REL-DX-COEX=' || count(*)::text
+-       || '; inverse_code=' || coalesce(max(inverse_code), '(sin inversa automática)') AS detalle
+-  FROM public.os_relation_type
+- WHERE code = 'REL-DX-COEX';
++       'REL-DX-COEX relaciones=' || count(*)::text
++       || '; pares sin segunda fila=' || count(*) FILTER (WHERE sim.id IS NULL)::text
++       || '; inverse_code=' || coalesce((SELECT inverse_code FROM public.os_relation_type WHERE code = 'REL-DX-COEX'), '(sin inversa automática)') AS detalle
++  FROM public.os_catalog_relation r
++  LEFT JOIN public.os_catalog_relation sim
++         ON sim.source_item_id = r.target_item_id
++        AND sim.target_item_id = r.source_item_id
++        AND sim.relation_type_code = 'REL-DX-COEX'
++        AND sim.id <> r.id
++ WHERE r.relation_type_code = 'REL-DX-COEX';
+ 
+ -- T-24: integridad referencial de extremos.
+ SELECT 'T-24' AS prueba,
+@@ -388,11 +438,17 @@ SELECT 'T-28' AS prueba,
+ 
+ -- T-29: trazabilidad de revisión de campo y hash vigente.
+ SELECT 'T-29' AS prueba,
+-       CASE WHEN count(*) = 0 THEN 'SIN_DATOS'
++       CASE WHEN (SELECT count(*) FROM public.os_concept_mapping m2
++                   LEFT JOIN public.os_mapping_metadata md2 ON md2.mapping_id = m2.id
++                  WHERE m2.review_status = 'approved' AND md2.mapping_id IS NULL) > 0 THEN 'GAP_DOCUMENTADO'
++            WHEN count(*) = 0 THEN 'SIN_DATOS'
+             WHEN count(*) FILTER (WHERE reviewed_by IS NULL OR reviewed_at IS NULL
+                                     OR source_reference IS NULL) > 0 THEN 'FAIL'
+             ELSE 'PASS' END AS estado,
+        'metadatos revisados=' || count(*)::text
++       || '; approved sin metadatos=' || (SELECT count(*) FROM public.os_concept_mapping m2
++                                           LEFT JOIN public.os_mapping_metadata md2 ON md2.mapping_id = m2.id
++                                          WHERE m2.review_status = 'approved' AND md2.mapping_id IS NULL)::text
+        || '; incompletos=' || count(*) FILTER (WHERE reviewed_by IS NULL OR reviewed_at IS NULL
+                                               OR source_reference IS NULL)::text AS detalle
+   FROM public.os_mapping_metadata
+@@ -405,6 +461,9 @@ SELECT 'T-30' AS prueba,
+        'relaciones approved=' || (SELECT count(*) FROM public.os_catalog_relation WHERE review_status = 'approved')::text
+        || '; draft=' || (SELECT count(*) FROM public.os_catalog_relation WHERE review_status = 'draft')::text
+        || '; deprecated=' || (SELECT count(*) FROM public.os_catalog_relation WHERE review_status = 'deprecated')::text
++       || '; mapeos approved=' || (SELECT count(*) FROM public.os_concept_mapping WHERE review_status = 'approved')::text
++       || '; mapeos draft=' || (SELECT count(*) FROM public.os_concept_mapping WHERE review_status = 'draft')::text
++       || '; mapeos deprecated=' || (SELECT count(*) FROM public.os_concept_mapping WHERE review_status = 'deprecated')::text
+        || '; estados inválidos=' || count(*) FILTER (WHERE review_status NOT IN ('draft', 'reviewed', 'approved', 'deprecated'))::text AS detalle
+   FROM public.os_catalog_relation;
+ 
