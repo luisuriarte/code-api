@@ -15,6 +15,11 @@ use OrigenSalud\Portal\Services\Csrf;
 /** @var array<string, string> $flashValues */
 /** @var bool $canWrite */
 /** @var array<string, mixed> $current */
+/** @var string $catalog */
+/** @var int $itemId */
+/** @var array<string, mixed>|null $focus */
+/** @var list<array<string, mixed>>|null $candidates */
+/** @var bool $focusError */
 
 require __DIR__ . '/../_flash.php';
 
@@ -29,6 +34,11 @@ $catalogs = is_array($options['catalogs'] ?? null) ? $options['catalogs'] : [];
 $matchTargets = is_array($options['match_targets'] ?? null) ? $options['match_targets'] : [];
 $flashValues = is_array($flashValues ?? null) ? $flashValues : [];
 $editing = is_array($editing ?? null) ? $editing : [];
+$catalog = is_string($catalog ?? null) ? $catalog : '';
+$itemId = is_int($itemId ?? null) ? $itemId : 0;
+$focus = is_array($focus ?? null) ? $focus : null;
+$candidates = is_array($candidates ?? null) ? $candidates : null;
+$focusError = (bool) ($focusError ?? false);
 
 $value = static function (string $key, string $default = '') use ($flashValues, $editing): string {
     if (is_string($flashValues[$key] ?? null) && $flashValues[$key] !== '') {
@@ -40,7 +50,11 @@ $value = static function (string $key, string $default = '') use ($flashValues, 
 
 $isEdit = $editKey !== '';
 $activeEntity = $entity !== '' ? $entity : 'catalog_relation';
-$base = static fn (string $targetEntity): string => '/admin/relations?entity=' . rawurlencode($targetEntity);
+$focusParams = $itemId > 0
+    ? '&catalog=' . rawurlencode($catalog) . '&item=' . $itemId
+    : '';
+$base = static fn (string $targetEntity): string => '/admin/relations?entity='
+    . rawurlencode($targetEntity) . $focusParams;
 $editHref = static function (string $targetEntity, string $key) use ($base): string {
     return $base($targetEntity) . '&edit=' . rawurlencode($key);
 };
@@ -68,6 +82,103 @@ $rowKey = static function (string $targetEntity, array $row): string {
             <i data-lucide="shield-alert" class="h-4 w-4 shrink-0"></i>
             <p><?= e($t('admin.relations.draft_notice')) ?></p>
         </div>
+    </article>
+
+    <article class="ui-card ui-card-pad">
+        <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.relations.lookup_title')) ?></h2>
+                <p class="ui-subtitle"><?= e($t('admin.relations.lookup_hint')) ?></p>
+            </div>
+            <?php if ($focus !== null): ?>
+                <a href="/admin/relations" class="text-sm font-medium text-teal-dark hover:underline">
+                    <?= e($t('admin.relations.focus_back')) ?>
+                </a>
+            <?php endif; ?>
+        </div>
+
+        <form method="get" action="/admin/relations" class="ui-grid items-end">
+            <input type="hidden" name="lookup" value="1">
+            <div>
+                <label for="relation-catalog" class="ui-label"><?= e($t('admin.uvr.col_catalog')) ?></label>
+                <select id="relation-catalog" name="catalog" class="ui-input">
+                    <option value=""><?= e($t('admin.select')) ?></option>
+                    <?php foreach ($catalogs as $catalogRow): ?>
+                        <?php $catalogCode = (string) ($catalogRow['code'] ?? ''); ?>
+                        <option value="<?= e($catalogCode) ?>" <?= $catalogCode === $catalog ? 'selected' : '' ?>>
+                            <?= e($catalogCode) ?>
+                            <?= (string) ($catalogRow['short_name'] ?? '') !== '' ? ' · ' . e((string) $catalogRow['short_name']) : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div>
+                <label for="relation-code" class="ui-label"><?= e($t('admin.relations.search')) ?></label>
+                <input id="relation-code" name="q" value="<?= e($query) ?>" class="ui-input" maxlength="80"
+                       placeholder="<?= e($t('admin.relations.lookup_placeholder')) ?>">
+            </div>
+            <div>
+                <button type="submit" class="ui-btn ui-btn-sm"><?= e($t('admin.relations.lookup_submit')) ?></button>
+            </div>
+        </form>
+
+        <?php if ($focusError): ?>
+            <p class="ui-alert mt-4" role="alert"><?= e($t('admin.relations.focus_not_found')) ?></p>
+        <?php endif; ?>
+
+        <?php if ($focus !== null): ?>
+            <dl class="ui-dl mt-5 rounded-xl border border-line bg-paper/70 p-4">
+                <dt class="ui-dt"><?= e($t('admin.relations.focus_code')) ?></dt>
+                <dd class="ui-dd"><code class="ui-code"><?= e((string) ($focus['permanent_code'] ?? '')) ?></code></dd>
+                <dt class="ui-dt"><?= e($t('admin.uvr.col_catalog')) ?></dt>
+                <dd class="ui-dd"><code class="ui-code"><?= e((string) ($focus['catalog_code'] ?? '')) ?></code></dd>
+                <dt class="ui-dt"><?= e($t('admin.catalogs.col_term')) ?></dt>
+                <dd class="ui-dd"><?= e((string) ($focus['display'] ?? '')) ?></dd>
+                <?php if ((string) ($focus['identifiers'] ?? '') !== ''): ?>
+                    <dt class="ui-dt"><?= e($t('admin.relations.candidate_identifiers')) ?></dt>
+                    <dd class="ui-dd"><code class="ui-code"><?= e((string) $focus['identifiers']) ?></code></dd>
+                <?php endif; ?>
+            </dl>
+        <?php elseif ($candidates !== null): ?>
+            <?php if ($candidates === []): ?>
+                <p class="ui-empty mt-5"><?= e($t('admin.relations.lookup_empty')) ?></p>
+            <?php else: ?>
+                <div class="ui-table-wrap mt-5">
+                    <table class="ui-table">
+                        <thead>
+                        <tr>
+                            <th class="ui-th"><?= e($t('admin.catalogs.col_code')) ?></th>
+                            <th class="ui-th"><?= e($t('admin.uvr.col_catalog')) ?></th>
+                            <th class="ui-th"><?= e($t('admin.catalogs.col_term')) ?></th>
+                            <th class="ui-th"><?= e($t('admin.relations.candidate_identifiers')) ?></th>
+                            <th class="ui-th"><?= e($t('admin.relations.col_actions')) ?></th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-line">
+                        <?php foreach ($candidates as $candidate): ?>
+                            <?php
+                            $candidateId = (int) ($candidate['id'] ?? 0);
+                            $candidateCatalog = (string) ($candidate['catalog_code'] ?? '');
+                            $candidateHref = '/admin/relations?catalog='
+                                . rawurlencode($candidateCatalog) . '&item=' . $candidateId;
+                            ?>
+                            <tr>
+                                <td class="ui-td font-mono text-xs"><code class="ui-code"><?= e((string) ($candidate['permanent_code'] ?? '')) ?></code></td>
+                                <td class="ui-td"><code class="ui-code"><?= e($candidateCatalog) ?></code></td>
+                                <td class="ui-td"><?= e((string) ($candidate['display'] ?? '')) ?></td>
+                                <td class="ui-td font-mono text-xs"><?= e((string) ($candidate['identifiers'] ?? '')) ?></td>
+                                <td class="ui-td">
+                                    <a href="<?= e($candidateHref) ?>" class="text-sm font-medium text-teal-dark hover:underline">
+                                        <?= e($t('admin.relations.candidate_view')) ?>
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
     </article>
 
     <article class="ui-card ui-card-pad">
@@ -112,6 +223,9 @@ $rowKey = static function (string $targetEntity, array $row): string {
                         <thead>
                             <tr>
                                 <?php if ($entityCode === 'catalog_relation'): ?>
+                                    <?php if ($focus !== null): ?>
+                                        <th><?= e($t('admin.relations.col_direction')) ?></th>
+                                    <?php endif; ?>
                                     <th><?= e($t('admin.relations.col_source')) ?></th>
                                     <th><?= e($t('admin.relations.col_target')) ?></th>
                                     <th><?= e($t('admin.relations.col_type')) ?></th>
@@ -139,6 +253,12 @@ $rowKey = static function (string $targetEntity, array $row): string {
                                 ?>
                                 <tr class="<?= $isCurrent ? 'bg-mint/30' : '' ?>">
                                     <?php if ($entityCode === 'catalog_relation'): ?>
+                                        <?php if ($focus !== null): ?>
+                                            <?php $direction = (string) ($record['direction'] ?? ''); ?>
+                                            <td><?= e($direction === 'out'
+                                                ? $t('admin.relations.direction_out')
+                                                : $t('admin.relations.direction_in')) ?></td>
+                                        <?php endif; ?>
                                         <td class="font-mono text-xs"><?= e((string) ($record['source_code'] ?? '')) ?></td>
                                         <td class="font-mono text-xs"><?= e((string) ($record['target_code'] ?? '')) ?></td>
                                         <td><?= e((string) ($record['relation_type'] ?? '')) ?></td>
@@ -223,6 +343,8 @@ $rowKey = static function (string $targetEntity, array $row): string {
                 <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e(Csrf::token()) ?>">
                 <input type="hidden" name="op" value="<?= $isEdit ? 'update' : 'create' ?>">
                 <input type="hidden" name="entity" value="<?= e($activeEntity) ?>">
+                <input type="hidden" name="return_catalog" value="<?= e($catalog) ?>">
+                <input type="hidden" name="return_item" value="<?= e((string) $itemId) ?>">
                 <?php if ($isEdit && $activeEntity !== 'nomenclador_match'): ?>
                     <input type="hidden" name="id" value="<?= e($editKey) ?>">
                 <?php endif; ?>
@@ -239,6 +361,9 @@ $rowKey = static function (string $targetEntity, array $row): string {
                             <label for="target_code" class="ui-label"><?= e($t('admin.relations.col_target')) ?></label>
                             <input id="target_code" name="target_code" class="ui-input" required
                                    value="<?= e($value('target_code')) ?>">
+                        </div>
+                        <div class="ui-subtitle text-xs">
+                            <?= e($t('admin.relations.code_hint')) ?>
                         </div>
                         <div>
                             <label for="relation_type" class="ui-label"><?= e($t('admin.relations.col_type')) ?></label>

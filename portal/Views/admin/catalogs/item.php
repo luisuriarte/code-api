@@ -47,6 +47,14 @@ $clinicalCategoryLabel = static function (string $code, string $fallback = '') u
                 <p class="ui-subtitle"><?= e($t('admin.catalogs.lead')) ?></p>
             </div>
             <div class="flex flex-wrap gap-2">
+                <?php if ($catalogItemId > 0): ?>
+                    <a href="<?= e('/admin/relations?catalog='
+                        . rawurlencode($catalogCode) . '&item=' . $catalogItemId) ?>"
+                       class="ui-btn ui-btn-sm no-underline">
+                        <i data-lucide="git-fork" class="h-4 w-4"></i>
+                        <?= e($t('admin.catalogs.relations_manage')) ?>
+                    </a>
+                <?php endif; ?>
                 <a href="<?= e($catalogUvrHref) ?>" class="ui-btn ui-btn-sm no-underline">
                     <i data-lucide="scale" class="h-4 w-4"></i>
                     <?= e($t('admin.catalogs.uvr_button')) ?>
@@ -61,6 +69,10 @@ $clinicalCategoryLabel = static function (string $code, string $fallback = '') u
         <dl class="ui-dl mt-5 rounded-xl border border-line bg-paper/70 p-4">
             <dt class="ui-dt"><?= e($t('admin.catalogs.col_code')) ?></dt>
             <dd class="ui-dd"><code class="ui-code"><?= e((string) ($catalogItem['permanent_code'] ?? '')) ?></code></dd>
+            <?php if ((string) ($catalogItem['identifiers'] ?? '') !== ''): ?>
+                <dt class="ui-dt"><?= e($t('admin.catalogs.col_identifiers')) ?></dt>
+                <dd class="ui-dd"><code class="ui-code"><?= e((string) $catalogItem['identifiers']) ?></code></dd>
+            <?php endif; ?>
             <dt class="ui-dt"><?= e($t('admin.uvr.col_catalog')) ?></dt>
             <dd class="ui-dd"><code class="ui-code"><?= e((string) ($catalogItem['catalog_code'] ?? $catalogCode)) ?></code></dd>
             <dt class="ui-dt"><?= e($t('admin.catalogs.col_clinical_category')) ?></dt>

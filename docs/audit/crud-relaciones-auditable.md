@@ -2,7 +2,7 @@
 
 **Convención:** `[H]` verificado en repositorio/documentación o en la salida del responsable · `[I]` inferencia · `[P]` propuesta.
 
-**Estado:** preparado en el working tree. **No desplegado, no ejecutado en producción, sin commit ni push.**
+**Estado:** aplicado en el VPS por el responsable; verificado en producción. **Sin commit, push ni deploy final por el agente.**
 
 ---
 
@@ -13,6 +13,18 @@
 `[H]` Alcance elegido: **las tres tablas** — `os_catalog_relation`, `os_concept_mapping` y `os_oftar_nomenclador_match`.
 
 `[H]` Restricciones vigentes: `os_catalog` es el motor único; `oftar` es `family_code`, nunca `domain_type`; no se inventan datos, aprobaciones ni equivalencias; `SIN_DATOS`/`GAP_DOCUMENTADO` no son `PASS`; sin endpoints por familia; `rejected`/`pending_review`/`draft` no son publicables.
+
+### 1.1 Cómo buscar un código y editar sus relaciones
+
+`[P]` 1. En **Administración → Relaciones**, usar **«Ver y editar relaciones de un código»**: elegir el catálogo (p. ej. `oftar-pr`) y buscar por código permanente (`OFT-PR-000001`), identificador (`460105`) o término. La búsqueda también reconoce sinónimos de `os_catalog_term`.
+
+`[P]` 2. En los resultados, pulsar **«Ver relaciones»**. La vista queda centrada en ese ítem y muestra: relaciones entrantes y salientes, mapeos terminológicos y pares CAO/Regional ↔ OFT-PR.
+
+`[P]` 3. En cada fila, **Editar** abre el formulario con los datos cargados; el cambio se graba como `draft`/`proposed` y la baja como `deprecated`/`rejected`. Nunca fija `approved`. El enlace conserva catálogo e ítem, así que al guardar se vuelve a la misma ficha.
+
+`[P]` 4. Alternativamente, en **Gestión de catálogos** se elige el catálogo, se busca el código y se abre **«Detalle del código»**; allí hay un botón **«Gestionar relaciones»** que lleva a la misma vista centrada.
+
+`[P]` 5. En **Gestión de catálogos**, el buscador acepta código permanente, identificador y término; la tabla muestra la columna **Identificadores** para que el código externo sea visible. El orden prioriza la coincidencia exacta.
 
 ---
 
@@ -62,13 +74,13 @@ Estados forzados por la función:
 
 `[P]` Traducciones añadidas en `messages.es-AR.yaml`, `messages.es.yaml`, `messages.en.yaml` y `messages.pt-BR.yaml`. Etiquetas nuevas, sin tocar códigos ni `family_code`.
 
-`[P]` `php tests/run.php` → **OK: 4140 comprobaciones** (antes: 4116). Se ajustó el conteo de artefactos SQL de 16 a 17 y se agregaron comprobaciones de la función, RBAC, CSRF, transacción, auditoría, resolución por identificador, vistas y traducciones.
+`[P]` `php tests/run.php` → **OK: 4149 comprobaciones** (antes: 4116). Se ajustó el conteo de artefactos SQL de 16 a 17 y se agregaron comprobaciones de la función, RBAC, CSRF, transacción, auditoría, resolución por identificador, vistas y traducciones. Las últimas 9 comprobaciones cubren la búsqueda por identificador/término y el foco por código.
 
 ---
 
 ## 3. Lo que NO se hizo
 
-`[H]` No se ejecutó SQL en producción; no se copió nada al VPS; no hay commit, push ni deploy.
+`[H]` El agente no ejecutó SQL en producción ni copió archivos al VPS; el responsable aplicó el SQL y copió los archivos, y verificó el resultado (sección 5). No hay commit, push ni deploy final.
 
 `[H]` No se publicaron relaciones ni equivalencias: no se escribe `approved`, no se aprueban los 90 pares `proposed`, no se crean equivalencias clínicas a partir de las matrices (`propuesta_no_publicada`).
 
@@ -90,7 +102,36 @@ Estados forzados por la función:
 
 ---
 
-## 5. Pendiente en el VPS (sin ejecutar por el agente)
+## 5. Ejecución en el VPS y pendiente final
+
+### 5.1 Ejecución ya realizada por el responsable
+
+`[H]` Backup `origen_codes_20261128_161717.dump` creado y listado con `pg_restore -l` (sha256 `002984910f4d3cb7a8a4f752529b2610f8b865e1f5cc376ab6ce7a1ff91afbab`).
+
+`[H]` `php -l` sin errores en los cinco archivos PHP y `php tests/run.php` → `OK: 4140 comprobaciones` en el VPS. Los trece hashes de `/tmp/hashes_crud.txt` dieron `OK`.
+
+`[H]` `sql/08_arquitectura/relaciones_crud_auditable.sql` aplicado por `postgres`: `CREATE FUNCTION`, `REVOKE`, `DO` y `COMMIT`, sin `ERROR`. Post-verificación `READ ONLY`: `ejecuta=t`, `owner=postgres`, `security_definer=t`, `ins/upd/del=f` para `origen_admin`, `auditoria_nueva=0` y conteos sin cambios (`os_catalog_relation reviewed=603`; `os_concept_mapping approved=2162`, `draft=2678`; `os_oftar_nomenclador_match approved=1`, `proposed=90`).
+
+`[H]` El error de `/tmp/crud_pre.log` en `has_function_privilege` era esperado: la función aún no existía y `ON_ERROR_STOP=1` cortó la consulta antes de los conteos. No hubo escritura.
+
+`[H]` Corrida v3 de T-01…T-38 ejecutada: `/tmp/T01_T38_sql_v3.log`, `EXIT=0`, `SIN FAIL`. T-31…T-34 cerrados con `X-API-Key` (T-32 `SIN_DATOS`); `Bearer` no llega al PHP por nginx, sin modificar la configuración.
+
+`[H]` Panel: `/admin/login` → `200` y `/admin/relations` → `302` sin sesión en `https://med.origen.ar`. Falta la prueba con usuario `catalog.view` y sin permiso (403).
+
+### 5.1.1 Ajuste de búsqueda y foco por código (working tree, sin subir al VPS)
+
+`[H]` El responsable informó dos problemas de uso: la búsqueda de «Gestión de catálogos» no encontraba códigos y no era claro cómo ver/editar las relaciones de un código. `[I]` Causa raíz: `CatalogGovernanceRepository::items()` solo consultaba `permanent_code` y `preferred_term`, mientras el buscador público sí consulta `os_catalog_identifier` y `os_catalog_term`. Por eso búsquedas como `460105` o `11524-6` daban vacío en el panel administrativo.
+
+`[P]` Cambios preparados localmente, **no copiados al VPS**:
+
+- `CatalogGovernanceRepository`: la búsqueda incluye identificadores y términos, muestra la columna `identifiers` y ordena primero la coincidencia exacta; el listado ya no excluye ítems sin versión (`LEFT JOIN LATERAL`).
+- `RelationAdminRepository`: nuevos `items()`, `item()`, `itemRelations()`, `itemMappings()` e `itemMatches()`; `itemByCode()` también resuelve identificadores. `matchTarget()` sigue resolviendo el destino CAO por `NOMENCLADOR-AR` (H-02 intacto).
+- `AdminRelationController` y vista: formulario «Ver y editar relaciones de un código», candidatos con enlace «Ver relaciones», vista centrada en el ítem con relaciones entrantes/salientes, mapeos y pares, y enlaces de edición que conservan catálogo/ítem. La ficha del catálogo enlaza con esa vista.
+- Cuatro traducciones actualizadas. `php -l` limpio y `php tests/run.php` → `OK: 4149 comprobaciones` en el working tree.
+
+`[H]` No se ejecutó SQL ni se copió archivo al VPS para este ajuste; los hashes vigentes en `/tmp/hashes_crud.txt` quedaron desactualizados y deben recalcularse antes de cualquier subida.
+
+### 5.2 Referencia de aplicación (para el expediente)
 
 `[P]` 1. Aplicar `sql/08_arquitectura/relaciones_crud_auditable.sql` con `postgres`, tras backup verificado. Verificación `READ ONLY` posterior:
 

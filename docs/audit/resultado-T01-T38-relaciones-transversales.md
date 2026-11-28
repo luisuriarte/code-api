@@ -13,7 +13,7 @@
 |---|---|---|
 | `/tmp/T01_T38_sql.log` | v1 · `14492015…` | Primera corrida. |
 | `/tmp/T01_T38_sql_v2.log` | v1 · `14492015…` | Idéntica a la anterior: el VPS no tenía la versión corregida. |
-| `/tmp/T01_T38_sql_v3.log` | v3 · `0275fd72…` | **Pendiente** de ejecutar tras aplicar el parche. |
+| `/tmp/T01_T38_sql_v3.log` | v3 · `0275fd7205fa572eb276103e0aed54fd884e896ba5d0e7ba3a56cbfbf9073ee7` | Ejecutada por `postgres` en `origen_codes`; `EXIT=0`, `SIN FAIL`. |
 
 **Diagnóstico ejecutado:**
 
@@ -61,12 +61,12 @@ approved_sin_metadata = 2162
 | T-28 | `PASS` | `catálogos con más de una release=2` | `PASS` |
 | T-29 | `SIN_DATOS` | `metadatos revisados=0` | `GAP_DOCUMENTADO` — `approved sin metadatos=2162` |
 | T-30 | `PASS` | `relaciones approved=0; draft=0; deprecated=0` | `PASS` — v3 añade `mapeos approved=2162; draft=2678` |
-| T-31 | `VERIFICAR_API` | ver `/tmp/T31_dentar-pr.json`, `/tmp/T31_oftar-pr.json` | **Pendiente** |
-| T-32 | `VERIFICAR_API` | ver `/tmp/T32.json` | **Pendiente** |
-| T-33 | `VERIFICAR_API` | rutas `/v1/*/relations` | **Pendiente** |
-| T-34 | `VERIFICAR_API` | ver `/tmp/T34_headers.txt`, `/tmp/T34_body.json` | **Pendiente** |
-| T-35 | `VERIFICAR_UI` | ver `/tmp/T35_T36_estatico.log`, `/tmp/T35_T36_manual.log` | **Pendiente** |
-| T-36 | `VERIFICAR_UI` | ver los mismos archivos | **Pendiente** |
+| T-31 | `VERIFICAR_API` | `DNT-PR-000001` y `OFT-PR-000001`: `HTTP=200`, `OK contrato aditivo` | **`PASS`** — `/tmp/T31_dentar-pr.json`, `/tmp/T31_oftar-pr.json` |
+| T-32 | `VERIFICAR_API` | ningún ítem `dentar-pr` sin relaciones/mapeos `approved`; la consulta original y la filtrada dan vacío | **`SIN_DATOS`** — no es `FAIL`; no se inventó un ítem |
+| T-33 | `VERIFICAR_API` | `/v1/relations`, `/v1/dentar/relations`, `/v1/oftar/relations` → `HTTP=404` | **`PASS`** — no hay rutas por familia |
+| T-34 | `VERIFICAR_API` | `Vary: Accept-Language`, `Content-Language: pt-BR`, `X-Request-Id` igual a `request_id` del body | **`PASS`** — `/tmp/T34_headers.txt`, `/tmp/T34_body.json` |
+| T-35 | `VERIFICAR_UI` | `OK: 4149 comprobaciones`; `relations_by_class`, `aria-pressed`, `data-relation-class`, `scope="col"` y cuatro traducciones presentes | **`PASS` estático** — `/tmp/T35_T36_estatico.log`; revisión visual pendiente en `/tmp/T35_T36_manual.log` |
+| T-36 | `VERIFICAR_UI` | mismos `grep` y regresión estática | **`PASS` estático** — revisión visual pendiente en `/tmp/T35_T36_manual.log` |
 | T-37 | `PASS` | `aprobados sin revisor=0; propuestos=90` | `PASS` |
 | T-38 | `PASS` | `relationship_role no permitidos=0` | `PASS` |
 
@@ -78,6 +78,9 @@ approved_sin_metadata = 2162
 - **`PASS` estructurales confirmados:** T-09, T-14, T-21, T-22, T-24, T-25, T-26, T-27, T-28, T-30, T-37, T-38.
 - **`SIN_DATOS`:** no hay relaciones clínicas por par ratificadas. No se inventaron.
 - **`GAP_DOCUMENTADO`:** 2162 mapeos `approved` sin `os_mapping_metadata`; se publican con `untranslated=true` y plan de remediación.
-- **Pendiente:** corrida v3 y evidencia API/UI T-31…T-36.
+- **API T-31…T-34 cerrada:** contrato aditivo intacto en DENTAR y OFTAR, sin rutas por familia, cabeceras y `request_id` conformes. La credencial se envió en `X-API-Key`; `Authorization: Bearer` no llega al PHP porque nginx no reenvía `HTTP_AUTHORIZATION`, pero el contrato acepta ambas formas.
+- **Pendiente:** solo la revisión visual T-35/T-36 en navegador (`/tmp/T35_T36_manual.log`) y las tres firmas del acta.
 
-**[P]** La decisión final de publicación se rige por `docs/audit/acta-publicacion-relaciones-transversales.md`. No se aprueba mientras exista un `FAIL` real o falte evidencia API/UI.
+**[H]** El runbook tenía dos defectos operativos ya corregidos en el working tree: el `exit 0` de T-32 cerraba la shell interactiva (ahora es un `if`), y T-34 buscaba `meta.request_id` cuando el campo está en la raíz del JSON. Las corridas inválidas resultantes (T-33 `401`, T-34 `FAIL`) se repitieron con la credencial vigente y dieron `PASS`.
+
+**[P]** La decisión final de publicación se rige por `docs/audit/acta-publicacion-relaciones-transversales.md`. No se aprueba mientras exista un `FAIL` real o falte la revisión visual API/UI.

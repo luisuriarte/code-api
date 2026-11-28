@@ -159,6 +159,7 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                             <thead>
                             <tr>
                                 <th class="ui-th"><?= e($t('admin.catalogs.col_code')) ?></th>
+                                <th class="ui-th"><?= e($t('admin.catalogs.col_identifiers')) ?></th>
                                 <th class="ui-th"><?= e($t('admin.catalogs.col_term')) ?></th>
                                 <th class="ui-th"><?= e($t('admin.uvr.col_status')) ?></th>
                                 <th class="ui-th"><?= e($t('admin.catalogs.col_clinical_category')) ?></th>
@@ -190,6 +191,7 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
                                             <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
                                         </a>
                                     </td>
+                                    <td class="ui-td font-mono text-xs"><?= e((string) ($item['identifiers'] ?? '')) ?></td>
                                     <td class="ui-td font-medium text-ink"><?= e((string) ($item['preferred_term'] ?? '')) ?></td>
                                     <td class="ui-td"><code class="ui-code"><?= e((string) ($item['status'] ?? '')) ?></code></td>
                                     <td class="ui-td"><?= e($clinicalCategoryLabel(

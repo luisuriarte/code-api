@@ -33,15 +33,41 @@ final class AdminRelationController
         $entity = self::entity();
         $query = self::query();
         $edit = self::edit();
+        $catalog = self::catalog();
+        $itemId = self::itemId();
+        $lookup = ($_GET['lookup'] ?? '') === '1';
         $repo = new RelationAdminRepository();
+
+        $focus = null;
+        $candidates = null;
+
+        if ($itemId > 0) {
+            try {
+                $focus = $repo->item($itemId);
+            } catch (RepositoryException) {
+                $focus = null;
+            }
+        } elseif ($lookup) {
+            try {
+                $candidates = $repo->items($catalog, $query);
+            } catch (RepositoryException) {
+                $candidates = [];
+            }
+        }
 
         try {
             $options = $repo->options();
-            $all = [
-                'catalog_relation' => $repo->relations($query),
-                'concept_mapping' => $repo->mappings($query),
-                'nomenclador_match' => $repo->matches($query),
-            ];
+            $all = $focus !== null
+                ? [
+                    'catalog_relation' => $repo->itemRelations($itemId),
+                    'concept_mapping' => $repo->itemMappings($itemId),
+                    'nomenclador_match' => $repo->itemMatches($itemId),
+                ]
+                : [
+                    'catalog_relation' => $repo->relations($query),
+                    'concept_mapping' => $repo->mappings($query),
+                    'nomenclador_match' => $repo->matches($query),
+                ];
         } catch (RepositoryException) {
             $options = [];
             $all = [
@@ -79,6 +105,11 @@ final class AdminRelationController
             'entities' => RelationAdminRepository::ENTITIES,
             'entity' => $entity,
             'query' => $query,
+            'catalog' => $catalog,
+            'itemId' => $itemId,
+            'focus' => $focus,
+            'candidates' => $candidates,
+            'focusError' => $itemId > 0 && $focus === null,
             'rows' => $entity === '' ? $all : [$entity => $all[$entity] ?? []],
             'editing' => $editing,
             'editKey' => $edit['key'] ?? '',
@@ -114,11 +145,26 @@ final class AdminRelationController
         AdminForm::requirePost();
 
         $entity = self::posted('entity');
-        $back = '/admin/relations';
+        $parts = [];
 
         if ($entity !== '') {
-            $back .= '?entity=' . rawurlencode($entity);
+            $parts[] = 'entity=' . rawurlencode($entity);
         }
+
+        $returnCatalog = self::cleanCatalog(self::posted('return_catalog'));
+        $returnItem = self::postedInt('return_item');
+
+        if ($returnItem > 0) {
+            if ($returnCatalog !== '') {
+                $parts[] = 'catalog=' . rawurlencode($returnCatalog);
+            }
+
+            $parts[] = 'item=' . $returnItem;
+        } elseif ($returnCatalog !== '') {
+            $parts[] = 'catalog=' . rawurlencode($returnCatalog);
+        }
+
+        $back = '/admin/relations' . ($parts === [] ? '' : '?' . implode('&', $parts));
 
         if (!AdminForm::validCsrf()) {
             AdminForm::fail($back, 'csrf');
@@ -254,6 +300,7 @@ final class AdminRelationController
             'mapping_type', 'relationship_role', 'clinical_rationale',
             'source_catalog_code', 'source_code', 'target_catalog_code', 'target_code',
             'match_basis', 'source_term', 'target_term', 'provenance', 'notes', 'reason',
+            'return_catalog', 'return_item',
         ] as $key) {
             $value = self::posted($key);
 
@@ -263,6 +310,32 @@ final class AdminRelationController
         }
 
         return $values;
+    }
+
+    private static function catalog(): string
+    {
+        return self::cleanCatalog(self::readGet('catalog'));
+    }
+
+    private static function cleanCatalog(string $code): string
+    {
+        $code = trim(rawurldecode($code));
+
+        return preg_match('/^[a-z0-9][a-z0-9-]{1,49}$/', $code) === 1 ? $code : '';
+    }
+
+    private static function itemId(): int
+    {
+        $value = self::readGet('item');
+
+        return ctype_digit($value) ? (int) $value : 0;
+    }
+
+    private static function readGet(string $key): string
+    {
+        $value = $_GET[$key] ?? '';
+
+        return is_string($value) ? $value : '';
     }
 
     private static function entity(): string

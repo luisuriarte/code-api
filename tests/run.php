@@ -4907,12 +4907,54 @@ foreach (['es-AR', 'es', 'en', 'pt-BR'] as $locale) {
             && isset($messages['admin']['errors']['relation_write_failed']),
         'Las traducciones de ' . $locale . ' deben incluir el CRUD auditable de relaciones.'
     );
+    $check(
+        isset($messages['admin']['catalogs']['col_identifiers'])
+            && isset($messages['admin']['catalogs']['relations_manage'])
+            && isset($messages['admin']['relations']['lookup_title'])
+            && isset($messages['admin']['relations']['candidate_view'])
+            && isset($messages['admin']['relations']['col_direction']),
+        'Las traducciones de ' . $locale . ' deben incluir la búsqueda por identificador y el foco por código.'
+    );
 }
 
 $adminLayoutSource = $auditRead('portal/Views/layouts/admin.php');
 $check(
     str_contains($adminLayoutSource, "['/admin/relations', 'admin.relations.nav', 'git-fork', 'catalog.view']"),
     'El menú administrativo debe incluir Relaciones con permiso catalog.view.'
+);
+
+$catalogGovernanceRepoSource = $auditRead('portal/Repositories/CatalogGovernanceRepository.php');
+$check(
+    str_contains($catalogGovernanceRepoSource, 'si.value ILIKE :query')
+        && str_contains($catalogGovernanceRepoSource, 'st.term ILIKE :query')
+        && str_contains($catalogGovernanceRepoSource, 'AS identifiers'),
+    'La búsqueda del panel de catálogos debe cubrir identificadores y términos, no solo permanent_code.'
+);
+$check(
+    str_contains($relationRepoSource, 'public function items(string $catalog, string $query): array')
+        && str_contains($relationRepoSource, 'public function itemRelations(int $itemId): array')
+        && str_contains($relationRepoSource, 'public function itemMappings(int $itemId): array')
+        && str_contains($relationRepoSource, 'public function itemMatches(int $itemId): array'),
+    'El repositorio de relaciones debe permitir localizar un ítem y ver todas sus relaciones en ambos sentidos.'
+);
+$check(
+    str_contains($relationControllerSource, "'itemId' => \$itemId")
+        && str_contains($relationControllerSource, "'candidates' => \$candidates")
+        && str_contains($relationControllerSource, 'return_catalog')
+        && str_contains($relationControllerSource, 'return_item'),
+    'El controlador debe preservar el catálogo y el ítem al filtrar, editar y volver de una escritura.'
+);
+$check(
+    str_contains($relationViewSource, 'name="lookup" value="1"')
+        && str_contains($relationViewSource, 'name="return_item"')
+        && str_contains($relationViewSource, "t('admin.relations.candidate_view')")
+        && str_contains($relationViewSource, "t('admin.relations.col_direction')"),
+    'La vista de relaciones debe ofrecer búsqueda por código, foco del ítem y dirección de la relación.'
+);
+$check(
+    str_contains($auditRead('portal/Views/admin/catalogs/item.php'), 'admin.catalogs.relations_manage')
+        && str_contains($auditRead('portal/Views/admin/catalogs/index.php'), 'admin.catalogs.col_identifiers'),
+    'La ficha y el listado de catálogos deben mostrar identificadores y enlazar con la gestión de relaciones.'
 );
 
 // Resultado.

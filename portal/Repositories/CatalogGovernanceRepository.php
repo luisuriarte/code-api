@@ -29,6 +29,8 @@ final class CatalogGovernanceRepository
     public static function items(string $code, string $query): array
     {
         $clinical = self::clinicalCategoryAvailable();
+        $identifier = self::identifierAvailable();
+        $term = self::termAvailable();
         $clinicalColumns = $clinical
             ? ' COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code) AS clinical_category_code,'
             . ' catclin.name AS clinical_category_name,'
@@ -46,14 +48,32 @@ final class CatalogGovernanceRepository
             . ' LEFT JOIN public.os_clinical_category catclin'
             . '   ON catclin.code = COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code)'
             : '';
+        $identifierColumns = $identifier
+            ? " (SELECT string_agg(COALESCE(si.system_name, '') || ':' || si.value, ', '"
+              . ' ORDER BY si.is_primary DESC, si.id)'
+              . ' FROM public.os_catalog_identifier si WHERE si.item_id = i.id) AS identifiers,'
+            : ' NULL::text AS identifiers,';
+        $identifierWhere = $identifier
+            ? ' OR EXISTS (SELECT 1 FROM public.os_catalog_identifier si'
+              . ' WHERE si.item_id = i.id AND si.value ILIKE :query)'
+            : '';
+        $exactIdentifier = $identifier
+            ? ' (EXISTS (SELECT 1 FROM public.os_catalog_identifier ei'
+              . ' WHERE ei.item_id = i.id AND ei.value = :needle)) DESC,'
+            : '';
+        $termWhere = $term
+            ? ' OR EXISTS (SELECT 1 FROM public.os_catalog_item_version sv'
+              . ' JOIN public.os_catalog_term st ON st.item_version_id = sv.id'
+              . ' WHERE sv.item_id = i.id AND st.term ILIKE :query)'
+            : '';
 
         return self::publicRows(
             'SELECT i.id, i.permanent_code, i.status, v.preferred_term,'
-            . $clinicalColumns . chr(10)
+            . $clinicalColumns . $identifierColumns . chr(10)
             . '  FROM public.os_catalog_item i'
             . '  JOIN public.os_catalog c ON c.id = i.catalog_id'
             . $clinicalJoins . chr(10)
-            . '  JOIN LATERAL ('
+            . '  LEFT JOIN LATERAL ('
             . '       SELECT v2.preferred_term'
             . '         FROM public.os_catalog_item_version v2'
             . '        WHERE v2.item_id = i.id'
@@ -62,11 +82,13 @@ final class CatalogGovernanceRepository
             . '  ) v ON TRUE'
             . ' WHERE c.code = :code'
             . '   AND (i.permanent_code ILIKE :query'
-            . '        OR i.permanent_code::TEXT ILIKE :query'
-            . '        OR COALESCE(v.preferred_term, \'\') ILIKE :query)'
-            . ' ORDER BY i.permanent_code'
+            . '        OR COALESCE(v.preferred_term, \'\') ILIKE :query'
+            . $identifierWhere . $termWhere . ')'
+            . ' ORDER BY (lower(i.permanent_code) = lower(:needle)) DESC,'
+            . $exactIdentifier . chr(10)
+            . '          i.permanent_code'
             . ' LIMIT 200',
-            [':code' => $code, ':query' => '%' . $query . '%']
+            [':code' => $code, ':query' => '%' . $query . '%', ':needle' => $query]
         );
     }
 
@@ -90,10 +112,16 @@ final class CatalogGovernanceRepository
     public static function item(string $code, int $itemId): ?array
     {
         $clinical = self::clinicalCategoryAvailable();
+        $identifier = self::identifierAvailable();
         $clinicalColumns = $clinical
             ? ' COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code) AS clinical_category_code,'
             . ' catclin.name AS clinical_category_name,'
             : ' NULL::text AS clinical_category_code, NULL::text AS clinical_category_name,';
+        $identifierColumns = $identifier
+            ? " (SELECT string_agg(COALESCE(si.system_name, '') || ':' || si.value, ', '"
+              . ' ORDER BY si.is_primary DESC, si.id)'
+              . ' FROM public.os_catalog_identifier si WHERE si.item_id = i.id) AS identifiers,'
+            : ' NULL::text AS identifiers,';
         $clinicalJoins = $clinical
             ? ' LEFT JOIN public.os_catalog_item_clinical_category icc ON icc.item_id = i.id'
             . ' LEFT JOIN LATERAL ('
@@ -110,7 +138,8 @@ final class CatalogGovernanceRepository
 
         return self::publicRow(
             'SELECT i.id, i.catalog_id, i.permanent_code, i.status,'
-            . ' c.code AS catalog_code, c.name AS catalog_name,' . $clinicalColumns . chr(10)
+            . ' c.code AS catalog_code, c.name AS catalog_name,' . $clinicalColumns
+            . $identifierColumns . chr(10)
             . '  FROM public.os_catalog_item i'
             . '  JOIN public.os_catalog c ON c.id = i.catalog_id'
             . $clinicalJoins . chr(10)
@@ -402,6 +431,40 @@ final class CatalogGovernanceRepository
         }
 
         return $codes;
+    }
+
+    private static function identifierAvailable(): bool
+    {
+        static $available = null;
+
+        if ($available !== null) {
+            return $available;
+        }
+
+        try {
+            $available = self::tableExists(PortalDatabase::connection(), 'os_catalog_identifier');
+        } catch (\Throwable) {
+            $available = false;
+        }
+
+        return $available;
+    }
+
+    private static function termAvailable(): bool
+    {
+        static $available = null;
+
+        if ($available !== null) {
+            return $available;
+        }
+
+        try {
+            $available = self::tableExists(PortalDatabase::connection(), 'os_catalog_term');
+        } catch (\Throwable) {
+            $available = false;
+        }
+
+        return $available;
     }
 
     private static function clinicalCategoryAvailable(): bool

@@ -86,18 +86,27 @@ SELECT m.review_status, count(*)
 Definir la clave en el shell sin imprimirla ni guardarla en el repositorio:
 
 ```bash
-read -rsp 'API_KEY: ' API_KEY; export API_KEY; echo
 BASE='https://api.origen.ar/v1'
+
+# Fuente recomendada en el VPS (clave del cliente de verificación OFTAR):
+API_KEY="$(sudo cat /root/.origen_api_key | tr -d '\r\n')"; export API_KEY
+
+# El autenticador acepta X-API-Key y Authorization: Bearer. En este vhost nginx
+# no reenvía HTTP_AUTHORIZATION a PHP-FPM, por eso se usa X-API-Key en los curl.
+H="X-API-Key: $API_KEY"
 ```
+
+`API_KEY_PEPPER` **no** es una credencial: usarlo como clave da `401`. Si se usa
+`read -rsp`, verificar después que `${#API_KEY}` sea mayor que 0 antes de seguir.
 
 ### T-31: contrato aditivo en DENTAR y OFTAR
 
 ```bash
-ITEM_DENTAR=$(curl -s -H "Authorization: Bearer $API_KEY" \
+ITEM_DENTAR=$(curl -s -H "$H" \
   "$BASE/catalogs/dentar-pr/items?limit=1" \
   | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["data"][0]["permanent_code"] ?? "";')
 
-ITEM_OFTAR=$(curl -s -H "Authorization: Bearer $API_KEY" \
+ITEM_OFTAR=$(curl -s -H "$H" \
   "$BASE/catalogs/oftar-pr/items?limit=1" \
   | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["data"][0]["permanent_code"] ?? "";')
 
@@ -108,7 +117,7 @@ for SPEC in "dentar-pr:$ITEM_DENTAR" "oftar-pr:$ITEM_OFTAR"; do
   ITEM="${SPEC#*:}"
   OUT="/tmp/T31_${CAT}.json"
   CODE=$(curl -s -o "$OUT" -w '%{http_code}' \
-    -H "Authorization: Bearer $API_KEY" \
+    -H "$H" \
     "$BASE/catalogs/$CAT/items/$ITEM")
   echo "$CAT/$ITEM HTTP=$CODE"
   php -r '
@@ -137,23 +146,28 @@ SELECT i.permanent_code
   JOIN os_catalog c ON c.id = i.catalog_id
  WHERE c.code = 'dentar-pr'
    AND NOT EXISTS (SELECT 1 FROM os_catalog_relation r
-                    WHERE r.source_item_id = i.id OR r.target_item_id = i.id)
-   AND NOT EXISTS (SELECT 1 FROM os_concept_mapping m WHERE m.item_id = i.id)
+                    WHERE (r.source_item_id = i.id OR r.target_item_id = i.id)
+                      AND r.review_status = 'approved')
+   AND NOT EXISTS (SELECT 1 FROM os_concept_mapping m
+                    WHERE m.item_id = i.id AND m.review_status = 'approved')
  LIMIT 1;")
 
-test -n "$ITEM_VACIO" || { echo 'SIN_DATOS: no hay ítem sin relaciones ni mapeos'; exit 0; }
+# No usar `exit 0`: en una shell interactiva cerraría la sesión y dejaría $H vacío.
+if [ -z "$ITEM_VACIO" ]; then
+  echo 'SIN_DATOS: no hay ítem sin relaciones/mapeos aprobados'
+else
+  curl -s -o /tmp/T32.json -w 'HTTP=%{http_code}\n' \
+    -H "$H" \
+    "$BASE/catalogs/dentar-pr/items/$ITEM_VACIO"
 
-curl -s -o /tmp/T32.json -w 'HTTP=%{http_code}\n' \
-  -H "Authorization: Bearer $API_KEY" \
-  "$BASE/catalogs/dentar-pr/items/$ITEM_VACIO"
-
-php -r '
-  $d = json_decode(file_get_contents("/tmp/T32.json"), true);
-  $r = $d["data"]["relations"] ?? [];
-  $ok = is_array($r["clinical"] ?? null) && is_array($r["terminological"] ?? null)
-     && count($r["clinical"]) === 0 && count($r["terminological"]) === 0;
-  echo $ok ? "OK arrays vacíos\n" : "FAIL arrays vacíos\n";
-'
+  php -r '
+    $d = json_decode(file_get_contents("/tmp/T32.json"), true);
+    $r = $d["data"]["relations"] ?? [];
+    $ok = is_array($r["clinical"] ?? null) && is_array($r["terminological"] ?? null)
+       && count($r["clinical"]) === 0 && count($r["terminological"]) === 0;
+    echo $ok ? "OK arrays vacíos\n" : "FAIL arrays vacíos\n";
+  '
+fi
 ```
 
 ### T-33: sin rutas por familia
@@ -165,7 +179,7 @@ for PATH_TEST in \
   '/v1/oftar/relations'
 do
   CODE=$(curl -s -o /dev/null -w '%{http_code}' \
-    -H "Authorization: Bearer $API_KEY" \
+    -H "$H" \
     "https://api.origen.ar$PATH_TEST")
   echo "$PATH_TEST HTTP=$CODE"
 done
@@ -177,17 +191,25 @@ Esperado: ninguna ruta devuelve `200`.
 
 ```bash
 curl -s -D /tmp/T34_headers.txt -o /tmp/T34_body.json \
-  -H "Authorization: Bearer $API_KEY" \
+  -H "$H" \
   -H 'Accept-Language: pt-BR' \
   "$BASE/catalogs/$CAT/items/$ITEM"
 
-grep -iE '^(Vary|Content-Language|X-Request-Id):' /tmp/T34_headers.txt
+grep -iE '^(HTTP/|Vary|Content-Language|X-Request-Id):' /tmp/T34_headers.txt
 
+# `request_id` está en la raíz del JSON, no dentro de `meta`.
 php -r '
   $d = json_decode(file_get_contents("/tmp/T34_body.json"), true);
-  echo isset($d["meta"]["request_id"]) && $d["meta"]["request_id"] !== ""
-     ? "OK request_id\n" : "FAIL request_id\n";
+  echo isset($d["request_id"]) && $d["request_id"] !== ""
+     ? "OK request_id (body)\n" : "FAIL request_id (body)\n";
 '
+
+HDR_ID=$(grep -i '^X-Request-Id:' /tmp/T34_headers.txt | tr -d '\r' | awk '{print $2}')
+php -r '
+  $d = json_decode(file_get_contents($argv[1]), true);
+  echo (isset($d["request_id"]) && $argv[2] !== "" && hash_equals($d["request_id"], $argv[2]))
+     ? "OK request_id header=body\n" : "FAIL request_id header=body\n";
+' /tmp/T34_body.json "$HDR_ID"
 ```
 
 ---
@@ -222,4 +244,4 @@ Registrar resultado en `/tmp/T35_T36_manual.log`.
 
 ## 5. Cierre
 
-Con las cuatro salidas — `/tmp/T01_T38_sql.log`, `/tmp/T31_*.json`, `/tmp/T32.json`, `/tmp/T34_headers.txt`, `/tmp/T35_T36_estatico.log` y `/tmp/T35_T36_manual.log` — completar `docs/audit/resultado-T01-T38-relaciones-transversales.md` y después aplicar `docs/audit/acta-publicacion-relaciones-transversales.md`.
+Con `/tmp/T01_T38_sql_v3.log`, `/tmp/T31_*.json`, `/tmp/T32.json` (o `SIN_DATOS`), `/tmp/T34_headers.txt`, `/tmp/T34_body.json`, `/tmp/T35_T36_estatico.log` y `/tmp/T35_T36_manual.log` — completar `docs/audit/resultado-T01-T38-relaciones-transversales.md` y después cerrar `docs/audit/acta-publicacion-relaciones-transversales.md`. Sin commit, push ni deploy sin autorización explícita.

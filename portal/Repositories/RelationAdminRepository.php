@@ -130,6 +130,39 @@ final class RelationAdminRepository
     /** @return list<array<string, mixed>> */
     public function matches(string $query): array
     {
+        return self::matchRows(
+            'm.source_catalog_code ILIKE :q'
+            . ' OR m.source_code ILIKE :q'
+            . ' OR m.target_code ILIKE :q'
+            . ' OR COALESCE(m.source_term, \'\') ILIKE :q'
+            . ' OR COALESCE(m.target_term, \'\') ILIKE :q',
+            [':q' => '%' . $query . '%']
+        );
+    }
+
+    /**
+     * Pares CAO/Regional ↔ OFT-PR que mencionan al ítem por identificador.
+     * El destino se resuelve por sistema + valor, nunca por permanent_code.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function itemMatches(int $itemId): array
+    {
+        return self::matchRows(
+            'EXISTS (SELECT 1 FROM public.os_catalog_identifier si'
+            . ' WHERE si.item_id = :id AND si.value = m.source_code)'
+            . ' OR EXISTS (SELECT 1 FROM public.os_catalog_identifier ti'
+            . ' WHERE ti.item_id = :id AND ti.value = m.target_code'
+            . ' AND ti.system_name = \'NOMENCLADOR-AR\')',
+            [':id' => $itemId]
+        );
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function matchRows(string $where, array $params): array
+    {
         return self::readRows(
             'SELECT m.source_catalog_code, m.source_code, m.target_catalog_code,
                     m.target_code, m.match_basis, m.review_status,
@@ -156,14 +189,10 @@ final class RelationAdminRepository
                       AND cat.code = \'oftar-pr\'
                     LIMIT 1
                ) resolved ON TRUE
-              WHERE m.source_catalog_code ILIKE :q
-                 OR m.source_code ILIKE :q
-                 OR m.target_code ILIKE :q
-                 OR COALESCE(m.source_term, \'\') ILIKE :q
-                 OR COALESCE(m.target_term, \'\') ILIKE :q
+              WHERE ' . $where . '
               ORDER BY m.source_catalog_code, m.source_code
               LIMIT ' . self::LIMIT,
-            [':q' => '%' . $query . '%']
+            $params
         );
     }
 
@@ -189,7 +218,9 @@ final class RelationAdminRepository
                     LIMIT 1
                ) latest ON TRUE
               WHERE i.permanent_code = :code
-              ORDER BY i.id
+                  OR EXISTS (SELECT 1 FROM public.os_catalog_identifier si
+                              WHERE si.item_id = i.id AND si.value = :code)
+              ORDER BY (i.permanent_code = :code) DESC, i.id
               LIMIT 1',
             [':code' => $code]
         );
@@ -228,6 +259,117 @@ final class RelationAdminRepository
               ORDER BY i.id
               LIMIT 1',
             [':value' => $value]
+        );
+    }
+
+    /**
+     * Ítems buscables por código permanente, identificador o término.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function items(string $catalog, string $query): array
+    {
+        $params = [':q' => '%' . $query . '%', ':needle' => $query];
+        $catalogWhere = '';
+
+        if ($catalog !== '') {
+            $catalogWhere .= ' AND c.code = :catalog';
+            $params[':catalog'] = $catalog;
+        }
+
+        return self::readRows(
+            'SELECT i.id, i.permanent_code, c.code AS catalog_code,'
+            . ' COALESCE(latest.preferred_term, i.permanent_code) AS display,'
+            . " (SELECT string_agg(COALESCE(si.system_name, '') || ':' || si.value, ', '"
+            . ' ORDER BY si.is_primary DESC, si.id)'
+            . ' FROM public.os_catalog_identifier si WHERE si.item_id = i.id) AS identifiers'
+            . ' FROM public.os_catalog_item i'
+            . ' JOIN public.os_catalog c ON c.id = i.catalog_id'
+            . ' LEFT JOIN LATERAL ('
+            . ' SELECT ver.preferred_term FROM public.os_catalog_item_version ver'
+            . ' WHERE ver.item_id = i.id'
+            . " ORDER BY (ver.language_code = 'es-AR') DESC, ver.id DESC"
+            . ' LIMIT 1'
+            . ' ) latest ON TRUE'
+            . ' WHERE TRUE' . $catalogWhere
+            . ' AND (i.permanent_code ILIKE :q'
+            . " OR COALESCE(latest.preferred_term, '') ILIKE :q"
+            . ' OR EXISTS (SELECT 1 FROM public.os_catalog_identifier si'
+            . ' WHERE si.item_id = i.id AND si.value ILIKE :q)'
+            . ' OR EXISTS (SELECT 1 FROM public.os_catalog_item_version sv'
+            . ' JOIN public.os_catalog_term st ON st.item_version_id = sv.id'
+            . ' WHERE sv.item_id = i.id AND st.term ILIKE :q))'
+            . ' ORDER BY (lower(i.permanent_code) = lower(:needle)) DESC, i.permanent_code'
+            . ' LIMIT 50',
+            $params
+        );
+    }
+
+    /** @return array<string, mixed>|null */
+    public function item(int $id): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
+        return self::readRow(
+            'SELECT i.id, i.permanent_code, c.code AS catalog_code, c.name AS catalog_name,'
+            . ' COALESCE(latest.preferred_term, i.permanent_code) AS display,'
+            . " (SELECT string_agg(COALESCE(si.system_name, '') || ':' || si.value, ', '"
+            . ' ORDER BY si.is_primary DESC, si.id)'
+            . ' FROM public.os_catalog_identifier si WHERE si.item_id = i.id) AS identifiers'
+            . ' FROM public.os_catalog_item i'
+            . ' JOIN public.os_catalog c ON c.id = i.catalog_id'
+            . ' LEFT JOIN LATERAL ('
+            . ' SELECT ver.preferred_term FROM public.os_catalog_item_version ver'
+            . ' WHERE ver.item_id = i.id'
+            . " ORDER BY (ver.language_code = 'es-AR') DESC, ver.id DESC"
+            . ' LIMIT 1'
+            . ' ) latest ON TRUE'
+            . ' WHERE i.id = :id'
+            . ' LIMIT 1',
+            [':id' => $id]
+        );
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function itemRelations(int $itemId): array
+    {
+        return self::readRows(
+            'SELECT r.id,'
+            . " CASE WHEN r.source_item_id = :id THEN 'out' ELSE 'in' END AS direction,"
+            . ' src.permanent_code AS source_code, sc.code AS source_catalog,'
+            . ' tgt.permanent_code AS target_code, tc.code AS target_catalog,'
+            . ' r.relation_type, r.source_system_code, r.source_field, r.source_value,'
+            . ' r.context_text, r.review_status, r.provenance'
+            . ' FROM public.os_catalog_relation r'
+            . ' JOIN public.os_catalog_item src ON src.id = r.source_item_id'
+            . ' JOIN public.os_catalog sc ON sc.id = src.catalog_id'
+            . ' JOIN public.os_catalog_item tgt ON tgt.id = r.target_item_id'
+            . ' JOIN public.os_catalog tc ON tc.id = tgt.catalog_id'
+            . ' WHERE r.source_item_id = :id OR r.target_item_id = :id2'
+            . ' ORDER BY r.id DESC'
+            . ' LIMIT ' . self::LIMIT,
+            [':id' => $itemId, ':id2' => $itemId]
+        );
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function itemMappings(int $itemId): array
+    {
+        return self::readRows(
+            'SELECT m.id, i.permanent_code AS item_code, c.code AS catalog_code,'
+            . ' sys.id AS system_id, sys.code AS system_code, m.external_code,'
+            . ' m.external_display, m.mapping_type, m.relationship_role,'
+            . ' m.clinical_rationale, m.review_status'
+            . ' FROM public.os_concept_mapping m'
+            . ' JOIN public.os_catalog_item i ON i.id = m.item_id'
+            . ' JOIN public.os_catalog c ON c.id = i.catalog_id'
+            . ' JOIN public.os_terminology_system sys ON sys.id = m.terminology_system_id'
+            . ' WHERE m.item_id = :id'
+            . ' ORDER BY m.id DESC'
+            . ' LIMIT ' . self::LIMIT,
+            [':id' => $itemId]
         );
     }
 

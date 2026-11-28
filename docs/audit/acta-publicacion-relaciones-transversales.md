@@ -1,7 +1,7 @@
 # Acta de decisión de publicación — modelo transversal de relaciones
 
 **Fecha:** 2026-11-28 · **Versión:** 1.1
-**Estado:** **DECIÓN REGISTRADA — PUBLICAR SOSTÉN TÉCNICO**. Pendiente de incorporar firmas y evidencia final API/UI al expediente.
+**Estado:** **DECIÓN REGISTRADA — PUBLICAR SOSTÉN TÉCNICO**. Corrida SQL v3 y evidencia API completas; pendiente la revisión visual UI y las tres firmas.
 
 ---
 
@@ -23,13 +23,15 @@ Decidir la publicación de:
 |---|---|
 | Acta de ejecución | `docs/audit/acta-ejecucion-relaciones-transversales.md` |
 | Resultado T-01…T-38 | `docs/audit/resultado-T01-T38-relaciones-transversales.md` |
-| Verificación SQL v3 | `/tmp/T01_T38_sql_v3.log` — pendiente de ejecutar |
+| Verificación SQL v3 | `/tmp/T01_T38_sql_v3.log` — ejecutada, `EXIT=0`, `SIN FAIL` |
 | Diagnóstico de metadatos | `mapping approved=2162`, `mapping draft=2678`, `approved sin metadatos=2162` |
-| Contrato API | `/tmp/T31_dentar-pr.json`, `/tmp/T31_oftar-pr.json`, `/tmp/T32.json`, `/tmp/T34_headers.txt` — pendiente |
-| UI y accesibilidad | `/tmp/T35_T36_estatico.log`, `/tmp/T35_T36_manual.log` — pendiente |
-| Regresión estática | `/tmp/fase5_tests_corregido.log` → `OK: 4110 comprobaciones` |
+| Contrato API | `/tmp/T31_dentar-pr.json`, `/tmp/T31_oftar-pr.json`, `/tmp/T34_headers.txt`, `/tmp/T34_body.json` — `PASS`; T-32 `SIN_DATOS` |
+| UI y accesibilidad | `/tmp/T35_T36_estatico.log` → `PASS` estático; `/tmp/T35_T36_manual.log` — pendiente de revisión visual |
+| Regresión estática | `/tmp/T35_T36_estatico.log` → `OK: 4149 comprobaciones` |
 
-**[P]** Sin la evidencia API/UI y la corrida v3, la decisión queda registrada pero no se considera ejecutada.
+**[H]** La credencial se envió como `X-API-Key`; `Authorization: Bearer` no llega al PHP en este vhost porque nginx no reenvía `HTTP_AUTHORIZATION`. El autenticador acepta ambas formas, así que la verificación es válida sin modificar nginx.
+
+**[P]** Sin la revisión visual `/tmp/T35_T36_manual.log` y las tres firmas, la decisión queda registrada pero no se considera cerrada.
 
 ---
 
@@ -90,4 +92,4 @@ Los cinco `FAIL` de la corrida v1 se reclasifican en v3 como `GAP_DOCUMENTADO` o
 
 **Decisión final:** `PUBLICAR SOSTÉN TÉCNICO`.
 
-**[P]** Esta acta se cierra solo con las tres firmas, la corrida v3 y la evidencia API/UI.
+**[P]** Esta acta se cierra solo con las tres firmas y `/tmp/T35_T36_manual.log`. La corrida v3 y la evidencia API ya están incorporadas.

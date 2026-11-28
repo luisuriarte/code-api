@@ -1,0 +1,915 @@
+diff --git a/portal/Controllers/AdminRelationController.php b/portal/Controllers/AdminRelationController.php
+index 37b4b65..3243c45 100644
+--- a/portal/Controllers/AdminRelationController.php
++++ b/portal/Controllers/AdminRelationController.php
+@@ -33,15 +33,41 @@ final class AdminRelationController
+         $entity = self::entity();
+         $query = self::query();
+         $edit = self::edit();
++        $catalog = self::catalog();
++        $itemId = self::itemId();
++        $lookup = ($_GET['lookup'] ?? '') === '1';
+         $repo = new RelationAdminRepository();
+ 
++        $focus = null;
++        $candidates = null;
++
++        if ($itemId > 0) {
++            try {
++                $focus = $repo->item($itemId);
++            } catch (RepositoryException) {
++                $focus = null;
++            }
++        } elseif ($lookup) {
++            try {
++                $candidates = $repo->items($catalog, $query);
++            } catch (RepositoryException) {
++                $candidates = [];
++            }
++        }
++
+         try {
+             $options = $repo->options();
+-            $all = [
+-                'catalog_relation' => $repo->relations($query),
+-                'concept_mapping' => $repo->mappings($query),
+-                'nomenclador_match' => $repo->matches($query),
+-            ];
++            $all = $focus !== null
++                ? [
++                    'catalog_relation' => $repo->itemRelations($itemId),
++                    'concept_mapping' => $repo->itemMappings($itemId),
++                    'nomenclador_match' => $repo->itemMatches($itemId),
++                ]
++                : [
++                    'catalog_relation' => $repo->relations($query),
++                    'concept_mapping' => $repo->mappings($query),
++                    'nomenclador_match' => $repo->matches($query),
++                ];
+         } catch (RepositoryException) {
+             $options = [];
+             $all = [
+@@ -79,6 +105,11 @@ final class AdminRelationController
+             'entities' => RelationAdminRepository::ENTITIES,
+             'entity' => $entity,
+             'query' => $query,
++            'catalog' => $catalog,
++            'itemId' => $itemId,
++            'focus' => $focus,
++            'candidates' => $candidates,
++            'focusError' => $itemId > 0 && $focus === null,
+             'rows' => $entity === '' ? $all : [$entity => $all[$entity] ?? []],
+             'editing' => $editing,
+             'editKey' => $edit['key'] ?? '',
+@@ -114,12 +145,27 @@ final class AdminRelationController
+         AdminForm::requirePost();
+ 
+         $entity = self::posted('entity');
+-        $back = '/admin/relations';
++        $parts = [];
+ 
+         if ($entity !== '') {
+-            $back .= '?entity=' . rawurlencode($entity);
++            $parts[] = 'entity=' . rawurlencode($entity);
++        }
++
++        $returnCatalog = self::cleanCatalog(self::posted('return_catalog'));
++        $returnItem = self::postedInt('return_item');
++
++        if ($returnItem > 0) {
++            if ($returnCatalog !== '') {
++                $parts[] = 'catalog=' . rawurlencode($returnCatalog);
++            }
++
++            $parts[] = 'item=' . $returnItem;
++        } elseif ($returnCatalog !== '') {
++            $parts[] = 'catalog=' . rawurlencode($returnCatalog);
+         }
+ 
++        $back = '/admin/relations' . ($parts === [] ? '' : '?' . implode('&', $parts));
++
+         if (!AdminForm::validCsrf()) {
+             AdminForm::fail($back, 'csrf');
+         }
+@@ -254,6 +300,7 @@ final class AdminRelationController
+             'mapping_type', 'relationship_role', 'clinical_rationale',
+             'source_catalog_code', 'source_code', 'target_catalog_code', 'target_code',
+             'match_basis', 'source_term', 'target_term', 'provenance', 'notes', 'reason',
++            'return_catalog', 'return_item',
+         ] as $key) {
+             $value = self::posted($key);
+ 
+@@ -265,6 +312,32 @@ final class AdminRelationController
+         return $values;
+     }
+ 
++    private static function catalog(): string
++    {
++        return self::cleanCatalog(self::readGet('catalog'));
++    }
++
++    private static function cleanCatalog(string $code): string
++    {
++        $code = trim(rawurldecode($code));
++
++        return preg_match('/^[a-z0-9][a-z0-9-]{1,49}$/', $code) === 1 ? $code : '';
++    }
++
++    private static function itemId(): int
++    {
++        $value = self::readGet('item');
++
++        return ctype_digit($value) ? (int) $value : 0;
++    }
++
++    private static function readGet(string $key): string
++    {
++        $value = $_GET[$key] ?? '';
++
++        return is_string($value) ? $value : '';
++    }
++
+     private static function entity(): string
+     {
+         $entity = $_GET['entity'] ?? '';
+diff --git a/portal/Repositories/CatalogGovernanceRepository.php b/portal/Repositories/CatalogGovernanceRepository.php
+index c45d841..3235653 100644
+--- a/portal/Repositories/CatalogGovernanceRepository.php
++++ b/portal/Repositories/CatalogGovernanceRepository.php
+@@ -29,6 +29,8 @@ final class CatalogGovernanceRepository
+     public static function items(string $code, string $query): array
+     {
+         $clinical = self::clinicalCategoryAvailable();
++        $identifier = self::identifierAvailable();
++        $term = self::termAvailable();
+         $clinicalColumns = $clinical
+             ? ' COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code) AS clinical_category_code,'
+             . ' catclin.name AS clinical_category_name,'
+@@ -46,14 +48,32 @@ final class CatalogGovernanceRepository
+             . ' LEFT JOIN public.os_clinical_category catclin'
+             . '   ON catclin.code = COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code)'
+             : '';
++        $identifierColumns = $identifier
++            ? " (SELECT string_agg(COALESCE(si.system_name, '') || ':' || si.value, ', '"
++              . ' ORDER BY si.is_primary DESC, si.id)'
++              . ' FROM public.os_catalog_identifier si WHERE si.item_id = i.id) AS identifiers,'
++            : ' NULL::text AS identifiers,';
++        $identifierWhere = $identifier
++            ? ' OR EXISTS (SELECT 1 FROM public.os_catalog_identifier si'
++              . ' WHERE si.item_id = i.id AND si.value ILIKE :query)'
++            : '';
++        $exactIdentifier = $identifier
++            ? ' (EXISTS (SELECT 1 FROM public.os_catalog_identifier ei'
++              . ' WHERE ei.item_id = i.id AND ei.value = :needle)) DESC,'
++            : '';
++        $termWhere = $term
++            ? ' OR EXISTS (SELECT 1 FROM public.os_catalog_item_version sv'
++              . ' JOIN public.os_catalog_term st ON st.item_version_id = sv.id'
++              . ' WHERE sv.item_id = i.id AND st.term ILIKE :query)'
++            : '';
+ 
+         return self::publicRows(
+             'SELECT i.id, i.permanent_code, i.status, v.preferred_term,'
+-            . $clinicalColumns . chr(10)
++            . $clinicalColumns . $identifierColumns . chr(10)
+             . '  FROM public.os_catalog_item i'
+             . '  JOIN public.os_catalog c ON c.id = i.catalog_id'
+             . $clinicalJoins . chr(10)
+-            . '  JOIN LATERAL ('
++            . '  LEFT JOIN LATERAL ('
+             . '       SELECT v2.preferred_term'
+             . '         FROM public.os_catalog_item_version v2'
+             . '        WHERE v2.item_id = i.id'
+@@ -62,11 +82,13 @@ final class CatalogGovernanceRepository
+             . '  ) v ON TRUE'
+             . ' WHERE c.code = :code'
+             . '   AND (i.permanent_code ILIKE :query'
+-            . '        OR i.permanent_code::TEXT ILIKE :query'
+-            . '        OR COALESCE(v.preferred_term, \'\') ILIKE :query)'
+-            . ' ORDER BY i.permanent_code'
++            . '        OR COALESCE(v.preferred_term, \'\') ILIKE :query'
++            . $identifierWhere . $termWhere . ')'
++            . ' ORDER BY (lower(i.permanent_code) = lower(:needle)) DESC,'
++            . $exactIdentifier . chr(10)
++            . '          i.permanent_code'
+             . ' LIMIT 200',
+-            [':code' => $code, ':query' => '%' . $query . '%']
++            [':code' => $code, ':query' => '%' . $query . '%', ':needle' => $query]
+         );
+     }
+ 
+@@ -90,10 +112,16 @@ final class CatalogGovernanceRepository
+     public static function item(string $code, int $itemId): ?array
+     {
+         $clinical = self::clinicalCategoryAvailable();
++        $identifier = self::identifierAvailable();
+         $clinicalColumns = $clinical
+             ? ' COALESCE(icc.clinical_category_code, map.clinical_category_code, def.clinical_category_code) AS clinical_category_code,'
+             . ' catclin.name AS clinical_category_name,'
+             : ' NULL::text AS clinical_category_code, NULL::text AS clinical_category_name,';
++        $identifierColumns = $identifier
++            ? " (SELECT string_agg(COALESCE(si.system_name, '') || ':' || si.value, ', '"
++              . ' ORDER BY si.is_primary DESC, si.id)'
++              . ' FROM public.os_catalog_identifier si WHERE si.item_id = i.id) AS identifiers,'
++            : ' NULL::text AS identifiers,';
+         $clinicalJoins = $clinical
+             ? ' LEFT JOIN public.os_catalog_item_clinical_category icc ON icc.item_id = i.id'
+             . ' LEFT JOIN LATERAL ('
+@@ -110,7 +138,8 @@ final class CatalogGovernanceRepository
+ 
+         return self::publicRow(
+             'SELECT i.id, i.catalog_id, i.permanent_code, i.status,'
+-            . ' c.code AS catalog_code, c.name AS catalog_name,' . $clinicalColumns . chr(10)
++            . ' c.code AS catalog_code, c.name AS catalog_name,' . $clinicalColumns
++            . $identifierColumns . chr(10)
+             . '  FROM public.os_catalog_item i'
+             . '  JOIN public.os_catalog c ON c.id = i.catalog_id'
+             . $clinicalJoins . chr(10)
+@@ -404,6 +433,40 @@ final class CatalogGovernanceRepository
+         return $codes;
+     }
+ 
++    private static function identifierAvailable(): bool
++    {
++        static $available = null;
++
++        if ($available !== null) {
++            return $available;
++        }
++
++        try {
++            $available = self::tableExists(PortalDatabase::connection(), 'os_catalog_identifier');
++        } catch (\Throwable) {
++            $available = false;
++        }
++
++        return $available;
++    }
++
++    private static function termAvailable(): bool
++    {
++        static $available = null;
++
++        if ($available !== null) {
++            return $available;
++        }
++
++        try {
++            $available = self::tableExists(PortalDatabase::connection(), 'os_catalog_term');
++        } catch (\Throwable) {
++            $available = false;
++        }
++
++        return $available;
++    }
++
+     private static function clinicalCategoryAvailable(): bool
+     {
+         static $available = null;
+diff --git a/portal/Repositories/RelationAdminRepository.php b/portal/Repositories/RelationAdminRepository.php
+index a35de44..2b8971a 100644
+--- a/portal/Repositories/RelationAdminRepository.php
++++ b/portal/Repositories/RelationAdminRepository.php
+@@ -129,6 +129,39 @@ final class RelationAdminRepository
+ 
+     /** @return list<array<string, mixed>> */
+     public function matches(string $query): array
++    {
++        return self::matchRows(
++            'm.source_catalog_code ILIKE :q'
++            . ' OR m.source_code ILIKE :q'
++            . ' OR m.target_code ILIKE :q'
++            . ' OR COALESCE(m.source_term, \'\') ILIKE :q'
++            . ' OR COALESCE(m.target_term, \'\') ILIKE :q',
++            [':q' => '%' . $query . '%']
++        );
++    }
++
++    /**
++     * Pares CAO/Regional ↔ OFT-PR que mencionan al ítem por identificador.
++     * El destino se resuelve por sistema + valor, nunca por permanent_code.
++     *
++     * @return list<array<string, mixed>>
++     */
++    public function itemMatches(int $itemId): array
++    {
++        return self::matchRows(
++            'EXISTS (SELECT 1 FROM public.os_catalog_identifier si'
++            . ' WHERE si.item_id = :id AND si.value = m.source_code)'
++            . ' OR EXISTS (SELECT 1 FROM public.os_catalog_identifier ti'
++            . ' WHERE ti.item_id = :id AND ti.value = m.target_code'
++            . ' AND ti.system_name = \'NOMENCLADOR-AR\')',
++            [':id' => $itemId]
++        );
++    }
++
++    /**
++     * @return list<array<string, mixed>>
++     */
++    private static function matchRows(string $where, array $params): array
+     {
+         return self::readRows(
+             'SELECT m.source_catalog_code, m.source_code, m.target_catalog_code,
+@@ -156,14 +189,10 @@ final class RelationAdminRepository
+                       AND cat.code = \'oftar-pr\'
+                     LIMIT 1
+                ) resolved ON TRUE
+-              WHERE m.source_catalog_code ILIKE :q
+-                 OR m.source_code ILIKE :q
+-                 OR m.target_code ILIKE :q
+-                 OR COALESCE(m.source_term, \'\') ILIKE :q
+-                 OR COALESCE(m.target_term, \'\') ILIKE :q
++              WHERE ' . $where . '
+               ORDER BY m.source_catalog_code, m.source_code
+               LIMIT ' . self::LIMIT,
+-            [':q' => '%' . $query . '%']
++            $params
+         );
+     }
+ 
+@@ -189,7 +218,9 @@ final class RelationAdminRepository
+                     LIMIT 1
+                ) latest ON TRUE
+               WHERE i.permanent_code = :code
+-              ORDER BY i.id
++                  OR EXISTS (SELECT 1 FROM public.os_catalog_identifier si
++                              WHERE si.item_id = i.id AND si.value = :code)
++              ORDER BY (i.permanent_code = :code) DESC, i.id
+               LIMIT 1',
+             [':code' => $code]
+         );
+@@ -231,6 +262,117 @@ final class RelationAdminRepository
+         );
+     }
+ 
++    /**
++     * Ítems buscables por código permanente, identificador o término.
++     *
++     * @return list<array<string, mixed>>
++     */
++    public function items(string $catalog, string $query): array
++    {
++        $params = [':q' => '%' . $query . '%', ':needle' => $query];
++        $catalogWhere = '';
++
++        if ($catalog !== '') {
++            $catalogWhere .= ' AND c.code = :catalog';
++            $params[':catalog'] = $catalog;
++        }
++
++        return self::readRows(
++            'SELECT i.id, i.permanent_code, c.code AS catalog_code,'
++            . ' COALESCE(latest.preferred_term, i.permanent_code) AS display,'
++            . " (SELECT string_agg(COALESCE(si.system_name, '') || ':' || si.value, ', '"
++            . ' ORDER BY si.is_primary DESC, si.id)'
++            . ' FROM public.os_catalog_identifier si WHERE si.item_id = i.id) AS identifiers'
++            . ' FROM public.os_catalog_item i'
++            . ' JOIN public.os_catalog c ON c.id = i.catalog_id'
++            . ' LEFT JOIN LATERAL ('
++            . ' SELECT ver.preferred_term FROM public.os_catalog_item_version ver'
++            . ' WHERE ver.item_id = i.id'
++            . " ORDER BY (ver.language_code = 'es-AR') DESC, ver.id DESC"
++            . ' LIMIT 1'
++            . ' ) latest ON TRUE'
++            . ' WHERE TRUE' . $catalogWhere
++            . ' AND (i.permanent_code ILIKE :q'
++            . " OR COALESCE(latest.preferred_term, '') ILIKE :q"
++            . ' OR EXISTS (SELECT 1 FROM public.os_catalog_identifier si'
++            . ' WHERE si.item_id = i.id AND si.value ILIKE :q)'
++            . ' OR EXISTS (SELECT 1 FROM public.os_catalog_item_version sv'
++            . ' JOIN public.os_catalog_term st ON st.item_version_id = sv.id'
++            . ' WHERE sv.item_id = i.id AND st.term ILIKE :q))'
++            . ' ORDER BY (lower(i.permanent_code) = lower(:needle)) DESC, i.permanent_code'
++            . ' LIMIT 50',
++            $params
++        );
++    }
++
++    /** @return array<string, mixed>|null */
++    public function item(int $id): ?array
++    {
++        if ($id <= 0) {
++            return null;
++        }
++
++        return self::readRow(
++            'SELECT i.id, i.permanent_code, c.code AS catalog_code, c.name AS catalog_name,'
++            . ' COALESCE(latest.preferred_term, i.permanent_code) AS display,'
++            . " (SELECT string_agg(COALESCE(si.system_name, '') || ':' || si.value, ', '"
++            . ' ORDER BY si.is_primary DESC, si.id)'
++            . ' FROM public.os_catalog_identifier si WHERE si.item_id = i.id) AS identifiers'
++            . ' FROM public.os_catalog_item i'
++            . ' JOIN public.os_catalog c ON c.id = i.catalog_id'
++            . ' LEFT JOIN LATERAL ('
++            . ' SELECT ver.preferred_term FROM public.os_catalog_item_version ver'
++            . ' WHERE ver.item_id = i.id'
++            . " ORDER BY (ver.language_code = 'es-AR') DESC, ver.id DESC"
++            . ' LIMIT 1'
++            . ' ) latest ON TRUE'
++            . ' WHERE i.id = :id'
++            . ' LIMIT 1',
++            [':id' => $id]
++        );
++    }
++
++    /** @return list<array<string, mixed>> */
++    public function itemRelations(int $itemId): array
++    {
++        return self::readRows(
++            'SELECT r.id,'
++            . " CASE WHEN r.source_item_id = :id THEN 'out' ELSE 'in' END AS direction,"
++            . ' src.permanent_code AS source_code, sc.code AS source_catalog,'
++            . ' tgt.permanent_code AS target_code, tc.code AS target_catalog,'
++            . ' r.relation_type, r.source_system_code, r.source_field, r.source_value,'
++            . ' r.context_text, r.review_status, r.provenance'
++            . ' FROM public.os_catalog_relation r'
++            . ' JOIN public.os_catalog_item src ON src.id = r.source_item_id'
++            . ' JOIN public.os_catalog sc ON sc.id = src.catalog_id'
++            . ' JOIN public.os_catalog_item tgt ON tgt.id = r.target_item_id'
++            . ' JOIN public.os_catalog tc ON tc.id = tgt.catalog_id'
++            . ' WHERE r.source_item_id = :id OR r.target_item_id = :id2'
++            . ' ORDER BY r.id DESC'
++            . ' LIMIT ' . self::LIMIT,
++            [':id' => $itemId, ':id2' => $itemId]
++        );
++    }
++
++    /** @return list<array<string, mixed>> */
++    public function itemMappings(int $itemId): array
++    {
++        return self::readRows(
++            'SELECT m.id, i.permanent_code AS item_code, c.code AS catalog_code,'
++            . ' sys.id AS system_id, sys.code AS system_code, m.external_code,'
++            . ' m.external_display, m.mapping_type, m.relationship_role,'
++            . ' m.clinical_rationale, m.review_status'
++            . ' FROM public.os_concept_mapping m'
++            . ' JOIN public.os_catalog_item i ON i.id = m.item_id'
++            . ' JOIN public.os_catalog c ON c.id = i.catalog_id'
++            . ' JOIN public.os_terminology_system sys ON sys.id = m.terminology_system_id'
++            . ' WHERE m.item_id = :id'
++            . ' ORDER BY m.id DESC'
++            . ' LIMIT ' . self::LIMIT,
++            [':id' => $itemId]
++        );
++    }
++
+     /**
+      * @param array<string, mixed> $payload
+      * @param array<string, mixed> $actor
+diff --git a/portal/Views/admin/catalogs/index.php b/portal/Views/admin/catalogs/index.php
+index f82b9c4..0c545b4 100644
+--- a/portal/Views/admin/catalogs/index.php
++++ b/portal/Views/admin/catalogs/index.php
+@@ -159,6 +159,7 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
+                             <thead>
+                             <tr>
+                                 <th class="ui-th"><?= e($t('admin.catalogs.col_code')) ?></th>
++                                <th class="ui-th"><?= e($t('admin.catalogs.col_identifiers')) ?></th>
+                                 <th class="ui-th"><?= e($t('admin.catalogs.col_term')) ?></th>
+                                 <th class="ui-th"><?= e($t('admin.uvr.col_status')) ?></th>
+                                 <th class="ui-th"><?= e($t('admin.catalogs.col_clinical_category')) ?></th>
+@@ -190,6 +191,7 @@ $editLanguageOptions = ['es-AR', 'es', 'en', 'pt-BR'];
+                                             <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+                                         </a>
+                                     </td>
++                                    <td class="ui-td font-mono text-xs"><?= e((string) ($item['identifiers'] ?? '')) ?></td>
+                                     <td class="ui-td font-medium text-ink"><?= e((string) ($item['preferred_term'] ?? '')) ?></td>
+                                     <td class="ui-td"><code class="ui-code"><?= e((string) ($item['status'] ?? '')) ?></code></td>
+                                     <td class="ui-td"><?= e($clinicalCategoryLabel(
+diff --git a/portal/Views/admin/catalogs/item.php b/portal/Views/admin/catalogs/item.php
+index 9f820ad..8180500 100644
+--- a/portal/Views/admin/catalogs/item.php
++++ b/portal/Views/admin/catalogs/item.php
+@@ -47,6 +47,14 @@ $clinicalCategoryLabel = static function (string $code, string $fallback = '') u
+                 <p class="ui-subtitle"><?= e($t('admin.catalogs.lead')) ?></p>
+             </div>
+             <div class="flex flex-wrap gap-2">
++                <?php if ($catalogItemId > 0): ?>
++                    <a href="<?= e('/admin/relations?catalog='
++                        . rawurlencode($catalogCode) . '&item=' . $catalogItemId) ?>"
++                       class="ui-btn ui-btn-sm no-underline">
++                        <i data-lucide="git-fork" class="h-4 w-4"></i>
++                        <?= e($t('admin.catalogs.relations_manage')) ?>
++                    </a>
++                <?php endif; ?>
+                 <a href="<?= e($catalogUvrHref) ?>" class="ui-btn ui-btn-sm no-underline">
+                     <i data-lucide="scale" class="h-4 w-4"></i>
+                     <?= e($t('admin.catalogs.uvr_button')) ?>
+@@ -61,6 +69,10 @@ $clinicalCategoryLabel = static function (string $code, string $fallback = '') u
+         <dl class="ui-dl mt-5 rounded-xl border border-line bg-paper/70 p-4">
+             <dt class="ui-dt"><?= e($t('admin.catalogs.col_code')) ?></dt>
+             <dd class="ui-dd"><code class="ui-code"><?= e((string) ($catalogItem['permanent_code'] ?? '')) ?></code></dd>
++            <?php if ((string) ($catalogItem['identifiers'] ?? '') !== ''): ?>
++                <dt class="ui-dt"><?= e($t('admin.catalogs.col_identifiers')) ?></dt>
++                <dd class="ui-dd"><code class="ui-code"><?= e((string) $catalogItem['identifiers']) ?></code></dd>
++            <?php endif; ?>
+             <dt class="ui-dt"><?= e($t('admin.uvr.col_catalog')) ?></dt>
+             <dd class="ui-dd"><code class="ui-code"><?= e((string) ($catalogItem['catalog_code'] ?? $catalogCode)) ?></code></dd>
+             <dt class="ui-dt"><?= e($t('admin.catalogs.col_clinical_category')) ?></dt>
+diff --git a/portal/Views/admin/relations/index.php b/portal/Views/admin/relations/index.php
+index b98da05..d4eb9c4 100644
+--- a/portal/Views/admin/relations/index.php
++++ b/portal/Views/admin/relations/index.php
+@@ -15,6 +15,11 @@ use OrigenSalud\Portal\Services\Csrf;
+ /** @var array<string, string> $flashValues */
+ /** @var bool $canWrite */
+ /** @var array<string, mixed> $current */
++/** @var string $catalog */
++/** @var int $itemId */
++/** @var array<string, mixed>|null $focus */
++/** @var list<array<string, mixed>>|null $candidates */
++/** @var bool $focusError */
+ 
+ require __DIR__ . '/../_flash.php';
+ 
+@@ -29,6 +34,11 @@ $catalogs = is_array($options['catalogs'] ?? null) ? $options['catalogs'] : [];
+ $matchTargets = is_array($options['match_targets'] ?? null) ? $options['match_targets'] : [];
+ $flashValues = is_array($flashValues ?? null) ? $flashValues : [];
+ $editing = is_array($editing ?? null) ? $editing : [];
++$catalog = is_string($catalog ?? null) ? $catalog : '';
++$itemId = is_int($itemId ?? null) ? $itemId : 0;
++$focus = is_array($focus ?? null) ? $focus : null;
++$candidates = is_array($candidates ?? null) ? $candidates : null;
++$focusError = (bool) ($focusError ?? false);
+ 
+ $value = static function (string $key, string $default = '') use ($flashValues, $editing): string {
+     if (is_string($flashValues[$key] ?? null) && $flashValues[$key] !== '') {
+@@ -40,7 +50,11 @@ $value = static function (string $key, string $default = '') use ($flashValues,
+ 
+ $isEdit = $editKey !== '';
+ $activeEntity = $entity !== '' ? $entity : 'catalog_relation';
+-$base = static fn (string $targetEntity): string => '/admin/relations?entity=' . rawurlencode($targetEntity);
++$focusParams = $itemId > 0
++    ? '&catalog=' . rawurlencode($catalog) . '&item=' . $itemId
++    : '';
++$base = static fn (string $targetEntity): string => '/admin/relations?entity='
++    . rawurlencode($targetEntity) . $focusParams;
+ $editHref = static function (string $targetEntity, string $key) use ($base): string {
+     return $base($targetEntity) . '&edit=' . rawurlencode($key);
+ };
+@@ -70,6 +84,103 @@ $rowKey = static function (string $targetEntity, array $row): string {
+         </div>
+     </article>
+ 
++    <article class="ui-card ui-card-pad">
++        <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
++            <div>
++                <h2 class="text-lg font-semibold text-ink"><?= e($t('admin.relations.lookup_title')) ?></h2>
++                <p class="ui-subtitle"><?= e($t('admin.relations.lookup_hint')) ?></p>
++            </div>
++            <?php if ($focus !== null): ?>
++                <a href="/admin/relations" class="text-sm font-medium text-teal-dark hover:underline">
++                    <?= e($t('admin.relations.focus_back')) ?>
++                </a>
++            <?php endif; ?>
++        </div>
++
++        <form method="get" action="/admin/relations" class="ui-grid items-end">
++            <input type="hidden" name="lookup" value="1">
++            <div>
++                <label for="relation-catalog" class="ui-label"><?= e($t('admin.uvr.col_catalog')) ?></label>
++                <select id="relation-catalog" name="catalog" class="ui-input">
++                    <option value=""><?= e($t('admin.select')) ?></option>
++                    <?php foreach ($catalogs as $catalogRow): ?>
++                        <?php $catalogCode = (string) ($catalogRow['code'] ?? ''); ?>
++                        <option value="<?= e($catalogCode) ?>" <?= $catalogCode === $catalog ? 'selected' : '' ?>>
++                            <?= e($catalogCode) ?>
++                            <?= (string) ($catalogRow['short_name'] ?? '') !== '' ? ' · ' . e((string) $catalogRow['short_name']) : '' ?>
++                        </option>
++                    <?php endforeach; ?>
++                </select>
++            </div>
++            <div>
++                <label for="relation-code" class="ui-label"><?= e($t('admin.relations.search')) ?></label>
++                <input id="relation-code" name="q" value="<?= e($query) ?>" class="ui-input" maxlength="80"
++                       placeholder="<?= e($t('admin.relations.lookup_placeholder')) ?>">
++            </div>
++            <div>
++                <button type="submit" class="ui-btn ui-btn-sm"><?= e($t('admin.relations.lookup_submit')) ?></button>
++            </div>
++        </form>
++
++        <?php if ($focusError): ?>
++            <p class="ui-alert mt-4" role="alert"><?= e($t('admin.relations.focus_not_found')) ?></p>
++        <?php endif; ?>
++
++        <?php if ($focus !== null): ?>
++            <dl class="ui-dl mt-5 rounded-xl border border-line bg-paper/70 p-4">
++                <dt class="ui-dt"><?= e($t('admin.relations.focus_code')) ?></dt>
++                <dd class="ui-dd"><code class="ui-code"><?= e((string) ($focus['permanent_code'] ?? '')) ?></code></dd>
++                <dt class="ui-dt"><?= e($t('admin.uvr.col_catalog')) ?></dt>
++                <dd class="ui-dd"><code class="ui-code"><?= e((string) ($focus['catalog_code'] ?? '')) ?></code></dd>
++                <dt class="ui-dt"><?= e($t('admin.catalogs.col_term')) ?></dt>
++                <dd class="ui-dd"><?= e((string) ($focus['display'] ?? '')) ?></dd>
++                <?php if ((string) ($focus['identifiers'] ?? '') !== ''): ?>
++                    <dt class="ui-dt"><?= e($t('admin.relations.candidate_identifiers')) ?></dt>
++                    <dd class="ui-dd"><code class="ui-code"><?= e((string) $focus['identifiers']) ?></code></dd>
++                <?php endif; ?>
++            </dl>
++        <?php elseif ($candidates !== null): ?>
++            <?php if ($candidates === []): ?>
++                <p class="ui-empty mt-5"><?= e($t('admin.relations.lookup_empty')) ?></p>
++            <?php else: ?>
++                <div class="ui-table-wrap mt-5">
++                    <table class="ui-table">
++                        <thead>
++                        <tr>
++                            <th class="ui-th"><?= e($t('admin.catalogs.col_code')) ?></th>
++                            <th class="ui-th"><?= e($t('admin.uvr.col_catalog')) ?></th>
++                            <th class="ui-th"><?= e($t('admin.catalogs.col_term')) ?></th>
++                            <th class="ui-th"><?= e($t('admin.relations.candidate_identifiers')) ?></th>
++                            <th class="ui-th"><?= e($t('admin.relations.col_actions')) ?></th>
++                        </tr>
++                        </thead>
++                        <tbody class="divide-y divide-line">
++                        <?php foreach ($candidates as $candidate): ?>
++                            <?php
++                            $candidateId = (int) ($candidate['id'] ?? 0);
++                            $candidateCatalog = (string) ($candidate['catalog_code'] ?? '');
++                            $candidateHref = '/admin/relations?catalog='
++                                . rawurlencode($candidateCatalog) . '&item=' . $candidateId;
++                            ?>
++                            <tr>
++                                <td class="ui-td font-mono text-xs"><code class="ui-code"><?= e((string) ($candidate['permanent_code'] ?? '')) ?></code></td>
++                                <td class="ui-td"><code class="ui-code"><?= e($candidateCatalog) ?></code></td>
++                                <td class="ui-td"><?= e((string) ($candidate['display'] ?? '')) ?></td>
++                                <td class="ui-td font-mono text-xs"><?= e((string) ($candidate['identifiers'] ?? '')) ?></td>
++                                <td class="ui-td">
++                                    <a href="<?= e($candidateHref) ?>" class="text-sm font-medium text-teal-dark hover:underline">
++                                        <?= e($t('admin.relations.candidate_view')) ?>
++                                    </a>
++                                </td>
++                            </tr>
++                        <?php endforeach; ?>
++                        </tbody>
++                    </table>
++                </div>
++            <?php endif; ?>
++        <?php endif; ?>
++    </article>
++
+     <article class="ui-card ui-card-pad">
+         <form method="get" action="/admin/relations" class="ui-grid items-end">
+             <div>
+@@ -112,6 +223,9 @@ $rowKey = static function (string $targetEntity, array $row): string {
+                         <thead>
+                             <tr>
+                                 <?php if ($entityCode === 'catalog_relation'): ?>
++                                    <?php if ($focus !== null): ?>
++                                        <th><?= e($t('admin.relations.col_direction')) ?></th>
++                                    <?php endif; ?>
+                                     <th><?= e($t('admin.relations.col_source')) ?></th>
+                                     <th><?= e($t('admin.relations.col_target')) ?></th>
+                                     <th><?= e($t('admin.relations.col_type')) ?></th>
+@@ -139,6 +253,12 @@ $rowKey = static function (string $targetEntity, array $row): string {
+                                 ?>
+                                 <tr class="<?= $isCurrent ? 'bg-mint/30' : '' ?>">
+                                     <?php if ($entityCode === 'catalog_relation'): ?>
++                                        <?php if ($focus !== null): ?>
++                                            <?php $direction = (string) ($record['direction'] ?? ''); ?>
++                                            <td><?= e($direction === 'out'
++                                                ? $t('admin.relations.direction_out')
++                                                : $t('admin.relations.direction_in')) ?></td>
++                                        <?php endif; ?>
+                                         <td class="font-mono text-xs"><?= e((string) ($record['source_code'] ?? '')) ?></td>
+                                         <td class="font-mono text-xs"><?= e((string) ($record['target_code'] ?? '')) ?></td>
+                                         <td><?= e((string) ($record['relation_type'] ?? '')) ?></td>
+@@ -223,6 +343,8 @@ $rowKey = static function (string $targetEntity, array $row): string {
+                 <input type="hidden" name="<?= e(Csrf::FIELD) ?>" value="<?= e(Csrf::token()) ?>">
+                 <input type="hidden" name="op" value="<?= $isEdit ? 'update' : 'create' ?>">
+                 <input type="hidden" name="entity" value="<?= e($activeEntity) ?>">
++                <input type="hidden" name="return_catalog" value="<?= e($catalog) ?>">
++                <input type="hidden" name="return_item" value="<?= e((string) $itemId) ?>">
+                 <?php if ($isEdit && $activeEntity !== 'nomenclador_match'): ?>
+                     <input type="hidden" name="id" value="<?= e($editKey) ?>">
+                 <?php endif; ?>
+@@ -240,6 +362,9 @@ $rowKey = static function (string $targetEntity, array $row): string {
+                             <input id="target_code" name="target_code" class="ui-input" required
+                                    value="<?= e($value('target_code')) ?>">
+                         </div>
++                        <div class="ui-subtitle text-xs">
++                            <?= e($t('admin.relations.code_hint')) ?>
++                        </div>
+                         <div>
+                             <label for="relation_type" class="ui-label"><?= e($t('admin.relations.col_type')) ?></label>
+                             <select id="relation_type" name="relation_type" class="ui-input" required>
+diff --git a/portal/translations/messages.en.yaml b/portal/translations/messages.en.yaml
+index 93f2412..76a16e6 100644
+--- a/portal/translations/messages.en.yaml
++++ b/portal/translations/messages.en.yaml
+@@ -1774,10 +1774,12 @@ admin:
+         select_title: 'Choose catalog'
+         select_submit: 'Open'
+         search_title: 'Search codes'
+-        search_label: 'Code or name'
+-        search_placeholder: 'e.g. 11524-6'
++        search_label: 'Code, identifier or term'
++        search_placeholder: 'e.g. 11524-6, OFT-PR-000025, glaucoma'
+         search_submit: 'Search'
+         col_code: 'Code'
++        col_identifiers: 'Identifiers'
++        relations_manage: 'Manage relations'
+         col_term: 'Preferred term'
+         edit_title: 'Edit code'
+         uvr_button: 'View UVR'
+@@ -1834,6 +1836,20 @@ admin:
+         col_entity: 'Record type'
+         search: 'Search'
+         search_submit: 'Filter'
++        lookup_title: 'View and edit relations for a code'
++        lookup_hint: 'Choose a catalog and search by permanent code, identifier (e.g. 460105) or term; then open “View relations”.'
++        lookup_placeholder: 'e.g. OFT-PR-000025, 460105, glaucoma'
++        lookup_submit: 'Find code'
++        lookup_empty: 'No codes match the search.'
++        focus_code: 'Code'
++        focus_back: 'Back to list'
++        focus_not_found: 'The requested code does not exist.'
++        candidate_identifiers: 'Identifiers'
++        candidate_view: 'View relations'
++        col_direction: 'Direction'
++        direction_out: 'Outgoing'
++        direction_in: 'Incoming'
++        code_hint: 'Permanent code or any item identifier is accepted; the change stays in draft.'
+         empty: 'No records match this filter.'
+         col_source: 'Source code'
+         col_target: 'Target code'
+diff --git a/portal/translations/messages.es-AR.yaml b/portal/translations/messages.es-AR.yaml
+index 8511bb1..dd5b525 100644
+--- a/portal/translations/messages.es-AR.yaml
++++ b/portal/translations/messages.es-AR.yaml
+@@ -1774,10 +1774,12 @@ admin:
+         select_title: 'Elegir catálogo'
+         select_submit: 'Abrir'
+         search_title: 'Buscar códigos'
+-        search_label: 'Código o nombre'
+-        search_placeholder: 'Ej.: 11524-6'
++        search_label: 'Código, identificador o término'
++        search_placeholder: 'Ej.: 11524-6, OFT-PR-000025, glaucoma'
+         search_submit: 'Buscar'
+         col_code: 'Código'
++        col_identifiers: 'Identificadores'
++        relations_manage: 'Gestionar relaciones'
+         col_term: 'Término preferido'
+         edit_title: 'Editar código'
+         uvr_button: 'Ver UVR'
+@@ -1834,6 +1836,20 @@ admin:
+         col_entity: 'Tipo de registro'
+         search: 'Buscar'
+         search_submit: 'Filtrar'
++        lookup_title: 'Ver y editar relaciones de un código'
++        lookup_hint: 'Elija un catálogo y busque por código permanente, identificador (por ejemplo 460105) o término; luego abra «Ver relaciones».'
++        lookup_placeholder: 'Ej.: OFT-PR-000025, 460105, glaucoma'
++        lookup_submit: 'Buscar código'
++        lookup_empty: 'No hay códigos que coincidan con la búsqueda.'
++        focus_code: 'Código'
++        focus_back: 'Volver al listado'
++        focus_not_found: 'El código solicitado no existe.'
++        candidate_identifiers: 'Identificadores'
++        candidate_view: 'Ver relaciones'
++        col_direction: 'Dirección'
++        direction_out: 'Saliente'
++        direction_in: 'Entrante'
++        code_hint: 'Se acepta el código permanente o cualquier identificador del ítem; el cambio queda en borrador.'
+         empty: 'No hay registros para este filtro.'
+         col_source: 'Código de origen'
+         col_target: 'Código de destino'
+diff --git a/portal/translations/messages.es.yaml b/portal/translations/messages.es.yaml
+index 795d47b..781cbb5 100644
+--- a/portal/translations/messages.es.yaml
++++ b/portal/translations/messages.es.yaml
+@@ -1029,10 +1029,12 @@ admin:
+         select_title: 'Elegir catálogo'
+         select_submit: 'Abrir'
+         search_title: 'Buscar códigos'
+-        search_label: 'Código o nombre'
+-        search_placeholder: 'Ej.: 11524-6'
++        search_label: 'Código, identificador o término'
++        search_placeholder: 'Ej.: 11524-6, OFT-PR-000025, glaucoma'
+         search_submit: 'Buscar'
+         col_code: 'Código'
++        col_identifiers: 'Identificadores'
++        relations_manage: 'Gestionar relaciones'
+         col_term: 'Término preferido'
+         edit_title: 'Editar código'
+         uvr_button: 'Ver UVR'
+@@ -1089,6 +1091,20 @@ admin:
+         col_entity: 'Tipo de registro'
+         search: 'Buscar'
+         search_submit: 'Filtrar'
++        lookup_title: 'Ver y editar relaciones de un código'
++        lookup_hint: 'Elija un catálogo y busque por código permanente, identificador (por ejemplo 460105) o término; luego abra «Ver relaciones».'
++        lookup_placeholder: 'Ej.: OFT-PR-000025, 460105, glaucoma'
++        lookup_submit: 'Buscar código'
++        lookup_empty: 'No hay códigos que coincidan con la búsqueda.'
++        focus_code: 'Código'
++        focus_back: 'Volver al listado'
++        focus_not_found: 'El código solicitado no existe.'
++        candidate_identifiers: 'Identificadores'
++        candidate_view: 'Ver relaciones'
++        col_direction: 'Dirección'
++        direction_out: 'Saliente'
++        direction_in: 'Entrante'
++        code_hint: 'Se acepta el código permanente o cualquier identificador del ítem; el cambio queda en borrador.'
+         empty: 'No hay registros para este filtro.'
+         col_source: 'Código de origen'
+         col_target: 'Código de destino'
+diff --git a/portal/translations/messages.pt-BR.yaml b/portal/translations/messages.pt-BR.yaml
+index 9554813..f25b905 100644
+--- a/portal/translations/messages.pt-BR.yaml
++++ b/portal/translations/messages.pt-BR.yaml
+@@ -1774,10 +1774,12 @@ admin:
+         select_title: 'Escolher catálogo'
+         select_submit: 'Abrir'
+         search_title: 'Buscar códigos'
+-        search_label: 'Código ou nome'
+-        search_placeholder: 'Ex.: 11524-6'
++        search_label: 'Código, identificador ou termo'
++        search_placeholder: 'Ex.: 11524-6, OFT-PR-000025, glaucoma'
+         search_submit: 'Buscar'
+         col_code: 'Código'
++        col_identifiers: 'Identificadores'
++        relations_manage: 'Gerenciar relações'
+         col_term: 'Termo preferido'
+         edit_title: 'Editar código'
+         uvr_button: 'Ver UVR'
+@@ -1834,6 +1836,20 @@ admin:
+         col_entity: 'Tipo de registro'
+         search: 'Buscar'
+         search_submit: 'Filtrar'
++        lookup_title: 'Ver e editar relações de um código'
++        lookup_hint: 'Escolha um catálogo e busque por código permanente, identificador (por exemplo 460105) ou termo; depois abra “Ver relações”.'
++        lookup_placeholder: 'Ex.: OFT-PR-000025, 460105, glaucoma'
++        lookup_submit: 'Buscar código'
++        lookup_empty: 'Não há códigos que correspondam à busca.'
++        focus_code: 'Código'
++        focus_back: 'Voltar à listagem'
++        focus_not_found: 'O código solicitado não existe.'
++        candidate_identifiers: 'Identificadores'
++        candidate_view: 'Ver relações'
++        col_direction: 'Direção'
++        direction_out: 'Saída'
++        direction_in: 'Entrada'
++        code_hint: 'Aceita o código permanente ou qualquer identificador do item; a alteração fica em rascunho.'
+         empty: 'Não há registros para este filtro.'
+         col_source: 'Código de origem'
+         col_target: 'Código de destino'
+diff --git a/tests/run.php b/tests/run.php
+index e779050..e804b2f 100644
+--- a/tests/run.php
++++ b/tests/run.php
+@@ -4907,6 +4907,14 @@ foreach (['es-AR', 'es', 'en', 'pt-BR'] as $locale) {
+             && isset($messages['admin']['errors']['relation_write_failed']),
+         'Las traducciones de ' . $locale . ' deben incluir el CRUD auditable de relaciones.'
+     );
++    $check(
++        isset($messages['admin']['catalogs']['col_identifiers'])
++            && isset($messages['admin']['catalogs']['relations_manage'])
++            && isset($messages['admin']['relations']['lookup_title'])
++            && isset($messages['admin']['relations']['candidate_view'])
++            && isset($messages['admin']['relations']['col_direction']),
++        'Las traducciones de ' . $locale . ' deben incluir la búsqueda por identificador y el foco por código.'
++    );
+ }
+ 
+ $adminLayoutSource = $auditRead('portal/Views/layouts/admin.php');
+@@ -4915,6 +4923,40 @@ $check(
+     'El menú administrativo debe incluir Relaciones con permiso catalog.view.'
+ );
+ 
++$catalogGovernanceRepoSource = $auditRead('portal/Repositories/CatalogGovernanceRepository.php');
++$check(
++    str_contains($catalogGovernanceRepoSource, 'si.value ILIKE :query')
++        && str_contains($catalogGovernanceRepoSource, 'st.term ILIKE :query')
++        && str_contains($catalogGovernanceRepoSource, 'AS identifiers'),
++    'La búsqueda del panel de catálogos debe cubrir identificadores y términos, no solo permanent_code.'
++);
++$check(
++    str_contains($relationRepoSource, 'public function items(string $catalog, string $query): array')
++        && str_contains($relationRepoSource, 'public function itemRelations(int $itemId): array')
++        && str_contains($relationRepoSource, 'public function itemMappings(int $itemId): array')
++        && str_contains($relationRepoSource, 'public function itemMatches(int $itemId): array'),
++    'El repositorio de relaciones debe permitir localizar un ítem y ver todas sus relaciones en ambos sentidos.'
++);
++$check(
++    str_contains($relationControllerSource, "'itemId' => \$itemId")
++        && str_contains($relationControllerSource, "'candidates' => \$candidates")
++        && str_contains($relationControllerSource, 'return_catalog')
++        && str_contains($relationControllerSource, 'return_item'),
++    'El controlador debe preservar el catálogo y el ítem al filtrar, editar y volver de una escritura.'
++);
++$check(
++    str_contains($relationViewSource, 'name="lookup" value="1"')
++        && str_contains($relationViewSource, 'name="return_item"')
++        && str_contains($relationViewSource, "t('admin.relations.candidate_view')")
++        && str_contains($relationViewSource, "t('admin.relations.col_direction')"),
++    'La vista de relaciones debe ofrecer búsqueda por código, foco del ítem y dirección de la relación.'
++);
++$check(
++    str_contains($auditRead('portal/Views/admin/catalogs/item.php'), 'admin.catalogs.relations_manage')
++        && str_contains($auditRead('portal/Views/admin/catalogs/index.php'), 'admin.catalogs.col_identifiers'),
++    'La ficha y el listado de catálogos deben mostrar identificadores y enlazar con la gestión de relaciones.'
++);
++
+ // Resultado.
+ if ($failures !== []) {
+     fwrite(STDERR, "FALLOS (" . count($failures) . " de $checks):\n");
