@@ -1,9 +1,13 @@
 # Especificación definitiva para la reconstrucción de OFTAR
 
-**Fecha:** 2026-11-28
-**Etapa:** tercera revisión — análisis, diseño y documentación.
-**Estado:** **documento principal para la futura implementación. No autoriza seeds, migraciones ni publicación.**
+**Versión:** 1.0
+**Fecha de revisión:** 2026-11-28
+**Estado:** Pendiente de aprobación de implementación.
+**Alcance:** OFTAR-PR y OFTAR-DX.
+**Tipo de documento:** Especificación funcional y técnica.
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta sujeta a aprobación explícita.
+
+> Este documento es el contrato de implementación de la siguiente etapa. **No autoriza seeds, migraciones, importaciones ni publicación.** Toda reconstrucción queda supeditada a aprobación explícita y al acta de solo lectura de Fase 0.
 
 ---
 
@@ -36,7 +40,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 **[P] Decisiones:**
 
-- Dominio único `oftar`; catálogos `oftar-pr` y `oftar-dx`. No crear motor paralelo ni catálogos duplicados.
+- `oftar` es **dominio funcional de búsqueda y familia de catálogos**, no un valor de `os_catalog.domain_type` (cuyo `CHECK` no lo admite). Los catálogos son `oftar-pr` y `oftar-dx`. No crear motor paralelo, catálogos duplicados ni proponer `domain_type='oftar'` sin ampliación aprobada.
 - Prefijos permanentes `OFT-PR-NNNNNN` y `OFT-DX-NNNNNN`; no reutilizar `OFTAR-PR-`/`OFTAR-DX-`.
 - CAO y Regional NOA conservan su numeración original como catálogos de origen; no se convierten en `oftar-pr`.
 - `v_oftar_search_catalog` publica solo versiones `review_status='approved'`.
@@ -52,7 +56,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 **[P] Conciliación:**
 
-- 13 pares / 26 filas sostenibles como `exact` (equivalencia clínica verificable).
+- 13 pares / 26 filas **propuestos documentalmente** como `exact`; no están clínicamente aprobados.
 - 6 pares / 12 filas a degradar o corregir: HD Analizer, láser femto, `306116`↔`461302`, `306129`↔`460111`, informes clínicos y autorefractometría digital.
 - Corrección obligatoria de la justificación RFG: las descripciones dicen “no incluye fluoresceína”.
 - 48 registros de CAO/Regional sin cobertura NN: 18 atributos, 8 variantes, 6 duplicados, 3 relacionados, 3 candidatos a concepto nuevo, 2 no incorporables y 8 pendientes de revisión.
@@ -70,7 +74,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 | Conjunto | Cómputo | Estado |
 |---|---|---|
-| Candidatos iniciales | 2.661 CIE-10-ES 2026 H00-H59 | Fuente estructurada inicial en español; no etiquetada como norma argentina. |
+| Candidatos iniciales | 2.661 CIE-10-ES 2026 H00-H59 | **Conjunto candidato, no aprobado para publicación**; fuente estructurada inicial en español, no etiquetada como norma argentina. |
 | Núcleo propuesto | Los candidatos aprobados por gobernanza | “Núcleo inicial” hasta acta sobre la edición CIE-10 argentina. |
 | Referencia externa CM | 17 códigos exclusivos | Identidad ICD-10-CM 2027; no auto-incorporados, no traducidos. |
 | Referencias externas adicionales | S05, T15, T26, T85, E11.\* | Solo con decisión de alcance justificada. |
@@ -118,7 +122,11 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 **[P]** Regiones: párpados, aparato lagrimal, órbita, conjuntiva, córnea, esclera, cristalino, úvea, retina, coroides, nervio óptico, músculos extraoculares, superficie ocular. Áreas: glaucoma, neurooftalmología, estrabismo/motilidad, refracción/acomodación, retina médica, retina quirúrgica, oculoplastia, pediátrica, traumatología, infecciosas/inflamatorias y manifestaciones sistémicas.
 
-**[P]** Son valores de atributo estables propuestos, no catálogos ni códigos `CLIN-*`. Descripciones internacionalizables; navegación aditiva `?anatomy=&clinical_area=`.
+**[H]** `ATTR-STRUCTURE`, `ATTR-MODALITY` y `ATTR-LATERALITY` son códigos en `oftar_attribute_definition`, no columnas; `ANAT-*` y `AREA-*` aún no están sembrados en SQL (`oftar_core.sql:257-274,298-306`).
+
+**[P]** Son valores de atributo estables propuestos, no catálogos ni códigos `CLIN-*`. Descripciones internacionalizables; navegación aditiva `?anatomy=&clinical_area=` (no existe hoy en la API y requiere aprobación de implementación).
+
+**[P]** Jerarquía anatómica: `ANAT-UVE` es agrupación y `ANAT-COROID` estructura miembro; `ANAT-SUP` es agrupación funcional de córnea, conjuntiva y película lagrimal, no una estructura nueva; `ANAT-NEU` es el nervio óptico y `ANAT-MOT` los músculos extraoculares, mientras que motilidad y visión binocular son `AREA-ESTRAB`. Una agrupación **no** genera automáticamente relaciones con todas sus estructuras hijas; la multi-estructura se registra solo con soporte clínico explícito.
 
 ---
 
@@ -132,7 +140,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 - Aproximada/parcial → `related` con evidencia de parcialidad; nunca `exact`.
 - Más amplio/más específico → `broader`/`narrower`, dirección OFTAR respecto del externo, a ratificar.
 - Asociativa → `os_catalog_relation` con `context_text`.
-- Variante/sustitución/requiere/incluye → `relation_kind` existente antes que ampliar `CHECK`.
+- Variante/sustitución/requiere/incluye → tipo existente de `os_catalog_relation` antes que ampliar `CHECK`; verificar que el `relation_type` permitido cubre el caso, porque el dominio actual enumera tipos CDT (`aprobar_mapeo_nomencladores_oftar.sql:200-207`).
 
 **[P]** Publicar solo con `review_status='approved'`, evidencia, hash vigente y dos revisores.
 
@@ -148,19 +156,45 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 ---
 
-## 9. Gobernanza y revisión
+## 9. Gobernanza, estados y publicación
 
-**[P]** Estados: Pendiente (`draft`), En revisión (`pending_review`), Aprobado (`approved`), Rechazado (`rejected`) y Requiere información (`draft`/`pending_review` + nota en `os_field_review`).
+### 9.1 Cuatro estados que no deben confundirse
 
-**[P]** Cada revisión registra responsable, fecha, justificación, fuente de evidencia, decisión, vigencia, `content_hash` y traza en `os_audit_log`. Dos revisores distintos; `approved` es condición necesaria para publicar.
+| Objeto | Estado real verificado | Valores / default | Condición de publicación |
+|---|---|---|---|
+| **Versión del concepto** | `os_catalog_item_version.review_status` | `NOT NULL DEFAULT 'unknown'`, **sin CHECK** (`04_fase3_columnas.sql:24-37`). Los scripts OFTAR asignan `approved` (`aprobar_preferred_term_oftar_dx.sql:108-112`). | `v_oftar_search_catalog` exige `='approved'` (`oftar_domain_search.sql:77`). |
+| **Correspondencia / mapeo** | `os_concept_mapping.review_status` | `CHECK(draft\|reviewed\|approved\|deprecated)`; default original `approved`, cambiado a `draft` por `fase3_relaciones_mapeos.sql:183-184` sin tocar el CHECK. **No existen `pending_review` ni `rejected` en el SQL versionado.** | Fila `approved` **y** revisión de campo vigente para `external_display`/`clinical_rationale` (`MappingReviewReader.php:10-130`). |
+| **Revisión de campo / traducción** | `os_field_review.review_status` y `os_localized_text.review_status` | Ambos `DEFAULT 'unknown'`, **sin CHECK** (`01_fase2_tablas.sql:70,131`). | Solo `approved` con `content_hash` vigente y scope/release compatible (`EditorialEvaluator.php:209-211,308-310`; `CatalogRepository.php:2312-2333`). |
+| **Publicación** | `os_catalog_release.status` y `os_catalog_item.status` | Release `CHECK(draft\|review\|published\|deprecated)`; ítem `CHECK(active\|retired\|superseded)` (`origen_catalog_engine.sql:49,67`). | Release `published`, catálogo e ítem activos. |
 
-**[H]** `os_audit_log` es append-only con trigger que impide UPDATE/DELETE (`fase4_gobernanza.sql:120-147`).
+**[H]** `os_review_state` enumera `unknown`, `unreviewed`, `draft`, `in_review`, `reviewed`, `approved`, `published`, `retired`, `obsolete`, `deprecated`, con `is_publication_allowed=TRUE` solo para `approved` y `published` (`fase1_infraestructura.sql:85-102`). **No es un CHECK de las columnas y la API no lo lee**: es vocabulario de gobernanza, no sustituto de los estados persistidos.
+
+### 9.2 Flujo editorial completo
+
+1. **Creación:** versión de concepto con `review_status='unknown'` (default), ítem `active`, release en `draft`; mapeo con `review_status='draft'` (default actual).
+2. **Carga de texto:** `os_catalog_term`/`os_localized_text` con `language_code` y `source_language_code`; `os_field_review` con `provenance`, `source_reference`, `language_evidence` y `content_hash`.
+3. **En revisión:** `in_review` se usa como etiqueta de gobernanza de `os_review_state` o nota de `os_governance_request`, **no como valor de CHECK**. Mientras tanto las columnas permanecen en `unknown`/`draft`. «Requiere información» se registra en gobernanza y en `os_field_review` sin aprobar; no es un estado persistido propio.
+4. **Aprobación:** dos revisiones humanas distintas; `os_field_review.review_status='approved'` con hash vigente; los scripts OFTAR ponen la versión en `approved` y el mapeo en `approved` cuando corresponde.
+5. **Publicación:** release `published`; catálogo e ítem activos; vista OFTAR exige versión `approved`; los evaluadores exigen además aprobación de campo y hash vigente. Si falta texto aprobado, la respuesta es `null` + `untranslated=true`, nunca un fallback a texto sin revisar.
+6. **Cambio o retiro:** los triggers de invalidación devuelven `draft` en `os_concept_mapping` y `unreviewed` en las tablas que lo permiten, y retiran aprobaciones cuando cambia el contenido (`05_fase3_triggers.sql:86-103,110-135`). El histórico queda en `os_audit_log`, append-only (`fase4_gobernanza.sql:120-147`).
+
+**[P]** Concepto de «rechazado»: no existe como valor `rejected` en el SQL versionado. Se documenta como decisión de gobernanza negativa; la fila conserva su estado técnico (`draft`, `unknown` o `deprecated`) y su traza. No inventar un valor `rejected` sin ampliación aprobada.
+
+### 9.3 Condiciones exactas de visibilidad
+
+| Superficie | Condiciones |
+|---|---|
+| `/v1/search?domains=oftar` | `v_oftar_search_catalog`: familia `oftar`, `product_role='catalog'`, catálogo activo, ítem `active`, versión `approved`; requiere `GRANT SELECT` sobre la vista. La rama de búsqueda solo añade coincidencia de texto/activo (`TerminologySearchService.php:2670-2728`). |
+| `/v1/catalogs/{code}/items` | Release `published` e ítem `active` (`CatalogEngineService.php:126-146`); **no filtra `ver.review_status` en el listado**. El detalle aplica evaluación editorial por campo. |
+| Textos en API | `EditorialEvaluator`/`FieldReviewRepository`: candidato `approved`, revisión aprobada, scope compatible y hash vigente; si no, `null` + `untranslated=true`. |
+| `/v1/mappings` | Release `published`; `external_display` y `clinical_rationale` solo con revisión de campo aprobada y hash vigente. El `approved` de la fila de mapeo no basta por sí solo. |
+| Browse Codes | No usa la vista OFTAR: consulta ítems/versiones con release `published` y aplica la aprobación por campo en PHP (`CatalogRepository.php:2197-2381`). |
 
 ---
 
 ## 10. Internacionalización
 
-**[P]** `es-AR` principal y fallback; `en` y `pt-BR` solo con revisión aprobada. Sin columnas `name_en`/`name_pt`. Los 17 códigos ICD-10-CM exclusivos conservan `en` y se registran como no traducidos. `MappingReviewReader` publica texto externo solo con revisión vigente y hash coincidente.
+**[P]** `es-AR` es idioma principal, fallback y **obligatorio para todo concepto publicado**. `en` y `pt-BR` tienen **cobertura progresiva**: no se exige paridad absoluta. Los huecos idiomáticos deben informarse con estado explícito (`untranslated` cuando no hay texto; y los estados reales de revisión del modelo cuando existe texto). No se publican traducciones automáticas ni textos sin revisión aprobada. Sin columnas `name_en`/`name_pt`; se usan `os_catalog_term` y `os_localized_text`. Los 17 códigos ICD-10-CM exclusivos conservan `en` y se registran como no traducidos hasta que exista `es-AR` aprobado. `MappingReviewReader` publica texto externo solo con revisión vigente y hash coincidente.
 
 ---
 
@@ -188,7 +222,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 | Fase | Acción | Quién |
 |---|---|---|
-| 0 | Acta `READ ONLY` de PostgreSQL: objetos, privilegios, conteos, `target_code` (H-02), estado de `categorias_clinicas.sql`. | Responsable |
+| 0 | Acta `READ ONLY` de PostgreSQL: objetos, privilegios, conteos, `target_code` (H-02), estado de `categorias_clinicas.sql`, valores reales de los `CHECK`, definición vigente de `v_oftar_search_catalog`, estados de revisión y catálogos OFTAR. | Responsable |
 | 1 | Aprobación de esta especificación y firma del dictamen PR / universo DX. | Responsable |
 | 2 | Corrección documental de las 12 filas exactas y decisión sobre los 3 conceptos nuevos. | Asistente (documentos), responsable (aprobación) |
 | 3 | Preparación de seeds y verificaciones, sin ejecutarlos, aditivos e idempotentes. | Asistente |
@@ -199,22 +233,67 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 ---
 
-## 15. Pruebas de aceptación propuestas
+## 15. Pruebas de aceptación
+
+**Regla:** las verificaciones se ejecutan con consultas de solo lectura y se comparan contra el acta de Fase 0. No dependen de datos ficticios ni de aprobaciones asumidas.
+
+### 15.1 Identidad
 
 | # | Criterio | Verificación |
 |---:|---|---|
-| 1 | Sin motor paralelo | `SELECT to_regclass('public.os_catalog')` y ausencia de tablas de catálogo duplicadas. |
-| 2 | Catálogos | Conteos publicados coherentes con el acta; CAO y Regional conservan su identidad. |
-| 3 | Códigos propios | `OFT-PR-`/`OFT-DX-` únicos; 0 códigos con prefijos retirados. |
-| 4 | Taxonomía | 8 hojas + raíces + `CAT-DX` sin renombrar; 12 `CLIN-*`. |
-| 5 | Conciliación | 13 pares `exact` aprobados y 6 pares corregidos/degradados; 0 equivalencias publicadas sin `approved`. |
-| 6 | Identidad | `CIE-10-ES` e `ICD-10-CM` diferenciados; 17 códigos CM con `language=en` y sin traducción inventada. |
-| 7 | Anatomía | Filtros `?anatomy=&clinical_area=` aditivos; `category` y `clinical_category` presentes. |
-| 8 | Idiomas | Paridad `es-AR`/`en`/`pt-BR` sin claves faltantes; textos no aprobados devuelven `untranslated`. |
-| 9 | Gobernanza | Toda publicación con dos revisiones, hash vigente y fila en `os_audit_log`. |
-| 10 | UVR | 0 UVR en `oftar-dx`; importes CAO/Regional no convertidos. |
-| 11 | API/frontend | Rutas, envelopes y semántica 200/404 sin cambios; Browse “Todos” sin `error_query`. |
-| 12 | SNOMED | Solo refset `447562003`, destino H00-H59, `review_status='draft'` hasta aprobación. |
+| 1 | Sin motor paralelo | `to_regclass('public.os_catalog')` existe; no hay catálogos duplicados con sufijo alternativo. |
+| 2 | Códigos propios únicos | 0 duplicados de `OFT-PR-NNNNNN`/`OFT-DX-NNNNNN` por catálogo; 0 usos de `OFTAR-PR-`/`OFTAR-DX-`. |
+| 3 | Independencia de códigos externos | Al cambiar el código/edición externa en un entorno controlado, el `permanent_code` OFTAR no cambia. |
+| 4 | Identidad externa completa | Cada identificador publicado conserva sistema, edición, versión, release/fecha, código y descripción originales, idioma, procedencia y vigencia declarada o `desconocida`. |
+| 5 | Fuentes con números repetidos | `305022`, `305025` y `305047` se resuelven por `(catálogo, identificador)`, no por número aislado. |
+
+### 15.2 Datos
+
+| # | Criterio | Verificación |
+|---:|---|---|
+| 6 | Descripción `es-AR` obligatoria | Todo concepto publicado tiene término preferido `es-AR` aprobado. |
+| 7 | Sin equivalencias no aprobadas | 0 filas con `review_status` distinto de `approved` son devueltas por consultas públicas de mapeos. |
+| 8 | Sin duplicados injustificados | 0 pares de conceptos con misma fuente, mismo código original y distinto `OFT-*` sin justificación de variante. |
+| 9 | Procedencia trazable | Toda fila publicada tiene `provenance`, `source_reference` y `content_hash` vigente. |
+| 10 | UVR | 0 UVR en `oftar-dx`; importes CAO/Regional conservados sin conversión automática. |
+
+### 15.3 Relaciones
+
+| # | Criterio | Verificación |
+|---:|---|---|
+| 11 | Jerarquía anatómica coherente | `ANAT-UVE` no sustituye a `ANAT-COROID`; `ANAT-SUP` no genera `ANAT-COR`+`ANAT-CON`; `ANAT-NEU` no se usa para motilidad. |
+| 12 | Multi-estructura | Un concepto puede tener varias estructuras/áreas con evidencia; no se duplica el código OFTAR ni se propaga automáticamente desde un padre. |
+| 13 | Exactas frente a parciales | Solo las propuestas documentalmente justificadas pueden llegar a `exact` tras aprobación; las parciales usan `related` con evidencia. |
+| 14 | Clínica frente a facturación | Las columnas de equivalencia de facturación e importe migrado permanecen `NO` salvo aprobación separada. |
+| 15 | SNOMED filtrado | Solo refset `447562003`, `active=1`, destino H00-H59, sin importación masiva ni equivalencia automática. |
+
+### 15.4 Internacionalización
+
+| # | Criterio | Verificación |
+|---:|---|---|
+| 16 | `es-AR` íntegro | 100% de conceptos publicados con término `es-AR` aprobado; `en` y `pt-BR` son progresivos, sin exigencia de paridad. |
+| 17 | Huecos explícitos | Los textos faltantes se informan con estado explícito y se cuentan por idioma; no se inventan. |
+| 18 | Traducciones publicadas | Solo textos con revisión aprobada, hash vigente, idioma de origen y procedencia coherente aparecen en respuestas públicas. |
+| 19 | Sin traducción automática | Ningún texto con origen automático o sin revisión se publica como término aprobado. |
+| 20 | Códigos ICD-10-CM | Los 17 exclusivos conservan descripción `en` y se registran como no traducidos hasta aprobación de `es-AR`. |
+
+### 15.5 API y frontend
+
+| # | Criterio | Verificación |
+|---:|---|---|
+| 21 | Contratos preservados | Rutas `/v1/*`, envelope `data/meta/request_id`, `Vary: Accept-Language` y semántica 200 vacío frente a 404 sin cambios. |
+| 22 | Browse Codes | Filtros históricos `q/domain/catalog/family/type/category/status/version/validity` y exclusión mutua `domain` vs `catalog/family` sin cambios. |
+| 23 | Identificadores históricos | Los códigos NN/CAO/Regional siguen resolviéndose por `(catálogo, identificador)`. |
+| 24 | Filtros aditivos | `?anatomy=` y `?clinical_area=` son opcionales e ignorables; `category` y `clinical_category` permanecen. |
+
+### 15.6 Gobernanza
+
+| # | Criterio | Verificación |
+|---:|---|---|
+| 25 | Aprobación trazable | Cada aprobación registra responsable, fecha, justificación, evidencia, decisión, vigencia y hash. |
+| 26 | Decisiones auditables | Existe fila en `os_audit_log` append-only por publicación; el trigger impide UPDATE/DELETE. |
+| 27 | Pendientes privados | Mapeos y traducciones pendientes no aparecen en respuestas públicas ni en Browse Codes. |
+| 28 | Release publicado | Solo versiones en release `published` y con estado de revisión publicable son visibles en búsqueda. |
 
 ---
 
@@ -239,7 +318,7 @@ Esta especificación integra y gobierna los nueve entregables de la tercera revi
 
 ### 17.1 ¿Qué decisiones quedaron definitivamente resueltas?
 
-Arquitectura sobre `os_catalog` sin motor paralelo; prefijos `OFT-PR-`/`OFT-DX-`; conservación de 8 categorías, raíces, `CAT-DX` y 12 `CLIN-*`; separación de cuatro dimensiones; CIE-10-ES como fuente estructurada **no normativa argentina**; ICD-10-CM 2027 como referencia externa; SNOMED como enriquecimiento gobernado; 8 clases de relación; flujo de cinco estados editoriales; sin UVR en DX; sin importes convertidos.
+Arquitectura sobre `os_catalog` sin motor paralelo; `oftar` como dominio funcional y familia, con `domain_type='medical'` real; prefijos `OFT-PR-`/`OFT-DX-`; conservación de 8 categorías, raíces, `CAT-DX` y 12 `CLIN-*`; separación de cuatro dimensiones; jerarquía anatómica sin propagación automática; CIE-10-ES como fuente estructurada **no normativa argentina**; ICD-10-CM 2027 como referencia externa; SNOMED como enriquecimiento gobernado; 8 clases de relación; flujo editorial con cinco etiquetas de gobernanza y estados persistentes definidos por objeto (§9); i18n con `es-AR` obligatorio y cobertura progresiva; sin UVR en DX; sin importes convertidos.
 
 ### 17.2 ¿Qué decisiones continúan pendientes?
 
@@ -284,3 +363,13 @@ Los diez listados en §16; el más crítico es la ausencia de acta de Fase 0 y l
 **[I]** La reconstrucción no necesita un nuevo motor ni una nueva nomenclatura. Necesita decisiones clínicas explícitas, identidad por edición y gobernanza que impida publicar equivalencias no revisadas.
 
 **[P]** Esta especificación es el documento principal para la futura implementación. No ejecuta cambios, no modifica PostgreSQL ni seeds y espera aprobación explícita antes de cualquier reconstrucción de datos.
+
+---
+
+## 19. Historial de cambios
+
+| Versión | Fecha | Cambio |
+|---|---|---|
+| 1.0 | 2026-11-28 | Cierre de la especificación funcional y técnica. Separa estados editoriales por objeto, aclara `oftar` como dominio funcional frente a `domain_type`, consolida política i18n sin paridad absoluta, corrige jerarquía anatómica, conserva el dictamen PR como propuesta no aprobada, mantiene el universo DX como conjunto candidato, amplía las pruebas de aceptación y registra los cambios futuros que requieren aprobación. |
+
+**Historial preservado:** las auditorías, propuestas y matrices previas en `docs/audit/` se conservan como evidencia histórica. Esta versión no las borra ni las sobrescribe; solo establece qué capa prevalece cuando existan contradicciones (§0).

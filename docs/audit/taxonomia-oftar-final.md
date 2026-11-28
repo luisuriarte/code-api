@@ -3,6 +3,7 @@
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — solo documentación.
 **Estado:** propuesta para aprobación. **No se renombraron ni movieron categorías históricas.**
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §5).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta.
 
 ---

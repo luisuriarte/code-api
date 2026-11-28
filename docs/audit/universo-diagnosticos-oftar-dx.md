@@ -3,6 +3,7 @@
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — definición documentada del universo.
 **Estado:** propuesta para aprobación. **No se generaron seeds ni se importaron diagnósticos.**
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §3).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta.
 
 ---
@@ -31,7 +32,7 @@
 
 | Conjunto | Composición | Tratamiento propuesto |
 |---|---|---|
-| **Candidatos iniciales** | 2.661 códigos CIE-10-ES 2026 H00-H59, `Nodo_Final=1` | Base de trabajo para OFTAR-DX; **fuente estructurada inicial**, no etiquetada como norma argentina sin acta. |
+| **Candidatos iniciales** | 2.661 códigos CIE-10-ES 2026 H00-H59, `Nodo_Final=1` | **Conjunto candidato, no aprobado para publicación**. Fuente estructurada inicial; no etiquetada como norma argentina sin acta. |
 | **Núcleo propuesto de OFTAR-DX** | Los candidatos iniciales que la gobernanza apruebe | Se denominará “núcleo inicial” hasta que exista acta sobre la edición CIE-10 de referencia en Argentina. No se afirma normatividad. |
 | **Referencias externas** | 17 códigos exclusivos ICD-10-CM 2027 | Identidad `ICD-10-CM`, `version=2027`, `language=en`, procedencia CDC/NCHS-CMS según paquete local. No se incorporan automáticamente como CIE-10 ni se traducen. |
 | **Referencias externas adicionales** | S05, T15, T26, T85, E11.\* y afines | Solo con justificación de pertinencia oftalmológica y decisión de alcance. No se importan masivamente. |

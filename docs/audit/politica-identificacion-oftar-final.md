@@ -3,6 +3,7 @@
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — análisis, diseño y documentación.
 **Estado:** decisión documentada para la especificación definitiva. **No implementada; sin migraciones, seeds ni escrituras.**
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta para aprobación.
 
 ---

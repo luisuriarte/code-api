@@ -3,6 +3,7 @@
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — diseño documentado.
 **Estado:** propuesta para aprobación. **No implementado; sin DDL ni seeds.**
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §9).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta.
 
 ---
@@ -27,17 +28,17 @@
 | Alcance | Extensión de dominio OFTAR / metadato de versión | A confirmar | Incluye técnica, regionalidad y condición de realización. |
 | Exclusiones | Extensión de dominio OFTAR / texto governado | A confirmar | Ej.: “no incluye lente”, “no incluye insumos”. |
 | Categoría | `os_catalog_item_version.category_id` + `os_catalog_item_clinical_category` | Existente | `category` fuente + `clinical_category` aditiva. |
-| Relaciones anatómicas | `ATTR-STRUCTURE` / `os_catalog_relation` | Existente | Una o varias; `ANAT-*`. |
-| Área clínica | Atributo o relación controlada | Existente | `AREA-*`; no `CLIN-*` nuevo. |
+| Relaciones anatómicas | `ATTR-STRUCTURE` / `os_catalog_relation` | Existente | Una o varias; `ANAT-*`. Diferenciar estructura, agrupación y función; las agrupaciones no propagan hijos automáticamente. |
+| Área clínica | Atributo o relación controlada | Existente | `AREA-*`; no `CLIN-*` nuevo. Función, motilidad y práctica clínica se expresan aquí, no como `ANAT-*`. |
 | Lateralidad | `ATTR-LATERALITY` | Existente | OD/OI/AO/NA; atributo, nunca código nuevo. |
 | Modalidad / técnica | `ATTR-MODALITY` / técnica en extensión | Existente | Definido; dominio a cargar por gobernanza. |
 | Identificadores externos | `os_catalog_identifier`, `os_concept_mapping`, `oftar_external_identity` | Existente | Sistema, edición, versión y procedencia según política final. |
 | Procedencia | `provenance`, `source_reference` | Existente | Obligatoria, específica por fuente. |
-| Estado editorial | `review_status`, `os_field_review`, `os_audit_log` | Existente | `proposed`, `in_review`, `approved`, `rejected`, `needs_info`. |
+| Estado editorial | `review_status`, `os_field_review`, `os_audit_log` | Existente | Depende del objeto: versión `unknown`/`approved` sin CHECK; mapeo `draft\|reviewed\|approved\|deprecated`; campo/traducción `unknown`/`approved` con hash. `in_review` y `rejected` son etiquetas de gobernanza, no valores persistidos. |
 | Vigencia | `valid_from`, `valid_to`, `active` | Parcial | Solo si la fuente la declara; si no, `desconocida`. |
 | Versión | `os_catalog_release`, versión de ítem | Existente | Toda corrección crea versión nueva; no sobrescribe la publicada. |
 
-**[H]** Los campos base verificados incluyen `os_catalog_item_version.category_id`, `os_catalog_term`, `os_catalog_identifier`, `os_concept_mapping` con `review_status`/`provenance`/`source_reference`/`content_hash`/`valid_from`/`valid_to`, y `os_field_review` con aprobación por campo.
+**[H]** Los campos base verificados incluyen `os_catalog_item_version.category_id`, `os_catalog_term`, `os_catalog_identifier`, `os_concept_mapping` con `review_status`/`provenance`/`source_reference`/`content_hash`/`valid_from`/`valid_to`, y `os_field_review` con aprobación por campo. **[H]** `ATTR-STRUCTURE`, `ATTR-MODALITY` y `ATTR-LATERALITY` son códigos en `oftar_attribute_definition` (`oftar_core.sql:257-274`), no columnas; `ANAT-*` y `AREA-*` son propuestas documentales no sembradas en SQL.
 
 **[I]** Los campos “alcance” y “exclusiones” son los que tienen menos soporte estructurado explícito. Pueden resolverse con la extensión de dominio OFTAR ya existente; si se decide darles campo propio en el motor, esa sería una ampliación futura.
 
@@ -82,9 +83,9 @@
 
 **[P] Versionado:** cada cambio publicable crea una versión nueva de `os_catalog_item_version` dentro de un release; el código `OFT-PR-`/`OFT-DX-` permanece. Las correcciones de texto pasan por `os_field_review` con hash vigente.
 
-**[P] Idiomas:** `es-AR` es idioma principal y fallback; `en` y `pt-BR` se completan solo con revisión aprobada. No inventar traducciones para los 17 códigos ICD-10-CM exclusivos.
+**[P] Idiomas:** `es-AR` es idioma principal, fallback y obligatorio para conceptos publicados; `en` y `pt-BR` tienen cobertura progresiva, sin exigencia de paridad. Los huecos se informan con estado explícito (`untranslated`); solo se publican textos con revisión aprobada y hash vigente. No inventar traducciones para los 17 códigos ICD-10-CM exclusivos.
 
-**[P] Gobernanza:** dos revisiones humanas distintas y traza en `os_audit_log`. Los estados editoriales de trabajo son **Pendiente, En revisión, Aprobado, Rechazado y Requiere información**; se persisten con los valores reales del `CHECK`: `os_concept_mapping.review_status` ∈ `draft|pending_review|approved|rejected` y `os_catalog_item_version.review_status` ∈ `draft|review|published|deprecated`. `Requiere información` se registra en `os_field_review` sin aprobar. `v_oftar_search_catalog` publica solo versiones `approved`.
+**[P] Gobernanza:** dos revisiones humanas distintas y traza en `os_audit_log`. Los estados de trabajo **Pendiente, En revisión, Aprobado, Rechazado y Requiere información** son etiquetas de gobernanza, **no valores de `CHECK`**. Los valores persistentes reales son: `os_concept_mapping.review_status ∈ draft|reviewed|approved|deprecated` (default `draft`); `os_catalog_item_version.review_status` sin CHECK y default `unknown`, al que los scripts OFTAR ponen `approved` (`04_fase3_columnas.sql:24-37`); `os_field_review`/`os_localized_text.review_status` sin CHECK y default `unknown`, con aprobación por hash vigente. `draft|review|published|deprecated` pertenece a `os_catalog_release.status`. No existen `pending_review` ni `rejected` en el SQL versionado. `v_oftar_search_catalog` publica solo versiones `approved` (`oftar_domain_search.sql:77`). La definición autorizada es §9 de `especificacion-definitiva-reconstruccion-oftar.md`.
 
 **[P] UVR:** las UVR son atributo de prestación `oftar-pr`; `oftar-dx` no recibe UVR. Los importes de CAO y Regional se mantienen separados y no se convierten.
 

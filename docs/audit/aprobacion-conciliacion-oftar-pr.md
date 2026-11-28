@@ -2,7 +2,8 @@
 
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — análisis y propuesta de aprobación.
-**Estado:** **no aprobada para publicación**. Las 433 filas de la matriz siguen siendo `propuesta_no_publicada`.
+**Estado:** **dictamen documental; no aprobación clínica ni autorización de publicación**. Las 433 filas de la matriz siguen siendo `propuesta_no_publicada`.
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §9).
 **Convención:** `[H]` hecho verificado · `[I]` dictamen clínico documentado · `[P]` decisión propuesta sujeta a aprobación.
 
 ---
@@ -13,13 +14,15 @@
 
 **[I]** Criterio aplicado a las 38 filas marcadas como `equivalencia_clinica_exacta`: identidad de práctica, técnica, modalidad, lateralidad, región anatómica, alcance/sesiones y condiciones de realización (`revision-clinica-oftar-pr.md:61-70`). La coincidencia textual es solo pista.
 
-**[I] Resultado:** **26 filas / 13 pares son sostenibles como exactas**; **12 filas / 6 pares no deben publicarse como exactas** sin corrección o degradación. El dictamen no cambia la matriz en esta etapa: solo documenta lo que debe aprobarse o corregirse antes de generar seeds.
+**[I] Resultado:** **26 filas / 13 pares tienen justificación documental suficiente para proponerse como exactas**; **12 filas / 6 pares no deben publicarse como exactas** sin corrección o degradación. Estas 13 propuestas **no están clínicamente aprobadas**: requieren firma de los responsables autorizados antes de cualquier publicación. El dictamen no cambia la matriz en esta etapa; solo documenta lo que debe aprobarse o corregirse antes de generar seeds.
 
 ---
 
 ## 2. Dictamen de las 38 equivalencias exactas
 
-### 2.1 Pares que pueden aprobarse como `exact` — 13 pares / 26 filas
+### 2.1 Pares propuestos como `exact` — 13 pares / 26 filas
+
+**[P]** Esta sección es una **propuesta documental**, no una aprobación clínica. Ningún par se publica sin `review_status='approved'`, dos revisiones humanas y evidencia trazable.
 
 | Filas | Concepto OFTAR / núcleo | Contraparte | Justificación clínica verificable |
 |---|---|---|---|
@@ -54,17 +57,17 @@
 
 ## 3. Flujo editorial de revisión
 
-**[P] Estados obligatorios y su persistencia real:**
+**[P] Flujo editorial y persistencia real (corrección v1.0):** los nombres de trabajo «Pendiente», «En revisión», «Aprobado», «Rechazado» y «Requiere información» son **etiquetas de gobernanza, no valores de `CHECK`**. Los valores persistidos dependen del objeto:
 
-| Estado editorial | Valor persistido | Significado |
+| Etapa editorial | Valor persistido real | Significado |
 |---|---|---|
-| Pendiente | `review_status='draft'` | Creado; sin revisión asignada. |
-| En revisión | `review_status='pending_review'` | Asignado; evidencia abierta. |
-| Aprobado | `review_status='approved'` | Dos revisiones favorables, hash vigente. Solo entonces publicable. |
-| Rechazado | `review_status='rejected'` | Decisión negativa con justificación; conservado como histórico. |
-| Requiere información | `draft`/`pending_review` + nota en `os_field_review` | Falta evidencia; no equivale a aprobación. |
+| Creado / pendiente | `os_catalog_item_version.review_status='unknown'` (default; sin CHECK); mapeo `review_status='draft'` (default actual) | Creado; sin revisión aprobada. |
+| En revisión | `in_review` solo en `os_review_state` o nota de gobernanza; la columna sigue en `unknown`/`draft` | Evidencia abierta; **no es valor de CHECK**. |
+| Aprobado | `review_status='approved'` + `os_field_review` aprobado con hash vigente | Dos revisiones favorables; publicable. |
+| Rechazado | No existe `rejected`: se registran `draft`, `unknown` o `deprecated` más decisión de gobernanza negativa | Decisión negativa con justificación; se conserva el histórico. |
+| Requiere información | `unknown`/`draft` + nota en `os_field_review`/gobernanza, sin aprobar | Falta evidencia; no equivale a aprobación. |
 
-**[H]** `os_concept_mapping.review_status` tiene `CHECK(draft|pending_review|approved|rejected)` (`origen_catalog_engine.sql:119-134`, con default `draft` desde `fase3_relaciones_mapeos.sql:27-36`). `os_catalog_item_version.review_status` usa `draft|review|published|deprecated`.
+**[H]** `os_concept_mapping.review_status` tiene `CHECK(draft|reviewed|approved|deprecated)` (`origen_catalog_engine.sql:119-133`), con default original `approved` cambiado a `draft` por `fase3_relaciones_mapeos.sql:177-184`, **sin modificar el CHECK**. `os_catalog_item_version.review_status` se agrega en `04_fase3_columnas.sql:24-37` como `NOT NULL DEFAULT 'unknown'` **sin CHECK**; los scripts OFTAR lo asignan `approved`. `draft|review|published|deprecated` corresponde a `os_catalog_release.status`, no a revisión de versión. No existen `pending_review` ni `rejected` en el SQL versionado. La definición autorizada es §9 de `especificacion-definitiva-reconstruccion-oftar.md`.
 
 **[P] Datos que debe registrar cada revisión:**
 
@@ -142,6 +145,6 @@ Regional: `305004` autorefractometría bilateral; `305012` ejercicios ortóptico
 
 ## 6. Cierre
 
-**[P]** La conciliación queda **pre-aprobada solo en el sentido documental**: 13 pares sostenibles y 6 pares a degradar/corregir; 48 registros de CAO/Regional clasificados con 3 candidatos a concepto nuevo. Ninguna equivalencia se publica sin `review_status='approved'`.
+**[P]** La conciliación queda como **dictamen documental**: 13 pares propuestos como exactos, 6 pares a degradar/corregir y 48 registros de CAO/Regional clasificados con 3 candidatos a concepto nuevo. **No hay aprobación clínica.** Ninguna equivalencia se publica sin `review_status='approved'`, dos revisores autorizados y evidencia.
 
 **[P]** Condición de aprobación final: que el responsable firme este dictamen, corrija las 12 filas señaladas y decida los 3 conceptos canónicos nuevos antes de autorizar seeds.

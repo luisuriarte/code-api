@@ -3,6 +3,7 @@
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — solo análisis y documentación.
 **Estado:** propuesta para aprobación. **No implementada; sin DDL ni datos nuevos.**
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §6).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta.
 
 ---
@@ -33,18 +34,18 @@
 | Identificador | Nombre | Dimensión | Descripción | Ejemplos de uso |
 |---|---|---|---|---|
 | `ANAT-PAL` | Párpados | B · anatomía | Estructuras palpebrales y anexos cutáneos inmediatos. | H00-H02; blefaritis, chalazión. |
-| `ANAT-LAG` | Aparato lagrimal | B · anatomía | Glándulas y vías lagrimales. | H04; dacriocistitis, obstrucción. |
-| `ANAT-ORB` | Órbita | B · anatomía | Contenido orbitario y territorio orbitario. | H05; orbitopatía tiroidea. |
+| `ANAT-LAG` | Aparato lagrimal | B · agrupación anatómica | Conjunto de glándulas y vías lagrimales. | H04; dacriocistitis, obstrucción. |
+| `ANAT-ORB` | Órbita | B · región / agrupación anatómica | Región orbitaria y su contenido; no es una estructura única. | H05; orbitopatía tiroidea. |
 | `ANAT-CON` | Conjuntiva | B · anatomía | Membrana conjuntival. | H10-H11; conjuntivitis, pterigión. |
 | `ANAT-COR` | Córnea | B · anatomía | Córnea, incluido endotelio. | H15-H18, H22; queratitis, edema. |
 | `ANAT-ESCL` | Esclera | B · anatomía | Túnica escleral. | H15; escleritis, episcleritis. |
 | `ANAT-CRY` | Cristalino | B · anatomía | Cristalino y cápsula. | H25-H28; catarata, subluxación. |
-| `ANAT-UVE` | Úvea | B · anatomía | Iris, cuerpo ciliar y coroides como tractor uveal. | H20-H21; iridociclitis. |
-| `ANAT-RET` | Retina | B · anatomía | Retina sensorial. | H30-H36; retinopatía, desprendimiento. |
-| `ANAT-COROID` | Coroides | B · anatomía | Capa vascular coroidea, diferenciada de retina. | H31-H36; coroiditis, coroidopatía. |
-| `ANAT-NEU` | Nervio óptico | B · anatomía / función | Nervio óptico y vía visual anterior. | H46-H47; neuritis óptica, atrofia. |
-| `ANAT-MOT` | Músculos extraoculares | B · anatomía / función | Músculos extraoculares y control motor. | H49-H51; parálisis, estrabismo. |
-| `ANAT-SUP` | Superficie ocular | B · anatomía funcional | Película lagrimal, córnea y conjuntiva como interfaz. | H16, H18.8; ojo seco, queratoconjuntivitis. |
+| `ANAT-UVE` | Úvea | B · agrupación anatómica | Tracto uveal: iris, cuerpo ciliar y coroides. No sustituye a `ANAT-COROID` cuando la coroides está individualizada. | H20-H21; iridociclitis, panuveítis. |
+| `ANAT-RET` | Retina | B · estructura anatómica | Retina sensorial. | H30-H36; retinopatía, desprendimiento. |
+| `ANAT-COROID` | Coroides | B · estructura anatómica | Capa vascular coroidea, miembro del tracto uveal y diferenciada de la retina. | H31-H36; coroiditis, coroidopatía. |
+| `ANAT-NEU` | Nervio óptico | B · estructura anatómica | Nervio óptico. La función visual se expresa con `AREA-NEURO` y atributos de modalidad, no con `ANAT-*`. | H46-H47; neuritis óptica, atrofia. |
+| `ANAT-MOT` | Músculos extraoculares | B · agrupación anatómica | Músculos extraoculares. La motilidad y la visión binocular son función/área clínica (`AREA-ESTRAB`), no anatomía neural. | H49-H51; parálisis, estrabismo. |
+| `ANAT-SUP` | Superficie ocular | B · agrupación funcional | Interfaz formada por película lagrimal, córnea y conjuntiva. No es una estructura nueva ni implica asignar automáticamente `ANAT-COR` y `ANAT-CON`. | H16, H18.8; ojo seco, queratoconjuntivitis. |
 
 ### 2.2 Área clínica — dimensión C
 
@@ -66,21 +67,40 @@
 
 **[I]** `AREA-TRAUMA` puede marcar navegación sobre códigos H dentro del núcleo, pero los códigos S05 requieren una decisión de alcance separada (ver `universo-diagnosticos-oftar-dx.md`). `AREA-SIST` es navegación aditiva sobre H36.8\*, no un nuevo diagnóstico.
 
+### 2.3 Jerarquía y reglas de solapamiento
+
+**[P]** La jerarquía distingue cuatro tipos de valor; **no todos los `ANAT-*` son estructuras terminals**:
+
+| Nivel | Tipo | Valores | Regla de uso |
+|---|---|---|---|
+| 1 | Región o agrupación anatómica | `ANAT-ORB`, `ANAT-LAG`, `ANAT-UVE`, `ANAT-MOT` | Se usa cuando el concepto se refiere al conjunto. **No propaga automáticamente** sus miembros como relaciones independientes. |
+| 2 | Agrupación funcional | `ANAT-SUP` | Describe la interfaz superficie ocular como conjunto clínico. No es una estructura nueva ni genera por sí sola `ANAT-COR` + `ANAT-CON`. |
+| 3 | Estructura anatómica | `ANAT-PAL`, `ANAT-CON`, `ANAT-COR`, `ANAT-ESCL`, `ANAT-CRY`, `ANAT-RET`, `ANAT-COROID`, `ANAT-NEU` | Se usa solo cuando la estructura afectada está declarada o es clínicamente inequívoca. |
+| 4 | Función / práctica clínica | Sin `ANAT-*` propio | Se expresa con `AREA-*`, modalidad, técnica o protocolo; nunca como una estructura anatómica ficticia. |
+
+**[P]** Resolución de los solapamientos detectados:
+
+1. **`ANAT-UVE` frente a `ANAT-COROID`:** `ANAT-UVE` es la agrupación del tracto uveal; `ANAT-COROID` es la estructura coroidea. Se usa `ANAT-COROID` para coroiditis/coroidopatía y `ANAT-UVE` para afectación uveal difusa o panuveítis. En coroidoretinitis documentada pueden registrarse `ANAT-RET` y `ANAT-COROID`, pero **no** por el hecho de que `ANAT-COROID` pertenezca a `ANAT-UVE`.
+2. **`ANAT-SUP` frente a córnea y conjuntiva:** `ANAT-SUP` representa la interfaz funcional (ojo seco, enfermedad de superficie). `ANAT-COR` y `ANAT-CON` se usan para afectación estructural específica. Si la fuente declara queratoconjuntivitis, se registran ambas estructuras explícitamente; no se infieren desde `ANAT-SUP`.
+3. **`ANAT-NEU` frente a `ANAT-MOT`:** `ANAT-NEU` es el nervio óptico; `ANAT-MOT` son los músculos extraoculares. La motilidad, alineación y visión binocular pertenecen a `AREA-ESTRAB`; las manifestaciones neurológicas a `AREA-NEURO`. El estrabismo no se clasifica como `ANAT-NEU` por defecto.
+4. **Cardinalidad:** un diagnóstico puede tener múltiples estructuras y áreas clínicas cuando la evidencia lo soporta (p. ej. retina + coroides; `AREA-RET-MED` + `AREA-SIST`). La multiplicidad es explícita y verificable, nunca automática por jerarquía.
+5. **No invención:** no crear `ANAT-*` nuevos para iris, cuerpo ciliar, película lagrimal ni funciones. Si se necesita navegación jerárquica automatizada, debe apoyarse en relaciones gobernadas existentes o proponerse como ampliación futura; no se implementa en esta etapa.
+
 ---
 
 ## 3. Representación en el modelo actual
 
-| Necesidad | Modelo existente | ¿Migración? |
+| Necesidad | Modelo existente verificado | ¿Migración? |
 |---|---|---|
-| Una región principal | Atributo `ATTR-STRUCTURE` o equivalente, con valor de dominio gobernado | No: carga de datos en tablas existentes. |
-| Un área clínica principal | Segundo atributo controlado | No |
-| Varias regiones/áreas por diagnóstico | Relación desde `os_catalog_relation` o estructura multivaluada ya disponible | **A evaluar**: si no hay soporte limpio, ampliación futura. |
-| Mantener `category` y `clinical_category` | Contrato actual de API | No |
+| Una estructura principal explícita | Código `ATTR-STRUCTURE` en `oftar_attribute_definition` (`oftar_core.sql:269-270`); valores en `oftar_attribute_value` | No: carga de datos en tablas existentes, previa ratificación de `ANAT-*`. |
+| Un área clínica principal | No hay columna `clinical_area`; se propone como código de atributo controlado o relación gobernada | No si se aprueban valores `AREA-*` como datos; **sí** si se decide una columna propia. |
+| Varias regiones/áreas por diagnóstico | `os_catalog_relation` existe, pero su `CHECK relation_type` enumera tipos CDT (`aprobar_mapeo_nomencladores_oftar.sql:200-207`) | **A evaluar**: validar dominio existente o ampliación futura aprobada. |
+| Mantener `category` y `clinical_category` | Contrato actual de API (`CatalogEngineService.php`) | No |
 | Derivar capítulo CIE-10 | Desde `os_catalog_identifier.value` / `external_code` | No |
-| Filtros `?anatomy=` y `?clinical_area=` | Cambio en la capa de lectura, sin tocar el contrato existente | No |
+| Filtros `?anatomy=` y `?clinical_area=` | No existen hoy en `api/`; serían capa de lectura aditiva | No, pero requieren aprobación de implementación. |
 | Descripciones `es-AR`/`en`/`pt-BR` | Terminología multilingüe existente | No |
 
-**[H]** `ATTR-STRUCTURE` y `ATTR-MODALITY` están definidos en `oftar_core.sql`; `ATTR-LATERALITY` ya tiene valores sembrados. Cargar dominios es inserción de datos, no cambio estructural.
+**[H]** `ATTR-STRUCTURE`, `ATTR-MODALITY` y `ATTR-LATERALITY` son **códigos en `oftar_attribute_definition`**, no columnas (`oftar_core.sql:257-274`). `ATTR-LATERALITY` ya tiene valores sembrados en `oftar_attribute_value` (`:298-306`). Cargar dominios es inserción de datos, no cambio estructural. **[H]** No hay valores `ANAT-*` ni `AREA-*` en SQL: son propuesta documental pendiente de ratificación.
 
 ---
 
@@ -89,7 +109,7 @@
 1. No mezclar anatomía con especialidad: `ANAT-*` describe estructura; `AREA-*` describe práctica clínica.
 2. No duplicar categorías clínicas: no crear `CLIN-*` nuevos para OFTAR.
 3. No crear catálogos de catálogo para navegación: las regiones son valores de atributo, no `os_catalog`.
-4. No imponer cardinalidad uno a uno: un diagnóstico puede afectar retina y coroides, o pertenecer a retina médica y enfermedad sistémica.
+4. No imponer cardinalidad uno a uno: un diagnóstico puede afectar retina y coroides, o pertenecer a retina médica y enfermedad sistémica. La jerarquía no genera relaciones hijas automáticas.
 5. Identificadores estables y descripciones internacionalizables: los códigos de trabajo se ratifican por gobernanza; las etiquetas se traducen sin alterar el identificador.
 6. Compatibilidad: la navegación secundaria es aditiva; si no hay atributos cargados, la API y el frontend siguen funcionando con el facet histórico.
 

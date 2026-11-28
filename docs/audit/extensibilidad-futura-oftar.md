@@ -3,13 +3,14 @@
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — solo documentación.
 **Estado:** diseño preparatorio. **OFTAR-AN, OFTAR-IN y OFTAR-DI NO se crean en esta etapa.**
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0).
 **Convención:** `[H]` hecho verificado · `[I]` inferencia · `[P]` decisión propuesta.
 
 ---
 
 ## 1. Principio general
 
-**[H]** El motor `os_catalog` ya soporta múltiples catálogos, releases, versiones, términos, identificadores, relaciones, mapeos, auditoría y gobernanza (`sql/02_catalogs/origen_catalog_engine.sql`, `sql/07_multilingue`). El dominio `oftar` es único y los catálogos son `oftar-pr` y `oftar-dx`.
+**[H]** El motor `os_catalog` ya soporta múltiples catálogos, releases, versiones, términos, identificadores, relaciones, mapeos, auditoría y gobernanza (`sql/02_catalogs/origen_catalog_engine.sql`, `sql/07_multilingue`). `oftar` es el dominio funcional de búsqueda y la familia; los productos editoriales son `oftar-pr` y `oftar-dx`, con `domain_type='medical'` real en `os_catalog` (`oftar_core.sql:142-150`), no `domain_type='oftar'`.
 
 **[I]** Incorporar nuevos catálogos no requiere un motor nuevo: basta un catálogo nuevo dentro del mismo dominio y relaciones gobernadas hacia los conceptos existentes. Lo que sí debe evitarse es crear relaciones ficticias o marcar compatibilidades clínicas sin evidencia.
 

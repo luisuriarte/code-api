@@ -3,6 +3,7 @@
 **Fecha:** 2026-11-28
 **Etapa:** tercera revisión — verificación de la arquitectura real.
 **Estado:** análisis documentado. **No se ejecutaron migraciones, importadores, seeds ni sentencias de escritura.**
+**Documento rector:** `especificacion-definitiva-reconstruccion-oftar.md` v1.0. Ante contradicción, prevalece lo verificado y lo definido allí (§0 y §9).
 **Convención:** `[H]` hecho verificado en repositorio · `[I]` inferencia · `[P]` decisión propuesta.
 
 ---
@@ -29,12 +30,26 @@
 | `os_catalog_release` | FK `catalog_id`, `version_tag`, `status CHECK(draft\|review\|published\|deprecated)`, `UNIQUE(catalog_id, version_tag)` | 13-51 |
 | `os_catalog_category` | FK catálogo, `parent_category_id` self-FK, `UNIQUE(catalog_id, code)` | 54-60 |
 | `os_catalog_item` | FK catálogo, `permanent_code`, `status CHECK(active\|retired\|superseded)`, `UNIQUE(catalog_id, permanent_code)` | 63-70 |
-| `os_catalog_item_version` | FK ítem/release/categoría, `preferred_term`, `definition`, `clinical_criteria`, `is_billable`, `review_status CHECK(draft\|review\|published\|deprecated)`, `UNIQUE(item_id, release_id)` | 72-82 |
+| `os_catalog_item_version` | FK ítem/release/categoría, `preferred_term`, `definition`, `clinical_criteria`, `is_billable`, `UNIQUE(item_id, release_id)`. `review_status` se agrega después: `NOT NULL DEFAULT 'unknown'`, **sin CHECK** (`sql/07_multilingue/04_fase3_columnas.sql:24-37`); los scripts OFTAR lo ponen en `approved` | 72-82; 04_fase3_columnas.sql:24-37 |
 | `os_catalog_term` | FK versión, `term`, `term_type CHECK(synonym\|lay_term\|abbreviation)`, `language_code DEFAULT 'es'` | 84-90 |
 | `os_catalog_identifier` | FK ítem, `system_name`, `value`, `is_primary`, `UNIQUE(item_id, system_name, value)` | 92-98 |
-| `os_concept_mapping` | FK ítem/sistema, `external_code`, `external_display`, `mapping_type CHECK(exact\|narrower\|broader\|related\|no_map\|reference)`, `relationship_role`, `provenance`, `source_reference`, `review_status CHECK(draft\|pending_review\|approved\|rejected)`, `language_evidence`, `UNIQUE(item_id, terminology_system_id, external_code)` | 119-134 |
+| `os_concept_mapping` | FK ítem/sistema, `external_code`, `external_display`, `mapping_type CHECK(exact\|narrower\|broader\|related\|no_map\|reference)`, `relationship_role`, `provenance`, `source_reference`, `review_status CHECK(draft\|reviewed\|approved\|deprecated)`, `language_evidence`, `UNIQUE(item_id, terminology_system_id, external_code)`. Default original `approved`; `fase3_relaciones_mapeos.sql:183-184` lo cambia a `draft` sin modificar el CHECK | 119-134; fase3_relaciones_mapeos.sql:177-184 |
 
 **[H] Corrección necesaria:** el valor real para equivalencia es `exact`, no `equivalent`. Los documentos de trabajo que usaron `equivalent` deben leerse como intención, no como valor persistible. La especificación definitiva usa `exact`.
+
+**[H] `oftar` no es un valor de `os_catalog.domain_type`.** El `CHECK` verificado admite `dental|medical|biochemical|rehabilitation|mental_health|pharma|terminology` (`origen_catalog_engine.sql:18`). La declaración real es:
+
+| `code` | `country_code` | `domain_type` | `family_code` | `product_role` | Evidencia |
+|---|---|---|---|---|---|
+| `oftar` | `AR` | `medical` | `NULL` | `family` | `oftar_core.sql:142-144` |
+| `oftar-pr` | `AR` | `medical` | `oftar` | `catalog` | `oftar_core.sql:145-147` |
+| `oftar-dx` | `AR` | `medical` | `oftar` | `catalog` | `oftar_core.sql:148-150` |
+
+**[H]** `oftar` es además **dominio funcional de búsqueda**: `TerminologySearchService.php:49` define `DOMAIN_OFTAR='oftar'`, `:52-68` lo incluye en `DOMAINS`, `:76-80` **no** lo incluye en `DEFAULT_DOMAINS`, y `:417-432` lo enlaza a `v_oftar_search_catalog`. `os_domain_registry` registra el dominio expuesto (`oftar_domain_search.sql:27-37`) pero la API no lo usa como fuente de verdad (`TerminologySearchService.php:444-453,2896-2921`).
+
+**[H]** Los catálogos de origen `nomenclador-oftalmologico-cao-ar` y `nomenclador-oftalmologico-regional-ar` también tienen `family_code='oftar'`, `domain_type='medical'` y `product_role='catalog'`; son catálogos de la familia, **no dominios nuevos ni productos editoriales**.
+
+**[P]** Mantener la arquitectura actual: no proponer `domain_type='oftar'`, no crear dominios `oftar-pr`/`oftar-dx` y no mezclar dominio funcional, familia, `product_role` y `domain_type`.
 
 ### 2.2 Internacionalización y gobernanza
 
@@ -55,6 +70,32 @@
 **[H]** `sql/03_oftar/oftar_domain_search.sql:45-120` crea `v_oftar_search_catalog`: `DISTINCT ON (item.id)`, familia `oftar`, `product_role='catalog'`, catálogo e ítem activos, versión `review_status='approved'`. Prioriza `es-AR` y conserva `en` solo cuando existe en fuente. Expone `id, activo, snomed_concept_id, codigo, termino, subtitulo, catalogo, codigo_permanente, familia, categoria, idioma, estado_revision`.
 
 **[H]** `sql/03_oftar/importar_nomenclador_oftar_pr.sql:123-332`, `sync_oftar_dx_to_os.sql:60-240` y `nomencladores_oftar_mapping.sql` proyectan OFTAR al motor y crean `os_field_review` pendiente. `aprobar_preferred_term_oftar_dx.sql` y `aprobar_mapeo_nomencladores_oftar.sql` son aprobaciones separadas por hash/actor.
+
+### 2.4 Atributos, anatomía y relaciones: qué existe realmente
+
+**[H]** `oftar_attribute_definition` (`oftar_core.sql:257-264`) contiene códigos como `ATTR-STRUCTURE` (`:269-270`), `ATTR-MODALITY` (`:273-274`) y `ATTR-LATERALITY` (`:267-268`). **`ATTR-*` son valores de `code`, no columnas.** `oftar_attribute_value` (`:288-296`) carga hoy dominios de lateralidad y rol de ejecución (`:298-306`); la proyección real al motor ocurre en `os_catalog_source_attribute` (`:314-323`; `importar_nomenclador_oftar_pr.sql:259-268`).
+
+**[H]** No existen columnas `anatomy`, `clinical_area`, `anatomy_code` ni `area_code` en el SQL revisado. Los identificadores `ANAT-*` y `AREA-*` son **propuesta documental**, no valores sembrados (`clasificacion-anatomica-oftar-final.md:29,35-63`). Cargarlos sería inserción en tablas existentes, sin DDL, previa ratificación.
+
+**[H]** `os_catalog_relation` existe con `relation_type`, `context_text`, `review_status`, `provenance` y otros campos (`aprobar_mapeo_nomencladores_oftar.sql:196-221`), pero su `CHECK relation_type` enumera tipos literales CDT (`:200-207`). **[I]** Usarlo para jerarquía anatómica multivaluada requiere validar el dominio o ampliarlo; no asumir que cualquier `relation_type` es aceptado.
+
+**[P]** Las consultas de anatomía/área vía `?anatomy=` o `?clinical_area=` no existen hoy en `api/`; serían un cambio aditivo de capa de lectura, no un cambio de esquema. La API ya expone `clinical_category`/`clinical_category_code` (`CatalogEngineService.php:109-123,196-200`).
+
+### 2.5 Estados editoriales y publicación — valores reales
+
+| Objeto | Estado real verificado | Condición de publicación |
+|---|---|---|
+| `os_catalog_item_version.review_status` | `NOT NULL DEFAULT 'unknown'`, **sin CHECK** (`04_fase3_columnas.sql:24-37`). `approved` es asignado por los scripts de aprobación OFTAR (`aprobar_preferred_term_oftar_dx.sql:108-112`). | `v_oftar_search_catalog` exige `ver.review_status='approved'` (`oftar_domain_search.sql:77`). |
+| `os_concept_mapping.review_status` | `CHECK(draft\|reviewed\|approved\|deprecated)`, default actual `draft` (`fase3_relaciones_mapeos.sql:183-184`). No existen `pending_review` ni `rejected` en el SQL versionado. | La fila debe estar `approved`; además `external_display`/`clinical_rationale` requieren revisión de campo aprobada y hash vigente (`MappingReviewReader.php:10-130`). |
+| `os_field_review.review_status` | `DEFAULT 'unknown'`, **sin CHECK** (`01_fase2_tablas.sql:122-137`). | `EditorialEvaluator.php:209-211,308-310` y `CatalogRepository.php:2312-2319` solo aceptan `approved` con hash vigente y scope/release compatible. |
+| `os_localized_text.review_status` | `DEFAULT 'unknown'`, **sin CHECK** (`01_fase2_tablas.sql:55-81`). | Igual que `os_field_review`; si no hay contenido aprobado, la API devuelve `null` y `untranslated=true`. |
+| `os_catalog_release.status` | `CHECK(draft\|review\|published\|deprecated)`, default `published` (`origen_catalog_engine.sql:49`). | Los endpoints de catálogo exigen release `published` (`CatalogEngineService.php:137,304-305`). |
+| `os_catalog_item.status` | `CHECK(active\|retired\|superseded)` (`origen_catalog_engine.sql:67`). | La vista OFTAR exige ítem `active` (`oftar_domain_search.sql:76`). |
+| `os_review_state` | Catálogo de referencia con `unknown`, `unreviewed`, `draft`, `in_review`, `reviewed`, `approved`, `published`, `retired`, `obsolete`, `deprecated`; solo `approved`/`published` tienen `is_publication_allowed=TRUE` (`fase1_infraestructura.sql:85-102`). | No es un CHECK de las columnas anteriores ni es leído por la API; sirve como vocabulario de gobernanza. |
+
+**[H]** `v_oftar_search_catalog` filtra `family_code='oftar'`, `product_role='catalog'`, catálogo activo, ítem activo y versión `approved`; prioriza `es-AR` y no inventa traducciones (`oftar_domain_search.sql:45-83`). **`untranslated` es una señal de respuesta, no un valor persistido** (`EditorialEvaluator.php:385-397`). `undet` es una etiqueta de idioma para mapeos, no un estado editorial (`MappingReviewReader.php:92`).
+
+**[H]** Browse Codes no consulta la vista para OFTAR: usa `os_catalog_item`/`os_catalog_item_version` con release `published` y aplica aprobación por campo en PHP (`CatalogRepository.php:82-90,1154-1188,1802-1810,2197-2381`).
 
 ---
 
@@ -134,6 +175,19 @@ SELECT to_regclass('public.os_catalog') AS os_catalog,
 SELECT catalogo, count(*) FROM public.v_oftar_search_catalog GROUP BY 1 ORDER BY 1;
 SELECT review_status, count(*) FROM public.os_concept_mapping GROUP BY 1 ORDER BY 1;
 SELECT code, name FROM public.os_clinical_category ORDER BY sort_order;
+SELECT conname, pg_get_constraintdef(oid) AS check_def
+  FROM pg_constraint
+ WHERE conrelid IN ('public.os_catalog_item_version'::regclass,
+                   'public.os_concept_mapping'::regclass,
+                   'public.os_localized_text'::regclass,
+                   'public.os_field_review'::regclass)
+   AND contype = 'c'
+ ORDER BY conrelid::regclass::text, conname;
+SELECT code, country_code, domain_type, family_code, product_role
+  FROM public.os_catalog
+ WHERE code IN ('oftar', 'oftar-pr', 'oftar-dx')
+ ORDER BY code;
+SELECT pg_get_viewdef('public.v_oftar_search_catalog'::regclass, true) AS view_def;
 ROLLBACK;
 ```
 
